@@ -48,6 +48,9 @@ MODEL_CONFIG = {
 CACHE_MAX_SIZE = 128
 CACHE_TTL = 3600
 
+# ─── 降采样 ───
+MAX_LS_POINTS = 500  # 热力图/折线图 Ls 维度最大点数
+
 # ─── 纬度带 ───
 LATITUDE_BANDS = [
     {"name": "Polar North (60N-90N)", "lat_min": 60, "lat_max": 90},

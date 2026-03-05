@@ -16,6 +16,7 @@ import xarray as xr
 from config import (
     OPENMARS_DIR, MCD_DIR, MCD_VARIABLES,
     N_LAT, N_LON, LATITUDE_BANDS, SUPPORTED_MARS_YEARS,
+    MAX_LS_POINTS,
 )
 from core.data_align import unwrap_ls, interpolate_mcd_to_openmars
 
@@ -32,6 +33,9 @@ class DataService:
         self.openmars: dict[int, dict] = {}
         self.mcd: dict[int, dict] = {}
         self.aligned_mcd: dict[int, dict] = {}  # 对齐到 OpenMARS Ls 格点后的 MCD 数据
+
+        # 内存缓存：避免重复计算
+        self._cache: dict[str, dict] = {}
 
         self._load_all()
 
@@ -223,8 +227,13 @@ class DataService:
     def get_seasonal_heatmap(self, mars_year: int,
                               variable: str = "o3col") -> dict:
         """
-        获取 Ls-纬度热力图数据（纬向平均后）。
+        获取 Ls-纬度热力图数据（纬向平均后），带降采样和内存缓存。
         """
+        cache_key = f"heatmap_{mars_year}_{variable}"
+        if cache_key in self._cache:
+            logger.debug(f"热力图缓存命中: {cache_key}")
+            return self._cache[cache_key]
+
         if variable == "o3col":
             om = self._get_openmars(mars_year)
             data_3d = om["o3col"]   # (time, lat, lon)
@@ -242,38 +251,62 @@ class DataService:
         # 对经度求平均 → (time, lat)
         zonal_mean = np.nanmean(data_3d, axis=2)  # (time, lat)
 
-        return {
-            "x": [float(v) for v in ls_arr],
+        # 降采样 Ls 维度
+        n_time = len(ls_arr)
+        step = max(1, n_time // MAX_LS_POINTS)
+        ls_ds = ls_arr[::step]
+        zm_ds = zonal_mean[::step]  # (n_sampled, lat)
+
+        logger.info(f"热力图降采样: {n_time} → {len(ls_ds)} 时间步 (step={step})")
+
+        result = {
+            "x": [float(v) for v in ls_ds],
             "y": [float(v) for v in lat_arr],
-            "z": self._to_nested_list(zonal_mean.T),  # [lat][time]
+            "z": self._to_nested_list(zm_ds.T),  # [lat][time_sampled]
             "min": float(np.nanmin(zonal_mean)),
             "max": float(np.nanmax(zonal_mean)),
             "variable": variable,
         }
+        self._cache[cache_key] = result
+        return result
 
     def get_seasonal_bands(self, mars_year: int) -> dict:
         """
-        获取 5 个纬度带的臭氧随 Ls 变化曲线。
+        获取 5 个纬度带的臭氧随 Ls 变化曲线，带降采样和内存缓存。
         """
+        cache_key = f"bands_{mars_year}"
+        if cache_key in self._cache:
+            logger.debug(f"折线图缓存命中: {cache_key}")
+            return self._cache[cache_key]
+
         om = self._get_openmars(mars_year)
         o3 = om["o3col"]     # (time, lat, lon)
         ls_arr = om["ls"]
         lat_arr = om["lat"]
 
+        # 降采样 Ls 维度
+        n_time = len(ls_arr)
+        step = max(1, n_time // MAX_LS_POINTS)
+        ls_ds = ls_arr[::step]
+        o3_ds = o3[::step]  # (n_sampled, lat, lon)
+
+        logger.info(f"折线图降采样: {n_time} → {len(ls_ds)} 时间步 (step={step})")
+
         bands = []
         for band_def in LATITUDE_BANDS:
             mask = (lat_arr >= band_def["lat_min"]) & (lat_arr <= band_def["lat_max"])
-            # 取该纬度带的区域平均 (time, selected_lats, lon) → (time,)
-            band_mean = np.nanmean(o3[:, mask, :], axis=(1, 2))
+            band_mean = np.nanmean(o3_ds[:, mask, :], axis=(1, 2))
             bands.append({
                 "name": band_def["name"],
                 "values": [float(v) for v in band_mean],
             })
 
-        return {
-            "ls": [float(v) for v in ls_arr],
+        result = {
+            "ls": [float(v) for v in ls_ds],
             "bands": bands,
         }
+        self._cache[cache_key] = result
+        return result
 
     def get_env_variable_heatmap(self, mars_year: int,
                                   variable_name: str) -> dict:
@@ -285,53 +318,61 @@ class DataService:
     def get_correlation_matrix(self, mars_year: int) -> dict:
         """
         计算 7 个变量（O₃ + 6 个环境变量）之间的 Pearson 相关系数矩阵。
+        使用全球空间均值时间序列（各变量先对 lat/lon 求均值，再做相关），
+        速度比展平全部数据快 2 个数量级，且带内存缓存。
         """
+        cache_key = f"corr_{mars_year}"
+        if cache_key in self._cache:
+            logger.debug(f"相关矩阵缓存命中: {cache_key}")
+            return self._cache[cache_key]
+
         om = self._get_openmars(mars_year)
         am = self._get_aligned_mcd(mars_year)
 
         var_names = ["o3col"] + MCD_VARIABLES
         n_vars = len(var_names)
 
-        # 将所有变量展平为一维序列，计算相关系数
-        flat_data = []
+        # 对每个变量先求全球空间均值 → (time,) 一维序列
+        # 等价于"各变量全球均值序列之间的相关性"，科学合理且高效
+        series_list = []
 
-        # O₃: (time, lat, lon) → 展平
-        o3_flat = om["o3col"].reshape(-1)
-        flat_data.append(o3_flat)
+        # O₃: (time, lat, lon) → 空间均值 → (time,)
+        o3_mean = np.nanmean(om["o3col"], axis=(1, 2))
+        series_list.append(o3_mean)
 
         for var in MCD_VARIABLES:
             if var in am:
-                v_flat = am[var].reshape(-1)
-                # 确保长度一致（截取到最短长度）
-                if len(v_flat) != len(o3_flat):
-                    min_len = min(len(v_flat), len(o3_flat))
-                    v_flat = v_flat[:min_len]
-                flat_data.append(v_flat)
+                v_3d = am[var]  # (time, lat, lon)
+                v_mean = np.nanmean(v_3d, axis=(1, 2))
+                # 截断到 O₃ 时间长度
+                min_len = min(len(v_mean), len(o3_mean))
+                series_list.append(v_mean[:min_len])
             else:
-                # 缺失变量填 NaN
-                flat_data.append(np.full_like(o3_flat, np.nan))
+                series_list.append(np.full(len(o3_mean), np.nan))
 
-        # 统一截断到最短长度
-        min_len = min(len(d) for d in flat_data)
-        flat_data = [d[:min_len] for d in flat_data]
+        # 统一截断
+        min_len = min(len(s) for s in series_list)
+        series_list = [s[:min_len] for s in series_list]
 
-        # 构建矩阵并计算相关系数
-        data_matrix = np.stack(flat_data, axis=0)  # (7, N)
+        data_matrix = np.stack(series_list, axis=0)  # (7, n_time)
 
-        # 去除含 NaN 的列
+        # 去除含 NaN 的时间步
         valid_mask = ~np.any(np.isnan(data_matrix), axis=0)
         data_clean = data_matrix[:, valid_mask]
 
         if data_clean.shape[1] < 10:
-            # 数据太少，返回单位矩阵
             corr = np.eye(n_vars)
         else:
             corr = np.corrcoef(data_clean)
 
-        return {
+        logger.info(f"相关矩阵计算完成: {data_clean.shape[1]} 个有效时间步")
+
+        result = {
             "matrix": self._to_nested_list(corr),
             "variable_names": var_names,
         }
+        self._cache[cache_key] = result
+        return result
 
     # ═══════════════════════════════════════════
     #  预测页需要的数据获取

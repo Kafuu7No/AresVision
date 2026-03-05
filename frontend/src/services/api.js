@@ -5,8 +5,9 @@
 
 const BASE = '/api';
 
-export async function fetchGlobeData(marsYear = 27, ls = 10) {
-  const res = await fetch(`${BASE}/explore/globe?my=${marsYear}&ls=${ls}`);
+export async function fetchGlobeData(marsYear = 27, ls = 10, signal = null) {
+  const opts = signal ? { signal } : {};
+  const res = await fetch(`${BASE}/explore/globe?my=${marsYear}&ls=${ls}`, opts);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
