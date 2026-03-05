@@ -1,0 +1,27 @@
+# ─── Web 框架 ───
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.3
+
+# ─── 科学数据处理 ───
+numpy==1.26.4
+scipy==1.14.1
+xarray==2024.11.0
+netCDF4==1.7.2
+
+# ─── 深度学习（CPU 版，GPU 版请另行安装） ───
+# torch==2.5.1
+
+# ─── 评估指标 ───
+scikit-learn==1.6.0
+scikit-image==0.24.0
+
+# ─── 缓存 ───
+cachetools==5.5.0
+
+# ─── AI 问答 ───
+httpx==0.28.1
+
+# ─── 工具 ───
+python-multipart==0.0.18
+orjson==3.10.12
