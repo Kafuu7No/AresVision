@@ -455,7 +455,11 @@ function LineChart({ data, year, h = 240 }) {
 
 // ─── 全球散点图（等距投影 SVG） ───
 
-function GlobePlot({ data, h = 450 }) {
+function GlobePlot({ data, h = 300 }) {
+  const [tooltip, setTooltip] = useState(null);
+  const [selectedIdx, setSelectedIdx] = useState(null);
+  const containerRef = useRef(null);
+
   if (!data || !data.points || data.points.length === 0) {
     return <LoadingBox h={h} label="加载全球数据..." />;
   }
@@ -467,12 +471,43 @@ function GlobePlot({ data, h = 450 }) {
   const toX = (lng) => ((lng + 180) / 360) * W;
   const toY = (lat) => ((90 - lat) / 180) * H;
 
+  const formatLat = (lat) => lat >= 0 ? `${lat.toFixed(1)}°N` : `${Math.abs(lat).toFixed(1)}°S`;
+  const formatLng = (lng) => lng >= 0 ? `${lng.toFixed(1)}°E` : `${Math.abs(lng).toFixed(1)}°W`;
+
+  const handleCircleClick = (e, p, i) => {
+    e.stopPropagation();
+    if (selectedIdx === i) {
+      setTooltip(null);
+      setSelectedIdx(null);
+      return;
+    }
+    const rect = containerRef.current.getBoundingClientRect();
+    let x = e.clientX - rect.left + 10;
+    let y = e.clientY - rect.top - 10;
+    // 防止 tooltip 超出右边界或下边界
+    if (x + 140 > rect.width) x = e.clientX - rect.left - 150;
+    if (y + 70 > rect.height) y = e.clientY - rect.top - 80;
+    if (y < 0) y = 4;
+    setTooltip({ x, y, lat: p.lat, lng: p.lng, val: p.val });
+    setSelectedIdx(i);
+  };
+
+  const handleContainerClick = () => {
+    setTooltip(null);
+    setSelectedIdx(null);
+  };
+
   return (
-    <div style={{
-      position: 'relative', borderRadius: 8, overflow: 'hidden',
-      background: 'radial-gradient(ellipse at center, #0a1525 0%, #050a12 100%)',
-    }}>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: h, display: 'block' }}>
+    <div
+      ref={containerRef}
+      style={{
+        position: 'relative', borderRadius: 8, overflow: 'hidden',
+        background: 'radial-gradient(ellipse at center, #0a1525 0%, #050a12 100%)',
+      }}
+      onClick={handleContainerClick}
+    >
+      {/* SVG 不设固定高度，由 viewBox 2:1 比例自适应 */}
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', display: 'block' }}>
         {/* 经纬网格 */}
         {[-60, -30, 0, 30, 60].map(lat => (
           <line key={`lat${lat}`} x1="0" y1={toY(lat)} x2={W} y2={toY(lat)}
@@ -496,39 +531,57 @@ function GlobePlot({ data, h = 450 }) {
         {/* 数据点 */}
         {points.map((p, i) => {
           const t = (p.val - minVal) / range;
+          const isSelected = selectedIdx === i;
           return (
-            <circle key={i} cx={toX(p.lng)} cy={toY(p.lat)}
-              r="3.2" fill={turboColor(t)} opacity="0.85" />
+            <circle
+              key={i}
+              cx={toX(p.lng)} cy={toY(p.lat)}
+              r="3.2"
+              fill={turboColor(t)}
+              opacity="0.85"
+              stroke={isSelected ? 'white' : 'none'}
+              strokeWidth={isSelected ? 2 : 0}
+              style={{ cursor: 'pointer' }}
+              onClick={(e) => handleCircleClick(e, p, i)}
+            />
           );
         })}
       </svg>
 
-      {/* Colorbar */}
-      <div style={{
-        position: 'absolute', right: 10, top: 14, bottom: 14, width: 20,
-        borderRadius: 4, border: '1px solid rgba(255,255,255,0.2)',
-        background: `linear-gradient(180deg,
-          rgb(122,4,3) 0%, rgb(191,34,12) 10%, rgb(239,88,20) 20%,
-          rgb(252,155,28) 30%, rgb(249,211,31) 40%, rgb(191,240,35) 50%,
-          rgb(94,227,80) 60%, rgb(31,199,147) 70%, rgb(39,154,193) 80%,
-          rgb(50,92,168) 90%, rgb(48,18,59) 100%)`,
-        display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-        padding: '2px 0',
-      }}>
-        <span style={{ fontSize: 9, color: C.ice60, marginLeft: 24, whiteSpace: 'nowrap' }}>
-          {maxVal.toFixed(4)}
-        </span>
-        <span style={{ fontSize: 9, color: C.ice60, marginLeft: 24, whiteSpace: 'nowrap' }}>
-          {((maxVal + minVal) / 2).toFixed(4)}
-        </span>
-        <span style={{ fontSize: 9, color: C.ice60, marginLeft: 24, whiteSpace: 'nowrap' }}>
-          {minVal.toFixed(4)}
-        </span>
+      {/* Colorbar：标签在渐变条左侧，避免被 overflow:hidden 裁切 */}
+      <div style={{ position: 'absolute', right: 8, top: 20, bottom: 20, width: 70 }}>
+        {/* 渐变条 */}
+        <div style={{
+          position: 'absolute', right: 0, top: 0, bottom: 0, width: 14,
+          borderRadius: 4, border: '1px solid rgba(255,255,255,0.2)',
+          background: `linear-gradient(180deg,
+            rgb(122,4,3) 0%, rgb(191,34,12) 10%, rgb(239,88,20) 20%,
+            rgb(252,155,28) 30%, rgb(249,211,31) 40%, rgb(191,240,35) 50%,
+            rgb(94,227,80) 60%, rgb(31,199,147) 70%, rgb(39,154,193) 80%,
+            rgb(50,92,168) 90%, rgb(48,18,59) 100%)`,
+        }} />
+        {/* 最大值标签 */}
+        <span style={{
+          position: 'absolute', right: 18, top: 0,
+          fontSize: 9, color: C.ice60, whiteSpace: 'nowrap',
+        }}>{maxVal.toFixed(2)}</span>
+        {/* 中间值标签 */}
+        <span style={{
+          position: 'absolute', right: 18, top: '50%',
+          transform: 'translateY(-50%)',
+          fontSize: 9, color: C.ice60, whiteSpace: 'nowrap',
+        }}>{((maxVal + minVal) / 2).toFixed(2)}</span>
+        {/* 最小值标签 */}
+        <span style={{
+          position: 'absolute', right: 18, bottom: 0,
+          fontSize: 9, color: C.ice60, whiteSpace: 'nowrap',
+        }}>{minVal.toFixed(2)}</span>
+        {/* 单位 */}
+        <span style={{
+          position: 'absolute', right: 0, bottom: -14,
+          fontSize: 9, color: C.ice30, whiteSpace: 'nowrap',
+        }}>μm-atm</span>
       </div>
-      <div style={{
-        position: 'absolute', right: 36, bottom: 6,
-        fontSize: 9, color: C.ice30,
-      }}>μm-atm</div>
 
       <div style={{
         position: 'absolute', bottom: 8, left: 10,
@@ -543,6 +596,30 @@ function GlobePlot({ data, h = 450 }) {
       }}>
         {points.length} pts
       </div>
+
+      {/* Tooltip */}
+      {tooltip && (
+        <div style={{
+          position: 'absolute',
+          left: tooltip.x,
+          top: tooltip.y,
+          background: 'rgba(15,15,25,0.9)',
+          border: '1px solid rgba(232,237,243,0.15)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: 8,
+          padding: '8px 12px',
+          fontSize: 12,
+          color: '#e8edf3',
+          pointerEvents: 'none',
+          zIndex: 10,
+          whiteSpace: 'nowrap',
+          lineHeight: 1.7,
+        }}>
+          <div>{formatLat(tooltip.lat)}</div>
+          <div>{formatLng(tooltip.lng)}</div>
+          <div style={{ color: C.mars, fontWeight: 700 }}>{tooltip.val.toFixed(2)} μm-atm</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -565,17 +642,23 @@ function CorrelationChart({ data, year, h = 320 }) {
   useEffect(() => {
     if (!data?.matrix || !data?.variable_names) return;
     const o3Row = data.matrix[0];
-    let maxCorr = -Infinity, maxCorrIdx = -1;
+    // 排除对角线（索引 0，O₃ 与自身相关系数 1.0），并防御 NaN/null
+    let maxAbsCorr = 0, maxCorrVal = 0, maxCorrIdx = -1;
     o3Row.forEach((v, i) => {
-      if (i > 0 && Math.abs(v) > Math.abs(maxCorr)) {
-        maxCorr = v; maxCorrIdx = i;
+      if (i === 0) return;
+      if (v == null || isNaN(v)) return;
+      if (Math.abs(v) > maxAbsCorr) {
+        maxAbsCorr = Math.abs(v);
+        maxCorrVal = v;
+        maxCorrIdx = i;
       }
     });
-    const maxVar = data.variable_names[maxCorrIdx] || '?';
-    const corrSign = maxCorr > 0 ? '正相关' : '负相关';
+    const maxVar = maxCorrIdx >= 0 ? (data.variable_names[maxCorrIdx] || '未知') : '未知';
+    const corrSign = maxCorrVal >= 0 ? '正相关' : '负相关';
+    const corrStr = maxCorrIdx >= 0 ? maxCorrVal.toFixed(3) : 'N/A';
     setInsight(
       `Pearson 相关分析（MY${year}）：臭氧柱浓度与环境变量中，` +
-      `${VAR_ABBREV[maxVar] || maxVar} 的相关性最强（r=${maxCorr.toFixed(3)}，${corrSign}）。` +
+      `${VAR_ABBREV[maxVar] || maxVar} 的相关性最强（r=${corrStr}，${corrSign}）。` +
       `矩阵基于全球空间均值时间序列计算，揭示了各变量在行星尺度上的协变关系。`
     );
   }, [data, year]);
@@ -810,7 +893,7 @@ export default function ExplorePage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
 
         {/* 全球臭氧图 */}
-        <GlowCard breathe style={{ padding: 20, gridRow: 'span 2' }}>
+        <GlowCard breathe style={{ padding: 20 }}>
           <div style={{
             fontSize: 11, fontWeight: 700, color: C.mars,
             fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 12,
@@ -818,8 +901,8 @@ export default function ExplorePage() {
             OZONE MAP · 全球臭氧分布
           </div>
           {loading.globe && !globeData
-            ? <LoadingBox h={450} label="加载全球数据..." />
-            : <GlobePlot data={globeData} h={450} />}
+            ? <LoadingBox h={300} label="加载全球数据..." />
+            : <GlobePlot data={globeData} />}
         </GlowCard>
 
         {/* 热力图 */}
@@ -839,7 +922,7 @@ export default function ExplorePage() {
         </GlowCard>
 
         {/* 折线图 */}
-        <GlowCard breathe style={{ padding: 20 }}>
+        <GlowCard breathe style={{ padding: 20, gridColumn: 'span 2' }}>
           <div style={{
             fontSize: 11, fontWeight: 700, color: C.blue,
             fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 12,
