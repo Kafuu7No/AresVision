@@ -87,3 +87,30 @@ Single-page React app using inline styles with a space/sci-fi aesthetic. No Reac
 | `AI_API_KEY` | `""` | API key (required for AI chat) |
 
 Without `AI_API_KEY`, the AI chat falls back to keyword-matched built-in responses in Chinese.
+
+## Changelog
+
+### 2026-03-06 Three.js 火星球体 + 光照调优 + 纹理本地化
+- `Mars3DPlaceholder.jsx` 用 Three.js 彻底重写，替换 CSS background-position 方案
+- SphereGeometry + MeshStandardMaterial（roughness 0.95）实现写实 3D 球体
+- 三光源体系：DirectionalLight(0.9) + AmbientLight(0.5) + 背面 PointLight(0xaaccff, 0.3)，暗面柔和不纯黑
+- 纹理 URL 从远程 NASA/Wikipedia 改为本地 `/mars_texture.jpg`（跨域问题）
+- 纹理加载失败链式 fallback → 纯色球体 → WebGL 失败时 CSS 渐变 fallback
+- 大气壳层（BackSide 半透明球）+ CSS box-shadow 光晕保留
+
+### 2026-03-06 首页视觉升级
+- `Mars3DPlaceholder.jsx` 从静态图片 + CSS spin-slow 改为 CSS background-position 滚动纹理（后被 Three.js 方案替代）
+- 添加 limb darkening radial-gradient 和大气散射效果
+- `HomePage.jsx` SCROLL 指示器从 `position: absolute` 改为文档流内元素，修复漂移到卡片区域的闪烁 bug
+- `index.css` 添加 `mars-rotate` 关键帧（后被移除）
+- 生成项目根目录 `README.md`
+
+### 2026-03-05 数据探索页性能优化 + 可视化质量提升 + 交互增强
+- 后端降采样 + Canvas 渲染优化
+- 热力图、折线图可视化质量提升
+- 交互增强与 bug 修复
+
+### 2026-03-05 初始提交
+- FastAPI 后端：DataService / PredictService / AIService 三服务架构
+- React 前端：5 页面 SPA，太空科幻视觉风格
+- PredRNNv2 时空 LSTM 模型集成
