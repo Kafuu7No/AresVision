@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <radialGradient id="mg" cx="32%" cy="28%" r="72%">
+      <stop offset="0%" stop-color="#ec9268"/>
+      <stop offset="38%" stop-color="#c75b39"/>
+      <stop offset="72%" stop-color="#8b3a25"/>
+      <stop offset="100%" stop-color="#2a0e06"/>
+    </radialGradient>
+  </defs>
+  <!-- Orbit ring -->
+  <ellipse cx="16" cy="16" rx="15.5" ry="5.2" fill="none" stroke="#c75b39" stroke-width="0.9" opacity="0.55" transform="rotate(-22,16,16)"/>
+  <!-- Mars sphere -->
+  <circle cx="16" cy="16" r="12" fill="url(#mg)"/>
+  <!-- North polar cap -->
+  <ellipse cx="16" cy="6.8" rx="3.8" ry="1.6" fill="#f0e8dd" opacity="0.62"/>
+  <!-- Surface feature (dark volcanic) -->
+  <ellipse cx="19" cy="13" rx="3" ry="2.2" fill="rgba(40,14,4,0.38)"/>
+</svg>
