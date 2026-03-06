@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 .env
+.claude/
 dist/
 .DS_Store
 *.log
