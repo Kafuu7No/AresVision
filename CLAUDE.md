@@ -90,6 +90,43 @@ Without `AI_API_KEY`, the AI chat falls back to keyword-matched built-in respons
 
 ## Changelog
 
+### 2026-03-07 预测分析页视觉修复 + UI 恢复
+涉及文件：`frontend/src/pages/PredictPage.jsx`（仅此一个文件）
+
+- **恢复 FILE UPLOAD 区域**：左侧面板顶部第一个 GlowCard，标题 "FILE UPLOAD"，虚线边框 + 📁图标 + 拖拽提示，UI 占位（无真实上传逻辑）
+- **恢复视图切换 Tab**：右侧结果区顶部 4 个 Tab（三联对比 / 原始数据 / 预测结果 / 差值分析），`viewMode` state 控制显示模式；triptych=三图并排，其余=单张全宽大图（h=400）
+- **FieldCanvas 可视化质量全面提升**：Canvas 内部 720px 宽，带完整坐标轴（X 轴 7 个经度刻度 0°~360° 每 60°，Y 轴 7 个纬度刻度 -90°~90° 每 30°，含旋转轴标签），右侧 14px Colorbar（像素渲染渐变条 + top/mid/bot 三标签 + 旋转单位 μm-atm）
+- **Inferno 色阶**（`infernoRgb`）：真值图和预测图使用，8-stop 标准 Inferno
+- **RdBu 发散色阶**（`rdbuRgb`）：差值图使用，11-stop 标准 RdBu（深蓝→白→深红），以 0 为对称中心（[-absMax, +absMax]），Colorbar 标注 -maxAbs / 0 / +maxAbs
+- **指标解读文字**：评估指标区底部添加带左边框 blockquote 风格解读文本，填入 lsStart/marsYear/horizon/变量列表/RMSE/SSIM/R² 真实值
+
+### 2026-03-07 预测分析流水线修复 + 前端对接
+涉及文件：`AresVision_backend/backend/config.py`、`AresVision_backend/backend/core/predrnn_v2.py`、`AresVision_backend/backend/services/predict_service.py`、`frontend/src/pages/PredictPage.jsx`
+
+**`config.py`**
+- `MODEL_CONFIG.num_hidden`：`[64,64,64,64]`（4层）→ `[64,64,64]`（3层，与训练权重匹配）
+- `MODEL_CONFIG.filter_size`：`5` → `3`
+- `MODEL_CONFIG.layer_norm`：`True` → `False`
+
+**`core/predrnn_v2.py`（完全重写）**
+- 替换为训练脚本 demo3.py 的原版 `SpatioTemporalLSTMCellv2` 结构，与 `predrnn_highlat_gpu.pth` 权重精确匹配
+- 关键差异：`conv_last = Conv2d(num_hidden*2, num_hidden, 1)`；遗忘门含 `+1.0` bias；无 layer_norm / input_adapter / channel_mask 参数
+- `forward(x)` 签名简化为只接收输入张量，Decoder 固定用 `x[:, -1]` 作为所有步的解码输入（与训练一致）
+
+**`services/predict_service.py`（重大重写）**
+- `_load_model`：使用新 `PredRNNv2(input_dim=7, hidden_dims=[64,64,64], height=36, width=72, horizon=3)`；先尝试 strict=True 加载，失败回退 strict=False 并记录 warning
+- `_compute_scalers`：启动时从 MY27 全量数据计算 7 通道 StandardScaler 和臭氧全局 y_mean/y_std
+- `_apply_physical_preprocess`：通道 5（Dust_Optical_Depth）log1p 变换，通道 6（Solar_Flux_DN）除以全局最大值归一化（与训练时一致，在标准化前做）
+- `_preprocess_input`：物理预处理 → StandardScaler 变换
+- `_postprocess_output`：`pred * y_std + y_mean` 反标准化回物理单位 μm-atm
+- `_run_inference`：通道掩码置零 → 预处理 → 推理（无 channel_mask 参数）→ 取前 horizon 步 → 反标准化
+
+**`frontend/src/pages/PredictPage.jsx`（完全重写）**
+- 新增 `FieldCanvas` 组件（Canvas 渲染 36×72 lat-lon 热力图，Inferno / RdBu 色阶）
+- 新增状态：`lsStart`（Ls 滑块 0°-355°，步长 5°）、`marsYear`（MY27/28 切换）、`loading`、`results`、`metrics`、`activeHorizon`
+- `handlePredict`：并发调用 `/predict/run` + `/predict/metrics`，完整 loading 状态管理
+- 三联对比图实时渲染真值/预测/差值；逐步指标表格行可点击联动 activeHorizon；整体指标卡片动态显示
+
 ### 2026-03-06 Three.js 火星球体 + 光照调优 + 纹理本地化
 - `Mars3DPlaceholder.jsx` 用 Three.js 彻底重写，替换 CSS background-position 方案
 - SphereGeometry + MeshStandardMaterial（roughness 0.95）实现写实 3D 球体
