@@ -37,11 +37,11 @@ MODEL_CONFIG = {
     "img_width": N_LON,
     "input_window": 3,
     "pred_horizon": 3,
-    "num_hidden": [64, 64, 64, 64],
-    "filter_size": 5,
+    "num_hidden": [64, 64, 64],
+    "filter_size": 3,
     "stride": 1,
     "patch_size": 1,
-    "layer_norm": True,
+    "layer_norm": False,
 }
 
 # ─── 缓存 ───

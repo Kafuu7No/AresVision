@@ -1,7 +1,8 @@
 """
 预测服务层
-- 加载 PredRNNv2 模型权重
-- 执行推理（支持动态通道 mask）
+- 加载 PredRNNv2 模型权重（与训练时结构完全一致）
+- 数据预处理：物理变换 → StandardScaler 标准化
+- 推理 + 反标准化
 - 计算评估指标
 - 结果缓存
 """
@@ -14,6 +15,7 @@ import torch
 from pathlib import Path
 
 from cachetools import LRUCache
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from skimage.metrics import structural_similarity as ssim
 
@@ -23,10 +25,14 @@ from services.data_service import DataService
 
 logger = logging.getLogger("aresvision.predict")
 
+# 通道顺序与训练时保持一致
+# 索引: 0=O3, 1=U_Wind, 2=V_Wind, 3=Pressure, 4=Temperature, 5=Dust_Optical_Depth, 6=Solar_Flux_DN
+CHANNEL_ORDER = ["O3"] + MCD_VARIABLES  # ["O3", "U_Wind", "V_Wind", "Pressure", "Temperature", "Dust_Optical_Depth", "Solar_Flux_DN"]
+
 
 class PredictService:
     """
-    预测服务：加载模型 → 接收输入 → 推理 → 评估 → 返回结果
+    预测服务：加载模型 → 接收输入 → 预处理 → 推理 → 反标准化 → 评估 → 返回结果
     """
 
     def __init__(self, data_service: DataService):
@@ -35,7 +41,13 @@ class PredictService:
         self.device = self._select_device()
         self._result_cache = LRUCache(maxsize=32)
 
+        # 标准化参数（从训练数据计算）
+        self.scalers: list | None = None   # 7 个通道的 StandardScaler
+        self.y_mean: float = 0.0           # 臭氧全局均值
+        self.y_std: float = 1.0            # 臭氧全局标准差
+
         self._load_model()
+        self._compute_scalers()
 
     def _select_device(self) -> torch.device:
         """选择推理设备：优先 GPU"""
@@ -48,35 +60,165 @@ class PredictService:
         return device
 
     def _load_model(self):
-        """加载 PredRNNv2 模型权重"""
+        """加载 PredRNNv2 模型权重（strict=True，必须与训练时结构完全一致）"""
         cfg = MODEL_CONFIG
-        num_layers = len(cfg["num_hidden"])
 
         self.model = PredRNNv2(
-            num_layers=num_layers,
-            num_hidden=cfg["num_hidden"],
-            configs=cfg,
+            input_dim=cfg["total_channels"],    # 7
+            hidden_dims=cfg["num_hidden"],       # [64, 64, 64]
+            height=cfg["img_height"],            # 36
+            width=cfg["img_width"],              # 72
+            horizon=cfg["pred_horizon"],         # 3
         ).to(self.device)
 
-        # 查找权重文件
         weight_files = list(MODEL_DIR.glob("*.pt")) + list(MODEL_DIR.glob("*.pth"))
 
         if weight_files:
             weight_path = weight_files[0]
             try:
                 state_dict = torch.load(weight_path, map_location=self.device,
-                                         weights_only=True)
-                self.model.load_state_dict(state_dict, strict=False)
+                                        weights_only=True)
+                self.model.load_state_dict(state_dict, strict=True)
                 logger.info(f"模型权重已加载: {weight_path.name}")
             except Exception as e:
-                logger.warning(f"加载权重失败: {e}，将使用随机初始化模型")
+                logger.warning(f"加载权重失败 (strict=True): {e}")
+                # 尝试 strict=False 作为回退
+                try:
+                    state_dict = torch.load(weight_path, map_location=self.device,
+                                            weights_only=True)
+                    self.model.load_state_dict(state_dict, strict=False)
+                    logger.warning("已用 strict=False 加载（部分权重匹配），预测结果可能不准确")
+                except Exception as e2:
+                    logger.warning(f"权重加载完全失败: {e2}，使用随机初始化模型")
         else:
             logger.warning(
-                f"未找到模型权重文件 ({MODEL_DIR})，将使用随机初始化模型。"
-                "预测结果仅供演示。"
+                f"未找到模型权重文件 ({MODEL_DIR})，将使用随机初始化模型。预测结果仅供演示。"
             )
 
         self.model.eval()
+
+    def _compute_scalers(self):
+        """
+        计算标准化参数，从 MY27 全量数据中估计。
+        理想情况下应从训练时保存的 scaler 文件加载，此处从数据计算近似。
+        """
+        try:
+            om = self.data_service._get_openmars(27)
+            am = self.data_service._get_aligned_mcd(27)
+
+            o3 = om["o3col"]  # (T, 36, 72)
+            T, H, W = o3.shape
+
+            # 臭氧全局均值/标准差（用于反标准化输出）
+            self.y_mean = float(np.nanmean(o3))
+            self.y_std = float(np.nanstd(o3))
+            if self.y_std < 1e-10:
+                self.y_std = 1.0
+
+            self.scalers = []
+
+            # 通道 0: O3
+            scaler_o3 = StandardScaler()
+            scaler_o3.fit(np.nan_to_num(o3, nan=0.0).reshape(T, -1))
+            self.scalers.append(scaler_o3)
+
+            # 通道 1-6: 环境变量（顺序与 MCD_VARIABLES 一致）
+            for var_name in MCD_VARIABLES:
+                if var_name in am:
+                    data = np.nan_to_num(am[var_name], nan=0.0)
+                    # 物理预处理（与训练时一致）
+                    if var_name == "Dust_Optical_Depth":
+                        data = np.where(data < 0, 0.0, data)
+                        data = np.log1p(data)
+                    elif var_name == "Solar_Flux_DN":
+                        max_val = np.max(np.abs(data))
+                        if max_val > 1e-6:
+                            data = data / max_val
+                    scaler = StandardScaler()
+                    scaler.fit(data.reshape(T, -1))
+                    self.scalers.append(scaler)
+                else:
+                    # 缺失变量：创建单位 scaler（均值0，方差1，不做变换）
+                    dummy = StandardScaler()
+                    dummy.mean_ = np.zeros(H * W)
+                    dummy.scale_ = np.ones(H * W)
+                    dummy.var_ = np.ones(H * W)
+                    dummy.n_features_in_ = H * W
+                    self.scalers.append(dummy)
+
+            logger.info(
+                f"标准化参数计算完成: y_mean={self.y_mean:.4f}, y_std={self.y_std:.4f}"
+            )
+
+        except Exception as e:
+            logger.warning(f"计算标准化参数失败: {e}，将跳过标准化")
+            self.scalers = None
+            self.y_mean = 0.0
+            self.y_std = 1.0
+
+    def _apply_physical_preprocess(self, input_arr: np.ndarray) -> np.ndarray:
+        """
+        物理预处理（与训练时一致）：
+        - 通道 5 (Dust_Optical_Depth): log1p 变换
+        - 通道 6 (Solar_Flux_DN): 除以最大值归一化
+
+        Args:
+            input_arr: (window, 7, H, W)
+
+        Returns:
+            (window, 7, H, W) — 物理预处理后的数值
+        """
+        result = input_arr.copy()
+
+        # 通道 5: Dust_Optical_Depth → log1p
+        dust = result[:, 5, :, :]
+        dust = np.where(dust < 0, 0.0, dust)
+        result[:, 5, :, :] = np.log1p(dust)
+
+        # 通道 6: Solar_Flux_DN → 归一化
+        flux = result[:, 6, :, :]
+        max_val = np.max(np.abs(flux))
+        if max_val > 1e-6:
+            result[:, 6, :, :] = flux / max_val
+
+        return result
+
+    def _preprocess_input(self, input_arr: np.ndarray) -> np.ndarray:
+        """
+        对模型输入做物理预处理 + StandardScaler 标准化。
+
+        Args:
+            input_arr: (window, 7, H, W) — 原始数值
+
+        Returns:
+            (window, 7, H, W) — 标准化后的数值
+        """
+        # 1. 物理预处理
+        result = self._apply_physical_preprocess(input_arr)
+
+        if self.scalers is None:
+            return result
+
+        # 2. StandardScaler 标准化
+        window, C, H, W = result.shape
+        for c in range(C):
+            if self.scalers[c] is not None:
+                flat = result[:, c, :, :].reshape(window, -1)
+                result[:, c, :, :] = self.scalers[c].transform(flat).reshape(window, H, W)
+
+        return result
+
+    def _postprocess_output(self, pred_scaled: np.ndarray) -> np.ndarray:
+        """
+        对模型输出做反标准化（回到物理单位）。
+
+        Args:
+            pred_scaled: (horizon, H, W) — 标准化空间的预测值
+
+        Returns:
+            (horizon, H, W) — 物理单位的预测值 (μm-atm)
+        """
+        return pred_scaled * self.y_std + self.y_mean
 
     # ═══════════════════════════════════════════
     #  核心预测
@@ -101,7 +243,6 @@ class PredictService:
                 "metrics": {...},                # 评估指标
             }
         """
-        # 检查缓存
         cache_key = self._make_cache_key(
             mars_year, ls_start, selected_variables, horizon
         )
@@ -127,7 +268,7 @@ class PredictService:
             truth_arr = None
             truth_ls = np.array([ls_start + i * 5.0 for i in range(horizon)])
 
-        # 3. 模型推理
+        # 3. 模型推理（包含预处理 + 推理 + 反标准化）
         pred_arr = self._run_inference(input_arr, channel_mask, horizon)
 
         # 4. 计算差值和指标
@@ -161,7 +302,6 @@ class PredictService:
             "metrics": metrics,
         }
 
-        # 缓存
         self._result_cache[cache_key] = result
         return result
 
@@ -175,30 +315,40 @@ class PredictService:
         执行 PyTorch 推理。
 
         Args:
-            input_arr: (window, total_ch, H, W)
-            channel_mask: (total_ch,)
-            horizon: 预测步数
+            input_arr: (window, 7, H, W) — 原始数值（未标准化）
+            channel_mask: (7,) — 0/1 掩码
+            horizon: 预测步数（训练时固定为 3，horizon 可以取子集）
 
         Returns:
-            pred: (horizon, H, W)
+            pred: (horizon, H, W) — 物理单位的预测值
         """
+        # 1. 应用通道掩码（未选变量置零，在预处理前做）
+        masked_input = input_arr.copy()
+        for c in range(len(channel_mask)):
+            if channel_mask[c] == 0:
+                masked_input[:, c, :, :] = 0.0
+
+        # 2. 预处理：物理变换 + 标准化
+        scaled_input = self._preprocess_input(masked_input)
+
+        # 3. 推理
         with torch.no_grad():
-            # (1, window, C, H, W)
-            x = torch.from_numpy(input_arr).unsqueeze(0).float().to(self.device)
-            mask = torch.from_numpy(channel_mask).float().to(self.device)
+            x = torch.from_numpy(scaled_input).unsqueeze(0).float().to(self.device)
+            # x shape: (1, window, 7, H, W)
 
-            # 临时修改 pred_horizon
-            orig_horizon = self.model.configs.get("pred_horizon", 3)
-            self.model.configs["pred_horizon"] = horizon
+            output = self.model(x)
+            # output shape: (1, model_horizon, 1, H, W)
 
-            try:
-                output = self.model(x, channel_mask=mask)
-                # output: (1, horizon, 1, H, W) → (horizon, H, W)
-                pred = output[0, :, 0].cpu().numpy()
-            finally:
-                self.model.configs["pred_horizon"] = orig_horizon
+            pred_scaled = output[0, :, 0].cpu().numpy()
+            # pred_scaled shape: (model_horizon, H, W)
 
-        return pred
+        # 4. 取前 horizon 步
+        pred_scaled = pred_scaled[:horizon]
+
+        # 5. 反标准化回物理单位
+        pred_physical = self._postprocess_output(pred_scaled)
+
+        return pred_physical
 
     # ═══════════════════════════════════════════
     #  评估指标
@@ -215,9 +365,6 @@ class PredictService:
         Args:
             truth: (horizon, H, W)
             pred:  (horizon, H, W)
-
-        Returns:
-            {"overall": {...}, "per_step": [{...}, ...]}
         """
         horizon = truth.shape[0]
         per_step = []
@@ -226,7 +373,6 @@ class PredictService:
             t = truth[step].flatten()
             p = pred[step].flatten()
 
-            # 去除 NaN
             valid = ~(np.isnan(t) | np.isnan(p))
             t_valid, p_valid = t[valid], p[valid]
 
@@ -238,12 +384,8 @@ class PredictService:
             mae = float(mean_absolute_error(t_valid, p_valid))
             r2 = float(r2_score(t_valid, p_valid))
 
-            # SSIM 需要 2D 输入
-            t_2d = truth[step]
-            p_2d = pred[step]
-            t_2d = np.nan_to_num(t_2d, nan=0.0)
-            p_2d = np.nan_to_num(p_2d, nan=0.0)
-
+            t_2d = np.nan_to_num(truth[step], nan=0.0)
+            p_2d = np.nan_to_num(pred[step], nan=0.0)
             data_range = max(t_2d.max() - t_2d.min(), 1e-10)
             ssim_val = float(ssim(t_2d, p_2d, data_range=data_range))
 
@@ -255,7 +397,6 @@ class PredictService:
                 "r2": round(r2, 4),
             })
 
-        # 总体指标（各步平均）
         overall = {
             "step": 0,
             "rmse": round(np.mean([s["rmse"] for s in per_step]), 6),
@@ -282,7 +423,7 @@ class PredictService:
         }
 
     # ═══════════════════════════════════════════
-    #  消融实验（预计算）
+    #  消融实验
     # ═══════════════════════════════════════════
 
     def get_ablation_results(
@@ -290,15 +431,13 @@ class PredictService:
         mars_year: int = 27,
         ls_start: float = 90.0,
     ) -> list[dict]:
-        """
-        运行消融实验：测试不同变量组合的预测效果。
-        """
+        """运行消融实验：测试不同变量组合的预测效果。"""
         combos = [
             ("Full (All 7ch)", MCD_VARIABLES.copy()),
             ("No Dust", [v for v in MCD_VARIABLES if v != "Dust_Optical_Depth"]),
             ("No Wind", [v for v in MCD_VARIABLES if "Wind" not in v]),
             ("Temp + Solar Only", ["Temperature", "Solar_Flux_DN"]),
-            ("O₃ Only (Baseline)", []),
+            ("O3 Only (Baseline)", []),
         ]
 
         results = []
@@ -334,9 +473,7 @@ class PredictService:
         lat_arr: np.ndarray,
         lon_arr: np.ndarray,
     ) -> list[dict]:
-        """
-        将 (horizon, H, W) 的数组转为前端需要的格式列表。
-        """
+        """将 (horizon, H, W) 的数组转为前端需要的格式列表。"""
         result = []
         for step in range(fields.shape[0]):
             field = fields[step]
