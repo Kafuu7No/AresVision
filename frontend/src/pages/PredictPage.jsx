@@ -3,6 +3,7 @@ import C from '../constants/colors';
 import SectionTitle from '../components/SectionTitle';
 import GlowCard from '../components/GlowCard';
 import { runPrediction, fetchPredictMetrics } from '../services/api';
+import SphericalFieldCanvas from '../components/SphericalFieldCanvas';
 
 // ─── 色阶函数（返回 RGB 数组） ───
 
@@ -293,6 +294,9 @@ export default function PredictPage() {
   const [metrics, setMetrics] = useState(null);
   const [error, setError] = useState(null);
 
+  // 控制整个网页 3D 悬浮球体
+  const [fullscreen3D, setFullscreen3D] = useState(null); // { fieldData, colorMode }
+
   const toggleVar = (id) => {
     setSelectedVars((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
@@ -555,7 +559,24 @@ export default function PredictPage() {
                     {loading ? (
                       <LoadingBox h={220} />
                     ) : fieldData ? (
-                      <FieldCanvas fieldData={fieldData} colorMode={panel.mode} h={220} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <FieldCanvas fieldData={fieldData} colorMode={panel.mode} h={220} />
+                        <button
+                          onClick={() => setFullscreen3D({ fieldData, colorMode: panel.mode })}
+                          style={{
+                            width: '100%', padding: '8px 0',
+                            background: 'rgba(74,158,255,0.06)',
+                            border: `1px solid rgba(74,158,255,0.2)`, borderRadius: 6,
+                            color: '#4acfac', fontSize: 11, cursor: 'pointer',
+                            fontFamily: "'Orbitron', sans-serif", letterSpacing: 1,
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.15)' }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.06)' }}
+                        >
+                          🌐 3D GLOBE VIEW
+                        </button>
+                      </div>
                     ) : (
                       <EmptyBox h={220} />
                     )}
@@ -587,7 +608,24 @@ export default function PredictPage() {
                 {loading ? (
                   <LoadingBox h={400} />
                 ) : fd ? (
-                  <FieldCanvas fieldData={fd} colorMode={isResid ? 'rdbu' : 'inferno'} h={400} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <FieldCanvas fieldData={fd} colorMode={isResid ? 'rdbu' : 'inferno'} h={400} />
+                    <button
+                      onClick={() => setFullscreen3D({ fieldData: fd, colorMode: isResid ? 'rdbu' : 'inferno' })}
+                      style={{
+                        width: '100%', padding: '12px 0',
+                        background: 'rgba(74,158,255,0.06)',
+                        border: `1px dashed rgba(74,158,255,0.3)`, borderRadius: 8,
+                        color: '#4acfac', fontSize: 13, cursor: 'pointer',
+                        fontFamily: "'Orbitron', sans-serif", letterSpacing: 1.5,
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.15)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.06)' }}
+                    >
+                      🌐 VIEW IN 3D GLOBE
+                    </button>
+                  </div>
                 ) : (
                   <EmptyBox h={400} />
                 )}
@@ -705,6 +743,33 @@ export default function PredictPage() {
           )}
         </div>
       </div>
+
+      {/* 沉浸式 3D 全屏球体层 */}
+      {fullscreen3D && (
+        <div
+          onDoubleClick={() => setFullscreen3D(null)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            zIndex: 9999, background: 'rgba(5, 5, 10, 0.98)',
+            display: 'flex', justifyContent: 'center', alignItems: 'center',
+            cursor: 'zoom-out'
+          }}
+        >
+          <SphericalFieldCanvas
+            fieldData={fullscreen3D.fieldData}
+            colorMode={fullscreen3D.colorMode}
+            h="100vh"
+            forceFullscreen
+          />
+          <div style={{
+            position: 'absolute', bottom: 40, left: 0, width: '100%',
+            textAlign: 'center', color: 'rgba(255,255,255,0.4)',
+            fontSize: 14, pointerEvents: 'none'
+          }}>
+            双击缩小 / Double-click to close
+          </div>
+        </div>
+      )}
     </div>
   );
 }
