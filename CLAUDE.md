@@ -91,6 +91,7 @@ Without `AI_API_KEY`, the AI chat falls back to keyword-matched built-in respons
 ## Changelog
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 ### 2026-03-07 预测分析页视觉修复 + UI 恢复
 涉及文件：`frontend/src/pages/PredictPage.jsx`（仅此一个文件）
 
@@ -128,6 +129,8 @@ Without `AI_API_KEY`, the AI chat falls back to keyword-matched built-in respons
 - `handlePredict`：并发调用 `/predict/run` + `/predict/metrics`，完整 loading 状态管理
 - 三联对比图实时渲染真值/预测/差值；逐步指标表格行可点击联动 activeHorizon；整体指标卡片动态显示
 =======
+=======
+>>>>>>> Stashed changes
 ### 2026-03-06 数据总览页面开发 🚀
 - **新增 DataOverviewPage 组件**：实现高科技感数据中心界面
   - 中心3D火星球：基于 react-globe.gl，显示臭氧浓度数据点
@@ -138,6 +141,9 @@ Without `AI_API_KEY`, the AI chat falls back to keyword-matched built-in respons
 - **导航更新**：在 Navbar 中添加"数据总览"页面入口
 - **视觉效果**：太空主题背景、霓虹发光边框、动态粒子效果
 - **交互体验**：球体放大时窗口后移变透明，缩小时窗口前移变不透明
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 ### 2026-03-06 Three.js 火星球体 + 光照调优 + 纹理本地化
