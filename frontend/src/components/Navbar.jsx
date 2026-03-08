@@ -1,11 +1,12 @@
 import C from '../constants/colors';
 
 const NAV_ITEMS = [
-  { id: 'home',    label: '首页',   en: 'HOME' },
-  { id: 'explore', label: '数据探索', en: 'EXPLORE' },
-  { id: 'predict', label: '预测分析', en: 'PREDICT' },
-  { id: 'ai',      label: 'AI 解读', en: 'AI INSIGHT' },
-  { id: 'about',   label: '关于',   en: 'ABOUT' },
+  { id: 'home',     label: '首页',     en: 'HOME' },
+  { id: 'overview', label: '数据总览', en: 'OVERVIEW' },
+  { id: 'explore',  label: '数据探索', en: 'EXPLORE' },
+  { id: 'predict',  label: '预测分析', en: 'PREDICT' },
+  { id: 'ai',       label: 'AI 解读',  en: 'AI INSIGHT' },
+  { id: 'about',    label: '关于',     en: 'ABOUT' },
 ];
 
 // 火星 + 轨道环的 SVG Logo
@@ -51,7 +52,7 @@ export default function Navbar({ current, onChange }) {
       className="nav-glass"
       style={{
         position: 'fixed', top: 0, left: 0, right: 0,
-        zIndex: 1000,
+        zIndex: 2000,
         height: 70,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 48px',

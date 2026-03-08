@@ -3,6 +3,7 @@ import C from './constants/colors';
 import StarField from './components/StarField';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
+import DataOverviewPage from './pages/DataOverviewPage';
 import ExplorePage from './pages/ExplorePage';
 import PredictPage from './pages/PredictPage';
 import AIPage from './pages/AIPage';
@@ -42,6 +43,7 @@ export default function App() {
         }}
       >
         {page === 'home' && <HomePage onNavigate={navigate} />}
+        {page === 'overview' && <DataOverviewPage />}
         {page === 'explore' && <ExplorePage />}
         {page === 'predict' && <PredictPage />}
         {page === 'ai' && <AIPage />}
