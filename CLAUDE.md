@@ -90,6 +90,7 @@ Without `AI_API_KEY`, the AI chat falls back to keyword-matched built-in respons
 
 ## Changelog
 
+<<<<<<< Updated upstream
 ### 2026-03-07 预测分析页视觉修复 + UI 恢复
 涉及文件：`frontend/src/pages/PredictPage.jsx`（仅此一个文件）
 
@@ -126,6 +127,18 @@ Without `AI_API_KEY`, the AI chat falls back to keyword-matched built-in respons
 - 新增状态：`lsStart`（Ls 滑块 0°-355°，步长 5°）、`marsYear`（MY27/28 切换）、`loading`、`results`、`metrics`、`activeHorizon`
 - `handlePredict`：并发调用 `/predict/run` + `/predict/metrics`，完整 loading 状态管理
 - 三联对比图实时渲染真值/预测/差值；逐步指标表格行可点击联动 activeHorizon；整体指标卡片动态显示
+=======
+### 2026-03-06 数据总览页面开发 🚀
+- **新增 DataOverviewPage 组件**：实现高科技感数据中心界面
+  - 中心3D火星球：基于 react-globe.gl，显示臭氧浓度数据点
+  - 动态数据窗口：6个可视化窗口，支持缩放联动和点击放大
+  - 球体缩放交互：滚轮控制，窗口透明度和位置动态变化
+- **依赖升级**：添加 react-globe.gl、d3-scale、react-plotly.js 等可视化库
+- **DataOverviewContext**：创建数据上下文管理状态
+- **导航更新**：在 Navbar 中添加"数据总览"页面入口
+- **视觉效果**：太空主题背景、霓虹发光边框、动态粒子效果
+- **交互体验**：球体放大时窗口后移变透明，缩小时窗口前移变不透明
+>>>>>>> Stashed changes
 
 ### 2026-03-06 Three.js 火星球体 + 光照调优 + 纹理本地化
 - `Mars3DPlaceholder.jsx` 用 Three.js 彻底重写，替换 CSS background-position 方案
