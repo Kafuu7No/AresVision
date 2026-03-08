@@ -133,7 +133,7 @@ export default function HomePage({ onNavigate }) {
       display: 'flex', flexDirection: 'column',
       justifyContent: 'center', alignItems: 'center',
       position: 'relative',
-      padding: '40px',
+      padding: '100px 40px 40px',
     }}>
       {/* 轨道装饰线 */}
       <svg style={{ position: 'absolute', width: 720, height: 720, opacity: 0.055 }} viewBox="0 0 720 720">
