@@ -34,53 +34,53 @@ function turboColorA(t, a = 1) {
 
 // 数据选项配置
 const DATA_OPTIONS = [
-  { 
-    id: 'globe3d', 
-    title: '三维球体', 
-    icon: '🌍', 
+  {
+    id: 'globe3d',
+    title: '三维球体',
+    icon: '🌍',
     description: '交互式3D火星球体数据展示',
     color: '#ff6b35',
     is3D: true
   },
-  { 
-    id: 'seasonal', 
-    title: '季节分析', 
-    icon: '📈', 
+  {
+    id: 'seasonal',
+    title: '季节分析',
+    icon: '📈',
     description: '臭氧浓度季节性变化趋势',
     color: C.ice
   },
-  { 
-    id: 'correlation', 
-    title: '关联矩阵', 
-    icon: '🔗', 
+  {
+    id: 'correlation',
+    title: '关联矩阵',
+    icon: '🔗',
     description: '环境变量相关性分析',
     color: C.mars
   },
-  { 
-    id: 'realtime', 
-    title: '实时监控', 
-    icon: '⚡', 
+  {
+    id: 'realtime',
+    title: '实时监控',
+    icon: '⚡',
     description: '动态数据流监测',
     color: C.ice
   },
-  { 
-    id: 'environment', 
-    title: '环境参数', 
-    icon: '🌡️', 
+  {
+    id: 'environment',
+    title: '环境参数',
+    icon: '🌡️',
     description: '温度、压力、风速等参数',
     color: C.mars
   },
-  { 
-    id: 'prediction', 
-    title: '预测引擎', 
-    icon: '🔮', 
+  {
+    id: 'prediction',
+    title: '预测引擎',
+    icon: '🔮',
     description: 'PredRNNv2模型预测结果',
     color: C.ice
   },
-  { 
-    id: 'distribution', 
-    title: '数据分布', 
-    icon: '📊', 
+  {
+    id: 'distribution',
+    title: '数据分布',
+    icon: '📊',
     description: '臭氧浓度分布统计',
     color: C.mars
   }
@@ -132,7 +132,7 @@ const SidebarMenu = ({ selectedItem, onItemSelect }) => {
       <div style={{ padding: '20px 10px' }}>
         {DATA_OPTIONS.map((option, index) => {
           const isSelected = selectedItem?.id === option.id;
-          
+
           return (
             <div
               key={option.id}
@@ -141,16 +141,16 @@ const SidebarMenu = ({ selectedItem, onItemSelect }) => {
                 margin: '8px 0',
                 padding: '16px',
                 borderRadius: '12px',
-                background: isSelected 
+                background: isSelected
                   ? `linear-gradient(135deg, rgba(0, 240, 255, 0.15) 0%, rgba(24, 48, 96, 0.2) 100%)`
                   : 'rgba(255, 255, 255, 0.03)',
-                border: isSelected 
-                  ? '2px solid rgba(0, 240, 255, 0.6)' 
+                border: isSelected
+                  ? '2px solid rgba(0, 240, 255, 0.6)'
                   : '1px solid rgba(255, 255, 255, 0.1)',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 transform: isSelected ? 'translateX(8px)' : 'translateX(0)',
-                boxShadow: isSelected 
+                boxShadow: isSelected
                   ? '0 8px 24px rgba(0, 240, 255, 0.2), inset 0 1px 0 rgba(255,255,255,0.1)'
                   : 'none'
               }}
@@ -175,7 +175,7 @@ const SidebarMenu = ({ selectedItem, onItemSelect }) => {
                 }}>
                   {option.icon}
                 </div>
-                
+
                 <div style={{ flex: 1 }}>
                   <div style={{
                     color: isSelected ? option.color : C.ice,
@@ -208,9 +208,9 @@ const SidebarMenu = ({ selectedItem, onItemSelect }) => {
 // 3D球体时间控制面板
 const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, onLsChange, onMarsYearChange, onTogglePlay }) => {
   const seasonName =
-    lsValue < 90  ? '北半球春 / 南半球秋' :
-    lsValue < 180 ? '北半球夏 / 南半球冬' :
-    lsValue < 270 ? '北半球秋 / 南半球春' : '北半球冬 / 南半球夏';
+    lsValue < 90 ? '北半球春 / 南半球秋' :
+      lsValue < 180 ? '北半球夏 / 南半球冬' :
+        lsValue < 270 ? '北半球秋 / 南半球春' : '北半球冬 / 南半球夏';
 
   return (
     <div style={{
@@ -402,9 +402,9 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
         border: '1px solid rgba(255,255,255,0.08)'
       }}>
         <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '10px', fontFamily: 'Exo 2', lineHeight: 1.8 }}>
-          • 拖拽：旋转火星球体<br/>
-          • 滚轮：缩放视图<br/>
-          • 点击数据点：查看详情<br/>
+          • 拖拽：旋转火星球体<br />
+          • 滚轮：缩放视图<br />
+          • 点击数据点：查看详情<br />
           • ▶ PLAY：播放时序动画
         </div>
       </div>
@@ -415,7 +415,7 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
 // 详细图表组件
 const DetailPanel = ({ selectedItem }) => {
   const is3DMode = selectedItem?.is3D;
-  
+
   const renderChart = () => {
     if (!selectedItem) {
       return (
@@ -487,8 +487,8 @@ const DetailPanel = ({ selectedItem }) => {
             alignItems: 'center',
             marginBottom: '8px'
           }}>
-            <span style={{ 
-              fontSize: '28px', 
+            <span style={{
+              fontSize: '28px',
               marginRight: '12px',
               filter: `drop-shadow(0 0 8px ${selectedItem.color})`
             }}>
@@ -518,7 +518,7 @@ const DetailPanel = ({ selectedItem }) => {
           </p>
         </div>
       )}
-      
+
       <div style={{
         height: selectedItem ? 'calc(100% - 120px)' : '100%',
         background: 'rgba(0, 0, 0, 0.3)',
@@ -544,24 +544,24 @@ const SeasonalChart = () => {
             <stop offset="100%" stopColor="rgba(255,100,50,0.1)" />
           </linearGradient>
           <filter id="glow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-            <feMerge> 
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
+            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+            <feMerge>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
         </defs>
-        
+
         {/* 网格线 */}
-        {Array.from({length: 9}, (_, i) => (
-          <line key={`h${i}`} x1="60" y1={60 + i * 35} x2="740" y2={60 + i * 35} 
-                stroke="rgba(0,240,255,0.1)" strokeWidth="1" />
+        {Array.from({ length: 9 }, (_, i) => (
+          <line key={`h${i}`} x1="60" y1={60 + i * 35} x2="740" y2={60 + i * 35}
+            stroke="rgba(0,240,255,0.1)" strokeWidth="1" />
         ))}
-        {Array.from({length: 13}, (_, i) => (
-          <line key={`v${i}`} x1={60 + i * 55} y1="60" x2={60 + i * 55} y2="340" 
-                stroke="rgba(0,240,255,0.1)" strokeWidth="1" />
+        {Array.from({ length: 13 }, (_, i) => (
+          <line key={`v${i}`} x1={60 + i * 55} y1="60" x2={60 + i * 55} y2="340"
+            stroke="rgba(0,240,255,0.1)" strokeWidth="1" />
         ))}
-        
+
         {/* 季节曲线 */}
         <path
           d="M60,280 Q150,180 240,200 Q330,150 420,170 Q510,140 600,160 Q690,130 740,150"
@@ -575,21 +575,21 @@ const SeasonalChart = () => {
           fill="url(#seasonalGradient)"
           opacity="0.4"
         />
-        
+
         {/* 数据点 */}
         {[
-          {x:60,y:280}, {x:150,y:180}, {x:240,y:200}, {x:330,y:150}, 
-          {x:420,y:170}, {x:510,y:140}, {x:600,y:160}, {x:690,y:130}, {x:740,y:150}
+          { x: 60, y: 280 }, { x: 150, y: 180 }, { x: 240, y: 200 }, { x: 330, y: 150 },
+          { x: 420, y: 170 }, { x: 510, y: 140 }, { x: 600, y: 160 }, { x: 690, y: 130 }, { x: 740, y: 150 }
         ].map((point, i) => (
           <circle key={i} cx={point.x} cy={point.y} r="6" fill={C.ice} filter="url(#glow)" />
         ))}
-        
+
         {/* 坐标轴标签 */}
         <text x="400" y="380" textAnchor="middle" fill={C.ice} fontSize="14" fontFamily="Exo 2">
           太阳经度 (Ls)
         </text>
-        <text x="20" y="200" textAnchor="middle" fill={C.ice} fontSize="14" fontFamily="Exo 2" 
-              transform="rotate(-90 20 200)">
+        <text x="20" y="200" textAnchor="middle" fill={C.ice} fontSize="14" fontFamily="Exo 2"
+          transform="rotate(-90 20 200)">
           臭氧柱浓度 (DU)
         </text>
       </svg>
@@ -602,19 +602,19 @@ const CorrelationMatrix = () => {
   const variables = ['O₃', 'Temp', 'Press', 'Dust', 'H₂O', 'Wind'];
   const matrixSize = 300;
   const cellSize = matrixSize / variables.length;
-  
+
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ position: 'relative', width: matrixSize, height: matrixSize }}>
         <svg width={matrixSize} height={matrixSize}>
-          {variables.map((rowVar, i) => 
+          {variables.map((rowVar, i) =>
             variables.map((colVar, j) => {
               const correlation = i === j ? 1 : (Math.random() * 2 - 1);
               const intensity = Math.abs(correlation);
-              const color = correlation > 0 ? 
-                `rgba(255,100,50,${intensity})` : 
+              const color = correlation > 0 ?
+                `rgba(255,100,50,${intensity})` :
                 `rgba(0,240,255,${intensity})`;
-              
+
               return (
                 <g key={`${i}-${j}`}>
                   <rect
@@ -627,8 +627,8 @@ const CorrelationMatrix = () => {
                     strokeWidth="1"
                   />
                   <text
-                    x={j * cellSize + cellSize/2}
-                    y={i * cellSize + cellSize/2 + 5}
+                    x={j * cellSize + cellSize / 2}
+                    y={i * cellSize + cellSize / 2 + 5}
                     textAnchor="middle"
                     fill="white"
                     fontSize="12"
@@ -641,12 +641,12 @@ const CorrelationMatrix = () => {
               );
             })
           )}
-          
+
           {/* 变量标签 */}
           {variables.map((variable, i) => (
             <g key={`label-${i}`}>
               <text
-                x={i * cellSize + cellSize/2}
+                x={i * cellSize + cellSize / 2}
                 y={matrixSize + 20}
                 textAnchor="middle"
                 fill={C.ice}
@@ -658,7 +658,7 @@ const CorrelationMatrix = () => {
               </text>
               <text
                 x={-10}
-                y={i * cellSize + cellSize/2 + 5}
+                y={i * cellSize + cellSize / 2 + 5}
                 textAnchor="end"
                 fill={C.ice}
                 fontSize="14"
@@ -678,7 +678,7 @@ const CorrelationMatrix = () => {
 // 实时监控
 const RealtimeMonitor = () => {
   const [dataPoints, setDataPoints] = useState([]);
-  
+
   useEffect(() => {
     const interval = setInterval(() => {
       setDataPoints(prev => {
@@ -689,28 +689,28 @@ const RealtimeMonitor = () => {
         return [...prev.slice(-40), newPoint]; // 保持最后40个点
       });
     }, 300);
-    
+
     return () => clearInterval(interval);
   }, []);
-  
+
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <svg width="100%" height="100%" viewBox="0 0 800 400" style={{ background: 'rgba(0,0,0,0.1)' }}>
         <defs>
           <pattern id="realtimeGrid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(0,240,255,0.1)" strokeWidth="1"/>
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(0,240,255,0.1)" strokeWidth="1" />
           </pattern>
           <filter id="realtimeGlow">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feGaussianBlur stdDeviation="2" result="coloredBlur" />
             <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
         </defs>
-        
+
         <rect width="100%" height="100%" fill="url(#realtimeGrid)" />
-        
+
         {/* 实时曲线 */}
         {dataPoints.length > 1 && (
           <polyline
@@ -721,7 +721,7 @@ const RealtimeMonitor = () => {
             filter="url(#realtimeGlow)"
           />
         )}
-        
+
         {/* 数据点 */}
         {dataPoints.map((point, i) => (
           <circle
@@ -734,7 +734,7 @@ const RealtimeMonitor = () => {
             filter="url(#realtimeGlow)"
           />
         ))}
-        
+
         {/* 实时数值显示 */}
         {dataPoints.length > 0 && (
           <g>
@@ -784,20 +784,20 @@ const EnvironmentDashboard = () => {
     { name: '尘埃', value: 0.3, unit: 'τ', max: 1, min: 0, color: C.mars },
     { name: '风速', value: 5.8, unit: 'm/s', max: 15, min: 0, color: C.ice }
   ];
-  
+
   return (
-    <div style={{ 
-      width: '100%', 
-      height: '100%', 
-      display: 'grid', 
-      gridTemplateColumns: '1fr 1fr', 
-      gap: '30px', 
-      padding: '20px' 
+    <div style={{
+      width: '100%',
+      height: '100%',
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: '30px',
+      padding: '20px'
     }}>
       {gauges.map((gauge, i) => {
         const percent = ((gauge.value - gauge.min) / (gauge.max - gauge.min)) * 100;
         const angle = (percent / 100) * 180;
-        
+
         return (
           <div key={i} style={{
             display: 'flex',
@@ -819,7 +819,7 @@ const EnvironmentDashboard = () => {
             }}>
               {gauge.name}
             </h4>
-            
+
             {/* 仪表盘 */}
             <svg width="150" height="100" viewBox="0 0 200 120">
               <defs>
@@ -829,7 +829,7 @@ const EnvironmentDashboard = () => {
                   <stop offset="100%" stopColor="red" />
                 </linearGradient>
               </defs>
-              
+
               {/* 背景弧 */}
               <path
                 d="M40,100 A60,60 0 0,1 160,100"
@@ -837,7 +837,7 @@ const EnvironmentDashboard = () => {
                 strokeWidth="8"
                 fill="none"
               />
-              
+
               {/* 进度弧 */}
               <path
                 d={`M40,100 A60,60 0 ${angle > 90 ? 1 : 0},1 ${40 + 120 * Math.cos((180 - angle) * Math.PI / 180)},${100 - 60 * Math.sin((180 - angle) * Math.PI / 180)}`}
@@ -846,7 +846,7 @@ const EnvironmentDashboard = () => {
                 fill="none"
                 filter="drop-shadow(0 0 5px currentColor)"
               />
-              
+
               {/* 中心数值 */}
               <text
                 x="100"
@@ -881,11 +881,11 @@ const EnvironmentDashboard = () => {
 const PredictionEngine = () => {
   const [progress, setProgress] = useState(0);
   const [predictions, setPredictions] = useState([]);
-  
+
   useEffect(() => {
     const interval = setInterval(() => {
       setProgress(prev => (prev + 1) % 100);
-      
+
       if (predictions.length < 10) {
         setPredictions(prev => [...prev, {
           time: Date.now(),
@@ -894,10 +894,10 @@ const PredictionEngine = () => {
         }]);
       }
     }, 200);
-    
+
     return () => clearInterval(interval);
   }, [predictions.length]);
-  
+
   return (
     <div style={{ width: '100%', height: '100%', padding: '20px' }}>
       {/* 引擎状态 */}
@@ -917,7 +917,7 @@ const PredictionEngine = () => {
         }}>
           PredRNNv2 时空预测引擎
         </h4>
-        
+
         <div style={{ marginBottom: '16px' }}>
           <div style={{
             display: 'flex',
@@ -943,7 +943,7 @@ const PredictionEngine = () => {
             }} />
           </div>
         </div>
-        
+
         <div style={{ display: 'flex', justifyContent: 'space-around' }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ color: C.mars, fontSize: '24px', fontWeight: 'bold' }}>7</div>
@@ -959,7 +959,7 @@ const PredictionEngine = () => {
           </div>
         </div>
       </div>
-      
+
       {/* 预测结果 */}
       <div style={{
         background: 'rgba(12, 24, 48, 0.6)',
@@ -976,7 +976,7 @@ const PredictionEngine = () => {
         }}>
           实时预测结果
         </h5>
-        
+
         <svg width="100%" height="200" viewBox="0 0 400 200">
           <defs>
             <linearGradient id="predGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -984,7 +984,7 @@ const PredictionEngine = () => {
               <stop offset="100%" stopColor="rgba(0,240,255,0.1)" />
             </linearGradient>
           </defs>
-          
+
           {predictions.length > 1 && (
             <>
               <polyline
@@ -995,7 +995,7 @@ const PredictionEngine = () => {
                 filter="drop-shadow(0 0 5px rgb(0,240,255))"
               />
               <path
-                d={`M20,${180 - predictions[0].accuracy * 1.5} ${predictions.map((p, i) => 
+                d={`M20,${180 - predictions[0].accuracy * 1.5} ${predictions.map((p, i) =>
                   `L${i * 40 + 20},${180 - p.accuracy * 1.5}`
                 ).join(' ')} L${(predictions.length - 1) * 40 + 20},180 L20,180 Z`}
                 fill="url(#predGrad)"
@@ -1011,11 +1011,11 @@ const PredictionEngine = () => {
 
 // 数据分布
 const DataDistribution = () => {
-  const histogramData = Array.from({length: 20}, (_, i) => ({
+  const histogramData = Array.from({ length: 20 }, (_, i) => ({
     bin: i * 0.05,
     count: Math.random() * 100 + 10
   }));
-  
+
   return (
     <div style={{ width: '100%', height: '100%', padding: '20px' }}>
       <h4 style={{
@@ -1027,7 +1027,7 @@ const DataDistribution = () => {
       }}>
         臭氧柱浓度分布统计
       </h4>
-      
+
       <svg width="100%" height="300" viewBox="0 0 600 300">
         {histogramData.map((bar, i) => (
           <g key={i}>
@@ -1055,12 +1055,12 @@ const DataDistribution = () => {
             )}
           </g>
         ))}
-        
+
         <text x="300" y="290" textAnchor="middle" fill={C.ice} fontSize="12" fontFamily="Exo 2">
           臭氧柱浓度 (DU)
         </text>
-        <text x="20" y="150" textAnchor="middle" fill={C.ice} fontSize="12" fontFamily="Exo 2" 
-              transform="rotate(-90 20 150)">
+        <text x="20" y="150" textAnchor="middle" fill={C.ice} fontSize="12" fontFamily="Exo 2"
+          transform="rotate(-90 20 150)">
           频次
         </text>
       </svg>
@@ -1073,6 +1073,15 @@ const Mars3DBackground = ({ ozoneData, is3DMode }) => {
   const globeRef = useRef();
   const shellRef = useRef(null);
   const [globeReady, setGlobeReady] = useState(false);
+  const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setDimensions({ width: window.innerWidth, height: window.innerHeight });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (!globeReady || !globeRef.current) return;
@@ -1137,7 +1146,7 @@ const Mars3DBackground = ({ ozoneData, is3DMode }) => {
 
       const t = getT(lat, lng);
       const [cr, cg, cb] = turboColorRGB(t);
-      colors[i * 3]     = cr / 255;
+      colors[i * 3] = cr / 255;
       colors[i * 3 + 1] = cg / 255;
       colors[i * 3 + 2] = cb / 255;
     }
@@ -1179,8 +1188,8 @@ const Mars3DBackground = ({ ozoneData, is3DMode }) => {
     }}>
       <Globe
         ref={globeRef}
-        width={window.innerWidth}
-        height={window.innerHeight}
+        width={dimensions.width}
+        height={dimensions.height}
         globeImageUrl="/mars_texture.jpg"
         backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
         atmosphereColor="rgba(255, 100, 50, 0.8)"

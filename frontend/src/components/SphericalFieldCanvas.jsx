@@ -97,7 +97,8 @@ export default function SphericalFieldCanvas({ fieldData, colorMode = 'inferno',
     // scene.fog = new THREE.FogExp2(0x050508, 0.08);
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-    camera.position.set(0, 0.5, 4.5);
+    camera.position.set(0, 0, 4.5);
+    camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
@@ -257,6 +258,7 @@ export default function SphericalFieldCanvas({ fieldData, colorMode = 'inferno',
     particles.rotation.y = -Math.PI / 2;
     // 整个球体居中
     particles.position.set(0, 0, 0);
+
     scene.add(particles);
     sphereMeshRef.current = particles;
 
@@ -332,7 +334,13 @@ export default function SphericalFieldCanvas({ fieldData, colorMode = 'inferno',
     return (
       <div
         ref={containerRef}
-        style={{ width: '100%', height: '100%' }}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+        }}
       />
     );
   }

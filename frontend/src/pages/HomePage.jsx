@@ -49,12 +49,12 @@ function IconChart({ color = C.mars, size = 32 }) {
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none"
       stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <line x1="5" y1="27" x2="27" y2="27" />
-      <line x1="5" y1="5"  x2="5"  y2="27" />
+      <line x1="5" y1="5" x2="5" y2="27" />
       <polyline points="5,22 10,15 15,18 20,10 27,6" />
       <circle cx="10" cy="15" r="1.5" fill={color} />
       <circle cx="15" cy="18" r="1.5" fill={color} />
       <circle cx="20" cy="10" r="1.5" fill={color} />
-      <circle cx="27" cy="6"  r="1.5" fill={color} />
+      <circle cx="27" cy="6" r="1.5" fill={color} />
     </svg>
   );
 }
@@ -64,8 +64,8 @@ function IconMessage({ color = C.blue, size = 32 }) {
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none"
       stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 6 Q4 4 6 4 L26 4 Q28 4 28 6 L28 20 Q28 22 26 22 L12 22 L6 28 L6 22 Q4 22 4 20 Z" />
-      <line x1="9"  y1="11" x2="23" y2="11" />
-      <line x1="9"  y1="16" x2="18" y2="16" />
+      <line x1="9" y1="11" x2="23" y2="11" />
+      <line x1="9" y1="16" x2="18" y2="16" />
     </svg>
   );
 }
@@ -114,15 +114,15 @@ const features = [
 // ─── 主页面 ───
 
 export default function HomePage({ onNavigate }) {
-  const [showTitle,   setShowTitle]   = useState(false);
-  const [showSub,     setShowSub]     = useState(false);
+  const [showTitle, setShowTitle] = useState(false);
+  const [showSub, setShowSub] = useState(false);
   const [showButtons, setShowButtons] = useState(false);
-  const [marsReady,   setMarsReady]   = useState(false);
+  const [marsReady, setMarsReady] = useState(false);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setMarsReady(true),   300);
-    const t2 = setTimeout(() => setShowTitle(true),   1000);
-    const t3 = setTimeout(() => setShowSub(true),     1800);
+    const t1 = setTimeout(() => setMarsReady(true), 300);
+    const t2 = setTimeout(() => setShowTitle(true), 1000);
+    const t3 = setTimeout(() => setShowSub(true), 1800);
     const t4 = setTimeout(() => setShowButtons(true), 2400);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
   }, []);
@@ -133,13 +133,13 @@ export default function HomePage({ onNavigate }) {
       display: 'flex', flexDirection: 'column',
       justifyContent: 'center', alignItems: 'center',
       position: 'relative',
-      padding: '80px 40px 40px',
+      padding: '40px',
     }}>
       {/* 轨道装饰线 */}
       <svg style={{ position: 'absolute', width: 720, height: 720, opacity: 0.055 }} viewBox="0 0 720 720">
-        <circle cx="360" cy="360" r="200" fill="none" stroke={C.blue}  strokeWidth="0.5" strokeDasharray="4 9" />
-        <circle cx="360" cy="360" r="290" fill="none" stroke={C.mars}  strokeWidth="0.5" strokeDasharray="6 11" />
-        <circle cx="360" cy="360" r="355" fill="none" stroke={C.ice}   strokeWidth="0.3" strokeDasharray="3 14" />
+        <circle cx="360" cy="360" r="200" fill="none" stroke={C.blue} strokeWidth="0.5" strokeDasharray="4 9" />
+        <circle cx="360" cy="360" r="290" fill="none" stroke={C.mars} strokeWidth="0.5" strokeDasharray="6 11" />
+        <circle cx="360" cy="360" r="355" fill="none" stroke={C.ice} strokeWidth="0.3" strokeDasharray="3 14" />
       </svg>
 
       {/* 火星球体 */}
