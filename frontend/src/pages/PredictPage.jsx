@@ -347,23 +347,61 @@ export default function PredictPage() {
         {/* ─── 左侧控制栏 ─── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* File Upload */}
+          {/* 预测控制 */}
           <GlowCard style={{ padding: 20 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
-              FILE UPLOAD
+              PREDICTION CONTROL
             </div>
-            <div style={{
-              border: `2px dashed ${C.border}`,
-              borderRadius: 12,
-              padding: 28,
-              textAlign: 'center',
-              cursor: 'pointer',
-              transition: 'border-color 0.2s',
-            }}>
-              <div style={{ fontSize: 30, marginBottom: 8 }}>📁</div>
-              <div style={{ fontSize: 13, color: C.ice60 }}>拖拽 .nc 文件到此处</div>
-              <div style={{ fontSize: 11, color: C.ice30, marginTop: 4 }}>或点击选择文件</div>
+            <div style={{ fontSize: 11, color: C.ice30, marginBottom: 10 }}>预测步长 Horizon</div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              {[1, 2, 3].map((s) => (
+                <button key={s} onClick={() => setPredStep(s)} style={{
+                  flex: 1, padding: '10px 0',
+                  background: predStep === s ? 'rgba(199,91,57,0.2)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${predStep === s ? C.mars : C.border}`,
+                  borderRadius: 8, color: predStep === s ? C.mars : C.ice60,
+                  fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  fontFamily: "'Orbitron', sans-serif",
+                }}>+{s}</button>
+              ))}
             </div>
+            <button
+              onClick={handlePredict}
+              disabled={loading}
+              style={{
+                width: '100%', padding: '14px 0',
+                background: loading
+                  ? 'rgba(199,91,57,0.3)'
+                  : `linear-gradient(135deg, ${C.mars}, ${C.marsLight})`,
+                border: 'none', borderRadius: 10, color: '#fff',
+                fontSize: 13, fontWeight: 700,
+                fontFamily: "'Orbitron', sans-serif", letterSpacing: 2,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                boxShadow: loading ? 'none' : '0 4px 24px rgba(199,91,57,0.35)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              {loading ? (
+                <>
+                  <div style={{
+                    width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)',
+                    borderTop: '2px solid #fff', borderRadius: '50%',
+                    animation: 'spin-slow 0.8s linear infinite',
+                  }} />
+                  预测中...
+                </>
+              ) : '🚀 开始预测 RUN PREDICT'}
+            </button>
+
+            {error && (
+              <div style={{
+                marginTop: 12, padding: '10px 12px', borderRadius: 8,
+                background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.2)',
+                fontSize: 11, color: '#ff6b6b', lineHeight: 1.6,
+              }}>
+                {error}
+              </div>
+            )}
           </GlowCard>
 
           {/* 参数设置 */}
@@ -438,61 +476,23 @@ export default function PredictPage() {
             </div>
           </GlowCard>
 
-          {/* 预测控制 */}
+          {/* File Upload */}
           <GlowCard style={{ padding: 20 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
-              PREDICTION CONTROL
+              FILE UPLOAD
             </div>
-            <div style={{ fontSize: 11, color: C.ice30, marginBottom: 10 }}>预测步长 Horizon</div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-              {[1, 2, 3].map((s) => (
-                <button key={s} onClick={() => setPredStep(s)} style={{
-                  flex: 1, padding: '10px 0',
-                  background: predStep === s ? 'rgba(199,91,57,0.2)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${predStep === s ? C.mars : C.border}`,
-                  borderRadius: 8, color: predStep === s ? C.mars : C.ice60,
-                  fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                  fontFamily: "'Orbitron', sans-serif",
-                }}>+{s}</button>
-              ))}
+            <div style={{
+              border: `2px dashed ${C.border}`,
+              borderRadius: 12,
+              padding: 28,
+              textAlign: 'center',
+              cursor: 'pointer',
+              transition: 'border-color 0.2s',
+            }}>
+              <div style={{ fontSize: 30, marginBottom: 8 }}>📁</div>
+              <div style={{ fontSize: 13, color: C.ice60 }}>拖拽 .nc 文件到此处</div>
+              <div style={{ fontSize: 11, color: C.ice30, marginTop: 4 }}>或点击选择文件</div>
             </div>
-            <button
-              onClick={handlePredict}
-              disabled={loading}
-              style={{
-                width: '100%', padding: '14px 0',
-                background: loading
-                  ? 'rgba(199,91,57,0.3)'
-                  : `linear-gradient(135deg, ${C.mars}, ${C.marsLight})`,
-                border: 'none', borderRadius: 10, color: '#fff',
-                fontSize: 13, fontWeight: 700,
-                fontFamily: "'Orbitron', sans-serif", letterSpacing: 2,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                boxShadow: loading ? 'none' : '0 4px 24px rgba(199,91,57,0.35)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}
-            >
-              {loading ? (
-                <>
-                  <div style={{
-                    width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)',
-                    borderTop: '2px solid #fff', borderRadius: '50%',
-                    animation: 'spin-slow 0.8s linear infinite',
-                  }} />
-                  预测中...
-                </>
-              ) : '🚀 开始预测 RUN PREDICT'}
-            </button>
-
-            {error && (
-              <div style={{
-                marginTop: 12, padding: '10px 12px', borderRadius: 8,
-                background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.2)',
-                fontSize: 11, color: '#ff6b6b', lineHeight: 1.6,
-              }}>
-                {error}
-              </div>
-            )}
           </GlowCard>
         </div>
 
