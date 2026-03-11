@@ -336,7 +336,7 @@ export default function PredictPage() {
   const residField = results?.residual?.[step] ?? null;
   const stepLs = results?.ls_values?.[step];
 
-  const stepLabel = (ls) => ls != null ? ` · Ls=${ls.toFixed(1)}°` : '';
+  const stepLabel = (ls) => ls != null ? ` · Ls=${ls.toFixed(3)}°` : '';
 
   return (
     <div className="page-enter" style={{ padding: '100px 40px 60px', maxWidth: 1400, margin: '0 auto' }}>
@@ -531,7 +531,7 @@ export default function PredictPage() {
                   borderRadius: 8, fontSize: 12, fontWeight: 600,
                   color: activeHorizon === i ? C.blue : C.ice30, cursor: 'pointer',
                 }}>
-                  Step {i + 1}{results.ls_values[i] != null ? ` (Ls=${results.ls_values[i].toFixed(1)}°)` : ''}
+                  Step {i + 1}{results.ls_values[i] != null ? ` (Ls=${results.ls_values[i].toFixed(3)}°)` : ''}
                 </button>
               ))}
             </div>
@@ -552,7 +552,7 @@ export default function PredictPage() {
                       {panel.title}
                       {stepLs != null && (
                         <span style={{ fontSize: 9, color: C.ice30, marginLeft: 6 }}>
-                          Ls={stepLs.toFixed(1)}°
+                          Ls={stepLs.toFixed(3)}°
                         </span>
                       )}
                     </div>
@@ -692,7 +692,7 @@ export default function PredictPage() {
                       >
                         <td style={{ padding: '6px 10px', textAlign: 'center', color: C.blue, fontWeight: 700 }}>Step {row.step}</td>
                         <td style={{ padding: '6px 10px', textAlign: 'center', color: C.ice60 }}>
-                          {results?.ls_values?.[i] != null ? `${results.ls_values[i].toFixed(1)}°` : '—'}
+                          {results?.ls_values?.[i] != null ? `${results.ls_values[i].toFixed(3)}°` : '—'}
                         </td>
                         <td style={{ padding: '6px 10px', textAlign: 'center', color: C.ice }}>{row.rmse.toFixed(4)}</td>
                         <td style={{ padding: '6px 10px', textAlign: 'center', color: C.ice }}>{row.mae.toFixed(4)}</td>
@@ -794,7 +794,7 @@ export default function PredictPage() {
                   {titleText}
                 </div>
                 <div style={{ fontSize: 13, color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>
-                  {stepLs != null ? `Ls = ${stepLs.toFixed(1)}° | Step ${step + 1}` : 'Global View'}
+                  {stepLs != null ? `Ls = ${stepLs.toFixed(3)}° | Step ${step + 1}` : 'Global View'}
                 </div>
               </div>
 

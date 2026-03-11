@@ -33,6 +33,7 @@ def interpolate_mcd_to_openmars(
     mcd_data: np.ndarray,
     mcd_ls: np.ndarray,
     target_ls: np.ndarray,
+    extrapolate: bool = False,
 ) -> np.ndarray:
     """
     将 MCD 数据从其原生 Ls 时间格点插值到 OpenMARS 的 Ls 格点。
@@ -41,6 +42,7 @@ def interpolate_mcd_to_openmars(
         mcd_data:  MCD 变量数据，shape = (n_mcd_times, lat, lon)
         mcd_ls:    MCD 对应的 Ls 数组，shape = (n_mcd_times,)
         target_ls: 目标 Ls 数组（OpenMARS 的时间格点），shape = (n_target,)
+        extrapolate: 是否开启外推模式（用于预测流程，同步 demo3 L229）
 
     Returns:
         插值后的数据，shape = (n_target, lat, lon)
@@ -51,12 +53,19 @@ def interpolate_mcd_to_openmars(
     mcd_ls_unwrapped = unwrap_ls(mcd_ls)
     target_ls_unwrapped = unwrap_ls(target_ls)
 
-    # 确保目标范围在源范围内
-    valid_mask = (
-        (target_ls_unwrapped >= mcd_ls_unwrapped[0]) &
-        (target_ls_unwrapped <= mcd_ls_unwrapped[-1])
-    )
-    target_valid = target_ls_unwrapped[valid_mask]
+    if not extrapolate:
+        # 默认模式：数据分析/可视化，严格限制在源范围内
+        valid_mask = (
+            (target_ls_unwrapped >= mcd_ls_unwrapped[0]) &
+            (target_ls_unwrapped <= mcd_ls_unwrapped[-1])
+        )
+        target_valid = target_ls_unwrapped[valid_mask]
+        fill_val = np.nan
+    else:
+        # 预测模式：允许外推 (demo3 逻辑)
+        valid_mask = slice(None) # 选所有
+        target_valid = target_ls_unwrapped
+        fill_val = "extrapolate"
 
     result = np.full((len(target_ls), n_lat, n_lon), np.nan)
 
@@ -67,10 +76,10 @@ def interpolate_mcd_to_openmars(
             # 跳过全 NaN 的网格点
             if np.all(np.isnan(series)):
                 continue
-            # 用线性插值
+            
             f = interp1d(
                 mcd_ls_unwrapped, series,
-                kind="linear", bounds_error=False, fill_value=np.nan,
+                kind="linear", bounds_error=False, fill_value=fill_val,
             )
             result[valid_mask, i, j] = f(target_valid)
 

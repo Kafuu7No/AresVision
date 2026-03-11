@@ -4,6 +4,10 @@ AresVision 后端配置常量
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# 加载 .env 文件中的环境变量
+load_dotenv()
 
 # ─── 路径 ───
 BASE_DIR = Path(__file__).resolve().parent
@@ -64,6 +68,6 @@ LATITUDE_BANDS = [
 API_PREFIX = "/api"
 
 # ─── AI（Phase 3） ───
-AI_API_URL = os.getenv("AI_API_URL", "https://api.openai.com/v1/chat/completions")
-AI_MODEL_NAME = os.getenv("AI_MODEL_NAME", "gpt-4o-mini")
+AI_API_URL = os.getenv("AI_API_URL", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
+AI_MODEL_NAME = os.getenv("AI_MODEL_NAME", "gemini-1.5-flash")
 AI_API_KEY = os.getenv("AI_API_KEY", "")

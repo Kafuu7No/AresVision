@@ -17,8 +17,8 @@ def _get_predict_service(request: Request):
     return request.app.state.predict_service
 
 
-def _get_data_service(request: Request):
-    return request.app.state.data_service
+def _get_analysis_service(request: Request):
+    return request.app.state.analysis_service
 
 
 # ─── 核心预测接口 ───
@@ -107,8 +107,8 @@ async def get_diurnal_data(
 ):
     """获取指定纬度带的臭氧昼夜变化曲线"""
     try:
-        ds = _get_data_service(request)
-        return ds.get_diurnal_data(my, ls, lat_band)
+        vs = _get_analysis_service(request)
+        return vs.get_diurnal_data(my, ls, lat_band)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -119,12 +119,13 @@ async def get_diurnal_data(
 async def get_model_info(request: Request):
     """获取模型基本信息"""
     ps = _get_predict_service(request)
+    inference = request.app.state.predict_inference
     return {
         "model_name": "PredRNNv2",
-        "device": str(ps.device),
+        "device": str(inference.device),
         "total_channels": 7,
         "input_window": 3,
         "pred_horizon": 3,
-        "model_loaded": ps.model is not None,
+        "model_loaded": inference.model is not None,
         "available_bands": [b["name"] for b in LATITUDE_BANDS],
     }

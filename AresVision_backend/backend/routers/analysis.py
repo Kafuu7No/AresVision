@@ -14,8 +14,8 @@ from config import DEFAULT_MARS_YEAR, MCD_VARIABLES
 router = APIRouter(prefix="/explore", tags=["数据探索"])
 
 
-def _get_data_service(request: Request):
-    return request.app.state.data_service
+def _get_analysis_service(request: Request):
+    return request.app.state.analysis_service
 
 
 # ─── 3D 地球点云 ───
@@ -28,8 +28,8 @@ async def get_globe_data(
 ):
     """获取指定 Ls 时刻的全球臭氧 3D 点云数据"""
     try:
-        ds = _get_data_service(request)
-        return ds.get_globe_data(my, ls)
+        vs = _get_analysis_service(request)
+        return vs.get_globe_data(my, ls)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -45,8 +45,8 @@ async def get_seasonal_heatmap(
 ):
     """获取全年 Ls-纬度臭氧热力图（纬向平均）"""
     try:
-        ds = _get_data_service(request)
-        return ds.get_seasonal_heatmap(my, variable="o3col")
+        vs = _get_analysis_service(request)
+        return vs.get_seasonal_heatmap(my, variable="o3col")
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -60,8 +60,8 @@ async def get_seasonal_bands(
 ):
     """获取 5 个纬度带的臭氧随 Ls 变化曲线"""
     try:
-        ds = _get_data_service(request)
-        return ds.get_seasonal_bands(my)
+        vs = _get_analysis_service(request)
+        return vs.get_seasonal_bands(my)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -76,8 +76,8 @@ async def get_env_variable_heatmap(
 ):
     """获取单个 MCD 环境变量的 Ls-纬度热力图"""
     try:
-        ds = _get_data_service(request)
-        return ds.get_env_variable_heatmap(my, variable)
+        vs = _get_analysis_service(request)
+        return vs.get_env_variable_heatmap(my, variable)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -91,8 +91,8 @@ async def get_correlation_matrix(
 ):
     """获取 O₃ 与 6 个环境变量的 Pearson 相关系数矩阵"""
     try:
-        ds = _get_data_service(request)
-        return ds.get_correlation_matrix(my)
+        vs = _get_analysis_service(request)
+        return vs.get_correlation_matrix(my)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -102,10 +102,10 @@ async def get_correlation_matrix(
 @router.get("/info")
 async def get_data_info(request: Request):
     """获取已加载的数据元信息"""
-    ds = _get_data_service(request)
-    years = ds.get_available_years()
+    service = request.app.state.data_service
+    years = service.get_available_years()
     info = {}
     for y in years:
-        ls_min, ls_max = ds.get_ls_range(y)
+        ls_min, ls_max = service.get_ls_range(y)
         info[f"MY{y}"] = {"ls_range": [ls_min, ls_max]}
     return {"available_years": years, "details": info}

@@ -1,6 +1,7 @@
-﻿# IDEs
+# IDEs
 .idea/
 .vscode/
+.cursor/
 *.swp
 *.swo
 
@@ -10,25 +11,49 @@ dist/
 build/
 .env
 .env.local
+.env.*.local
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
 # Python
-__pycache__/
-*.py[cod]
-*$py.class
-.venv/
-venv/
-ENV/
-env/
-.env.python
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+*.egg-info/
+**.venv/
+**venv/
+**ENV/
+**env/
+**/.env.python
 *.nc
+
+# Models & large data
+*.pth
+*.pt
+*.h5
+
+# Local assets (too large for git)
+frontend/public/mars_texture.jpg
+
+# Logs
+*.log
+backend_error.log
 
 # OS
 .DS_Store
 Thumbs.db
-.gitnexus
+
+# Tool configs (not project-specific)
+.gitnexus/
 .claude/
+.git_status.txt
+
+# Temporary / backup files
+*.tmp
+*.bak
+*_backup.*
+
+# Docs excluded from git
 AGENTS.md
 CLAUDE.md

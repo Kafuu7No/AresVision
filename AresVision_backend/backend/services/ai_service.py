@@ -27,7 +27,7 @@ SYSTEM_PROMPT = """你是 AresVision（智绘赤星）系统的 AI 科学顾问�
 - 如果被问到模型局限性，诚实回答
 - 回答简洁，控制在 200 字以内
 """
-
+#MCP skill 火星气象预报站
 
 class AIService:
     """AI 问答服务"""
