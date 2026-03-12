@@ -434,7 +434,7 @@ export default function PredictPage() {
                 <span style={{ fontSize: 12, color: C.ice, fontFamily: "'Orbitron', sans-serif" }}>{lsStart}°</span>
               </div>
               <input
-                type="range" min={0} max={355} step={5}
+                type="range" min={0} max={355} step={1}
                 value={lsStart}
                 onChange={(e) => setLsStart(Number(e.target.value))}
                 style={{ width: '100%', accentColor: C.mars }}
