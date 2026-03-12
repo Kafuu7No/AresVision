@@ -26,7 +26,6 @@ class DataService:
         self.openmars: dict[int, dict] = {}
         self.mcd: dict[int, dict] = {}
         self.aligned_mcd: dict[int, dict] = {}
-        self.aligned_mcd_predict: dict[int, dict] = {} # 预测专用：包含外推数据 (demo3)
 
         self._load_all()
 
@@ -38,8 +37,7 @@ class DataService:
 
         for my in self.openmars:
             if my in self.mcd:
-                self._align_mcd(my, extrapolate=False) # 分析模式
-                self._align_mcd(my, extrapolate=True)  # 预测模式 (demo3)
+                self._align_mcd(my) # 分析模式
 
         logger.info(
             f"底层数据源加载完成: OpenMARS={list(self.openmars.keys())}, "
@@ -136,7 +134,7 @@ class DataService:
         self.mcd[mars_year] = mcd_data
         ds.close()
 
-    def _align_mcd(self, mars_year: int, extrapolate: bool = False):
+    def _align_mcd(self, mars_year: int):
         om = self.openmars[mars_year]
         mc = self.mcd[mars_year]
         target_ls = om["ls"]
@@ -152,15 +150,12 @@ class DataService:
                 try:
                     aligned[var] = interpolate_mcd_to_openmars(
                         mc[var], mc["ls"], target_ls,
-                        extrapolate=extrapolate
+                        extrapolate=False
                     )
                 except Exception as e:
-                    logger.error(f"  对齐 {var} 失败 (extrapolate={extrapolate}): {e}")
+                    logger.error(f"  对齐 {var} 失败: {e}")
 
-        if extrapolate:
-            self.aligned_mcd_predict[mars_year] = aligned
-        else:
-            self.aligned_mcd[mars_year] = aligned
+        self.aligned_mcd[mars_year] = aligned
 
     # --- 对外暴露的安全数据访问接口 ---
 
@@ -180,11 +175,6 @@ class DataService:
         if mars_year not in self.aligned_mcd:
             raise ValueError(f"MY{mars_year} 的对齐 MCD 数据未加载。")
         return self.aligned_mcd[mars_year]
-
-    def get_aligned_mcd_predict_data(self, mars_year: int) -> dict:
-        if mars_year not in self.aligned_mcd_predict:
-            raise ValueError(f"MY{mars_year} 的预测对齐 MCD 数据未加载。")
-        return self.aligned_mcd_predict[mars_year]
 
     def get_available_years(self) -> list[int]:
         return sorted(self.openmars.keys())

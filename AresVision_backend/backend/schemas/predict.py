@@ -63,3 +63,11 @@ class DiurnalResponse(BaseModel):
     ozone_values: list[float]
     lat_band: str
     ls: float
+class PerformancePoint(BaseModel):
+    ls: float
+    my: int
+    r2: float
+
+
+class PerformanceResponse(BaseModel):
+    items: list[PerformancePoint]

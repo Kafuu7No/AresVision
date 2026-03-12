@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import C from '../constants/colors';
 import SectionTitle from '../components/SectionTitle';
 import GlowCard from '../components/GlowCard';
-import { runPrediction, fetchPredictMetrics } from '../services/api';
+import { runPrediction, fetchPredictMetrics, fetchPerformanceCurve } from '../services/api';
+import Plot from 'react-plotly.js';
 import SphericalFieldCanvas from '../components/SphericalFieldCanvas';
 
 // ─── 色阶函数（返回 RGB 数组） ───
@@ -297,9 +298,32 @@ export default function PredictPage() {
   // 控制整个网页 3D 悬浮球体
   const [fullscreen3D, setFullscreen3D] = useState(null); // { fieldData, colorMode }
 
+  // 性能曲线数据
+  const [performanceData, setPerformanceData] = useState(null);
+  const [perfLoading, setPerfLoading] = useState(false);
+
+  // ... (toggleVar remains same)
   const toggleVar = (id) => {
     setSelectedVars((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
+
+  const handleFetchPerformance = useCallback(async () => {
+    setPerfLoading(true);
+    try {
+      const body = {
+        selected_variables: selectedVars,
+        horizon: predStep,
+        ls_start: lsStart,
+        mars_year: marsYear,
+      };
+      const res = await fetchPerformanceCurve(body);
+      setPerformanceData(res);
+    } catch (e) {
+      console.error('Fetch performance error:', e);
+    } finally {
+      setPerfLoading(false);
+    }
+  }, [selectedVars, predStep, lsStart, marsYear]);
 
   const handlePredict = useCallback(async () => {
     setLoading(true);
@@ -726,6 +750,166 @@ export default function PredictPage() {
                 决定系数 R² = <span style={{ color: '#4acfac' }}>{metrics.overall.r2.toFixed(4)}</span>。
               </div>
             )}
+          </GlowCard>
+
+          {/* 模型性能趋势 (测试集) */}
+          <GlowCard style={{ padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
+                TEST SET PERFORMANCE / 测试集性能分析表
+              </div>
+              <button
+                onClick={handleFetchPerformance}
+                disabled={perfLoading}
+                style={{
+                  padding: '6px 12px', background: 'rgba(74,158,255,0.1)',
+                  border: `1px solid ${C.blue}`, borderRadius: 6,
+                  color: C.blue, fontSize: 10, cursor: 'pointer',
+                  fontFamily: "'Orbitron', sans-serif", transition: 'all 0.2s'
+                }}
+              >
+                {perfLoading ? '指标计算中...' : '生成全样本性能表 GENERATE'}
+              </button>
+            </div>
+
+            {performanceData ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {/* 2D 趋势图表 */}
+                <div style={{ 
+                  background: 'rgba(255,255,255,0.02)', 
+                  borderRadius: 12, 
+                  border: `1px solid ${C.border}`, 
+                  padding: '16px',
+                  height: 380
+                }}>
+                  <Plot
+                    data={[
+                      {
+                        // 计算连续时间轴：MY27 原始 Ls，MY28 累加 360
+                        x: performanceData.items.map(it => it.my === 27 ? it.ls : it.ls + 360),
+                        y: performanceData.items.map(it => it.r2),
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: 'R² Score',
+                        marker: { 
+                          color: C.mars, 
+                          size: 7, 
+                          line: { color: 'rgba(255,255,255,0.5)', width: 1 } 
+                        },
+                        line: { 
+                          color: C.mars, 
+                          width: 3, 
+                          shape: 'spline' 
+                        },
+                        fill: 'tozeroy',
+                        fillcolor: 'rgba(199,91,57,0.08)',
+                        hovertemplate: '<b>MY%{text}</b><br>Ls: %{customdata:.2f}°<br>R²: <b>%{y:.4f}</b><extra></extra>',
+                        text: performanceData.items.map(it => it.my),
+                        customdata: performanceData.items.map(it => it.ls)
+                      }
+                    ]}
+                    layout={{
+                      autosize: true,
+                      height: 340,
+                      margin: { l: 50, r: 30, t: 20, b: 50 },
+                      paper_bgcolor: 'rgba(0,0,0,0)',
+                      plot_bgcolor: 'rgba(0,0,0,0)',
+                      xaxis: {
+                        title: { text: 'Solar Longitude progression (MY27 → MY28)', font: { size: 11, color: C.ice30 } },
+                        tickfont: { size: 10, color: C.ice60 },
+                        gridcolor: 'rgba(255,255,255,0.05)',
+                        zeroline: false,
+                        showgrid: true
+                      },
+                      yaxis: {
+                        title: { text: 'R² (Spatial Accuracy)', font: { size: 11, color: C.ice30 } },
+                        tickfont: { size: 10, color: C.ice60 },
+                        gridcolor: 'rgba(255,255,255,0.05)',
+                        zeroline: false,
+                        range: [0, 1.1]
+                      },
+                      shapes: [
+                        {
+                          type: 'line',
+                          x0: 360, x1: 360,
+                          y0: 0, y1: 1,
+                          yref: 'paper',
+                          line: { color: 'rgba(255,255,255,0.2)', width: 1, dash: 'dash' }
+                        }
+                      ],
+                      annotations: [
+                        {
+                          x: 360, y: 1.05,
+                          xref: 'x', yref: 'y',
+                          text: 'NEW YEAR (MY28)',
+                          showarrow: false,
+                          font: { color: C.ice30, size: 9 }
+                        }
+                      ],
+                      hovermode: 'closest',
+                      showlegend: false
+                    }}
+                    config={{ displayModeBar: false, responsive: true }}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                {/* 底部数据明细表 */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ 
+                    padding: '10px 16px', 
+                    background: 'rgba(74,207,172,0.1)', 
+                    borderRadius: 8, 
+                    border: '1px solid rgba(74,207,172,0.3)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ fontSize: 11, color: C.ice60, fontWeight: 600 }}>平均决定系数 AVG R²</span>
+                    <span style={{ fontSize: 16, color: '#4acfac', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                      {(performanceData.items.reduce((acc, it) => acc + it.r2, 0) / performanceData.items.length).toFixed(4)}
+                    </span>
+                  </div>
+                  
+                  <div style={{ maxHeight: 180, overflowY: 'auto', borderRadius: 8, border: `1px solid ${C.border}` }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead style={{ position: 'sticky', top: 0, background: '#0a0a0f', zIndex: 1 }}>
+                      <tr>
+                        {['火星年 MY', '太阳黄经 Ls', '决定系数 R² (Spatial)'].map(h => (
+                          <th key={h} style={{ padding: '10px', textAlign: 'center', color: C.ice30, borderBottom: `1px solid ${C.border}`, fontWeight: 600 }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {performanceData.items.map((it, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
+                          <td style={{ padding: '10px', textAlign: 'center', color: C.ice60 }}>MY{it.my}</td>
+                          <td style={{ padding: '10px', textAlign: 'center', color: C.ice60 }}>{it.ls.toFixed(2)}°</td>
+                          <td style={{
+                            padding: '10px', textAlign: 'center',
+                            color: it.r2 > 0.9 ? '#4acfac' : it.r2 > 0.8 ? '#ffd740' : C.mars,
+                            fontWeight: 700
+                          }}>{it.r2.toFixed(4)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          ) : (
+              <div style={{ padding: '40px 0', textAlign: 'center', color: C.ice30, fontSize: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: `1px dashed ${C.border}` }}>
+                {perfLoading ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 20, height: 20, border: '2px solid rgba(74,207,172,0.2)', borderTop: '2px solid #4acfac', borderRadius: '50%', animation: 'spin-slow 0.8s linear infinite' }} />
+                    正在遍历测试集并计算 R² 指标，请稍候...
+                  </div>
+                ) : '点击上方按钮，系统将自动汇总模型在测试集 (MY27 352° ~ MY28 69°) 上的预测精度数据'}
+              </div>
+            )}
+            <div style={{ marginTop: 12, fontSize: 10, color: C.ice30, fontStyle: 'italic' }}>
+              * 注：测试集包含模型未学习过的 MY28 早期数据，真实反映了模型的泛化能力。
+            </div>
           </GlowCard>
 
           {/* 初始提示（无结果时） */}
