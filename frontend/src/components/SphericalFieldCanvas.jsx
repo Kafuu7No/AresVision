@@ -125,9 +125,13 @@ export default function SphericalFieldCanvas({ fieldData, colorMode = 'inferno',
 
     controlsRef.current = controls;
 
-    // 光照对于 Points 材质 (Basic/PointsMaterial) 不生效，但可以给未来的添加物保留一点
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    // 光照对于 Points 材质不生效，但可用于内部火星球体
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
     scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    dirLight.position.set(5, 3, 5);
+    scene.add(dirLight);
 
     const { field, minVal, maxVal } = fieldData;
     const nLat = field.length;
@@ -244,23 +248,39 @@ export default function SphericalFieldCanvas({ fieldData, colorMode = 'inferno',
     };
 
     const material = new THREE.PointsMaterial({
-      size: 0.01, // 密度翻倍后，再稍微将单颗粒子的渲染大小缩小，显得更加细腻细腻
+      size: 0.01,
       vertexColors: true,
       map: createCircleTexture(),
       transparent: true,
       opacity: 0.9,
-      depthWrite: false, // 防止 z-fighting，并能更好看清内外
-      blending: THREE.AdditiveBlending // 增加科幻感
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
     });
 
     const particles = new THREE.Points(geometry, material);
-    // initial rotation
-    particles.rotation.y = -Math.PI / 2;
-    // 整个球体居中
-    particles.position.set(0, 0, 0);
 
-    scene.add(particles);
-    sphereMeshRef.current = particles;
+    // --- 内部火星球体 ---
+    const marsRadius = 0.86; // 略小于 baseRadius(0.9) 使其包裹在内
+    const marsGeometry = new THREE.SphereGeometry(marsRadius, 64, 64);
+    const textureLoader = new THREE.TextureLoader();
+    const marsMaterial = new THREE.MeshPhongMaterial({
+      map: textureLoader.load('/mars_texture.jpg'),
+      shininess: 5,
+    });
+    const marsMesh = new THREE.Mesh(marsGeometry, marsMaterial);
+
+    // 将两者放在同一个组里一起旋转
+    const globeGroup = new THREE.Group();
+    globeGroup.add(marsMesh);
+    globeGroup.add(particles);
+
+    // initial rotation
+    globeGroup.rotation.y = -Math.PI / 2;
+    // 整个球体居中
+    globeGroup.position.set(0, 0, 0);
+
+    scene.add(globeGroup);
+    sphereMeshRef.current = globeGroup;
 
     // --- 背景星星特效 ---
     const starGeometry = new THREE.BufferGeometry();
