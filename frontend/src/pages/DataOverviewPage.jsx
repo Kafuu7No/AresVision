@@ -1,36 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
-import Globe from 'react-globe.gl';
+import SphericalFieldCanvas from '../components/SphericalFieldCanvas';
 import C from '../constants/colors';
 import { DataOverviewProvider } from '../contexts/DataOverviewContext';
 import { fetchGlobeData } from '../services/api';
-
-// Turbo 色阶（与数据探索页统一）
-const TURBO_STOPS = [
-  [48, 18, 59], [50, 92, 168], [39, 154, 193], [31, 199, 147],
-  [94, 227, 80], [191, 240, 35], [249, 211, 31], [252, 155, 28],
-  [239, 88, 20], [191, 34, 12], [122, 4, 3],
-];
-function turboColorRGB(t) {
-  t = Math.max(0, Math.min(1, t));
-  const idx = t * (TURBO_STOPS.length - 1);
-  const i = Math.min(Math.floor(idx), TURBO_STOPS.length - 2);
-  const f = idx - i;
-  const c0 = TURBO_STOPS[i], c1 = TURBO_STOPS[i + 1];
-  return [
-    Math.round(c0[0] + (c1[0] - c0[0]) * f),
-    Math.round(c0[1] + (c1[1] - c0[1]) * f),
-    Math.round(c0[2] + (c1[2] - c0[2]) * f),
-  ];
-}
-function turboColor(t) {
-  const [r, g, b] = turboColorRGB(t);
-  return `rgb(${r},${g},${b})`;
-}
-function turboColorA(t, a = 1) {
-  const [r, g, b] = turboColorRGB(t);
-  return `rgba(${r},${g},${b},${a})`;
-}
 
 // 数据选项配置
 const DATA_OPTIONS = [
@@ -206,7 +179,7 @@ const SidebarMenu = ({ selectedItem, onItemSelect }) => {
 };
 
 // 3D球体时间控制面板
-const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, onLsChange, onMarsYearChange, onTogglePlay }) => {
+const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, autoRotate, onLsChange, onMarsYearChange, onTogglePlay, onToggleAutoRotate }) => {
   const seasonName =
     lsValue < 90 ? '北半球春 / 南半球秋' :
       lsValue < 180 ? '北半球夏 / 南半球冬' :
@@ -324,6 +297,42 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
         </button>
       </div>
 
+      {/* 自动旋转控制 */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: '16px', padding: '10px',
+        background: 'rgba(255,255,255,0.03)', borderRadius: '8px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '14px' }}>🔄</span>
+          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: 'Exo 2' }}>开启自动旋转</span>
+        </div>
+        <label style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px' }}>
+          <input
+            type="checkbox"
+            checked={autoRotate}
+            onChange={onToggleAutoRotate}
+            style={{ opacity: 0, width: 0, height: 0 }}
+          />
+          <span style={{
+            position: 'absolute', cursor: 'pointer',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: autoRotate ? 'rgba(0,240,255,0.3)' : 'rgba(255,255,255,0.1)',
+            border: `1px solid ${autoRotate ? 'rgba(0,240,255,0.8)' : 'rgba(255,255,255,0.3)'}`,
+            transition: '.4s', borderRadius: '34px'
+          }}>
+            <span style={{
+              position: 'absolute', content: '""',
+              height: '14px', width: '14px',
+              left: autoRotate ? '18px' : '2px', bottom: '2px',
+              backgroundColor: autoRotate ? '#00f0ff' : 'rgba(255,255,255,0.5)',
+              transition: '.4s', borderRadius: '50%'
+            }} />
+          </span>
+        </label>
+      </div>
+
       {/* 加载指示 */}
       {loadingGlobe && (
         <div style={{
@@ -358,10 +367,9 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
             width: '16px', flexShrink: 0, borderRadius: '4px',
             border: '1px solid rgba(255,255,255,0.15)',
             background: `linear-gradient(180deg,
-              rgb(122,4,3) 0%, rgb(191,34,12) 10%, rgb(239,88,20) 20%,
-              rgb(252,155,28) 30%, rgb(249,211,31) 40%, rgb(191,240,35) 50%,
-              rgb(94,227,80) 60%, rgb(31,199,147) 70%, rgb(39,154,193) 80%,
-              rgb(50,92,168) 90%, rgb(48,18,59) 100%)`
+              rgb(252,255,164) 0%, rgb(250,193,39) 14.2%, rgb(245,125,21) 28.5%,
+              rgb(212,72,66) 42.8%, rgb(159,42,99) 57.1%, rgb(101,21,110) 71.4%,
+              rgb(40,11,84) 85.7%, rgb(0,0,4) 100%)`
           }} />
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '10px', color: 'rgba(255,255,255,0.6)' }}>
             <span>{(ozoneData.maxVal || 0).toFixed(4)}</span>
@@ -1068,112 +1076,38 @@ const DataDistribution = () => {
   );
 };
 
-// 全屏3D火星背景 — 单网格顶点色球壳（一次 draw call，无卡顿）
-const Mars3DBackground = ({ ozoneData, is3DMode }) => {
-  const globeRef = useRef();
-  const shellRef = useRef(null);
-  const [globeReady, setGlobeReady] = useState(false);
-  const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
+// 全屏3D火星背景 — 替换为 PredictPage 的粒子球体
+const Mars3DBackground = ({ ozoneData, is3DMode, autoRotate }) => {
+  const fieldData = React.useMemo(() => {
+    if (!ozoneData?.points?.length) return null;
+    const lats = [...new Set(ozoneData.points.map(p => Math.round(p.lat * 10) / 10))].sort((a, b) => b - a);
+    const lngs = [...new Set(ozoneData.points.map(p => {
+      let l = Math.round(p.lng * 10) / 10;
+      return (l + 360) % 360;
+    }))].sort((a, b) => a - b);
 
-  useEffect(() => {
-    const handleResize = () => {
-      setDimensions({ width: window.innerWidth, height: window.innerHeight });
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    const nLat = lats.length;
+    const nLon = lngs.length;
+    const field = Array(nLat).fill(0).map(() => Array(nLon).fill(NaN));
 
-  useEffect(() => {
-    if (!globeReady || !globeRef.current) return;
-    const scene = globeRef.current.scene();
-    if (!scene) return;
-    const R = (globeRef.current.getGlobeRadius?.() ?? 100) * 1.006;
-
-    // 清除旧球壳
-    if (shellRef.current) {
-      scene.remove(shellRef.current);
-      shellRef.current.geometry.dispose();
-      shellRef.current.material.dispose();
-      shellRef.current = null;
-    }
-    if (!ozoneData.points?.length) return;
-
-    const range = (ozoneData.maxVal - ozoneData.minVal) || 1;
-
-    // 从数据点检测网格步长和偏移
-    const sortedLats = [...new Set(ozoneData.points.map(p => Math.round(p.lat * 10) / 10))].sort((a, b) => a - b);
-    const sortedLngs = [...new Set(ozoneData.points.map(p => Math.round(p.lng * 10) / 10))].sort((a, b) => a - b);
-    const latStep = sortedLats.length > 1 ? sortedLats[1] - sortedLats[0] : 5;
-    const lngStep = sortedLngs.length > 1 ? sortedLngs[1] - sortedLngs[0] : 5;
-    const latMin = sortedLats[0];
-    const lngMin = sortedLngs[0];
-    const nLat = sortedLats.length;
-    const nLng = sortedLngs.length;
-
-    // 构建二维格点查找表（Float32Array 快速访问）
-    const grid = new Float32Array(nLat * nLng).fill(0.5);
-    for (const p of ozoneData.points) {
-      const li = Math.round((p.lat - latMin) / latStep);
-      const gi = Math.round((p.lng - lngMin) / lngStep);
-      if (li >= 0 && li < nLat && gi >= 0 && gi < nLng) {
-        grid[li * nLng + gi] = Math.max(0, Math.min(1, (p.val - ozoneData.minVal) / range));
+    ozoneData.points.forEach(p => {
+      const lat = Math.round(p.lat * 10) / 10;
+      const lng = ((Math.round(p.lng * 10) / 10) + 360) % 360;
+      const i = lats.indexOf(lat);
+      const j = lngs.indexOf(lng);
+      if (i >= 0 && j >= 0) {
+        field[i][j] = p.val;
       }
-    }
-    const getT = (lat, lng) => {
-      let li = Math.round((lat - latMin) / latStep);
-      let gi = Math.round((lng - lngMin) / lngStep);
-      li = Math.max(0, Math.min(nLat - 1, li));
-      gi = ((gi % nLng) + nLng) % nLng;
-      return grid[li * nLng + gi];
-    };
-
-    // 创建球面网格（分段数与数据网格匹配，避免插值失真）
-    const WS = Math.round(360 / lngStep);
-    const HS = Math.round(180 / latStep);
-    const geometry = new THREE.SphereGeometry(R, WS, HS);
-    const pos = geometry.attributes.position;
-    const colors = new Float32Array(pos.count * 3);
-
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-      const r2 = Math.sqrt(x * x + y * y + z * z) || 1;
-      // 逆变换自 three-globe 的 polar2Cartesian:
-      // x=R·sin(phi)·cos(theta), y=R·cos(phi), z=R·sin(phi)·sin(theta)
-      // 其中 phi=(90-lat)·π/180, theta=(90+lng)·π/180
-      const lat = 90 - Math.acos(Math.max(-1, Math.min(1, y / r2))) * 180 / Math.PI;
-      const lngRaw = Math.atan2(z, x) * 180 / Math.PI - 90;
-      const lng = ((lngRaw + 180) % 360 + 360) % 360 - 180;
-
-      const t = getT(lat, lng);
-      const [cr, cg, cb] = turboColorRGB(t);
-      colors[i * 3] = cr / 255;
-      colors[i * 3 + 1] = cg / 255;
-      colors[i * 3 + 2] = cb / 255;
-    }
-
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    const material = new THREE.MeshBasicMaterial({
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.68,        // 透明度：火星纹理依然可见
-      side: THREE.FrontSide,
-      depthWrite: false,    // 避免与球体纹理的深度冲突
     });
 
-    const mesh = new THREE.Mesh(geometry, material);
-    shellRef.current = mesh;
-    scene.add(mesh);
-  }, [ozoneData, globeReady]);
-
-  // 卸载时清理
-  useEffect(() => {
-    return () => {
-      if (shellRef.current) {
-        shellRef.current.geometry?.dispose();
-        shellRef.current.material?.dispose();
-      }
+    return {
+      field,
+      minVal: ozoneData.minVal,
+      maxVal: ozoneData.maxVal
     };
-  }, []);
+  }, [ozoneData]);
+
+  if (!fieldData) return null;
 
   return (
     <div style={{
@@ -1182,22 +1116,17 @@ const Mars3DBackground = ({ ozoneData, is3DMode }) => {
       left: 0,
       width: '100%',
       height: '100%',
-      zIndex: is3DMode ? 100 : 1,
-      opacity: is3DMode ? 1 : 0.85,
-      transition: 'all 0.8s ease'
+      zIndex: is3DMode ? 10 : 1,
+      opacity: is3DMode ? 1 : 0.6,
+      transition: 'all 0.8s ease',
+      pointerEvents: is3DMode ? 'auto' : 'none',
     }}>
-      <Globe
-        ref={globeRef}
-        width={dimensions.width}
-        height={dimensions.height}
-        globeImageUrl="/mars_texture.jpg"
-        backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-        atmosphereColor="rgba(255, 100, 50, 0.8)"
-        atmosphereAltitude={0.15}
-        onGlobeReady={() => {
-          globeRef.current?.pointOfView({ altitude: 2.5, lat: 0, lng: 0 }, 1000);
-          setGlobeReady(true);
-        }}
+      <SphericalFieldCanvas 
+        fieldData={fieldData} 
+        colorMode="inferno" 
+        h="100vh" 
+        forceFullscreen 
+        autoRotate={autoRotate}
       />
     </div>
   );
@@ -1211,6 +1140,7 @@ const DataOverviewPageContent = () => {
   const [marsYear, setMarsYear] = useState(27);
   const [lsValue, setLsValue] = useState(90);
   const [playing, setPlaying] = useState(false);
+  const [autoRotate, setAutoRotate] = useState(true);
   const timerRef = useRef(null);
   const abortRef = useRef(null);
 
@@ -1269,7 +1199,11 @@ const DataOverviewPageContent = () => {
       background: '#000'
     }}>
       {/* 全屏3D火星背景 */}
-      <Mars3DBackground ozoneData={ozoneData} is3DMode={is3DMode} />
+      <Mars3DBackground 
+        ozoneData={ozoneData} 
+        is3DMode={is3DMode} 
+        autoRotate={autoRotate} 
+      />
 
       {/* 左侧菜单栏 */}
       <SidebarMenu
@@ -1287,10 +1221,12 @@ const DataOverviewPageContent = () => {
           lsValue={lsValue}
           marsYear={marsYear}
           playing={playing}
+          autoRotate={autoRotate}
           loadingGlobe={loadingGlobe}
           onLsChange={setLsValue}
           onMarsYearChange={setMarsYear}
           onTogglePlay={() => setPlaying(p => !p)}
+          onToggleAutoRotate={() => setAutoRotate(r => !r)}
         />
       )}
     </div>
