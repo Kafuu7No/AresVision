@@ -50,11 +50,9 @@ class PredictTransforms:
                 self.y_mean = data['y_mean']
                 self.y_std = data['y_std']
                 self.scalers = data['scalers']
-                # 获取 max_flux (存储在 DataService 或这里)
-                # 在 prepare_raw_data 中虽然没直接保存 max_flux，但它影响了 flux 通道。
-                # 由于 X_scaled 已经标准化，推导时实际上用不到原始 max_flux，
-                # 但为了 fallback 逻辑，我们赋予一个默认值或从 meta 获取。
-                self.max_flux = 1.0 # 预处理后的数据不再需要外部 max_flux
+                # 获取 max_flux（如果在 meta 中有存储），用于与训练时保持一致的物理预处理
+                # 如果 meta 中不存在该字段，则回退为 1.0，保持当前行为以兼容旧模型。
+                self.max_flux = float(data.get('max_flux', 1.0))
                 logger.info(f"[Prediction] 成功从预处理张量加载标准化参数: y_std={self.y_std:.4f}")
                 return
             except Exception as e:
