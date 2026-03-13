@@ -3,6 +3,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
 
+// --- 全局缓存贴图 ---
+let cachedMarsTexture = null;
+
 // ─── 色阶函数（与 PredictPage 保持一致） ───
 function infernoRgb(t) {
   t = Math.max(0, Math.min(1, t));
@@ -74,15 +77,24 @@ function bilinearInterpolate(field, liFloat, ljFloat) {
   return row0 * (1 - di) + row1 * di;
 }
 
-export default function SphericalFieldCanvas({ fieldData, colorMode = 'inferno', h = 240, forceFullscreen = false }) {
+export default function SphericalFieldCanvas({ fieldData, colorMode = 'inferno', h = 240, forceFullscreen = false, autoRotate = true }) {
   const containerRef = useRef(null);
   const rendererRef = useRef(null);
   const sphereMeshRef = useRef(null);
   const controlsRef = useRef(null);
+  const autoRotateRef = useRef(autoRotate);
 
-  // 初始化 Three.js 场景
+  // Update ref when prop changes so animation loop catches it
   useEffect(() => {
-    if (!containerRef.current || !fieldData?.field) return;
+    autoRotateRef.current = autoRotate;
+  }, [autoRotate]);
+
+  const sceneRef = useRef(null);
+  const cameraRef = useRef(null);
+
+  // 1. 初始化 Three.js 场景、相机、渲染器和控制器（仅执行一次）
+  useEffect(() => {
+    if (!containerRef.current) return;
 
     // 清理可能存在的旧 Canvas
     containerRef.current.innerHTML = '';
@@ -91,14 +103,12 @@ export default function SphericalFieldCanvas({ fieldData, colorMode = 'inferno',
     const height = containerRef.current.clientHeight;
 
     const scene = new THREE.Scene();
-
-    // 我们还原透明背景，不再使用纯黑色和雾效
-    // scene.background = new THREE.Color(0x050508);
-    // scene.fog = new THREE.FogExp2(0x050508, 0.08);
+    sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
     camera.position.set(0, 0, 4.5);
     camera.lookAt(0, 0, 0);
+    cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
@@ -132,6 +142,93 @@ export default function SphericalFieldCanvas({ fieldData, colorMode = 'inferno',
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
     dirLight.position.set(5, 3, 5);
     scene.add(dirLight);
+
+    // --- 背景星星特效（恒定不变，在此初始化）---
+    const starGeometry = new THREE.BufferGeometry();
+    const starCount = 500;
+    const starPositions = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount; i++) {
+      // 随机散布在半宽 10 的立方体内，挖空中间半径 2 的核心（避免挡住主星）
+      let r = 2.5 + Math.random() * 8.0;
+      let theta = Math.random() * Math.PI * 2;
+      let phi = Math.acos(2 * Math.random() - 1);
+
+      const x = r * Math.sin(phi) * Math.cos(theta);
+      const y = r * Math.cos(phi);
+      const z = r * Math.sin(phi) * Math.sin(theta);
+
+      starPositions[i * 3] = x;
+      starPositions[i * 3 + 1] = y;
+      starPositions[i * 3 + 2] = z;
+    }
+    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    const starMaterial = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 0.02,
+      transparent: true,
+      opacity: 0.6,
+      depthWrite: false,
+    });
+    const stars = new THREE.Points(starGeometry, starMaterial);
+    scene.add(stars);
+
+    let reqId;
+    const animate = () => {
+      reqId = requestAnimationFrame(animate);
+      if (controlsRef.current) controlsRef.current.update();
+      if (sphereMeshRef.current && autoRotateRef.current) {
+        sphereMeshRef.current.rotation.y += 0.001; // 球体自转动画
+      }
+      stars.rotation.y += 0.0003; // 星空背景微弱伴走
+      if (rendererRef.current) rendererRef.current.render(scene, camera);
+    };
+    animate();
+
+    const handleResize = () => {
+      if (!containerRef.current || !rendererRef.current) return;
+      const w = containerRef.current.clientWidth;
+      const h2 = containerRef.current.clientHeight;
+      camera.aspect = w / h2;
+      camera.updateProjectionMatrix();
+      if (controlsRef.current) {
+        controlsRef.current.handleResize();
+      }
+      rendererRef.current.setSize(w, h2);
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(reqId);
+      if (rendererRef.current) {
+        rendererRef.current.dispose();
+      }
+      starGeometry.dispose();
+      starMaterial.dispose();
+    };
+  }, [forceFullscreen]); // 仅在尺寸模式切换时重新初始化控制台
+
+  // 2. 响应数据更新，重建火星及臭氧场网格
+  useEffect(() => {
+    if (!fieldData?.field || !sceneRef.current) return;
+    const scene = sceneRef.current;
+    
+    // 如果存在旧的主体资源，则清空并析构
+    if (sphereMeshRef.current) {
+      scene.remove(sphereMeshRef.current);
+      // 注：此处我们可以简单地通过遍历或约定引用释放子对象，
+      // 因为 sphereMeshRef 现在是个 Group，里面有一层 marsMesh 和一层 particles。
+      sphereMeshRef.current.children.forEach(child => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          child.material.dispose();
+          if (child.material.map && child.material.map !== cachedMarsTexture) {
+            child.material.map.dispose();
+          }
+        }
+      });
+      sphereMeshRef.current = null;
+    }
 
     const { field, minVal, maxVal } = fieldData;
     const nLat = field.length;
@@ -262,9 +359,14 @@ export default function SphericalFieldCanvas({ fieldData, colorMode = 'inferno',
     // --- 内部火星球体 ---
     const marsRadius = 0.86; // 略小于 baseRadius(0.9) 使其包裹在内
     const marsGeometry = new THREE.SphereGeometry(marsRadius, 64, 64);
-    const textureLoader = new THREE.TextureLoader();
+    
+    // 使用全局缓存的贴图，避免泄漏和频繁网络加载
+    if (!cachedMarsTexture) {
+      cachedMarsTexture = new THREE.TextureLoader().load('/mars_texture.jpg');
+    }
+    
     const marsMaterial = new THREE.MeshPhongMaterial({
-      map: textureLoader.load('/mars_texture.jpg'),
+      map: cachedMarsTexture,
       shininess: 5,
     });
     const marsMesh = new THREE.Mesh(marsGeometry, marsMaterial);
@@ -282,73 +384,24 @@ export default function SphericalFieldCanvas({ fieldData, colorMode = 'inferno',
     scene.add(globeGroup);
     sphereMeshRef.current = globeGroup;
 
-    // --- 背景星星特效 ---
-    const starGeometry = new THREE.BufferGeometry();
-    const starCount = 500;
-    const starPositions = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount; i++) {
-      // 随机散布在半宽 10 的立方体内，挖空中间半径 2 的核心（避免挡住主星）
-      let r = 2.5 + Math.random() * 8.0;
-      let theta = Math.random() * Math.PI * 2;
-      let phi = Math.acos(2 * Math.random() - 1);
-
-      const x = r * Math.sin(phi) * Math.cos(theta);
-      const y = r * Math.cos(phi);
-      const z = r * Math.sin(phi) * Math.sin(theta);
-
-      starPositions[i * 3] = x;
-      starPositions[i * 3 + 1] = y;
-      starPositions[i * 3 + 2] = z;
-    }
-    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-    const starMaterial = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.02,
-      transparent: true,
-      opacity: 0.6,
-      depthWrite: false,
-    });
-    const stars = new THREE.Points(starGeometry, starMaterial);
-    scene.add(stars);
-
-    let reqId;
-    const animate = () => {
-      reqId = requestAnimationFrame(animate);
-      if (controlsRef.current) controlsRef.current.update();
-      if (sphereMeshRef.current) {
-        sphereMeshRef.current.rotation.y += 0.001; // 球体自转动画
-      }
-      stars.rotation.y += 0.0003; // 星空背景微弱伴走
-      if (rendererRef.current) rendererRef.current.render(scene, camera);
-    };
-    animate();
-
-    // Resize Handler
-    const handleResize = () => {
-      if (!containerRef.current || !rendererRef.current) return;
-      const w = containerRef.current.clientWidth;
-      const h2 = containerRef.current.clientHeight;
-      camera.aspect = w / h2;
-      camera.updateProjectionMatrix();
-      if (controlsRef.current) {
-        controlsRef.current.handleResize();
-      }
-      rendererRef.current.setSize(w, h2);
-    };
-    window.addEventListener('resize', handleResize);
-
+    // 注意：动画和控制器、调整大小等已经剥离到了上一个只执行一次的 hook 中
+    // 当该组件由于 fieldData 修改而销毁（如果卸载），下一次效应前我们将上方的析构逻辑重新执行一次。
     return () => {
-      window.removeEventListener('resize', handleResize);
-      cancelAnimationFrame(reqId);
-      if (rendererRef.current) rendererRef.current.dispose();
-      geometry.dispose();
-      material.dispose();
-      starGeometry.dispose();
-      starMaterial.dispose();
-      if (material.map) material.map.dispose();
+      if (sphereMeshRef.current && sceneRef.current) {
+        sceneRef.current.remove(sphereMeshRef.current);
+        sphereMeshRef.current.children.forEach(child => {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) {
+            child.material.dispose();
+            if (child.material.map && child.material.map !== cachedMarsTexture) {
+              child.material.map.dispose();
+            }
+          }
+        });
+        sphereMeshRef.current = null;
+      }
     };
-
-  }, [fieldData, colorMode, forceFullscreen]);
+  }, [fieldData, colorMode]);
 
   if (forceFullscreen) {
     return (

@@ -179,7 +179,7 @@ const SidebarMenu = ({ selectedItem, onItemSelect }) => {
 };
 
 // 3D球体时间控制面板
-const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, onLsChange, onMarsYearChange, onTogglePlay }) => {
+const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, autoRotate, onLsChange, onMarsYearChange, onTogglePlay, onToggleAutoRotate }) => {
   const seasonName =
     lsValue < 90 ? '北半球春 / 南半球秋' :
       lsValue < 180 ? '北半球夏 / 南半球冬' :
@@ -295,6 +295,42 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
         >
           ↩
         </button>
+      </div>
+
+      {/* 自动旋转控制 */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: '16px', padding: '10px',
+        background: 'rgba(255,255,255,0.03)', borderRadius: '8px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '14px' }}>🔄</span>
+          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontFamily: 'Exo 2' }}>开启自动旋转</span>
+        </div>
+        <label style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px' }}>
+          <input
+            type="checkbox"
+            checked={autoRotate}
+            onChange={onToggleAutoRotate}
+            style={{ opacity: 0, width: 0, height: 0 }}
+          />
+          <span style={{
+            position: 'absolute', cursor: 'pointer',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: autoRotate ? 'rgba(0,240,255,0.3)' : 'rgba(255,255,255,0.1)',
+            border: `1px solid ${autoRotate ? 'rgba(0,240,255,0.8)' : 'rgba(255,255,255,0.3)'}`,
+            transition: '.4s', borderRadius: '34px'
+          }}>
+            <span style={{
+              position: 'absolute', content: '""',
+              height: '14px', width: '14px',
+              left: autoRotate ? '18px' : '2px', bottom: '2px',
+              backgroundColor: autoRotate ? '#00f0ff' : 'rgba(255,255,255,0.5)',
+              transition: '.4s', borderRadius: '50%'
+            }} />
+          </span>
+        </label>
       </div>
 
       {/* 加载指示 */}
@@ -1041,7 +1077,7 @@ const DataDistribution = () => {
 };
 
 // 全屏3D火星背景 — 替换为 PredictPage 的粒子球体
-const Mars3DBackground = ({ ozoneData, is3DMode }) => {
+const Mars3DBackground = ({ ozoneData, is3DMode, autoRotate }) => {
   const fieldData = React.useMemo(() => {
     if (!ozoneData?.points?.length) return null;
     const lats = [...new Set(ozoneData.points.map(p => Math.round(p.lat * 10) / 10))].sort((a, b) => b - a);
@@ -1090,6 +1126,7 @@ const Mars3DBackground = ({ ozoneData, is3DMode }) => {
         colorMode="inferno" 
         h="100vh" 
         forceFullscreen 
+        autoRotate={autoRotate}
       />
     </div>
   );
@@ -1103,6 +1140,7 @@ const DataOverviewPageContent = () => {
   const [marsYear, setMarsYear] = useState(27);
   const [lsValue, setLsValue] = useState(90);
   const [playing, setPlaying] = useState(false);
+  const [autoRotate, setAutoRotate] = useState(true);
   const timerRef = useRef(null);
   const abortRef = useRef(null);
 
@@ -1161,7 +1199,11 @@ const DataOverviewPageContent = () => {
       background: '#000'
     }}>
       {/* 全屏3D火星背景 */}
-      <Mars3DBackground ozoneData={ozoneData} is3DMode={is3DMode} />
+      <Mars3DBackground 
+        ozoneData={ozoneData} 
+        is3DMode={is3DMode} 
+        autoRotate={autoRotate} 
+      />
 
       {/* 左侧菜单栏 */}
       <SidebarMenu
@@ -1179,10 +1221,12 @@ const DataOverviewPageContent = () => {
           lsValue={lsValue}
           marsYear={marsYear}
           playing={playing}
+          autoRotate={autoRotate}
           loadingGlobe={loadingGlobe}
           onLsChange={setLsValue}
           onMarsYearChange={setMarsYear}
           onTogglePlay={() => setPlaying(p => !p)}
+          onToggleAutoRotate={() => setAutoRotate(r => !r)}
         />
       )}
     </div>
