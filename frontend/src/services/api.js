@@ -62,6 +62,16 @@ export async function fetchPredictMetrics(body) {
   return res.json();
 }
 
+export async function fetchPerformanceCurve(body) {
+  const res = await fetch(`${BASE}/predict/performance`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 export async function fetchAblation(marsYear = 27, ls = 90) {
   const res = await fetch(`${BASE}/predict/ablation?my=${marsYear}&ls=${ls}`);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);

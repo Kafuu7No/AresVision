@@ -2,13 +2,18 @@
 预测分析页 — API 路由
 """
 
+import logging
+
 from fastapi import APIRouter, HTTPException, Request, Query, Body
 
 from schemas.predict import (
     PredictRequest, PredictResponse,
     EvalMetricsResponse, AblationResponse, DiurnalResponse,
+    PerformanceResponse,
 )
 from config import DEFAULT_MARS_YEAR, LATITUDE_BANDS
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/predict", tags=["预测分析"])
 
@@ -94,6 +99,26 @@ async def get_ablation_results(
         return {"items": items}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"消融实验错误: {e}")
+
+
+# ─── 性能曲线 (测试集) ───
+
+@router.post("/performance", response_model=PerformanceResponse)
+async def get_performance_results(
+    request: Request,
+    body: PredictRequest = Body(...),
+):
+    """
+    获取模型在测试集上的 R2 性能曲线。
+    横轴为 Ls，纵轴为空间 R2 均值。
+    """
+    try:
+        ps = _get_predict_service(request)
+        items = ps.get_performance_curve(selected_variables=body.selected_variables)
+        return {"items": items}
+    except Exception as e:
+        logger.error(f"性能曲线接口错误: {e}")
+        raise HTTPException(status_code=500, detail=f"性能曲线计算失败: {e}")
 
 
 # ─── 昼夜变化 ───

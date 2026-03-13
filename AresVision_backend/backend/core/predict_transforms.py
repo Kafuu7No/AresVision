@@ -36,9 +36,30 @@ class PredictTransforms:
     def _compute_scalers_strict(self):
         """
         同步 demo3.py L237-260:
-        基于所有可用年份 (MY27 + MY28) 的拼接数据计算标准化参数。
+        优先从预处理好的 .pt 文件加载参数，否则通过原始数据计算。
         """
+        import os
+        import torch
+        # 尝试从 Data 目录加载预研参数
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        tensor_path = os.path.join(current_dir, "..", "data", "processed_tensors.pt")
+        
+        if os.path.exists(tensor_path):
+            try:
+                data = torch.load(tensor_path, weights_only=False)
+                self.y_mean = data['y_mean']
+                self.y_std = data['y_std']
+                self.scalers = data['scalers']
+                # 获取 max_flux（如果在 meta 中有存储），用于与训练时保持一致的物理预处理
+                # 如果 meta 中不存在该字段，则回退为 1.0，保持当前行为以兼容旧模型。
+                self.max_flux = float(data.get('max_flux', 1.0))
+                logger.info(f"[Prediction] 成功从预处理张量加载标准化参数: y_std={self.y_std:.4f}")
+                return
+            except Exception as e:
+                logger.warning(f"[Prediction] 从张量文件加载参数失败，将回退到计算逻辑: {e}")
+
         try:
+            # 原有的计算逻辑
             o3_list, var_lists = [], {v: [] for v in MCD_VARIABLES}
             years = self.data_service.get_available_years()
             H, W = 0, 0
@@ -116,7 +137,7 @@ class PredictTransforms:
             logger.error(f"[Prediction] 预测参数初始化失败: {e}")
             raise e
 
-    def apply_physical_preprocess_strict(self, input_arr: np.ndarray) -> np.ndarray:
+    def apply_physical_preprocess_strict(self, input_arr: np.ndarray, selected_variables: list[str]) -> np.ndarray:
         """
         同步 demo3.py L183-191:
         输入 shape: (window, C, H, W)
@@ -124,37 +145,56 @@ class PredictTransforms:
         result = input_arr.copy()
         
         # 1. 极端值清洗 (同步 demo3 L166)
-        # 注意：在这里应用清洗可能略晚，但在 Inference 阶段这是最稳的
         for c in range(result.shape[1]):
             result[:, c] = self.clean_invalid(result[:, c], f"Channel {c}")
 
+        # 构建当前输入数组的通道映射
+        # 通道 0 始终是 O3
+        current_vars = ["o3col"] + [v for v in MCD_VARIABLES if v in selected_variables]
+
         # 2. 沙尘 Log1p (demo3 L187-188)
-        dust = result[:, 5, :, :]
-        dust[dust < 0] = 0.0
-        result[:, 5, :, :] = np.log1p(dust)
+        if "Dust_Optical_Depth" in current_vars:
+            idx = current_vars.index("Dust_Optical_Depth")
+            dust = result[:, idx, :, :]
+            dust[dust < 0] = 0.0
+            result[:, idx, :, :] = np.log1p(dust)
 
         # 3. 辐射归一化 (demo3 L190)
-        flux = result[:, 6, :, :]
-        result[:, 6, :, :] = flux / self.max_flux
+        if "Solar_Flux_DN" in current_vars:
+            idx = current_vars.index("Solar_Flux_DN")
+            flux = result[:, idx, :, :]
+            result[:, idx, :, :] = flux / self.max_flux
 
         return result
 
-    def preprocess_input(self, input_arr: np.ndarray) -> np.ndarray:
+    def preprocess_input(self, input_arr: np.ndarray, selected_variables: list[str]) -> np.ndarray:
         """
         推理时的全流程预处理
         """
         # 1. 物理变换
-        result = self.apply_physical_preprocess_strict(input_arr)
+        result = self.apply_physical_preprocess_strict(input_arr, selected_variables)
 
         if self.scalers is None:
             return result
 
         # 2. 严格标准化 (demo3 L252-258)
+        # 获取各变量对应的全局 scaler 索引
+        # self.scalers[0] 是 O3, self.scalers[1] 是 MCD_VARIABLES[0], ...
+        current_vars = ["o3col"] + [v for v in MCD_VARIABLES if v in selected_variables]
+        
         window, C, H, W = result.shape
-        for c in range(C):
-            if c < len(self.scalers):
+        for c, var_name in enumerate(current_vars):
+            if c >= C: break
+            
+            # 找到该变量在全局 scalers 中的索引
+            if var_name == "o3col":
+                global_idx = 0
+            else:
+                global_idx = MCD_VARIABLES.index(var_name) + 1
+            
+            if global_idx < len(self.scalers):
                 flat = result[:, c, :, :].reshape(window, -1)
-                result[:, c, :, :] = self.scalers[c].transform(flat).reshape(window, H, W)
+                result[:, c, :, :] = self.scalers[global_idx].transform(flat).reshape(window, H, W)
 
         return result
 
