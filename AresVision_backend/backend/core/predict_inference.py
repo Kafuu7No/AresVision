@@ -16,6 +16,10 @@ class PredictInference:
     def __init__(self):
         self.device = self._select_device()
         self._model_cache = {}  # {suffix: model}
+        # 为保持向后兼容，提供默认的 `model` 属性，供仍然使用
+        # `predict_inference.model` 的调用方访问。
+        # 这里使用全部配置的 MCD 变量加载一个默认模型。
+        self.model, self._default_input_dim = self.get_model_for_variables(MCD_VARIABLES)
 
     def _select_device(self) -> torch.device:
         if torch.cuda.is_available():
