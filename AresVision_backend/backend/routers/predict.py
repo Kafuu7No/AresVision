@@ -2,6 +2,8 @@
 预测分析页 — API 路由
 """
 
+import logging
+
 from fastapi import APIRouter, HTTPException, Request, Query, Body
 
 from schemas.predict import (
@@ -10,6 +12,8 @@ from schemas.predict import (
     PerformanceResponse,
 )
 from config import DEFAULT_MARS_YEAR, LATITUDE_BANDS
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/predict", tags=["预测分析"])
 
