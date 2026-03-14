@@ -1,6 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
 
 // --- 全局缓存贴图 ---
@@ -77,12 +76,33 @@ function bilinearInterpolate(field, liFloat, ljFloat) {
   return row0 * (1 - di) + row1 * di;
 }
 
-export default function SphericalFieldCanvas({ fieldData, colorMode = 'inferno', h = 240, forceFullscreen = false, autoRotate = true }) {
+const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h = 240, forceFullscreen = false, autoRotate = true }, ref) => {
   const containerRef = useRef(null);
   const rendererRef = useRef(null);
   const sphereMeshRef = useRef(null);
   const controlsRef = useRef(null);
   const autoRotateRef = useRef(autoRotate);
+
+  // Expose imperative API for gesture control
+  useImperativeHandle(ref, () => ({
+    applyGestureRotation: (dx, dy) => {
+      if (sphereMeshRef.current) {
+        // 模型旋转（Y轴左右转，X轴上下转）
+        // 放大倍率提高体验灵敏度
+        sphereMeshRef.current.rotation.y += dx * 3.0;
+        sphereMeshRef.current.rotation.x += dy * 3.0;
+      }
+    },
+    applyGestureZoom: (dDist) => {
+      // Zoom out/in by modifying camera Z position or FOV
+      // Since it's TrackballControls, shifting camera Z affects it directly
+      if (cameraRef.current) {
+         // 向内捏合变小 (-dDist): z 变大 (离远); 向外张开 (+dDist): z 变小 (凑近)
+         const step = -dDist * 8.0; 
+         cameraRef.current.position.z = Math.max(1.2, Math.min(12.0, cameraRef.current.position.z + step));
+      }
+    }
+  }));
 
   // Update ref when prop changes so animation loop catches it
   useEffect(() => {
@@ -432,4 +452,6 @@ export default function SphericalFieldCanvas({ fieldData, colorMode = 'inferno',
       }}
     />
   );
-}
+});
+
+export default SphericalFieldCanvas;
