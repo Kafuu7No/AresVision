@@ -1186,8 +1186,10 @@ const DataOverviewPageContent = () => {
   const globeCanvasRef = useRef(null);
   const landmarksCanvasRef = useRef(null);
 
-  // 手势追踪 Hook
-  const { videoRef, error: gestureError, setOnGesture, setOnLandmarks } = useHandTracking(gestureEnabled);
+  const is3DMode = selectedItem?.is3D;
+
+  // 手势追踪 Hook：只有在开启手势并且位于 3D 视图时才启动摄像头追踪，防止切到其它页面时相机的 DOM 节点销毁但内部没有正确重置，导致切回来挂载新 DOM 出现黑屏
+  const { videoRef, error: gestureError, setOnGesture, setOnLandmarks } = useHandTracking(gestureEnabled && is3DMode);
 
   // 绑定手势回调到3D画布
   useEffect(() => {
@@ -1286,8 +1288,6 @@ const DataOverviewPageContent = () => {
     }
     return () => clearInterval(timerRef.current);
   }, [playing]);
-
-  const is3DMode = selectedItem?.is3D;
 
   return (
     <div style={{
