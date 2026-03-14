@@ -80,17 +80,25 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
   const containerRef = useRef(null);
   const rendererRef = useRef(null);
   const sphereMeshRef = useRef(null);
+  const particlesMeshRef = useRef(null); // 新增针对外层臭氧点云的引用维护
   const controlsRef = useRef(null);
   const autoRotateRef = useRef(autoRotate);
 
   // Expose imperative API for gesture control
   useImperativeHandle(ref, () => ({
     applyGestureRotation: (dx, dy) => {
-      if (sphereMeshRef.current) {
-        // 模型旋转（Y轴左右转，X轴上下转）
+      if (sphereMeshRef.current && cameraRef.current) {
+        // 模型旋转：不要直接修改固定的 Euler 旋转（会产生万向节锁或方向反转）
+        // 改为绕着相机空间内的世界轴（Up和Right）进行旋转
         // 放大倍率提高体验灵敏度
-        sphereMeshRef.current.rotation.y += dx * 3.0;
-        sphereMeshRef.current.rotation.x += dy * 3.0;
+        
+        // 算出相机在世界空间中的向上和向右向量
+        const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(cameraRef.current.quaternion).normalize();
+        const cameraRight = new THREE.Vector3(1, 0, 0).applyQuaternion(cameraRef.current.quaternion).normalize();
+
+        // 绕着视角的Y（Up）轴左右转，绕X（Right）轴上下转
+        sphereMeshRef.current.rotateOnWorldAxis(cameraUp, dx * 3.0);
+        sphereMeshRef.current.rotateOnWorldAxis(cameraRight, dy * 3.0);
       }
     },
     applyGestureZoom: (dDist) => {
@@ -228,26 +236,39 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
     };
   }, [forceFullscreen]); // 仅在尺寸模式切换时重新初始化控制台
 
-  // 2. 响应数据更新，重建火星及臭氧场网格
+  // 2. 响应数据更新，重建臭氧场网格（保持火星本身及分组姿态不变）
   useEffect(() => {
     if (!fieldData?.field || !sceneRef.current) return;
     const scene = sceneRef.current;
-    
-    // 如果存在旧的主体资源，则清空并析构
-    if (sphereMeshRef.current) {
-      scene.remove(sphereMeshRef.current);
-      // 注：此处我们可以简单地通过遍历或约定引用释放子对象，
-      // 因为 sphereMeshRef 现在是个 Group，里面有一层 marsMesh 和一层 particles。
-      sphereMeshRef.current.children.forEach(child => {
-        if (child.geometry) child.geometry.dispose();
-        if (child.material) {
-          child.material.dispose();
-          if (child.material.map && child.material.map !== cachedMarsTexture) {
-            child.material.map.dispose();
-          }
-        }
+
+    // 第一次时，创建球体组和内部火星
+    if (!sphereMeshRef.current) {
+      const globeGroup = new THREE.Group();
+      globeGroup.rotation.y = -Math.PI / 2;
+      scene.add(globeGroup);
+      sphereMeshRef.current = globeGroup;
+
+      const marsRadius = 0.86;
+      const marsGeometry = new THREE.SphereGeometry(marsRadius, 64, 64);
+      if (!cachedMarsTexture) {
+        cachedMarsTexture = new THREE.TextureLoader().load('/mars_texture.jpg');
+      }
+      const marsMaterial = new THREE.MeshPhongMaterial({
+        map: cachedMarsTexture,
+        shininess: 5,
       });
-      sphereMeshRef.current = null;
+      const marsMesh = new THREE.Mesh(marsGeometry, marsMaterial);
+      globeGroup.add(marsMesh);
+    }
+
+    const globeGroup = sphereMeshRef.current;
+
+    // 清理旧的粒子网格
+    if (particlesMeshRef.current) {
+      globeGroup.remove(particlesMeshRef.current);
+      if (particlesMeshRef.current.geometry) particlesMeshRef.current.geometry.dispose();
+      if (particlesMeshRef.current.material) particlesMeshRef.current.material.dispose();
+      particlesMeshRef.current = null;
     }
 
     const { field, minVal, maxVal } = fieldData;
@@ -376,36 +397,15 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
 
     const particles = new THREE.Points(geometry, material);
 
-    // --- 内部火星球体 ---
-    const marsRadius = 0.86; // 略小于 baseRadius(0.9) 使其包裹在内
-    const marsGeometry = new THREE.SphereGeometry(marsRadius, 64, 64);
-    
-    // 使用全局缓存的贴图，避免泄漏和频繁网络加载
-    if (!cachedMarsTexture) {
-      cachedMarsTexture = new THREE.TextureLoader().load('/mars_texture.jpg');
-    }
-    
-    const marsMaterial = new THREE.MeshPhongMaterial({
-      map: cachedMarsTexture,
-      shininess: 5,
-    });
-    const marsMesh = new THREE.Mesh(marsGeometry, marsMaterial);
-
-    // 将两者放在同一个组里一起旋转
-    const globeGroup = new THREE.Group();
-    globeGroup.add(marsMesh);
+    // 将粒子加到地球组中
     globeGroup.add(particles);
+    particlesMeshRef.current = particles;
 
-    // initial rotation
-    globeGroup.rotation.y = -Math.PI / 2;
-    // 整个球体居中
-    globeGroup.position.set(0, 0, 0);
+    // 注意：只销毁数据相关的粒子即可，mars 的析构可以留给整个组件销毁时（见下方独立清理 Effect）
+  }, [fieldData, colorMode]);
 
-    scene.add(globeGroup);
-    sphereMeshRef.current = globeGroup;
-
-    // 注意：动画和控制器、调整大小等已经剥离到了上一个只执行一次的 hook 中
-    // 当该组件由于 fieldData 修改而销毁（如果卸载），下一次效应前我们将上方的析构逻辑重新执行一次。
+  // 组件完全卸载时，清空 sphereMeshRef / 材质资源
+  useEffect(() => {
     return () => {
       if (sphereMeshRef.current && sceneRef.current) {
         sceneRef.current.remove(sphereMeshRef.current);
@@ -419,9 +419,10 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
           }
         });
         sphereMeshRef.current = null;
+        particlesMeshRef.current = null;
       }
     };
-  }, [fieldData, colorMode]);
+  }, []);
 
   if (forceFullscreen) {
     return (
