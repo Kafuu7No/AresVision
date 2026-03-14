@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, forwardRef } from 'react';
 import * as THREE from 'three';
 import SphericalFieldCanvas from '../components/SphericalFieldCanvas';
 import C from '../constants/colors';
 import { DataOverviewProvider } from '../contexts/DataOverviewContext';
 import { fetchGlobeData } from '../services/api';
+import useHandTracking from '../hooks/useHandTracking';
 
 // 数据选项配置
 const DATA_OPTIONS = [
@@ -179,7 +180,7 @@ const SidebarMenu = ({ selectedItem, onItemSelect }) => {
 };
 
 // 3D球体时间控制面板
-const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, autoRotate, onLsChange, onMarsYearChange, onTogglePlay, onToggleAutoRotate }) => {
+const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, autoRotate, gestureEnabled, onLsChange, onMarsYearChange, onTogglePlay, onToggleAutoRotate, onToggleGesture }) => {
   const seasonName =
     lsValue < 90 ? '北半球春 / 南半球秋' :
       lsValue < 180 ? '北半球夏 / 南半球冬' :
@@ -327,6 +328,42 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
               height: '14px', width: '14px',
               left: autoRotate ? '18px' : '2px', bottom: '2px',
               backgroundColor: autoRotate ? '#00f0ff' : 'rgba(255,255,255,0.5)',
+              transition: '.4s', borderRadius: '50%'
+            }} />
+          </span>
+        </label>
+      </div>
+
+      {/* 手势控制 */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: '16px', padding: '10px',
+        background: 'rgba(255,255,255,0.03)', borderRadius: '8px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '14px' }}>✋</span>
+          <span style={{ color: 'rgba(255,107,53,0.9)', fontSize: '12px', fontFamily: 'Exo 2', fontWeight: 'bold' }}>AI 手势控制</span>
+        </div>
+        <label style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px' }}>
+          <input
+            type="checkbox"
+            checked={gestureEnabled}
+            onChange={onToggleGesture}
+            style={{ opacity: 0, width: 0, height: 0 }}
+          />
+          <span style={{
+            position: 'absolute', cursor: 'pointer',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: gestureEnabled ? 'rgba(255,107,53,0.3)' : 'rgba(255,255,255,0.1)',
+            border: `1px solid ${gestureEnabled ? 'rgba(255,107,53,0.8)' : 'rgba(255,255,255,0.3)'}`,
+            transition: '.4s', borderRadius: '34px'
+          }}>
+            <span style={{
+              position: 'absolute', content: '""',
+              height: '14px', width: '14px',
+              left: gestureEnabled ? '18px' : '2px', bottom: '2px',
+              backgroundColor: gestureEnabled ? '#ff6b35' : 'rgba(255,255,255,0.5)',
               transition: '.4s', borderRadius: '50%'
             }} />
           </span>
@@ -1077,7 +1114,7 @@ const DataDistribution = () => {
 };
 
 // 全屏3D火星背景 — 替换为 PredictPage 的粒子球体
-const Mars3DBackground = ({ ozoneData, is3DMode, autoRotate }) => {
+const Mars3DBackground = forwardRef(({ ozoneData, is3DMode, autoRotate }, ref) => {
   const fieldData = React.useMemo(() => {
     if (!ozoneData?.points?.length) return null;
     const lats = [...new Set(ozoneData.points.map(p => Math.round(p.lat * 10) / 10))].sort((a, b) => b - a);
@@ -1122,6 +1159,7 @@ const Mars3DBackground = ({ ozoneData, is3DMode, autoRotate }) => {
       pointerEvents: is3DMode ? 'auto' : 'none',
     }}>
       <SphericalFieldCanvas 
+        ref={ref}
         fieldData={fieldData} 
         colorMode="inferno" 
         h="100vh" 
@@ -1130,7 +1168,7 @@ const Mars3DBackground = ({ ozoneData, is3DMode, autoRotate }) => {
       />
     </div>
   );
-};
+});
 
 // 主页面组件内容
 const DataOverviewPageContent = () => {
@@ -1141,8 +1179,69 @@ const DataOverviewPageContent = () => {
   const [lsValue, setLsValue] = useState(90);
   const [playing, setPlaying] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
+  const [gestureEnabled, setGestureEnabled] = useState(false);
+  
   const timerRef = useRef(null);
   const abortRef = useRef(null);
+  const globeCanvasRef = useRef(null);
+  const landmarksCanvasRef = useRef(null);
+
+  // 手势追踪 Hook
+  const { videoRef, error: gestureError, setOnGesture, setOnLandmarks } = useHandTracking(gestureEnabled);
+
+  // 绑定手势回调到3D画布
+  useEffect(() => {
+    setOnGesture((gesture) => {
+      if (!globeCanvasRef.current) return;
+      if (gesture.type === 'rotate') {
+        globeCanvasRef.current.applyGestureRotation(gesture.dx, gesture.dy);
+      } else if (gesture.type === 'zoom') {
+        globeCanvasRef.current.applyGestureZoom(gesture.dDist);
+      }
+    });
+  }, [setOnGesture]);
+
+  // 绘制画中画的骨骼点
+  useEffect(() => {
+    setOnLandmarks((landmarks) => {
+      const canvas = landmarksCanvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      if (!landmarks || landmarks.length === 0) return;
+      
+      ctx.fillStyle = C.mars;
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 2;
+
+      for (const hand of landmarks) {
+        // 画每个关节点
+        for (const point of hand) {
+           ctx.beginPath();
+           ctx.arc(point.x * canvas.width, point.y * canvas.height, 3, 0, 2 * Math.PI);
+           ctx.fill();
+        }
+        
+        // 简单连线：手腕到指根
+        const drawLine = (p1, p2) => {
+          ctx.beginPath();
+          ctx.moveTo(p1.x * canvas.width, p1.y * canvas.height);
+          ctx.lineTo(p2.x * canvas.width, p2.y * canvas.height);
+          ctx.stroke();
+        };
+        
+        // 画一些骨骼连线提升科技感
+        if (hand[0] && hand[5]) drawLine(hand[0], hand[5]); // 食指指根
+        if (hand[0] && hand[9]) drawLine(hand[0], hand[9]); // 中指指根
+        if (hand[0] && hand[13]) drawLine(hand[0], hand[13]); // 无名指指根
+        if (hand[0] && hand[17]) drawLine(hand[0], hand[17]); // 小拇指指根
+        if (hand[5] && hand[9]) drawLine(hand[5], hand[9]);
+        if (hand[9] && hand[13]) drawLine(hand[9], hand[13]);
+        if (hand[13] && hand[17]) drawLine(hand[13], hand[17]);
+      }
+    });
+  }, [setOnLandmarks]);
 
   // 加载地球数据（AbortController 防竞争）
   const loadGlobe = useCallback(async (ls, year) => {
@@ -1200,10 +1299,63 @@ const DataOverviewPageContent = () => {
     }}>
       {/* 全屏3D火星背景 */}
       <Mars3DBackground 
+        ref={globeCanvasRef}
         ozoneData={ozoneData} 
         is3DMode={is3DMode} 
         autoRotate={autoRotate} 
       />
+
+      {/* 手势画中画预览悬浮层 */}
+      {is3DMode && gestureEnabled && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          left: '310px',
+          width: '240px',
+          height: '180px',
+          zIndex: 2000,
+          borderRadius: '12px',
+          overflow: 'hidden',
+          border: `2px solid ${C.mars}`,
+          boxShadow: `0 0 20px rgba(255,107,53,0.3)`,
+          background: '#000',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          {/* 显示源视频 */}
+          <div style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.5 }}>
+             <video 
+               ref={videoRef} 
+               style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} 
+               playsInline 
+               muted
+             />
+          </div>
+          {/* 画布叠加骨骼线 */}
+          <canvas
+            ref={landmarksCanvasRef}
+            width={240}
+            height={180}
+            style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 2, transform: 'scaleX(-1)' }}
+          />
+          <div style={{
+            position: 'absolute',
+            top: '8px',
+            left: '8px',
+            background: 'rgba(0,0,0,0.6)',
+            padding: '2px 8px',
+            borderRadius: '4px',
+            color: C.mars,
+            fontSize: '10px',
+            fontFamily: 'Orbitron',
+            zIndex: 3,
+            border: `1px solid ${C.mars}`
+          }}>
+            摄像头追踪中... 单手拖拽 / 双手缩放
+          </div>
+        </div>
+      )}
 
       {/* 左侧菜单栏 */}
       <SidebarMenu
@@ -1222,11 +1374,13 @@ const DataOverviewPageContent = () => {
           marsYear={marsYear}
           playing={playing}
           autoRotate={autoRotate}
+          gestureEnabled={gestureEnabled}
           loadingGlobe={loadingGlobe}
           onLsChange={setLsValue}
           onMarsYearChange={setMarsYear}
           onTogglePlay={() => setPlaying(p => !p)}
           onToggleAutoRotate={() => setAutoRotate(r => !r)}
+          onToggleGesture={() => setGestureEnabled(g => !g)}
         />
       )}
     </div>
