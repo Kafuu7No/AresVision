@@ -4,6 +4,7 @@ import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
 
 // --- 全局缓存贴图 ---
 let cachedMarsTexture = null;
+let cachedCircleTexture = null;
 
 // ─── 色阶函数（与 PredictPage 保持一致） ───
 function infernoRgb(t) {
@@ -102,12 +103,15 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
       }
     },
     applyGestureZoom: (dDist) => {
-      // Zoom out/in by modifying camera Z position or FOV
-      // Since it's TrackballControls, shifting camera Z affects it directly
       if (cameraRef.current) {
-         // 向内捏合变小 (-dDist): z 变大 (离远); 向外张开 (+dDist): z 变小 (凑近)
+         // 向内捏合变小 (-dDist): 视距变大 (离远); 向外张开 (+dDist): 视距变小 (凑近)
          const step = -dDist * 8.0; 
-         cameraRef.current.position.z = Math.max(1.2, Math.min(12.0, cameraRef.current.position.z + step));
+         
+         // 因为用户可能用鼠标（TrackballControls）转动过视角，相机的坐标不再是在纯正的 Z 轴上
+         // 正确做法是直接缩放相机所在坐标向量的长度（维持到原点方向不变）
+         const currentDist = cameraRef.current.position.length();
+         const newDist = Math.max(1.2, Math.min(12.0, currentDist + step));
+         cameraRef.current.position.setLength(newDist);
       }
     }
   }));
@@ -371,8 +375,8 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 
-    // 使用圆形纹理给点添加一点软边，看起来像小光球
-    const createCircleTexture = () => {
+    // 使用圆形纹理给点添加一点软边，采用全局缓存防止不断重建产生 GPU 显存泄漏
+    if (!cachedCircleTexture) {
       const canvas = document.createElement('canvas');
       canvas.width = 32;
       canvas.height = 32;
@@ -382,13 +386,13 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
       gradient.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 32, 32);
-      return new THREE.CanvasTexture(canvas);
-    };
+      cachedCircleTexture = new THREE.CanvasTexture(canvas);
+    }
 
     const material = new THREE.PointsMaterial({
       size: 0.01,
       vertexColors: true,
-      map: createCircleTexture(),
+      map: cachedCircleTexture,
       transparent: true,
       opacity: 0.9,
       depthWrite: false,
