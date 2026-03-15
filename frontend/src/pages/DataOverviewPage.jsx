@@ -4,8 +4,9 @@ import SphericalFieldCanvas from '../components/SphericalFieldCanvas';
 import GlowCard from '../components/GlowCard';
 import C from '../constants/colors';
 import { DataOverviewProvider } from '../contexts/DataOverviewContext';
-import { fetchGlobeData } from '../services/api';
+import { fetchGlobeData, fetchSeasonalHeatmap } from '../services/api';
 import useHandTracking from '../hooks/useHandTracking';
+import Plot from 'react-plotly.js';
 
 // 数据选项配置
 const DATA_OPTIONS = [
@@ -14,8 +15,11 @@ const DATA_OPTIONS = [
     description: '交互式3D火星球体数据展示', color: C.mars, is3D: true
   },
   {
-    id: 'seasonal', title: '季节分析 SEASONAL', icon: '📈',
-    description: '臭氧浓度季节性变化趋势', color: C.ice
+    id: 'seasonal',
+    title: 'Ls-纬度臭氧热力图',
+    subTitle: 'OZONE HEATMAP',
+    description: '查看特定火星年内，臭氧浓度随太阳经度（LS）和纬度的时空分布热力折线图。',
+    color: C.blue
   },
   {
     id: 'correlation', title: '关联矩阵 CORRELATION', icon: '🔗',
@@ -134,8 +138,8 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
 
       {/* 标题 */}
       <div style={{
-        fontSize: 11, fontWeight: 700, color: C.mars, 
-        fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, 
+        fontSize: 11, fontWeight: 700, color: C.mars,
+        fontFamily: "'Orbitron', sans-serif", letterSpacing: 2,
         marginBottom: 16, paddingBottom: '12px',
         borderBottom: `1px solid ${C.border}`
       }}>
@@ -147,14 +151,14 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
         <div style={{ fontSize: 11, color: C.ice30, marginBottom: 6 }}>火星年 Mars Year</div>
         <div style={{ display: 'flex', gap: 8 }}>
           {[27, 28].map((y) => (
-             <button key={y} onClick={() => onMarsYearChange(y)} style={{
-               flex: 1, padding: '8px 0',
-               background: marsYear === y ? 'rgba(199,91,57,0.2)' : 'rgba(255,255,255,0.03)',
-               border: `1px solid ${marsYear === y ? C.mars : C.border}`,
-               borderRadius: 8, color: marsYear === y ? C.mars : C.ice60,
-               fontSize: 13, fontWeight: 700, cursor: 'pointer',
-               fontFamily: "'Orbitron', sans-serif",
-             }}>MY{y}</button>
+            <button key={y} onClick={() => onMarsYearChange(y)} style={{
+              flex: 1, padding: '8px 0',
+              background: marsYear === y ? 'rgba(199,91,57,0.2)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${marsYear === y ? C.mars : C.border}`,
+              borderRadius: 8, color: marsYear === y ? C.mars : C.ice60,
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              fontFamily: "'Orbitron', sans-serif",
+            }}>MY{y}</button>
           ))}
         </div>
       </div>
@@ -370,7 +374,7 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
 };
 
 // 详细图表组件
-const DetailPanel = ({ selectedItem }) => {
+const DetailPanel = ({ selectedItem, marsYear }) => {
   const is3DMode = selectedItem?.is3D;
 
   const renderChart = () => {
@@ -397,7 +401,7 @@ const DetailPanel = ({ selectedItem }) => {
     // 根据选中项渲染不同的图表
     switch (selectedItem.id) {
       case 'seasonal':
-        return <SeasonalChart />;
+        return <SeasonalChart marsYear={marsYear} />;
       case 'correlation':
         return <CorrelationMatrix />;
       case 'realtime':
@@ -466,66 +470,117 @@ const DetailPanel = ({ selectedItem }) => {
   );
 };
 
-// 季节分析图表
-const SeasonalChart = () => {
+// 季节分析图表 (Ls-纬度 臭氧热力图)
+const SeasonalChart = ({ marsYear }) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    fetchSeasonalHeatmap(marsYear).then(res => {
+      if (active) {
+        setData(res);
+        setLoading(false);
+      }
+    }).catch(err => {
+      console.error(err);
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [marsYear]);
+
+  // 修复外层 CSS 动画 (0.8s) 期间 Plotly 获取容器尺寸不准导致右侧被切除的问题
+  useEffect(() => {
+    if (data && !loading) {
+      const dispatchResize = () => window.dispatchEvent(new Event('resize'));
+      // 在动画的初期、中期以及动画结束后（850ms）主动抛出 resize 事件矫正图表尺寸
+      const t1 = setTimeout(dispatchResize, 100);
+      const t2 = setTimeout(dispatchResize, 400);
+      const t3 = setTimeout(dispatchResize, 850);
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }
+  }, [data, loading]);
+
+  if (loading) {
+    return (
+      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ color: C.ice, fontFamily: "'Orbitron', sans-serif", display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: '16px', height: '16px', border: `2px solid rgba(0,240,255,0.2)`,
+            borderTop: `2px solid ${C.ice}`, borderRadius: '50%', animation: 'spin-slow 1s linear infinite'
+          }} />
+          LOADING HEATMAP...
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) return <div style={{ color: C.mars, padding: 20 }}>暂无数据 NO DATA</div>;
+
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <svg width="100%" height="100%" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet">
-        <defs>
-          <linearGradient id="seasonalGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={C.blue} />
-            <stop offset="100%" stopColor="transparent" />
-          </linearGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-
-        {/* 网格线 */}
-        {Array.from({ length: 9 }, (_, i) => (
-          <line key={`h${i}`} x1="60" y1={60 + i * 35} x2="740" y2={60 + i * 35}
-            stroke={C.border} strokeWidth="1" />
-        ))}
-        {Array.from({ length: 13 }, (_, i) => (
-          <line key={`v${i}`} x1={60 + i * 55} y1="60" x2={60 + i * 55} y2="340"
-            stroke={C.border} strokeWidth="1" />
-        ))}
-
-        {/* 季节曲线 */}
-        <path
-          d="M60,280 Q150,180 240,200 Q330,150 420,170 Q510,140 600,160 Q690,130 740,150"
-          stroke={C.blue}
-          strokeWidth="3"
-          fill="none"
-          filter="url(#glow)"
-        />
-        <path
-          d="M60,280 Q150,180 240,200 Q330,150 420,170 Q510,140 600,160 Q690,130 740,150 L740,340 L60,340 Z"
-          fill="url(#seasonalGradient)"
-          opacity="0.2"
-        />
-
-        {/* 数据点 */}
-        {[
-          { x: 60, y: 280 }, { x: 150, y: 180 }, { x: 240, y: 200 }, { x: 330, y: 150 },
-          { x: 420, y: 170 }, { x: 510, y: 140 }, { x: 600, y: 160 }, { x: 690, y: 130 }, { x: 740, y: 150 }
-        ].map((point, i) => (
-          <circle key={i} cx={point.x} cy={point.y} r="4" fill={C.ice} filter="url(#glow)" />
-        ))}
-
-        {/* 坐标轴标签 */}
-        <text x="400" y="380" textAnchor="middle" fill={C.ice60} fontSize="12" fontFamily="'Exo 2', sans-serif">
-          SOLAR LONGITUDE (Ls)
-        </text>
-        <text x="20" y="200" textAnchor="middle" fill={C.ice60} fontSize="12" fontFamily="'Exo 2', sans-serif"
-          transform="rotate(-90 20 200)">
-          OZONE COLUMN (DU)
-        </text>
-      </svg>
+    <div className="seasonal-chart-container" style={{ width: '100%', height: '100%', position: 'relative' }}>
+      <style>{`
+        /* 将工具栏移动到图表下边，并修复深色模式下的图标颜色和重叠问题 */
+        .seasonal-chart-container .modebar {
+          top: auto !important;
+          bottom: 0px !important;
+          right: 20px !important;
+          left: auto !important;
+          background: rgba(10, 10, 15, 0.8) !important;
+          border: 1px solid rgba(0, 240, 255, 0.2);
+          border-radius: 8px;
+          padding: 2px 4px;
+          display: flex !important;
+        }
+        .seasonal-chart-container .modebar-group {
+          display: flex !important;
+          margin-bottom: 0 !important;
+        }
+        .seasonal-chart-container .modebar-btn svg {
+          fill: rgba(0, 240, 255, 0.6) !important;
+        }
+        .seasonal-chart-container .modebar-btn:hover svg,
+        .seasonal-chart-container .modebar-btn.active svg {
+          fill: #ff6b35 !important;
+        }
+      `}</style>
+      <Plot
+        data={[
+          {
+            z: data.z,
+            x: data.x,
+            y: data.y,
+            type: 'heatmap',
+            zsmooth: 'best',
+            colorscale: 'Jet',
+            zmin: data.min,
+            zmax: data.max * 0.6, // 将颜色映射极值大幅度压低，凸显浓度区别
+            hovertemplate: 'Ls: %{x:.1f}°<br>Lat: %{y:.1f}°<br>O₃: %{z:.2f} DU<extra></extra>',
+            colorbar: {
+              title: { text: 'O₃ (DU)', font: { color: C.ice, family: "'Orbitron', sans-serif", size: 10 }, side: 'top' },
+              orientation: 'h',
+              y: -0.25,
+              yanchor: 'top',
+              len: 0.8,
+              thickness: 10,
+              tickfont: { color: C.ice60, family: "'Exo 2', sans-serif" }
+            }
+          }
+        ]}
+        layout={{
+          title: { text: `MY ${marsYear} 臭氧时空分布热力图 (Zonal Mean O₃)`, font: { color: C.ice, family: "'Orbitron', sans-serif", size: 14 } },
+          xaxis: { title: 'Solar Longitude Ls (°)', color: C.ice60, gridcolor: C.border, titlefont: { family: "'Exo 2', sans-serif" }, showgrid: false },
+          yaxis: { title: 'Latitude (°)', color: C.ice60, gridcolor: C.border, titlefont: { family: "'Exo 2', sans-serif" }, showgrid: false },
+          paper_bgcolor: 'transparent',
+          plot_bgcolor: 'transparent',
+          margin: { t: 40, r: 20, l: 50, b: 120 },
+          autosize: true
+        }}
+        useResizeHandler={true}
+        style={{ width: '100%', height: '100%' }}
+        config={{ displayModeBar: true, scrollZoom: true, responsive: true, displaylogo: false }}
+      />
     </div>
   );
 };
@@ -998,12 +1053,12 @@ const Mars3DBackground = forwardRef(({ ozoneData, is3DMode, autoRotate }, ref) =
       transition: 'all 0.8s ease',
       pointerEvents: is3DMode ? 'auto' : 'none',
     }}>
-      <SphericalFieldCanvas 
+      <SphericalFieldCanvas
         ref={ref}
-        fieldData={fieldData} 
-        colorMode="inferno" 
-        h="100vh" 
-        forceFullscreen 
+        fieldData={fieldData}
+        colorMode="inferno"
+        h="100vh"
+        forceFullscreen
         autoRotate={autoRotate}
       />
     </div>
@@ -1020,7 +1075,7 @@ const DataOverviewPageContent = () => {
   const [playing, setPlaying] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
   const [gestureEnabled, setGestureEnabled] = useState(false);
-  
+
   const timerRef = useRef(null);
   const abortRef = useRef(null);
   const globeCanvasRef = useRef(null);
@@ -1050,9 +1105,9 @@ const DataOverviewPageContent = () => {
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
+
       if (!landmarks || landmarks.length === 0) return;
-      
+
       ctx.fillStyle = C.mars;
       ctx.strokeStyle = '#00f0ff';
       ctx.lineWidth = 2;
@@ -1060,11 +1115,11 @@ const DataOverviewPageContent = () => {
       for (const hand of landmarks) {
         // 画每个关节点
         for (const point of hand) {
-           ctx.beginPath();
-           ctx.arc(point.x * canvas.width, point.y * canvas.height, 3, 0, 2 * Math.PI);
-           ctx.fill();
+          ctx.beginPath();
+          ctx.arc(point.x * canvas.width, point.y * canvas.height, 3, 0, 2 * Math.PI);
+          ctx.fill();
         }
-        
+
         // 简单连线：手腕到指根
         const drawLine = (p1, p2) => {
           ctx.beginPath();
@@ -1072,7 +1127,7 @@ const DataOverviewPageContent = () => {
           ctx.lineTo(p2.x * canvas.width, p2.y * canvas.height);
           ctx.stroke();
         };
-        
+
         // 画一些骨骼连线提升科技感
         if (hand[0] && hand[5]) drawLine(hand[0], hand[5]); // 食指指根
         if (hand[0] && hand[9]) drawLine(hand[0], hand[9]); // 中指指根
@@ -1138,11 +1193,11 @@ const DataOverviewPageContent = () => {
       background: '#000'
     }}>
       {/* 全屏3D火星背景 */}
-      <Mars3DBackground 
+      <Mars3DBackground
         ref={globeCanvasRef}
-        ozoneData={ozoneData} 
-        is3DMode={is3DMode} 
-        autoRotate={autoRotate} 
+        ozoneData={ozoneData}
+        is3DMode={is3DMode}
+        autoRotate={autoRotate}
       />
 
       {/* 手势画中画预览悬浮层 */}
@@ -1165,12 +1220,12 @@ const DataOverviewPageContent = () => {
         }}>
           {/* 显示源视频 */}
           <div style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.5 }}>
-             <video 
-               ref={videoRef} 
-               style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} 
-               playsInline 
-               muted
-             />
+            <video
+              ref={videoRef}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
+              playsInline
+              muted
+            />
           </div>
           {/* 画布叠加骨骼线 */}
           <canvas
@@ -1204,7 +1259,7 @@ const DataOverviewPageContent = () => {
       />
 
       {/* 右侧详情面板 */}
-      <DetailPanel selectedItem={selectedItem} />
+      <DetailPanel selectedItem={selectedItem} marsYear={marsYear} />
 
       {/* 3D模式控制面板（含时间控制）*/}
       {is3DMode && (
