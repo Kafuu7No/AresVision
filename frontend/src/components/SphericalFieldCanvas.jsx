@@ -209,9 +209,9 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
       reqId = requestAnimationFrame(animate);
       if (controlsRef.current) controlsRef.current.update();
       if (sphereMeshRef.current && autoRotateRef.current) {
-        sphereMeshRef.current.rotation.y += 0.001; // 球体自转动画
+        sphereMeshRef.current.rotateY(0.001); // 绕模型本身的极点（局部 Y 轴）自转，即使手势倾斜了球体也始终按纬度线旋转
       }
-      stars.rotation.y += 0.0003; // 星空背景微弱伴走
+      stars.rotateY(0.0003); // 星空背景微弱伴走
       if (rendererRef.current) rendererRef.current.render(scene, camera);
     };
     animate();
