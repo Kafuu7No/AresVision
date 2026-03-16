@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import C from '../constants/colors';
+import { useT } from '../i18n';
+import { useSettings } from '../contexts/SettingsContext';
 import SectionTitle from '../components/SectionTitle';
 import GlowCard from '../components/GlowCard';
 import {
@@ -8,61 +10,15 @@ import {
   fetchSeasonalBands,
   fetchCorrelation,
 } from '../services/api';
-
-// ─── 色阶函数 ───
-
-function infernoColor(t) {
-  t = Math.max(0, Math.min(1, t));
-  const stops = [
-    [0, 0, 4], [40, 11, 84], [101, 21, 110], [159, 42, 99],
-    [212, 72, 66], [245, 125, 21], [250, 193, 39], [252, 255, 164],
-  ];
-  const idx = t * (stops.length - 1);
-  const i = Math.min(Math.floor(idx), stops.length - 2);
-  const f = idx - i;
-  const c0 = stops[i], c1 = stops[i + 1];
-  return [
-    Math.round(c0[0] + (c1[0] - c0[0]) * f),
-    Math.round(c0[1] + (c1[1] - c0[1]) * f),
-    Math.round(c0[2] + (c1[2] - c0[2]) * f),
-  ];
-}
-
-function infernoStr(t) {
-  const [r, g, b] = infernoColor(t);
-  return `rgb(${r},${g},${b})`;
-}
-
-function turboColor(t) {
-  t = Math.max(0, Math.min(1, t));
-  const stops = [
-    [48, 18, 59], [50, 92, 168], [39, 154, 193], [31, 199, 147],
-    [94, 227, 80], [191, 240, 35], [249, 211, 31], [252, 155, 28],
-    [239, 88, 20], [191, 34, 12], [122, 4, 3],
-  ];
-  const idx = t * (stops.length - 1);
-  const i = Math.min(Math.floor(idx), stops.length - 2);
-  const f = idx - i;
-  const c0 = stops[i], c1 = stops[i + 1];
-  const r = Math.round(c0[0] + (c1[0] - c0[0]) * f);
-  const g = Math.round(c0[1] + (c1[1] - c0[1]) * f);
-  const b = Math.round(c0[2] + (c1[2] - c0[2]) * f);
-  return `rgb(${r},${g},${b})`;
-}
-
-function rdbuColor(val) {
-  val = Math.max(-1, Math.min(1, val));
-  if (val < 0) {
-    const s = 1 + val;
-    return [Math.round(s * 255), Math.round(s * 255), Math.round(172 + (255 - 172) * s)];
-  }
-  const s = 1 - val;
-  return [255, Math.round(24 + (255 - 24) * s), Math.round(43 + (255 - 43) * s)];
-}
+import { getRgb, getRgbStr, rdbuRgb, makeGradient } from '../utils/colormaps';
+import { convertOzone, ozoneLabel } from '../utils/units';
+import { fmtNum } from '../utils/fmt';
 
 // ─── 通用组件 ───
 
-function LoadingBox({ h = 200, label = '加载中...' }) {
+function LoadingBox({ h = 200, label }) {
+  const t = useT();
+  const displayLabel = label ?? t('common.loading');
   return (
     <div style={{
       height: h, display: 'flex', flexDirection: 'column',
@@ -74,7 +30,7 @@ function LoadingBox({ h = 200, label = '加载中...' }) {
         borderTop: `3px solid ${C.mars}`, borderRadius: '50%',
         animation: 'spin-slow 1s linear infinite',
       }} />
-      <div style={{ marginTop: 12, fontSize: 12, color: C.ice30 }}>{label}</div>
+      <div style={{ marginTop: 12, fontSize: 12, color: C.ice30 }}>{displayLabel}</div>
     </div>
   );
 }
@@ -102,6 +58,12 @@ function InsightBlock({ text }) {
 function HeatmapCanvas({ data, year, h = 300 }) {
   const canvasRef = useRef(null);
   const [insight, setInsight] = useState('');
+  const t = useT();
+  const { settings } = useSettings();
+  const colormapName = settings.colormap;
+  const ozoneUnit = settings.units.ozone;
+  const precision = settings.precision;
+  const isLight = settings.theme === 'light';
 
   useEffect(() => {
     if (!data || !data.z || data.z.length === 0) return;
@@ -122,15 +84,27 @@ function HeatmapCanvas({ data, year, h = 300 }) {
     const cellW = plotW / nX;
     const cellH = plotH / nY;
 
+    // 主题色常量
+    const bgColor        = isLight ? '#f5f6f8'              : '#0a0a0f';
+    const bgPixel        = isLight ? [245, 246, 248]        : [10, 10, 15];
+    const axisColor      = isLight ? 'rgba(26,26,46,0.2)'  : 'rgba(255,255,255,0.2)';
+    const tickColor      = isLight ? 'rgba(26,26,46,0.7)'  : 'rgba(232,237,243,0.65)';
+    const titleColor     = isLight ? 'rgba(26,26,46,0.45)' : 'rgba(232,237,243,0.4)';
+    const seasonLine     = isLight ? 'rgba(26,26,46,0.2)'  : 'rgba(255,255,255,0.35)';
+    const seasonLabel    = isLight ? 'rgba(26,26,46,0.65)' : 'rgba(255,255,255,0.55)';
+    const cbLabelColor   = isLight ? 'rgba(26,26,46,0.7)'  : 'rgba(232,237,243,0.7)';
+    const cbBorderColor  = isLight ? 'rgba(26,26,46,0.2)'  : 'rgba(255,255,255,0.2)';
+    const cbTitleColor   = isLight ? 'rgba(26,26,46,0.45)' : 'rgba(232,237,243,0.4)';
+
     // 背景
-    ctx.fillStyle = '#0a0a0f';
+    ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, CW, CH);
 
     // 用 ImageData 渲染热力图主体
     const imgData = ctx.createImageData(plotW, plotH);
     const pixels = imgData.data;
     for (let i = 0; i < pixels.length; i += 4) {
-      pixels[i] = 10; pixels[i + 1] = 10; pixels[i + 2] = 15; pixels[i + 3] = 255;
+      pixels[i] = bgPixel[0]; pixels[i + 1] = bgPixel[1]; pixels[i + 2] = bgPixel[2]; pixels[i + 3] = 255;
     }
     for (let yi = 0; yi < nY; yi++) {
       const pyStart = Math.round((nY - 1 - yi) * cellH);
@@ -139,7 +113,7 @@ function HeatmapCanvas({ data, year, h = 300 }) {
         const val = z[yi][xi];
         if (val == null || isNaN(val)) continue;
         const t = Math.max(0, Math.min(1, (val - dMin) / range));
-        const [r, g, b] = infernoColor(t);
+        const [r, g, b] = getRgb(colormapName, t);
         const pxStart = Math.round(xi * cellW);
         const pxEnd = Math.round((xi + 1) * cellW);
         for (let py = pyStart; py < pyEnd; py++) {
@@ -157,9 +131,13 @@ function HeatmapCanvas({ data, year, h = 300 }) {
     const lsMin = x[0];
     const lsRange = (x[x.length - 1] - lsMin) || 360;
     const seasonLsList = [90, 180, 270];
-    const seasonLabels = ['夏至', '秋分', '冬至'];
+    const seasonLabels = [
+      t('common.seasonMark.summer'),
+      t('common.seasonMark.autumn'),
+      t('common.seasonMark.winter'),
+    ];
     ctx.setLineDash([4, 3]);
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.strokeStyle = seasonLine;
     ctx.lineWidth = 1;
     seasonLsList.forEach((ls, si) => {
       const frac = (ls - lsMin) / lsRange;
@@ -167,7 +145,7 @@ function HeatmapCanvas({ data, year, h = 300 }) {
       const sx = ML + frac * plotW;
       ctx.beginPath(); ctx.moveTo(sx, MT); ctx.lineTo(sx, MT + plotH); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillStyle = seasonLabel;
       ctx.font = '11px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(seasonLabels[si], sx, MT - 10);
@@ -176,11 +154,11 @@ function HeatmapCanvas({ data, year, h = 300 }) {
     ctx.setLineDash([]);
 
     // X 轴
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.strokeStyle = axisColor;
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(ML, MT + plotH); ctx.lineTo(ML + plotW, MT + plotH); ctx.stroke();
     const xTicks = [0, 90, 180, 270, 360];
-    ctx.fillStyle = 'rgba(232,237,243,0.65)';
+    ctx.fillStyle = tickColor;
     ctx.font = '11px sans-serif';
     ctx.textAlign = 'center';
     xTicks.forEach(ls => {
@@ -190,17 +168,17 @@ function HeatmapCanvas({ data, year, h = 300 }) {
       ctx.beginPath(); ctx.moveTo(tx, MT + plotH); ctx.lineTo(tx, MT + plotH + 4); ctx.stroke();
       ctx.fillText(`${ls}°`, tx, MT + plotH + 17);
     });
-    ctx.fillStyle = 'rgba(232,237,243,0.4)';
+    ctx.fillStyle = titleColor;
     ctx.font = '11px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('Solar Longitude Ls (°)', ML + plotW / 2, CH - 8);
 
     // Y 轴
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.strokeStyle = axisColor;
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(ML, MT); ctx.lineTo(ML, MT + plotH); ctx.stroke();
     const yTicks = [-90, -60, -30, 0, 30, 60, 90];
-    ctx.fillStyle = 'rgba(232,237,243,0.65)';
+    ctx.fillStyle = tickColor;
     ctx.font = '11px sans-serif';
     ctx.textAlign = 'right';
     yTicks.forEach(lat => {
@@ -212,7 +190,7 @@ function HeatmapCanvas({ data, year, h = 300 }) {
     ctx.save();
     ctx.translate(14, MT + plotH / 2);
     ctx.rotate(-Math.PI / 2);
-    ctx.fillStyle = 'rgba(232,237,243,0.4)';
+    ctx.fillStyle = titleColor;
     ctx.font = '11px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('Latitude (°)', 0, 0);
@@ -224,7 +202,7 @@ function HeatmapCanvas({ data, year, h = 300 }) {
     const cbImgData = ctx.createImageData(cbW, plotH);
     for (let py = 0; py < plotH; py++) {
       const t = 1 - py / plotH;
-      const [r, g, b] = infernoColor(t);
+      const [r, g, b] = getRgb(colormapName, t);
       for (let px = 0; px < cbW; px++) {
         const idx = (py * cbW + px) * 4;
         cbImgData.data[idx] = r; cbImgData.data[idx + 1] = g;
@@ -232,19 +210,19 @@ function HeatmapCanvas({ data, year, h = 300 }) {
       }
     }
     ctx.putImageData(cbImgData, cbX, MT);
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.strokeStyle = cbBorderColor;
     ctx.lineWidth = 0.5;
     ctx.strokeRect(cbX, MT, cbW, plotH);
-    ctx.fillStyle = 'rgba(232,237,243,0.7)';
+    ctx.fillStyle = cbLabelColor;
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(dMax.toFixed(4), cbX + cbW + 4, MT + 5);
-    ctx.fillText(((dMax + dMin) / 2).toFixed(4), cbX + cbW + 4, MT + plotH / 2 + 4);
-    ctx.fillText(dMin.toFixed(4), cbX + cbW + 4, MT + plotH + 4);
-    ctx.fillStyle = 'rgba(232,237,243,0.4)';
+    ctx.fillText(fmtNum(convertOzone(dMax, ozoneUnit), precision), cbX + cbW + 4, MT + 5);
+    ctx.fillText(fmtNum(convertOzone((dMax + dMin) / 2, ozoneUnit), precision), cbX + cbW + 4, MT + plotH / 2 + 4);
+    ctx.fillText(fmtNum(convertOzone(dMin, ozoneUnit), precision), cbX + cbW + 4, MT + plotH + 4);
+    ctx.fillStyle = cbTitleColor;
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('μm-atm', cbX + cbW / 2, MT + plotH + 20);
+    ctx.fillText(ozoneLabel(ozoneUnit), cbX + cbW / 2, MT + plotH + 20);
 
     // 计算 insight
     let maxVal = -Infinity, minVal = Infinity;
@@ -272,31 +250,39 @@ function HeatmapCanvas({ data, year, h = 300 }) {
     const ratio = (polarAvg / equatAvg).toFixed(1);
 
     const latDesc = (lat) => {
-      if (lat > 60) return `北极区(${lat.toFixed(1)}°N)`;
-      if (lat > 30) return `中纬北(${lat.toFixed(1)}°N)`;
-      if (lat >= -30) return `赤道区(${lat.toFixed(1)}°)`;
-      if (lat >= -60) return `中纬南(${Math.abs(lat).toFixed(1)}°S)`;
-      return `南极区(${Math.abs(lat).toFixed(1)}°S)`;
+      if (lat > 60) return t('common.latRegion.n90', { lat: lat.toFixed(1) });
+      if (lat > 30) return t('common.latRegion.n60', { lat: lat.toFixed(1) });
+      if (lat >= -30) return t('common.latRegion.eq', { lat: lat.toFixed(1) });
+      if (lat >= -60) return t('common.latRegion.s60', { lat: Math.abs(lat).toFixed(1) });
+      return t('common.latRegion.s90', { lat: Math.abs(lat).toFixed(1) });
     };
 
-    setInsight(
-      `本图展示了 MY${year} 全年臭氧柱浓度的纬度-季节分布。` +
-      `${latDesc(y[maxYi])}在 Ls≈${x[maxXi]?.toFixed(0)}° 附近达到峰值 ${maxVal.toFixed(4)} μm-atm，` +
-      `${latDesc(y[minYi])}在 Ls≈${x[minXi]?.toFixed(0)}° 时降至最低 ${minVal.toFixed(4)} μm-atm。` +
-      `极地与赤道浓度比约为 ${ratio}:1。`
-    );
-  }, [data, year]);
+    setInsight(t('explore.heatmapInsight', {
+      year,
+      latMaxDesc: latDesc(y[maxYi]),
+      lsMax: x[maxXi]?.toFixed(0),
+      valMax: fmtNum(convertOzone(maxVal, ozoneUnit), precision),
+      latMinDesc: latDesc(y[minYi]),
+      lsMin: x[minXi]?.toFixed(0),
+      valMin: fmtNum(convertOzone(minVal, ozoneUnit), precision),
+      ratio,
+      unit: ozoneLabel(ozoneUnit),
+    }));
+  }, [data, year, t, colormapName, ozoneUnit, precision, isLight]);
 
   if (!data || !data.z) return <LoadingBox h={h} />;
 
   return (
     <div>
-      <canvas
-        ref={canvasRef}
-        width={720}
-        height={h}
-        style={{ width: '100%', display: 'block', borderRadius: 8 }}
-      />
+      <div style={isLight ? { borderRadius: 10, overflow: 'hidden', background: '#f5f6f8' } : {}}>
+        <canvas
+          ref={canvasRef}
+          width={720}
+          height={h}
+          className="observation-window"
+          style={{ width: '100%', display: 'block', background: 'transparent' }}
+        />
+      </div>
       <InsightBlock text={insight} />
     </div>
   );
@@ -308,6 +294,10 @@ const BAND_COLORS = ['#FF6B4A', '#FFA94D', '#4ECDC4', '#45B7D1', '#9B59B6'];
 
 function LineChart({ data, year, h = 240 }) {
   const [insight, setInsight] = useState('');
+  const t = useT();
+  const { settings } = useSettings();
+  const ozoneUnit = settings.units.ozone;
+  const precision = settings.precision;
 
   useEffect(() => {
     if (!data?.bands?.length) return;
@@ -327,19 +317,28 @@ function LineChart({ data, year, h = 240 }) {
       ? Math.abs((ls[peakN] ?? 0) - (ls[peakS] ?? 0)).toFixed(0)
       : '?';
 
-    setInsight(
-      `五个纬度带的季节曲线显示：${bands[maxAmpIdx]?.name} 振幅最大（峰谷差 ${amplitudes[maxAmpIdx].toFixed(4)} μm-atm），` +
-      `${bands[minAmpIdx]?.name} 最为平稳（振幅 ${amplitudes[minAmpIdx].toFixed(4)} μm-atm）。` +
-      `南北极峰值存在约 ${phaseDiff}° 的 Ls 相位差。`
-    );
-  }, [data, year]);
+    setInsight(t('explore.bandsInsight', {
+      maxBandName: bands[maxAmpIdx]?.name,
+      maxAmp: fmtNum(convertOzone(amplitudes[maxAmpIdx], ozoneUnit), precision),
+      minBandName: bands[minAmpIdx]?.name,
+      minAmp: fmtNum(convertOzone(amplitudes[minAmpIdx], ozoneUnit), precision),
+      phaseDiff,
+      unit: ozoneLabel(ozoneUnit),
+    }));
+  }, [data, year, t, ozoneUnit, precision]);
 
   if (!data || !data.bands || data.bands.length === 0) return <LoadingBox h={h} />;
 
   const { ls, bands } = data;
 
+  // Convert values to display unit before computing axis range
+  const convertedBands = bands.map(b => ({
+    ...b,
+    values: b.values.map(v => (isNaN(v) ? v : convertOzone(v, ozoneUnit))),
+  }));
+
   let yMin = Infinity, yMax = -Infinity;
-  bands.forEach(b => b.values.forEach(v => {
+  convertedBands.forEach(b => b.values.forEach(v => {
     if (!isNaN(v)) { yMin = Math.min(yMin, v); yMax = Math.max(yMax, v); }
   }));
   const yRange = yMax - yMin || 1;
@@ -366,14 +365,14 @@ function LineChart({ data, year, h = 240 }) {
     <div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', display: 'block' }}>
         {/* 绘图区背景 */}
-        <rect x={ML} y={MT} width={plotW} height={plotH} fill="rgba(255,255,255,0.015)" />
+        <rect x={ML} y={MT} width={plotW} height={plotH} style={{ fill: 'var(--border)' }} />
 
         {/* 水平网格 */}
         {yTicks.map((yv, i) => {
           const cy = toY(yv);
           if (cy < MT || cy > MT + plotH) return null;
           return <line key={`yg${i}`} x1={ML} y1={cy} x2={ML + plotW} y2={cy}
-            stroke="rgba(255,255,255,0.07)" strokeWidth="0.5" strokeDasharray="3,3" />;
+            style={{ stroke: 'var(--text-30)' }} strokeWidth="0.5" strokeDasharray="3,3" />;
         })}
 
         {/* 季节竖线 */}
@@ -381,11 +380,11 @@ function LineChart({ data, year, h = 240 }) {
           const sx = tickToX(lsVal);
           if (sx < ML || sx > ML + plotW) return null;
           return <line key={`sl${lsVal}`} x1={sx} y1={MT} x2={sx} y2={MT + plotH}
-            stroke="rgba(255,255,255,0.1)" strokeWidth="0.8" strokeDasharray="4,3" />;
+            style={{ stroke: 'var(--text-30)' }} strokeWidth="0.8" strokeDasharray="4,3" />;
         })}
 
         {/* 折线数据 */}
-        {bands.map((band, bi) => {
+        {convertedBands.map((band, bi) => {
           const pts = band.values
             .map((v, i) => isNaN(v) ? null : `${toX(i)},${toY(v)}`)
             .filter(Boolean).join(' ');
@@ -396,40 +395,40 @@ function LineChart({ data, year, h = 240 }) {
 
         {/* X 轴 */}
         <line x1={ML} y1={MT + plotH} x2={ML + plotW} y2={MT + plotH}
-          stroke="rgba(255,255,255,0.2)" strokeWidth="0.8" />
+          style={{ stroke: 'var(--text-60)' }} strokeWidth="0.8" />
         {[0, 90, 180, 270, 360].map(lsVal => {
           const tx = tickToX(lsVal);
           if (tx < ML - 2 || tx > ML + plotW + 2) return null;
           return (
             <g key={`xt${lsVal}`}>
               <line x1={tx} y1={MT + plotH} x2={tx} y2={MT + plotH + 4}
-                stroke="rgba(255,255,255,0.3)" strokeWidth="0.8" />
+                style={{ stroke: 'var(--text-60)' }} strokeWidth="0.8" />
               <text x={tx} y={MT + plotH + 15} textAnchor="middle"
-                fontSize="10" fill="rgba(232,237,243,0.6)">{lsVal}°</text>
+                fontSize="10" style={{ fill: 'var(--text-60)' }}>{lsVal}°</text>
             </g>
           );
         })}
         <text x={ML + plotW / 2} y={H - 6} textAnchor="middle"
-          fontSize="10" fill="rgba(232,237,243,0.4)">Solar Longitude Ls (°)</text>
+          fontSize="10" style={{ fill: 'var(--text-30)' }}>Solar Longitude Ls (°)</text>
 
         {/* Y 轴 */}
         <line x1={ML} y1={MT} x2={ML} y2={MT + plotH}
-          stroke="rgba(255,255,255,0.2)" strokeWidth="0.8" />
+          style={{ stroke: 'var(--text-60)' }} strokeWidth="0.8" />
         {yTicks.map((yv, i) => {
           const cy = toY(yv);
           if (cy < MT - 2 || cy > MT + plotH + 2) return null;
           return (
             <g key={`yt${i}`}>
               <line x1={ML - 4} y1={cy} x2={ML} y2={cy}
-                stroke="rgba(255,255,255,0.3)" strokeWidth="0.8" />
+                style={{ stroke: 'var(--text-60)' }} strokeWidth="0.8" />
               <text x={ML - 8} y={cy + 4} textAnchor="end"
-                fontSize="9" fill="rgba(232,237,243,0.6)">{yv.toFixed(3)}</text>
+                fontSize="9" style={{ fill: 'var(--text-60)' }}>{fmtNum(yv, precision)}</text>
             </g>
           );
         })}
         <text x={14} y={MT + plotH / 2} textAnchor="middle"
-          fontSize="10" fill="rgba(232,237,243,0.4)"
-          transform={`rotate(-90, 14, ${MT + plotH / 2})`}>O₃ (μm-atm)</text>
+          fontSize="10" style={{ fill: 'var(--text-30)' }}
+          transform={`rotate(-90, 14, ${MT + plotH / 2})`}>{`O₃ (${ozoneLabel(ozoneUnit)})`}</text>
       </svg>
 
       {/* 图例 */}
@@ -459,20 +458,30 @@ function GlobePlot({ data, h = 300 }) {
   const [tooltip, setTooltip] = useState(null);
   const [selectedIdx, setSelectedIdx] = useState(null);
   const containerRef = useRef(null);
+  const t = useT();
+  const { settings } = useSettings();
+  const colormapName = settings.colormap;
+  const ozoneUnit = settings.units.ozone;
+  const precision = settings.precision;
+  const isLight = settings.theme === 'light';
 
   if (!data || !data.points || data.points.length === 0) {
-    return <LoadingBox h={h} label="加载全球数据..." />;
+    return <LoadingBox h={h} label={t('common.loadingGlobe')} />;
   }
 
   const { points, minVal, maxVal } = data;
   const range = maxVal - minVal || 1;
 
   const W = 600, H = 300;
+  const VB_LEFT = 48;  // 左侧留白，为纬度标签腾出空间
+  const VB_BOTTOM = 18; // 底部留白，为经度标签腾出空间
   const toX = (lng) => ((lng + 180) / 360) * W;
   const toY = (lat) => ((90 - lat) / 180) * H;
 
   const formatLat = (lat) => lat >= 0 ? `${lat.toFixed(1)}°N` : `${Math.abs(lat).toFixed(1)}°S`;
   const formatLng = (lng) => lng >= 0 ? `${lng.toFixed(1)}°E` : `${Math.abs(lng).toFixed(1)}°W`;
+  const latLabel = (lat) => lat === 0 ? '0°' : lat > 0 ? `${lat}°N` : `${Math.abs(lat)}°S`;
+  const lngLabel = (lng) => lng === 0 ? '0°' : lng > 0 ? `${lng}°E` : `${Math.abs(lng)}°W`;
 
   const handleCircleClick = (e, p, i) => {
     e.stopPropagation();
@@ -500,47 +509,52 @@ function GlobePlot({ data, h = 300 }) {
   return (
     <div
       ref={containerRef}
+      className={isLight ? 'observation-window' : 'observation-window panel-dark'}
       style={{
-        position: 'relative', borderRadius: 8, overflow: 'hidden',
-        background: 'radial-gradient(ellipse at center, #0a1525 0%, #050a12 100%)',
+        position: 'relative', overflow: 'hidden',
+        background: isLight ? '#f5f6f8' : 'radial-gradient(ellipse at center, #0a1525 0%, #050a12 100%)',
+        paddingRight: 90,
       }}
       onClick={handleContainerClick}
     >
-      {/* SVG 不设固定高度，由 viewBox 2:1 比例自适应 */}
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', display: 'block' }}>
+      {/* SVG：左侧 +VB_LEFT 为纬度标签区，底部 +VB_BOTTOM 为经度标签区 */}
+      <svg viewBox={`-${VB_LEFT} 0 ${W + VB_LEFT} ${H + VB_BOTTOM}`} style={{ width: '100%', display: 'block' }}>
         {/* 经纬网格 */}
         {[-60, -30, 0, 30, 60].map(lat => (
           <line key={`lat${lat}`} x1="0" y1={toY(lat)} x2={W} y2={toY(lat)}
-            stroke="rgba(255,255,255,0.09)" strokeWidth="0.5" />
-        ))}
-        {[-150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150, 180].map(lng => (
-          <line key={`lng${lng}`} x1={toX(lng)} y1="0" x2={toX(lng)} y2={H}
-            stroke="rgba(255,255,255,0.09)" strokeWidth="0.5" />
-        ))}
-
-        {/* 网格标注 */}
-        {[-60, -30, 0, 30, 60].map(lat => (
-          <text key={`latl${lat}`} x="4" y={toY(lat) - 2}
-            fontSize="7" fill="rgba(255,255,255,0.3)">{lat}°</text>
+            stroke={isLight ? 'rgba(26,26,46,0.1)' : 'rgba(255,255,255,0.12)'} strokeWidth="0.5" />
         ))}
         {[-120, -60, 0, 60, 120].map(lng => (
-          <text key={`lngl${lng}`} x={toX(lng) + 2} y={H - 4}
-            fontSize="7" fill="rgba(255,255,255,0.3)">{lng}°</text>
+          <line key={`lng${lng}`} x1={toX(lng)} y1="0" x2={toX(lng)} y2={H}
+            stroke={isLight ? 'rgba(26,26,46,0.1)' : 'rgba(255,255,255,0.12)'} strokeWidth="0.5" />
+        ))}
+
+        {/* 纬度标注：放在左侧留白区，使用 N/S 格式 */}
+        {[-60, -30, 0, 30, 60].map(lat => (
+          <text key={`latl${lat}`} x={-VB_LEFT + 4} y={toY(lat) + 4}
+            fontSize="8" fill={isLight ? 'rgba(26,26,46,0.55)' : 'rgba(255,255,255,0.55)'}>{latLabel(lat)}</text>
+        ))}
+        {/* 经度标注：E/W 格式，放在绘图区下方留白区 */}
+        {[-120, -60, 0, 60, 120].map(lng => (
+          <text key={`lngl${lng}`} x={toX(lng)} y={H + 13}
+            textAnchor="middle" fontSize="8" fill={isLight ? 'rgba(26,26,46,0.5)' : 'rgba(255,255,255,0.5)'}>{lngLabel(lng)}</text>
         ))}
 
         {/* 数据点 */}
         {points.map((p, i) => {
-          const t = (p.val - minVal) / range;
+          const nv = (p.val - minVal) / range;
           const isSelected = selectedIdx === i;
+          const r = isLight ? 2.56 : 3.2;
+          const opacity = isLight ? Math.max(0.05, Math.pow(nv, 0.6)) : 0.85;
           return (
             <circle
               key={i}
               cx={toX(p.lng)} cy={toY(p.lat)}
-              r="3.2"
-              fill={turboColor(t)}
-              opacity="0.85"
-              stroke={isSelected ? 'white' : 'none'}
-              strokeWidth={isSelected ? 2 : 0}
+              r={r}
+              fill={getRgbStr(colormapName, nv)}
+              opacity={opacity}
+              stroke={isSelected ? (isLight ? '#333' : 'white') : 'none'}
+              strokeWidth={isSelected ? 1.5 : 0}
               style={{ cursor: 'pointer' }}
               onClick={(e) => handleCircleClick(e, p, i)}
             />
@@ -553,49 +567,33 @@ function GlobePlot({ data, h = 300 }) {
         {/* 渐变条 */}
         <div style={{
           position: 'absolute', right: 0, top: 0, bottom: 0, width: 14,
-          borderRadius: 4, border: '1px solid rgba(255,255,255,0.2)',
-          background: `linear-gradient(180deg,
-            rgb(122,4,3) 0%, rgb(191,34,12) 10%, rgb(239,88,20) 20%,
-            rgb(252,155,28) 30%, rgb(249,211,31) 40%, rgb(191,240,35) 50%,
-            rgb(94,227,80) 60%, rgb(31,199,147) 70%, rgb(39,154,193) 80%,
-            rgb(50,92,168) 90%, rgb(48,18,59) 100%)`,
+          borderRadius: 4,
+          border: isLight ? '1px solid rgba(0,0,0,0.12)' : '1px solid rgba(255,255,255,0.2)',
+          background: makeGradient(colormapName),
         }} />
         {/* 最大值标签 */}
         <span style={{
           position: 'absolute', right: 18, top: 0,
           fontSize: 9, color: C.ice60, whiteSpace: 'nowrap',
-        }}>{maxVal.toFixed(2)}</span>
+        }}>{fmtNum(convertOzone(maxVal, ozoneUnit), precision)}</span>
         {/* 中间值标签 */}
         <span style={{
           position: 'absolute', right: 18, top: '50%',
           transform: 'translateY(-50%)',
           fontSize: 9, color: C.ice60, whiteSpace: 'nowrap',
-        }}>{((maxVal + minVal) / 2).toFixed(2)}</span>
+        }}>{fmtNum(convertOzone((maxVal + minVal) / 2, ozoneUnit), precision)}</span>
         {/* 最小值标签 */}
         <span style={{
           position: 'absolute', right: 18, bottom: 0,
           fontSize: 9, color: C.ice60, whiteSpace: 'nowrap',
-        }}>{minVal.toFixed(2)}</span>
+        }}>{fmtNum(convertOzone(minVal, ozoneUnit), precision)}</span>
         {/* 单位 */}
         <span style={{
           position: 'absolute', right: 0, bottom: -14,
           fontSize: 9, color: C.ice30, whiteSpace: 'nowrap',
-        }}>μm-atm</span>
+        }}>{ozoneLabel(ozoneUnit)}</span>
       </div>
 
-      <div style={{
-        position: 'absolute', bottom: 8, left: 10,
-        fontSize: 12, fontWeight: 700, color: C.mars,
-        fontFamily: "'Orbitron', sans-serif",
-      }}>
-        Ls = {data.ls?.toFixed(1)}°
-      </div>
-      <div style={{
-        position: 'absolute', bottom: 8, left: 120,
-        fontSize: 10, color: C.ice30,
-      }}>
-        {points.length} pts
-      </div>
 
       {/* Tooltip */}
       {tooltip && (
@@ -617,7 +615,7 @@ function GlobePlot({ data, h = 300 }) {
         }}>
           <div>{formatLat(tooltip.lat)}</div>
           <div>{formatLng(tooltip.lng)}</div>
-          <div style={{ color: C.mars, fontWeight: 700 }}>{tooltip.val.toFixed(2)} μm-atm</div>
+          <div style={{ color: C.mars, fontWeight: 700 }}>{fmtNum(convertOzone(tooltip.val, ozoneUnit), precision)} {ozoneLabel(ozoneUnit)}</div>
         </div>
       )}
     </div>
@@ -638,6 +636,7 @@ const VAR_ABBREV = {
 
 function CorrelationChart({ data, year, h = 320 }) {
   const [insight, setInsight] = useState('');
+  const t = useT();
 
   useEffect(() => {
     if (!data?.matrix || !data?.variable_names) return;
@@ -653,15 +652,16 @@ function CorrelationChart({ data, year, h = 320 }) {
         maxCorrIdx = i;
       }
     });
-    const maxVar = maxCorrIdx >= 0 ? (data.variable_names[maxCorrIdx] || '未知') : '未知';
-    const corrSign = maxCorrVal >= 0 ? '正相关' : '负相关';
+    const maxVar = maxCorrIdx >= 0 ? (data.variable_names[maxCorrIdx] || '-') : '-';
+    const corrSign = maxCorrVal >= 0 ? t('common.positive') : t('common.negative');
     const corrStr = maxCorrIdx >= 0 ? maxCorrVal.toFixed(3) : 'N/A';
-    setInsight(
-      `Pearson 相关分析（MY${year}）：臭氧柱浓度与环境变量中，` +
-      `${VAR_ABBREV[maxVar] || maxVar} 的相关性最强（r=${corrStr}，${corrSign}）。` +
-      `矩阵基于全球空间均值时间序列计算，揭示了各变量在行星尺度上的协变关系。`
-    );
-  }, [data, year]);
+    setInsight(t('explore.corrInsight', {
+      year,
+      varName: VAR_ABBREV[maxVar] || maxVar,
+      corrVal: corrStr,
+      corrSign,
+    }));
+  }, [data, year, t]);
 
   if (!data || !data.matrix) return <LoadingBox h={h} />;
 
@@ -710,7 +710,7 @@ function CorrelationChart({ data, year, h = 320 }) {
                     bg = 'rgba(199,91,57,0.65)';
                     textColor = '#fff';
                   } else {
-                    const [r, g, b] = rdbuColor(val);
+                    const [r, g, b] = rdbuRgb((val + 1) / 2);
                     bg = `rgb(${r},${g},${b})`;
                     const brightness = r * 0.299 + g * 0.587 + b * 0.114;
                     textColor = brightness > 160 ? '#111' : '#fff';
@@ -744,6 +744,7 @@ function CorrelationChart({ data, year, h = 320 }) {
 // ═══════════════════════════════════════════
 
 export default function ExplorePage() {
+  const t = useT();
   const [lsValue, setLsValue] = useState(90);
   const [marsYear, setMarsYear] = useState(27);
   const [playing, setPlaying] = useState(false);
@@ -815,7 +816,7 @@ export default function ExplorePage() {
           if (v >= 355) { setPlaying(false); return 0; }
           return v + 5;
         });
-      }, 600);
+      }, 1200);
     } else {
       clearInterval(timerRef.current);
     }
@@ -823,13 +824,13 @@ export default function ExplorePage() {
   }, [playing]);
 
   const seasonName =
-    lsValue < 90 ? '北半球春 / 南半球秋' :
-    lsValue < 180 ? '北半球夏 / 南半球冬' :
-    lsValue < 270 ? '北半球秋 / 南半球春' : '北半球冬 / 南半球夏';
+    lsValue < 90  ? t('common.season.spring') :
+    lsValue < 180 ? t('common.season.summer') :
+    lsValue < 270 ? t('common.season.autumn') : t('common.season.winter');
 
   return (
     <div className="page-enter" style={{ padding: '100px 40px 60px', maxWidth: 1400, margin: '0 auto' }}>
-      <SectionTitle title="数据探索" subtitle="DATA EXPLORATION" />
+      <SectionTitle title={t('explore.title')} subtitle={t('explore.subtitle')} />
 
       {/* ─── 控制栏 ─── */}
       <GlowCard style={{
@@ -845,7 +846,7 @@ export default function ExplorePage() {
             value={marsYear}
             onChange={e => setMarsYear(Number(e.target.value))}
             style={{
-              background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`,
+              background: 'var(--border)', border: `1px solid ${C.border}`,
               borderRadius: 8, padding: '6px 12px', color: C.ice, fontSize: 13,
             }}
           >
@@ -883,7 +884,7 @@ export default function ExplorePage() {
             fontFamily: "'Orbitron', sans-serif", letterSpacing: 1,
           }}
         >
-          {playing ? '⏸ PAUSE' : '▶ PLAY'}
+          {playing ? `⏸ ${t('common.pause')}` : `▶ ${t('common.play')}`}
         </button>
 
         <div style={{ fontSize: 12, color: C.ice30 }}>{seasonName}</div>
@@ -894,27 +895,31 @@ export default function ExplorePage() {
 
         {/* 全球臭氧图 */}
         <GlowCard breathe style={{ padding: 20 }}>
-          <div style={{
-            fontSize: 11, fontWeight: 700, color: C.mars,
-            fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 12,
-          }}>
-            OZONE MAP · 全球臭氧分布
+          <div style={{ minHeight: 56, marginBottom: 8, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <span style={{
+              fontSize: 11, fontWeight: 700, color: C.mars,
+              fontFamily: "'Orbitron', sans-serif", letterSpacing: 2,
+            }}>{t('explore.ozoneMap')}</span>
+            <span style={{ fontSize: 10, color: C.ice30, marginTop: 4 }}>
+              {globeData?.ls != null ? `Ls = ${Math.round(globeData.ls)}°` : '—'}
+              {globeData?.points ? ` · ${globeData.points.length} pts` : ''}
+            </span>
           </div>
           {loading.globe && !globeData
-            ? <LoadingBox h={300} label="加载全球数据..." />
+            ? <LoadingBox h={300} label={t('common.loadingGlobe')} />
             : <GlobePlot data={globeData} />}
         </GlowCard>
 
         {/* 热力图 */}
         <GlowCard breathe style={{ padding: 20 }}>
-          <div style={{
-            fontSize: 11, fontWeight: 700, color: C.blue,
-            fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 4,
-          }}>
-            SEASONAL HEATMAP · Ls-纬度臭氧热力图
-          </div>
-          <div style={{ fontSize: 10, color: C.ice30, marginBottom: 12 }}>
-            O₃ Column Density (zonal mean) · MY{marsYear}
+          <div style={{ minHeight: 56, marginBottom: 8, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <span style={{
+              fontSize: 11, fontWeight: 700, color: C.blue,
+              fontFamily: "'Orbitron', sans-serif", letterSpacing: 2,
+            }}>{t('explore.heatmapTitle')}</span>
+            <span style={{ fontSize: 10, color: C.ice30, marginTop: 4 }}>
+              {t('explore.heatmapSub', { year: marsYear })}
+            </span>
           </div>
           {loading.heatmap && !heatmapData
             ? <LoadingBox h={300} />
@@ -927,7 +932,7 @@ export default function ExplorePage() {
             fontSize: 11, fontWeight: 700, color: C.blue,
             fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 12,
           }}>
-            LATITUDE BANDS · 纬度带季节变化
+            {t('explore.bandsTitle')}
           </div>
           {loading.bands && !bandsData
             ? <LoadingBox h={240} />
@@ -942,10 +947,10 @@ export default function ExplorePage() {
             fontSize: 11, fontWeight: 700, color: C.blue,
             fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 4,
           }}>
-            CORRELATION MATRIX · 变量相关性矩阵
+            {t('explore.corrTitle')}
           </div>
           <div style={{ fontSize: 10, color: C.ice30, marginBottom: 16 }}>
-            Pearson Correlation · O₃ vs Environmental Variables · MY{marsYear}
+            {t('explore.corrSub', { year: marsYear })}
           </div>
           {loading.corr && !corrData
             ? <LoadingBox h={350} />

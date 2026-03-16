@@ -1,57 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import C from '../constants/colors';
+import { useT } from '../i18n';
+import { useSettings } from '../contexts/SettingsContext';
 import SectionTitle from '../components/SectionTitle';
 import GlowCard from '../components/GlowCard';
 import { runPrediction, fetchPredictMetrics, fetchPerformanceCurve } from '../services/api';
 import Plot from 'react-plotly.js';
 import SphericalFieldCanvas from '../components/SphericalFieldCanvas';
 
-// ─── 色阶函数（返回 RGB 数组） ───
+import { getRgb, rdbuRgb } from '../utils/colormaps';
+import { ozoneLabel, ozoneDeltaLabel, convertOzone } from '../utils/units';
+import { fmtNum } from '../utils/fmt';
 
-function infernoRgb(t) {
-  t = Math.max(0, Math.min(1, t));
-  const stops = [
-    [0, 0, 4], [40, 11, 84], [101, 21, 110], [159, 42, 99],
-    [212, 72, 66], [245, 125, 21], [250, 193, 39], [252, 255, 164],
-  ];
-  const idx = t * (stops.length - 1);
-  const i = Math.min(Math.floor(idx), stops.length - 2);
-  const f = idx - i;
-  const c0 = stops[i], c1 = stops[i + 1];
-  return [
-    Math.round(c0[0] + (c1[0] - c0[0]) * f),
-    Math.round(c0[1] + (c1[1] - c0[1]) * f),
-    Math.round(c0[2] + (c1[2] - c0[2]) * f),
-  ];
-}
-
-function rdbuRgb(t) {
-  // t: 0~1，其中 0.5=零值，0=深蓝，1=深红
-  t = Math.max(0, Math.min(1, t));
-  const stops = [
-    [5, 48, 97],
-    [33, 102, 172],
-    [67, 147, 195],
-    [146, 197, 222],
-    [209, 229, 240],
-    [247, 247, 247],
-    [253, 219, 199],
-    [239, 169, 128],
-    [214, 96, 77],
-    [178, 24, 43],
-    [103, 0, 31],
-  ];
-  const idx = t * (stops.length - 1);
-  const i = Math.min(Math.floor(idx), stops.length - 2);
-  const f = idx - i;
-  const c0 = stops[i], c1 = stops[i + 1];
-  return [
-    Math.round(c0[0] + (c1[0] - c0[0]) * f),
-    Math.round(c0[1] + (c1[1] - c0[1]) * f),
-    Math.round(c0[2] + (c1[2] - c0[2]) * f),
-  ];
-}
-
+// fmtVal 用于 Canvas 色阶标签（精度固定 3 位，与精度设置无关，因其在 useEffect 绘图中使用）
 function fmtVal(v) {
   if (v === 0) return '0';
   if (Math.abs(v) < 0.001) return v.toExponential(2);
@@ -62,6 +23,11 @@ function fmtVal(v) {
 
 function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
   const canvasRef = useRef(null);
+  const { settings } = useSettings();
+  const colormapName = settings.colormap;
+  const ozoneUnit = settings.units.ozone;
+  const theme = settings.theme;
+  const isLight = theme === 'light';
 
   useEffect(() => {
     if (!fieldData || !fieldData.field) return;
@@ -75,9 +41,19 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     const plotW = CW - ML - MR;
     const plotH = CH - MT - MB;
 
-    // 背景
+    const isLight = theme === 'light';
+    const axisTextColor  = isLight ? 'rgba(26,26,46,0.65)' : 'rgba(232,237,243,0.6)';
+    const axisTitleColor = isLight ? 'rgba(26,26,46,0.4)'  : 'rgba(232,237,243,0.35)';
+    const axisLineColor  = isLight ? 'rgba(26,46,80,0.2)'  : 'rgba(255,255,255,0.18)';
+    const borderColor    = isLight ? 'rgba(26,46,80,0.25)' : 'rgba(255,255,255,0.18)';
+    const cbBorderColor  = isLight ? 'rgba(26,46,80,0.35)' : 'rgba(255,255,255,0.25)';
+    const cbLabelColor   = isLight ? 'rgba(26,26,46,0.7)'  : 'rgba(232,237,243,0.7)';
+    const cbTitleColor   = isLight ? 'rgba(26,26,46,0.4)'  : 'rgba(232,237,243,0.4)';
+
+    // 只填充绘图区背景，边距保持透明（浅色主题下边距显示卡片白色背景）
+    ctx.clearRect(0, 0, CW, CH);
     ctx.fillStyle = '#0a0a0f';
-    ctx.fillRect(0, 0, CW, CH);
+    ctx.fillRect(ML, MT, plotW, plotH);
 
     const { field, minVal, maxVal } = fieldData;
     const nLat = field.length;    // 36
@@ -112,7 +88,7 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
         const val = field[li][lj];
         if (val == null || isNaN(val)) continue;
         const t = (val - dMin) / range;
-        const rgb = colorMode === 'rdbu' ? rdbuRgb(t) : infernoRgb(Math.max(0, Math.min(1, t)));
+        const rgb = colorMode === 'rdbu' ? rdbuRgb(t) : getRgb(colormapName, Math.max(0, Math.min(1, t)));
         const pxStart = Math.round(lj * cellW);
         const pxEnd = Math.round((lj + 1) * cellW);
         for (let py = pyStart; py < pyEnd; py++) {
@@ -127,14 +103,14 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     ctx.putImageData(imgData, ML, MT);
 
     // 图框边框
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.strokeStyle = borderColor;
     ctx.lineWidth = 1;
     ctx.strokeRect(ML, MT, plotW, plotH);
 
     // X 轴（经度）
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.strokeStyle = axisLineColor;
     ctx.lineWidth = 1;
-    ctx.fillStyle = 'rgba(232,237,243,0.6)';
+    ctx.fillStyle = axisTextColor;
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'center';
     [0, 60, 120, 180, 240, 300, 360].forEach(lonV => {
@@ -142,13 +118,13 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
       ctx.beginPath(); ctx.moveTo(fx, MT + plotH); ctx.lineTo(fx, MT + plotH + 4); ctx.stroke();
       ctx.fillText(`${lonV}°`, fx, MT + plotH + 15);
     });
-    ctx.fillStyle = 'rgba(232,237,243,0.35)';
+    ctx.fillStyle = axisTitleColor;
     ctx.font = '10px sans-serif';
     ctx.fillText('Longitude (°)', ML + plotW / 2, CH - 4);
 
     // Y 轴（纬度）
     ctx.textAlign = 'right';
-    ctx.fillStyle = 'rgba(232,237,243,0.6)';
+    ctx.fillStyle = axisTextColor;
     ctx.font = '10px sans-serif';
     [-90, -60, -30, 0, 30, 60, 90].forEach(latV => {
       const fy = MT + ((90 - latV) / 180) * plotH;
@@ -160,7 +136,7 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     ctx.translate(10, MT + plotH / 2);
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(232,237,243,0.35)';
+    ctx.fillStyle = axisTitleColor;
     ctx.font = '10px sans-serif';
     ctx.fillText('Latitude (°)', 0, 0);
     ctx.restore();
@@ -173,25 +149,25 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     const cbPx = cbImgData.data;
     for (let py = 0; py < cbH; py++) {
       const t = 1 - py / cbH; // 顶部=高值
-      const rgb = colorMode === 'rdbu' ? rdbuRgb(t) : infernoRgb(t);
+      const rgb = colorMode === 'rdbu' ? rdbuRgb(t) : getRgb(colormapName, t);
       for (let px = 0; px < cbW; px++) {
         const idx = (py * cbW + px) * 4;
         cbPx[idx] = rgb[0]; cbPx[idx + 1] = rgb[1]; cbPx[idx + 2] = rgb[2]; cbPx[idx + 3] = 255;
       }
     }
     ctx.putImageData(cbImgData, cbX, MT);
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.strokeStyle = cbBorderColor;
     ctx.lineWidth = 1;
     ctx.strokeRect(cbX, MT, cbW, cbH);
 
     // Colorbar 刻度标签
     const lbX = cbX + cbW + 3;
     ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(232,237,243,0.7)';
+    ctx.fillStyle = cbLabelColor;
     ctx.font = '9px sans-serif';
-    const topLabel = colorMode === 'rdbu' ? `+${fmtVal(absMax)}` : fmtVal(dMax);
-    const midLabel = colorMode === 'rdbu' ? '0' : fmtVal((dMin + dMax) / 2);
-    const botLabel = colorMode === 'rdbu' ? `-${fmtVal(absMax)}` : fmtVal(dMin);
+    const topLabel = colorMode === 'rdbu' ? `+${fmtVal(convertOzone(absMax, ozoneUnit))}` : fmtVal(convertOzone(dMax, ozoneUnit));
+    const midLabel = colorMode === 'rdbu' ? '0' : fmtVal(convertOzone((dMin + dMax) / 2, ozoneUnit));
+    const botLabel = colorMode === 'rdbu' ? `-${fmtVal(convertOzone(absMax, ozoneUnit))}` : fmtVal(convertOzone(dMin, ozoneUnit));
     ctx.fillText(topLabel, lbX, MT + 8);
     ctx.fillText(midLabel, lbX, MT + cbH / 2 + 3);
     ctx.fillText(botLabel, lbX, MT + cbH);
@@ -201,26 +177,30 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     ctx.translate(cbX + cbW / 2, MT + cbH + 22);
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(232,237,243,0.4)';
+    ctx.fillStyle = cbTitleColor;
     ctx.font = '9px sans-serif';
-    ctx.fillText(colorMode === 'rdbu' ? 'Δ μm-atm' : 'μm-atm', 0, 0);
+    ctx.fillText(colorMode === 'rdbu' ? ozoneDeltaLabel(ozoneUnit) : ozoneLabel(ozoneUnit), 0, 0);
     ctx.restore();
 
-  }, [fieldData, colorMode, h]);
+  }, [fieldData, colorMode, h, colormapName, ozoneUnit, theme]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={720}
-      height={h}
-      style={{ width: '100%', height: h, borderRadius: 8, display: 'block' }}
-    />
+    <div style={isLight ? { borderRadius: 10, overflow: 'hidden', background: '#f5f6f8' } : {}}>
+      <canvas
+        ref={canvasRef}
+        width={720}
+        height={h}
+        className="observation-window"
+        style={{ width: '100%', height: h, display: 'block', background: 'transparent' }}
+      />
+    </div>
   );
 }
 
 // ─── 辅助组件 ───
 
 function LoadingBox({ h = 240 }) {
+  const t = useT();
   return (
     <div style={{
       height: h, display: 'flex', flexDirection: 'column',
@@ -232,31 +212,32 @@ function LoadingBox({ h = 240 }) {
         borderTop: `3px solid ${C.mars}`, borderRadius: '50%',
         animation: 'spin-slow 0.9s linear infinite',
       }} />
-      <div style={{ marginTop: 10, fontSize: 12, color: C.ice30 }}>预测运算中...</div>
+      <div style={{ marginTop: 10, fontSize: 12, color: C.ice30 }}>{t('predict.computing')}</div>
     </div>
   );
 }
 
 function EmptyBox({ h = 240 }) {
+  const t = useT();
   return (
     <div style={{
       height: h, display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'rgba(255,255,255,0.02)', borderRadius: 8,
       fontSize: 11, color: C.ice30,
     }}>
-      点击"开始预测"查看结果
+      {t('predict.clickToStart')}
     </div>
   );
 }
 
 // ─── 常量 ───
 
-const VARIABLES = [
-  { id: 'Temperature', label: '温度 Temperature', icon: '🌡', color: '#ff6b4a' },
-  { id: 'Dust_Optical_Depth', label: '沙尘光学厚度 DOD', icon: '🌫', color: '#d4a06a' },
-  { id: 'Solar_Flux_DN', label: '太阳辐射通量', icon: '☀️', color: '#ffd740' },
-  { id: 'U_Wind', label: '纬向风 U Wind', icon: '💨', color: '#4a9eff' },
-  { id: 'V_Wind', label: '经向风 V Wind', icon: '🌬', color: '#7c5cbf' },
+const VARIABLE_DEFS = [
+  { id: 'Temperature',        icon: '🌡',  color: '#ff6b4a' },
+  { id: 'Dust_Optical_Depth', icon: '🌫',  color: '#d4a06a' },
+  { id: 'Solar_Flux_DN',      icon: '☀️', color: '#ffd740' },
+  { id: 'U_Wind',             icon: '💨',  color: '#4a9eff' },
+  { id: 'V_Wind',             icon: '🌬',  color: '#7c5cbf' },
 ];
 
 const METRIC_META = [
@@ -266,23 +247,30 @@ const METRIC_META = [
   { key: 'r2', name: 'R²', unit: '', better: '↑', color: '#4acfac' },
 ];
 
-const VIEW_MODES = [
-  { id: 'triptych', label: '三联对比 Triptych' },
-  { id: 'original', label: '原始数据' },
-  { id: 'prediction', label: '预测结果' },
-  { id: 'diff', label: '差值分析' },
-];
+const VIEW_MODE_IDS = ['triptych', 'original', 'prediction', 'diff'];
 
-const TRIPTYCH_PANELS = [
-  { title: '原始真值 Ground Truth', color: C.blue, mode: 'inferno' },
-  { title: '模型预测 Prediction', color: C.mars, mode: 'inferno' },
-  { title: '差值场 Residual', color: '#9c7bea', mode: 'rdbu' },
+const TRIPTYCH_PANEL_DEFS = [
+  { key: 'truth',      color: C.blue,    mode: 'inferno' },
+  { key: 'prediction', color: C.mars,    mode: 'inferno' },
+  { key: 'residual',   color: '#9c7bea', mode: 'rdbu' },
 ];
 
 // ─── 主页面 ───
 
 export default function PredictPage() {
-  const [selectedVars, setSelectedVars] = useState(VARIABLES.map((v) => v.id));
+  const t = useT();
+  const { settings } = useSettings();
+  const precision = settings.precision;
+  const ozoneUnit = settings.units.ozone;
+  const isLight = settings.theme === 'light';
+  const plotTextColor  = isLight ? 'rgba(26,26,46,0.5)'  : 'rgba(232,237,243,0.3)';
+  const plotText60     = isLight ? 'rgba(26,26,46,0.65)' : 'rgba(232,237,243,0.6)';
+  const plotGridColor  = isLight ? 'rgba(26,26,46,0.08)' : 'rgba(255,255,255,0.05)';
+  const VARIABLES = VARIABLE_DEFS.map(v => ({ ...v, label: t(`predict.variables.${v.id}`) }));
+  const VIEW_MODES = VIEW_MODE_IDS.map(id => ({ id, label: t(`predict.viewModes.${id}`) }));
+  const TRIPTYCH_PANELS = TRIPTYCH_PANEL_DEFS.map(p => ({ ...p, title: t(`predict.panels.${p.key}`) }));
+
+  const [selectedVars, setSelectedVars] = useState(VARIABLE_DEFS.map((v) => v.id));
   const [predStep, setPredStep] = useState(3);
   const [lsStart, setLsStart] = useState(90);
   const [marsYear, setMarsYear] = useState(27);
@@ -346,7 +334,7 @@ export default function PredictPage() {
       setMetrics(metricsResult);
       setActiveHorizon(0);
     } catch (e) {
-      setError(e.message || '预测请求失败，请检查后端服务是否启动');
+      setError(e.message || t('predict.errorPrefix'));
     } finally {
       setLoading(false);
     }
@@ -363,7 +351,7 @@ export default function PredictPage() {
 
   return (
     <div className="page-enter" style={{ padding: '100px 40px 60px', maxWidth: 1400, margin: '0 auto' }}>
-      <SectionTitle title="预测分析" subtitle="PREDICTION & ANALYSIS" />
+      <SectionTitle title={t('predict.title')} subtitle={t('predict.subtitle')} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 24 }}>
 
@@ -375,7 +363,7 @@ export default function PredictPage() {
             <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
               PREDICTION CONTROL
             </div>
-            <div style={{ fontSize: 11, color: C.ice30, marginBottom: 10 }}>预测步长 Horizon</div>
+            <div style={{ fontSize: 11, color: C.ice30, marginBottom: 10 }}>{t('predict.horizon')}</div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
               {[1, 2, 3].map((s) => (
                 <button key={s} onClick={() => setPredStep(s)} style={{
@@ -411,9 +399,9 @@ export default function PredictPage() {
                     borderTop: '2px solid #fff', borderRadius: '50%',
                     animation: 'spin-slow 0.8s linear infinite',
                   }} />
-                  预测中...
+                  {t('predict.runningBtn')}
                 </>
-              ) : '🚀 开始预测 RUN PREDICT'}
+              ) : t('predict.runBtn')}
             </button>
 
             {error && (
@@ -435,7 +423,7 @@ export default function PredictPage() {
 
             {/* 火星年 */}
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, color: C.ice30, marginBottom: 6 }}>火星年 Mars Year</div>
+              <div style={{ fontSize: 11, color: C.ice30, marginBottom: 6 }}>{t('predict.marsYear')}</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 {[27, 28].map((y) => (
                   <button key={y} onClick={() => setMarsYear(y)} style={{
@@ -453,7 +441,7 @@ export default function PredictPage() {
             {/* 起始 Ls 滑块 */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 11, color: C.ice30 }}>起始 Ls</span>
+                <span style={{ fontSize: 11, color: C.ice30 }}>{t('predict.startLs')}</span>
                 <span style={{ fontSize: 12, color: C.ice, fontFamily: "'Orbitron', sans-serif" }}>{lsStart}°</span>
               </div>
               <input
@@ -463,7 +451,7 @@ export default function PredictPage() {
                 style={{ width: '100%', accentColor: C.mars }}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.ice30, marginTop: 4 }}>
-                <span>0° 春分</span><span>90° 夏至</span><span>180° 秋分</span><span>270° 冬至</span>
+                <span>{t('predict.lsMarks.spring')}</span><span>{t('predict.lsMarks.summer')}</span><span>{t('predict.lsMarks.autumn')}</span><span>{t('predict.lsMarks.winter')}</span>
               </div>
             </div>
           </GlowCard>
@@ -474,7 +462,7 @@ export default function PredictPage() {
               INPUT VARIABLES
             </div>
             <div style={{ fontSize: 11, color: C.ice30, marginBottom: 12, lineHeight: 1.6 }}>
-              选择纳入 PredRNNv2 模型的环境驱动变量
+              {t('predict.envVarsLabel')}
             </div>
             {VARIABLES.map((v) => (
               <label key={v.id} style={{
@@ -495,7 +483,7 @@ export default function PredictPage() {
               </label>
             ))}
             <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 8, background: 'rgba(199,91,57,0.08)', fontSize: 11, color: C.ice30 }}>
-              O₃ 自回归通道始终启用 · 已选 {selectedVars.length}/6 环境变量
+              {t('predict.envVarsNote', { selected: selectedVars.length })}
             </div>
           </GlowCard>
 
@@ -513,8 +501,8 @@ export default function PredictPage() {
               transition: 'border-color 0.2s',
             }}>
               <div style={{ fontSize: 30, marginBottom: 8 }}>📁</div>
-              <div style={{ fontSize: 13, color: C.ice60 }}>拖拽 .nc 文件到此处</div>
-              <div style={{ fontSize: 11, color: C.ice30, marginTop: 4 }}>或点击选择文件</div>
+              <div style={{ fontSize: 13, color: C.ice60 }}>{t('predict.fileUpload.drag')}</div>
+              <div style={{ fontSize: 11, color: C.ice30, marginTop: 4 }}>{t('predict.fileUpload.click')}</div>
             </div>
           </GlowCard>
         </div>
@@ -545,7 +533,7 @@ export default function PredictPage() {
           {/* 预测步骤选择（有多步结果时显示） */}
           {results && results.horizon > 1 && (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: C.ice30, marginRight: 4 }}>显示预测步：</span>
+              <span style={{ fontSize: 11, color: C.ice30, marginRight: 4 }}>{t('predict.showStep')}</span>
               {Array.from({ length: results.horizon }, (_, i) => (
                 <button key={i} onClick={() => setActiveHorizon(i)} style={{
                   padding: '6px 16px',
@@ -611,13 +599,14 @@ export default function PredictPage() {
 
           {/* 单图视图 */}
           {viewMode !== 'triptych' && (() => {
+            // eslint-disable-next-line no-unused-vars
             const isResid = viewMode === 'diff';
             const fd = viewMode === 'original' ? truthField : viewMode === 'prediction' ? predField : residField;
             const panelTitle = viewMode === 'original'
-              ? `原始臭氧场 OpenMARS${stepLabel(stepLs)}`
+              ? `${t('predict.panels.truth')}${stepLabel(stepLs)}`
               : viewMode === 'prediction'
-                ? `PredRNNv2 预测场${stepLabel(stepLs)}`
-                : `差值场 (Prediction − Truth)${stepLabel(stepLs)}`;
+                ? `${t('predict.panels.prediction')}${stepLabel(stepLs)}`
+                : `${t('predict.panels.residual')}${stepLabel(stepLs)}`;
             const panelColor = viewMode === 'original' ? C.blue : viewMode === 'prediction' ? C.mars : '#9c7bea';
             return (
               <GlowCard breathe style={{ padding: 20 }}>
@@ -712,9 +701,9 @@ export default function PredictPage() {
                 }}>
                   <span style={{ fontSize: 14 }}>💡</span>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b' }}>注意：此预测使用了由于缺失而自动选择的回退模型</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b' }}>{t('predict.fallbackWarning')}</div>
                     <div style={{ fontSize: 10, color: 'rgba(255,107,107,0.7)', marginTop: 2 }}>
-                      原因：{results.model_info.fallback_reason}
+                      {t('predict.fallbackReason')}{results.model_info.fallback_reason}
                     </div>
                   </div>
                 </div>
@@ -725,7 +714,7 @@ export default function PredictPage() {
           {/* 评估指标 */}
           <GlowCard style={{ padding: 20 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
-              MODEL EVALUATION / 模型评估指标
+              {t('predict.evalTitle')}
             </div>
 
             {/* 四大指标卡片 */}
@@ -743,10 +732,10 @@ export default function PredictPage() {
                       fontSize: 26, fontWeight: 800, color: C.ice,
                       fontFamily: "'Orbitron', sans-serif", marginTop: 8,
                     }}>
-                      {loading ? '…' : val != null ? val.toFixed(4) : '—'}
+                      {loading ? '…' : val != null ? fmtNum(val, precision) : '—'}
                     </div>
                     <div style={{ fontSize: 10, color: m.color, marginTop: 4 }}>
-                      {m.better} {m.unit}
+                      {m.better} {m.key === 'rmse' || m.key === 'mae' ? ozoneLabel(ozoneUnit) : m.unit}
                     </div>
                   </div>
                 );
@@ -756,7 +745,7 @@ export default function PredictPage() {
             {/* 逐步指标表格 */}
             {metrics?.per_step && metrics.per_step.length > 1 && (
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, color: C.ice30, marginBottom: 8 }}>逐步指标 Per-Step Metrics</div>
+                <div style={{ fontSize: 10, color: C.ice30, marginBottom: 8 }}>{t('predict.perStepTitle')}</div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
                     <tr>
@@ -783,10 +772,10 @@ export default function PredictPage() {
                         <td style={{ padding: '6px 10px', textAlign: 'center', color: C.ice60 }}>
                           {results?.ls_values?.[i] != null ? `${results.ls_values[i].toFixed(3)}°` : '—'}
                         </td>
-                        <td style={{ padding: '6px 10px', textAlign: 'center', color: C.ice }}>{row.rmse.toFixed(4)}</td>
-                        <td style={{ padding: '6px 10px', textAlign: 'center', color: C.ice }}>{row.mae.toFixed(4)}</td>
-                        <td style={{ padding: '6px 10px', textAlign: 'center', color: '#4acfac' }}>{row.ssim.toFixed(4)}</td>
-                        <td style={{ padding: '6px 10px', textAlign: 'center', color: '#4acfac' }}>{row.r2.toFixed(4)}</td>
+                        <td style={{ padding: '6px 10px', textAlign: 'center', color: C.ice }}>{fmtNum(row.rmse, precision)}</td>
+                        <td style={{ padding: '6px 10px', textAlign: 'center', color: C.ice }}>{fmtNum(row.mae, precision)}</td>
+                        <td style={{ padding: '6px 10px', textAlign: 'center', color: '#4acfac' }}>{fmtNum(row.ssim, precision)}</td>
+                        <td style={{ padding: '6px 10px', textAlign: 'center', color: '#4acfac' }}>{fmtNum(row.r2, precision)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -805,14 +794,14 @@ export default function PredictPage() {
                 color: C.ice60,
                 lineHeight: 1.8,
               }}>
-                <strong style={{ color: C.ice }}>预测完成</strong>：起始 Ls={lsStart}°，MY{marsYear}，共预测 {results.horizon} 步。<br />
-                输入变量：O₃ + {results.selected_variables.length} 个环境变量
+                <strong style={{ color: C.ice }}>{t('predict.summaryDone')}</strong>：{t('predict.summaryL1', { lsStart, year: marsYear, horizon: results.horizon })}<br />
+                {t('predict.summaryL2a', { varCount: results.selected_variables.length })}
                 {results.selected_variables.length > 0
-                  ? `（${results.selected_variables.join('、')}）`
-                  : '（仅 O₃ 自回归基线）'}。<br />
-                模型整体表现：RMSE = <span style={{ color: C.mars }}>{metrics.overall.rmse.toFixed(4)} μm-atm</span>，
-                空间结构相似度 SSIM = <span style={{ color: '#4acfac' }}>{metrics.overall.ssim.toFixed(4)}</span>，
-                决定系数 R² = <span style={{ color: '#4acfac' }}>{metrics.overall.r2.toFixed(4)}</span>。
+                  ? t('predict.summaryL2b', { varNames: results.selected_variables.join('、') })
+                  : t('predict.summaryL2c')}。<br />
+                {t('predict.summaryL3a')}<span style={{ color: C.mars }}>{fmtNum(metrics.overall.rmse, precision)}{t('predict.summaryL3b')}</span>
+                <span style={{ color: '#4acfac' }}>{fmtNum(metrics.overall.ssim, precision)}</span>
+                {t('predict.summaryL3c')}<span style={{ color: '#4acfac' }}>{fmtNum(metrics.overall.r2, precision)}</span>。
               </div>
             )}
           </GlowCard>
@@ -821,7 +810,7 @@ export default function PredictPage() {
           <GlowCard style={{ padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
-                TEST SET PERFORMANCE / 测试集性能分析表
+                {t('predict.perfTitle')}
               </div>
               <button
                 onClick={handleFetchPerformance}
@@ -833,7 +822,7 @@ export default function PredictPage() {
                   fontFamily: "'Orbitron', sans-serif", transition: 'all 0.2s'
                 }}
               >
-                {perfLoading ? '指标计算中...' : '生成全样本性能表 GENERATE'}
+                {perfLoading ? t('predict.generatingBtn') : t('predict.generateBtn')}
               </button>
             </div>
 
@@ -880,16 +869,16 @@ export default function PredictPage() {
                       paper_bgcolor: 'rgba(0,0,0,0)',
                       plot_bgcolor: 'rgba(0,0,0,0)',
                       xaxis: {
-                        title: { text: 'Solar Longitude progression (MY27 → MY28)', font: { size: 11, color: C.ice30 } },
-                        tickfont: { size: 10, color: C.ice60 },
-                        gridcolor: 'rgba(255,255,255,0.05)',
+                        title: { text: 'Solar Longitude progression (MY27 → MY28)', font: { size: 11, color: plotTextColor } },
+                        tickfont: { size: 10, color: plotText60 },
+                        gridcolor: plotGridColor,
                         zeroline: false,
                         showgrid: true
                       },
                       yaxis: {
-                        title: { text: 'R² (Spatial Accuracy)', font: { size: 11, color: C.ice30 } },
-                        tickfont: { size: 10, color: C.ice60 },
-                        gridcolor: 'rgba(255,255,255,0.05)',
+                        title: { text: 'R² (Spatial Accuracy)', font: { size: 11, color: plotTextColor } },
+                        tickfont: { size: 10, color: plotText60 },
+                        gridcolor: plotGridColor,
                         zeroline: false,
                         range: [0, 1.0]
                       },
@@ -908,7 +897,7 @@ export default function PredictPage() {
                           xref: 'x', yref: 'y',
                           text: 'NEW YEAR (MY28)',
                           showarrow: false,
-                          font: { color: C.ice30, size: 9 }
+                          font: { color: plotTextColor, size: 9 }
                         }
                       ],
                       hovermode: 'closest',
@@ -931,9 +920,9 @@ export default function PredictPage() {
                       flexDirection: 'column',
                       gap: 4
                     }}>
-                      <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>平均决定系数 AVG R²</span>
+                      <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.avgR2')}</span>
                       <span style={{ fontSize: 20, color: '#4acfac', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
-                        {(performanceData.items.reduce((acc, it) => acc + it.r2, 0) / performanceData.items.length).toFixed(4)}
+                        {fmtNum(performanceData.items.reduce((acc, it) => acc + it.r2, 0) / performanceData.items.length, precision)}
                       </span>
                     </div>
 
@@ -947,11 +936,11 @@ export default function PredictPage() {
                       gap: 4
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>全局决定系数 GLOBAL R²</span>
+                        <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalR2')}</span>
                         <div style={{ padding: '2px 6px', background: 'rgba(255,255,255,0.05)', borderRadius: 4, fontSize: 8, color: C.ice30 }}>Flattened</div>
                       </div>
                       <span style={{ fontSize: 20, color: C.blue, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
-                        {performanceData.global_r2 ? performanceData.global_r2.toFixed(4) : '0.0000'}
+                        {performanceData.global_r2 ? fmtNum(performanceData.global_r2, precision) : fmtNum(0, precision)}
                       </span>
                     </div>
                   </div>
@@ -960,7 +949,7 @@ export default function PredictPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                       <thead style={{ position: 'sticky', top: 0, background: '#0a0a0f', zIndex: 1 }}>
                         <tr>
-                          {['火星年 MY', '太阳黄经 Ls', '决定系数 R² (Spatial)'].map(h => (
+                          {[t('predict.tableHeaders.my'), t('predict.tableHeaders.ls'), t('predict.tableHeaders.r2')].map(h => (
                             <th key={h} style={{ padding: '10px', textAlign: 'center', color: C.ice30, borderBottom: `1px solid ${C.border}`, fontWeight: 600 }}>{h}</th>
                           ))}
                         </tr>
@@ -974,7 +963,7 @@ export default function PredictPage() {
                               padding: '10px', textAlign: 'center',
                               color: it.r2 > 0.9 ? '#4acfac' : it.r2 > 0.8 ? '#ffd740' : C.mars,
                               fontWeight: 700
-                            }}>{it.r2.toFixed(4)}</td>
+                            }}>{fmtNum(it.r2, precision)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -987,13 +976,13 @@ export default function PredictPage() {
                 {perfLoading ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                     <div style={{ width: 20, height: 20, border: '2px solid rgba(74,207,172,0.2)', borderTop: '2px solid #4acfac', borderRadius: '50%', animation: 'spin-slow 0.8s linear infinite' }} />
-                    正在遍历测试集并计算 R² 指标，请稍候...
+                    {t('predict.generatingHint')}
                   </div>
-                ) : '点击上方按钮，系统将自动汇总模型在测试集 (MY27 352° ~ MY28 69°) 上的预测精度数据'}
+                ) : t('predict.perfEmptyHint')}
               </div>
             )}
             <div style={{ marginTop: 12, fontSize: 10, color: C.ice30, fontStyle: 'italic' }}>
-              * 注：测试集包含模型未学习过的 MY28 早期数据，真实反映了模型的泛化能力。
+              {t('predict.testSetNote')}
             </div>
           </GlowCard>
 
@@ -1002,11 +991,10 @@ export default function PredictPage() {
             <GlowCard style={{ padding: 28, textAlign: 'center' }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>🔭</div>
               <div style={{ fontSize: 14, color: C.ice60, marginBottom: 8 }}>
-                配置参数并点击"开始预测"以运行 PredRNNv2 推理
+                {t('predict.initPrompt')}
               </div>
-              <div style={{ fontSize: 12, color: C.ice30, lineHeight: 1.7 }}>
-                模型将基于选定的 Ls 起始时刻，利用前 3 个时间步的多通道数据，<br />
-                预测后续最多 3 个时间步的火星全球臭氧柱浓度空间分布。
+              <div style={{ fontSize: 12, color: C.ice30, lineHeight: 1.7, whiteSpace: 'pre-line' }}>
+                {t('predict.initDesc')}
               </div>
             </GlowCard>
           )}
@@ -1015,19 +1003,22 @@ export default function PredictPage() {
 
       {/* 沉浸式 3D 全屏球体层 */}
       {fullscreen3D && (() => {
-        const titleText = fullscreen3D.colorMode === 'rdbu' ? '差值场 Residual' :
-          (fullscreen3D.fieldData === truthField ? '原始真值 Ground Truth' : '模型预测 Prediction');
-        const minValStr = fullscreen3D.fieldData.minVal.toFixed(4);
-        const maxValStr = fullscreen3D.fieldData.maxVal.toFixed(4);
-        const rangeStr = (fullscreen3D.fieldData.maxVal - fullscreen3D.fieldData.minVal).toFixed(4);
-        const colorTitle = fullscreen3D.colorMode === 'rdbu' ? 'Δ μm-atm' : 'μm-atm';
-        const topLabel = fullscreen3D.colorMode === 'rdbu' ? `+${Math.max(Math.abs(fullscreen3D.fieldData.minVal), Math.abs(fullscreen3D.fieldData.maxVal)).toFixed(3)}` : maxValStr;
-        const midLabel = fullscreen3D.colorMode === 'rdbu' ? '0' : ((fullscreen3D.fieldData.minVal + fullscreen3D.fieldData.maxVal) / 2).toFixed(3);
-        const botLabel = fullscreen3D.colorMode === 'rdbu' ? `-${Math.max(Math.abs(fullscreen3D.fieldData.minVal), Math.abs(fullscreen3D.fieldData.maxVal)).toFixed(3)}` : minValStr;
+        const titleText = fullscreen3D.colorMode === 'rdbu' ? t('predict.fullscreen3D.residual') :
+          (fullscreen3D.fieldData === truthField ? t('predict.fullscreen3D.truth') : t('predict.fullscreen3D.prediction'));
+        const minValStr = fmtNum(convertOzone(fullscreen3D.fieldData.minVal, ozoneUnit), precision);
+        const maxValStr = fmtNum(convertOzone(fullscreen3D.fieldData.maxVal, ozoneUnit), precision);
+        const rawMin = fullscreen3D.fieldData.minVal, rawMax = fullscreen3D.fieldData.maxVal;
+        const rangeStr = fmtNum(convertOzone(rawMax - rawMin, ozoneUnit), precision);
+        const colorTitle = fullscreen3D.colorMode === 'rdbu' ? ozoneDeltaLabel(ozoneUnit) : ozoneLabel(ozoneUnit);
+        const absExtreme = convertOzone(Math.max(Math.abs(rawMin), Math.abs(rawMax)), ozoneUnit);
+        const topLabel = fullscreen3D.colorMode === 'rdbu' ? `+${fmtNum(absExtreme, precision)}` : maxValStr;
+        const midLabel = fullscreen3D.colorMode === 'rdbu' ? '0' : fmtNum(convertOzone((rawMin + rawMax) / 2, ozoneUnit), precision);
+        const botLabel = fullscreen3D.colorMode === 'rdbu' ? `-${fmtNum(absExtreme, precision)}` : minValStr;
 
         return (
           <div
             onDoubleClick={() => setFullscreen3D(null)}
+            className="panel-dark"
             style={{
               position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
               zIndex: 9999, background: 'rgba(5, 5, 10, 0.98)',

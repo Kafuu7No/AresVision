@@ -1,15 +1,8 @@
 import C from '../constants/colors';
+import { useT } from '../i18n';
 
-const NAV_ITEMS = [
-  { id: 'home',     label: '首页',     en: 'HOME' },
-  { id: 'overview', label: '数据总览', en: 'OVERVIEW' },
-  { id: 'explore',  label: '数据探索', en: 'EXPLORE' },
-  { id: 'predict',  label: '预测分析', en: 'PREDICT' },
-  { id: 'ai',       label: 'AI 解读',  en: 'AI INSIGHT' },
-  { id: 'about',    label: '关于',     en: 'ABOUT' },
-];
+const NAV_IDS = ['home', 'overview', 'explore', 'predict', 'ai', 'about'];
 
-// 火星 + 轨道环的 SVG Logo
 function MarsLogoIcon() {
   return (
     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -21,24 +14,19 @@ function MarsLogoIcon() {
           <stop offset="100%" stopColor="#3a1208" />
         </radialGradient>
       </defs>
-      {/* 轨道环 */}
       <ellipse
         cx="18" cy="18" rx="17" ry="5.5"
         stroke="rgba(199,91,57,0.42)" strokeWidth="1"
         fill="none"
         transform="rotate(-22, 18, 18)"
       />
-      {/* 火星本体 */}
       <circle cx="18" cy="18" r="11" fill="url(#navMarsGrad)" />
-      {/* 北极冰盖 */}
       <ellipse cx="18" cy="9.2" rx="3.6" ry="1.5" fill="rgba(248,240,225,0.58)" />
-      {/* 表面暗斑（Syrtis Major） */}
       <ellipse
         cx="21" cy="16" rx="2.8" ry="2.1"
         fill="rgba(40,14,4,0.35)"
         transform="rotate(-10, 21, 16)"
       />
-      {/* 边缘阴影 */}
       <circle cx="18" cy="18" r="11"
         fill="radial-gradient(circle at 68% 65%, rgba(0,0,0,0.4) 0%, transparent 55%)"
       />
@@ -46,7 +34,10 @@ function MarsLogoIcon() {
   );
 }
 
+
 export default function Navbar({ current, onChange }) {
+  const t = useT();
+
   return (
     <nav
       className="nav-glass"
@@ -75,18 +66,20 @@ export default function Navbar({ current, onChange }) {
           }}>
             ARESVISION
           </div>
-          <div style={{ fontSize: 10, color: C.ice60, letterSpacing: 2 }}>智绘赤星</div>
+          <div style={{ fontSize: 10, color: C.ice60, letterSpacing: 2 }}>
+            {t('nav.subtitle')}
+          </div>
         </div>
       </div>
 
       {/* Nav Links */}
       <div style={{ display: 'flex', gap: 2 }}>
-        {NAV_ITEMS.map((item) => {
-          const isActive = current === item.id;
+        {NAV_IDS.map((id) => {
+          const isActive = current === id;
           return (
             <button
-              key={item.id}
-              onClick={() => onChange(item.id)}
+              key={id}
+              onClick={() => onChange(id)}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -110,21 +103,16 @@ export default function Navbar({ current, onChange }) {
                 fontFamily: "'Orbitron', sans-serif",
                 color: isActive ? C.mars : C.ice60,
                 transition: 'color 0.25s',
+                textTransform: 'uppercase',
               }}>
-                {item.en}
-              </span>
-              <span style={{
-                fontSize: 10,
-                color: isActive ? C.ice : C.ice30,
-                transition: 'color 0.25s',
-              }}>
-                {item.label}
+                {t(`nav.${id}`)}
               </span>
             </button>
           );
         })}
       </div>
 
+      {/* 右侧占位（保持三列布局对称） */}
       <div style={{ width: 130 }} />
     </nav>
   );
