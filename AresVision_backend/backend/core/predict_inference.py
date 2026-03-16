@@ -104,7 +104,12 @@ class PredictInference:
             weight_path = self._find_weight_file(suffix)
             input_dim = 6
 
-        input_vars = ["Ozone"] + (selected_variables if not is_fallback else ["U_Wind", "V_Wind", "Dust", "Solar", "Temp"])
+        # ARESVISION IMPORTANT: 如果触发回退，必须将 input_vars 修正为全量模型的物理通道名
+        # 全量模型主序: [O3, U, V, T, D, S]
+        if is_fallback or suffix == DEFAULT_MODEL_SUFFIX:
+            input_vars = ["Ozone", "U_Wind", "V_Wind", "Temperature", "Dust_Optical_Depth", "Solar_Flux_DN"]
+        else:
+            input_vars = ["Ozone"] + selected_variables
 
         model_info = {
             "suffix": suffix,
