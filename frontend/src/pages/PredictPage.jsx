@@ -288,6 +288,7 @@ export default function PredictPage() {
   // 性能曲线数据
   const [performanceData, setPerformanceData] = useState(null);
   const [perfLoading, setPerfLoading] = useState(false);
+  const [activePerfMetric, setActivePerfMetric] = useState('r2');
 
   // ... (toggleVar remains same)
   const toggleVar = (id) => {
@@ -809,9 +810,37 @@ export default function PredictPage() {
           {/* 模型性能趋势 (测试集) */}
           <GlowCard style={{ padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
-                {t('predict.perfTitle')}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
+                  {t('predict.perfTitle')}
+                </div>
+
+                {performanceData && (
+                  <div style={{ display: 'flex', background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 2, border: `1px solid ${C.border}` }}>
+                    {METRIC_META.map(m => (
+                      <button
+                        key={m.key}
+                        onClick={() => setActivePerfMetric(m.key)}
+                        style={{
+                          padding: '4px 12px',
+                          background: activePerfMetric === m.key ? 'rgba(74,158,255,0.12)' : 'transparent',
+                          border: 'none',
+                          borderRadius: 6,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: activePerfMetric === m.key ? C.blue : C.ice30,
+                          cursor: 'pointer',
+                          fontFamily: "'Orbitron', sans-serif",
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {m.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+              
               <button
                 onClick={handleFetchPerformance}
                 disabled={perfLoading}
@@ -841,23 +870,23 @@ export default function PredictPage() {
                       {
                         // 计算连续时间轴：MY27 原始 Ls，MY28 累加 360
                         x: performanceData.items.map(it => it.my === 27 ? it.ls : it.ls + 360),
-                        y: performanceData.items.map(it => it.r2),
+                        y: performanceData.items.map(it => it[activePerfMetric]),
                         type: 'scatter',
                         mode: 'lines+markers',
-                        name: 'R² Score',
+                        name: METRIC_META.find(m => m.key === activePerfMetric)?.name || activePerfMetric,
                         marker: {
-                          color: C.mars,
+                          color: METRIC_META.find(m => m.key === activePerfMetric)?.color || C.mars,
                           size: 7,
                           line: { color: 'rgba(255,255,255,0.5)', width: 1 }
                         },
                         line: {
-                          color: C.mars,
+                          color: METRIC_META.find(m => m.key === activePerfMetric)?.color || C.mars,
                           width: 3,
                           shape: 'spline'
                         },
                         fill: 'tozeroy',
                         fillcolor: 'rgba(199,91,57,0.08)',
-                        hovertemplate: '<b>MY%{text}</b><br>Ls: %{customdata:.2f}°<br>R²: <b>%{y:.4f}</b><extra></extra>',
+                        hovertemplate: `<b>MY%{text}</b><br>Ls: %{customdata:.2f}°<br>${activePerfMetric.toUpperCase()}: <b>%{y:.4f}</b><extra></extra>`,
                         text: performanceData.items.map(it => it.my),
                         customdata: performanceData.items.map(it => it.ls)
                       }
@@ -876,11 +905,12 @@ export default function PredictPage() {
                         showgrid: true
                       },
                       yaxis: {
-                        title: { text: 'R² (Spatial Accuracy)', font: { size: 11, color: plotTextColor } },
+                        title: { text: `${METRIC_META.find(m => m.key === activePerfMetric)?.name ?? activePerfMetric}${METRIC_META.find(m => m.key === activePerfMetric)?.unit ? ' (' + METRIC_META.find(m => m.key === activePerfMetric).unit + ')' : ''}`, font: { size: 11, color: plotTextColor } },
                         tickfont: { size: 10, color: plotText60 },
                         gridcolor: plotGridColor,
                         zeroline: false,
-                        range: [0, 1.0]
+                        range: (activePerfMetric === 'r2' || activePerfMetric === 'ssim') ? [0, 1.0] : undefined,
+                        autorange: !(activePerfMetric === 'r2' || activePerfMetric === 'ssim')
                       },
                       shapes: [
                         {
@@ -910,60 +940,85 @@ export default function PredictPage() {
 
                 {/* 底部数据明细表 */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div style={{ 
-                      padding: '12px 16px', 
-                      background: 'rgba(74,207,172,0.1)', 
-                      borderRadius: 10, 
-                      border: '1px solid rgba(74,207,172,0.3)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 4
-                    }}>
-                      <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.avgR2')}</span>
-                      <span style={{ fontSize: 20, color: '#4acfac', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
-                        {fmtNum(performanceData.items.reduce((acc, it) => acc + it.r2, 0) / performanceData.items.length, precision)}
-                      </span>
-                    </div>
-
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
                     <div style={{ 
                       padding: '12px 16px', 
                       background: 'rgba(74,158,255,0.1)', 
                       borderRadius: 10, 
                       border: '1px solid rgba(74,158,255,0.3)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 4
+                      display: 'flex', flexDirection: 'column', gap: 4
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalR2')}</span>
                         <div style={{ padding: '2px 6px', background: 'rgba(255,255,255,0.05)', borderRadius: 4, fontSize: 8, color: C.ice30 }}>Flattened</div>
                       </div>
-                      <span style={{ fontSize: 20, color: C.blue, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                      <span style={{ fontSize: 18, color: C.blue, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
                         {performanceData.global_r2 ? fmtNum(performanceData.global_r2, precision) : fmtNum(0, precision)}
+                      </span>
+                    </div>
+
+                    <div style={{ 
+                      padding: '12px 16px', 
+                      background: 'rgba(199,91,57,0.1)', 
+                      borderRadius: 10, 
+                      border: '1px solid rgba(199,91,57,0.3)',
+                      display: 'flex', flexDirection: 'column', gap: 4
+                    }}>
+                      <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalRMSE')}</span>
+                      <span style={{ fontSize: 18, color: C.mars, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                        {performanceData.global_rmse ? fmtNum(performanceData.global_rmse, precision) : fmtNum(0, precision)}
+                      </span>
+                    </div>
+
+                    <div style={{ 
+                      padding: '12px 16px', 
+                      background: 'rgba(199,91,57,0.06)', 
+                      borderRadius: 10, 
+                      border: '1px solid rgba(199,91,57,0.2)',
+                      display: 'flex', flexDirection: 'column', gap: 4
+                    }}>
+                      <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalMAE')}</span>
+                      <span style={{ fontSize: 18, color: C.mars, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                        {performanceData.global_mae ? fmtNum(performanceData.global_mae, precision) : fmtNum(0, precision)}
+                      </span>
+                    </div>
+
+                    <div style={{ 
+                      padding: '12px 16px', 
+                      background: 'rgba(74,207,172,0.1)', 
+                      borderRadius: 10, 
+                      border: '1px solid rgba(74,207,172,0.3)',
+                      display: 'flex', flexDirection: 'column', gap: 4
+                    }}>
+                      <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalSSIM')}</span>
+                      <span style={{ fontSize: 18, color: '#4acfac', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                        {performanceData.global_ssim ? fmtNum(performanceData.global_ssim, precision) : fmtNum(0, precision)}
                       </span>
                     </div>
                   </div>
 
-                  <div style={{ maxHeight: 180, overflowY: 'auto', borderRadius: 8, border: `1px solid ${C.border}` }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <div style={{ maxHeight: 220, overflowY: 'auto', borderRadius: 8, border: `1px solid ${C.border}` }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
                       <thead style={{ position: 'sticky', top: 0, background: '#0a0a0f', zIndex: 1 }}>
                         <tr>
-                          {[t('predict.tableHeaders.my'), t('predict.tableHeaders.ls'), t('predict.tableHeaders.r2')].map(h => (
-                            <th key={h} style={{ padding: '10px', textAlign: 'center', color: C.ice30, borderBottom: `1px solid ${C.border}`, fontWeight: 600 }}>{h}</th>
+                          {[t('predict.tableHeaders.my'), t('predict.tableHeaders.ls'), t('predict.tableHeaders.r2'), t('predict.tableHeaders.rmse'), t('predict.tableHeaders.mae'), t('predict.tableHeaders.ssim')].map(h => (
+                            <th key={h} style={{ padding: '10px 6px', textAlign: 'center', color: C.ice30, borderBottom: `1px solid ${C.border}`, fontWeight: 600 }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {performanceData.items.map((it, i) => (
                           <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
-                            <td style={{ padding: '10px', textAlign: 'center', color: C.ice60 }}>MY{it.my}</td>
-                            <td style={{ padding: '10px', textAlign: 'center', color: C.ice60 }}>{it.ls.toFixed(2)}°</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice60 }}>MY{it.my}</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice60 }}>{it.ls.toFixed(2)}°</td>
                             <td style={{
-                              padding: '10px', textAlign: 'center',
+                              padding: '8px 6px', textAlign: 'center',
                               color: it.r2 > 0.9 ? '#4acfac' : it.r2 > 0.8 ? '#ffd740' : C.mars,
                               fontWeight: 700
                             }}>{fmtNum(it.r2, precision)}</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice }}>{fmtNum(it.rmse, precision)}</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice }}>{fmtNum(it.mae, precision)}</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: '#4acfac' }}>{fmtNum(it.ssim, precision)}</td>
                           </tr>
                         ))}
                       </tbody>

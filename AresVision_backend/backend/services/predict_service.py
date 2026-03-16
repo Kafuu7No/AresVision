@@ -120,12 +120,18 @@ class PredictOrchestratorService:
         model, input_dim, model_info = self.inference.get_model_for_variables(selected_variables)
 
         # b. 构造满足模型维度要求的输入
-        if input_dim < 7:
+        # ARESVISION IMPORTANT: 如果触发了回退 (is_fallback)，说明正在使用全量 6 通道模型
+        # 此时必须跳过按需切片，直接传递全量 input_arr
+        if model_info.get("is_fallback", False) or model_info.get("suffix") == "UVDST":
+            final_input_arr = input_arr
+            logger.info("回退机制激活: 强制使用全量 6 通道输入适配 UVDST 模型")
+        elif input_dim < 7:
             indices = [0]
-            from config import MCD_VARIABLES
-            for i, var in enumerate(MCD_VARIABLES, start=1):
+            from config import TRAINING_MASTER_ORDER
+            for i, var in enumerate(TRAINING_MASTER_ORDER, start=1):
                 if channel_mask[i] == 1.0:
                     indices.append(i)
+            # 这里的 indices 顺序决定了 final_input_arr 的通道顺序
             final_input_arr = input_arr[:, indices[:input_dim]]
         else:
             final_input_arr = input_arr
@@ -222,15 +228,13 @@ class PredictOrchestratorService:
             try:
                 # 调用 predict 获取指标
                 res = self.predict(my, ls, selected_variables, horizon=3)
-                r2 = res["metrics"]["overall"]["r2"]
+                m_overall = res["metrics"]["overall"]
                 
-                # 收集用于全局 R2 计算的数据
+                # 收集用于全局指标计算的数据
                 for h_idx in range(res["horizon"]):
-                    # res["ground_truth"][h_idx]["field"] 是 list[list[float]]
                     f_truth = np.array(res["ground_truth"][h_idx]["field"]).flatten()
                     f_pred = np.array(res["prediction"][h_idx]["field"]).flatten()
                     
-                    # 排除 NaN
                     valid = ~np.isnan(f_truth)
                     all_truths.append(f_truth[valid])
                     all_preds.append(f_pred[valid])
@@ -238,21 +242,35 @@ class PredictOrchestratorService:
                 results.append({
                     "ls": round(ls, 2),
                     "my": my,
-                    "r2": round(float(r2), 4)
+                    "r2": round(float(m_overall["r2"]), 4),
+                    "rmse": round(float(m_overall["rmse"]), 6),
+                    "mae": round(float(m_overall["mae"]), 6),
+                    "ssim": round(float(m_overall["ssim"]), 4),
                 })
             except Exception as e:
                 logger.debug(f"性能曲线采样失败 (MY{my} Ls{ls}): {e}")
                 
         global_r2 = 0.0
+        global_rmse = 0.0
+        global_mae = 0.0
+        global_ssim = 0.0
+        
         if all_truths:
             t_cat = np.concatenate(all_truths)
             p_cat = np.concatenate(all_preds)
             if len(t_cat) > 10:
                 global_r2 = float(r2_score(t_cat, p_cat))
+                global_rmse = float(np.sqrt(np.mean((t_cat - p_cat)**2)))
+                global_mae = float(np.mean(np.abs(t_cat - p_cat)))
+                # 全局 SSIM 通常取采样点的均值比较有物理意义
+                global_ssim = float(np.mean([r["ssim"] for r in results]))
 
         return {
             "items": results,
-            "global_r2": round(global_r2, 4)
+            "global_r2": round(global_r2, 4),
+            "global_rmse": round(global_rmse, 6),
+            "global_mae": round(global_mae, 6),
+            "global_ssim": round(global_ssim, 4),
         }
 
     def _fields_to_dicts(

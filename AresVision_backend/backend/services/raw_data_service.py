@@ -66,7 +66,7 @@ def prepare_raw_data(base_path, output_dir, window=3, horizon=3, batch_size=16):
     om_ls_raw = np.concatenate(om_ls_list, axis=0)
     
     print("\n[Step 2] Loading MCD Data...")
-    short_names = ['u', 'v', 'ps', 'temp', 'dustq', 'fluxsurf_dn_sw']
+    short_names = ['u', 'v', 'temp', 'dustq', 'fluxsurf_dn_sw']
     mcd_data_list = {k: [] for k in short_names}
     mcd_ls_list = []
     target_files = [
@@ -83,7 +83,7 @@ def prepare_raw_data(base_path, output_dir, window=3, horizon=3, batch_size=16):
         ds = nc.Dataset(f_path)
         mcd_data_list['u'].append(merge_sol_hour(ds.variables['U_Wind'][:]))
         mcd_data_list['v'].append(merge_sol_hour(ds.variables['V_Wind'][:]))
-        mcd_data_list['ps'].append(merge_sol_hour(ds.variables['Pressure'][:]))
+        # mcd_data_list['ps'].append(merge_sol_hour(ds.variables['Pressure'][:]))
         mcd_data_list['temp'].append(merge_sol_hour(ds.variables['Temperature'][:]))
         mcd_data_list['dustq'].append(merge_sol_hour(ds.variables['Dust_Optical_Depth'][:]))
         mcd_data_list['fluxsurf_dn_sw'].append(merge_sol_hour(ds.variables['Solar_Flux_DN'][:]))
@@ -117,9 +117,9 @@ def prepare_raw_data(base_path, output_dir, window=3, horizon=3, batch_size=16):
     for k in vars_dict:
         vars_dict[k] = clean_invalid(vars_dict[k], k)
 
-    # 物理预处理
+    # 物理预处理 (同步 demo3-D.py: 停用 log1p 以保持线性尺度)
     vars_dict['dustq'][vars_dict['dustq'] < 0] = 0.0
-    vars_dict['dustq'] = np.log1p(vars_dict['dustq'])
+    # vars_dict['dustq'] = np.log1p(vars_dict['dustq'])
     vars_dict['fluxsurf_dn_sw'] /= (np.max(vars_dict['fluxsurf_dn_sw']) + 1e-6)
 
     print("\n[Step 3] Time Alignment...")
@@ -131,16 +131,16 @@ def prepare_raw_data(base_path, output_dir, window=3, horizon=3, batch_size=16):
                                 bounds_error=False, fill_value="extrapolate")
         vars_dict[k] = interpolator(om_ls_continuous)
 
-    # [O3_prev, u, v, ps, temp, dust, flux]
-    # 按照训练脚本 demo3-UVPDST.py 的严格顺序排列
-    # 这里的顺序决定了标准化器 (scalers) 的对应关系
-    features = [y_raw] # 0: O3
+    # 按照训练脚本 demo3-*.py 总结出的物理主序排列 [Ozone, U, V, Temp, Dust, Solar]
+    # 这里的前三项分别是 Ozone(0), U(1), V(2)
+    features = [y_raw]           # 0: O3
     features.append(vars_dict['u'])             # 1: U
     features.append(vars_dict['v'])             # 2: V
-    features.append(vars_dict['ps'])            # 3: P
-    features.append(vars_dict['temp'])          # 4: T
-    features.append(vars_dict['dustq'])         # 5: D
-    features.append(vars_dict['fluxsurf_dn_sw']) # 6: S
+    
+    # 注意: 训练脚本中 Temp(3) 往往排在 Dust(4) 和 Solar(5) 之前
+    features.append(vars_dict['temp'])          # 3: T (前移)
+    features.append(vars_dict['dustq'])         # 4: D (后移)
+    features.append(vars_dict['fluxsurf_dn_sw']) # 5: S (后移)
     
     X_raw = np.stack(features, axis=-1)
     
@@ -178,7 +178,7 @@ def prepare_raw_data(base_path, output_dir, window=3, horizon=3, batch_size=16):
         'meta': {
             'window': window, 
             'horizon': horizon, 
-            'channels': 7,
+            'channels': 6,
             'total_time_steps': T
         }
     }, output_path)

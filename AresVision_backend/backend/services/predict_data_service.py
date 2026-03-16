@@ -10,7 +10,7 @@ import numpy as np
 import netCDF4 as nc
 from scipy.interpolate import interp1d
 import torch # Added torch import
-from config import OPENMARS_DIR, MCD_DIR, MCD_VARIABLES, N_LAT, N_LON # Corrected config import
+from config import OPENMARS_DIR, MCD_DIR, MCD_VARIABLES, TRAINING_MASTER_ORDER, N_LAT, N_LON
 
 logger = logging.getLogger("aresvision.predict.data")
 
@@ -55,14 +55,23 @@ class PredictDataService:
             if idx < len(self.processed_data['X_torch']):
                 # 因为 X_torch 已经是预先切好的滑窗样本 [Batch, Time, Channels, H, W]
                 # 所以直接提取索引 idx 处的整个窗口即可，不需要再做 [idx : idx + window] 切片
-                x_sample = self.processed_data['X_torch'][idx].cpu().numpy() # (window, 7, H, W)
+                x_sample = self.processed_data['X_torch'][idx].cpu().numpy() # (window, C, H, W)
+                
+                # ─── 维度适配逻辑 ───
+                # 如果张量是旧版的 7 通道 (含 P)，但配置已改为 6 通道
+                if x_sample.shape[1] == 7 and len(MCD_VARIABLES) == 5:
+                    # 剔除索引为 3 的通道 (即原 Pressure 通道)
+                    # 顺序: [0:O3, 1:U, 2:V, 3:P, 4:D, 5:S, 6:T]
+                    indices = [0, 1, 2, 4, 5, 6]
+                    x_sample = x_sample[:, indices]
+                
                 target_ls = ls_array[idx : idx + window]
                 
-                # 构造 mask (7 通道顺序: O3, U, V, P, D, S, T)
-                total_ch = 1 + len(MCD_VARIABLES)
+                # 构造 mask (严格对齐 TRAINING_MASTER_ORDER 顺序)
+                total_ch = 1 + len(TRAINING_MASTER_ORDER)
                 channel_mask = np.zeros(total_ch, dtype=np.float32)
                 channel_mask[0] = 1.0 # O3
-                for ch_idx, var_name in enumerate(MCD_VARIABLES, start=1):
+                for ch_idx, var_name in enumerate(TRAINING_MASTER_ORDER, start=1):
                     if var_name in selected_variables:
                         channel_mask[ch_idx] = 1.0
                 
@@ -127,10 +136,10 @@ class PredictDataService:
             mcd_raw_dict[k] = self._clean_invalid(mcd_raw_dict[k], k)
 
         # 3. 物理预处理 (demo3 L204)
-        # 沙尘 Log1p
+        # 沙尘 Log1p (同步 demo3-D.py: 训练脚本中注释掉了此行，因此部署端也需移除以保持尺度一致)
         dust = mcd_raw_dict['Dust_Optical_Depth']
         dust[dust < 0] = 0.0
-        mcd_raw_dict['Dust_Optical_Depth'] = np.log1p(dust)
+        # mcd_raw_dict['Dust_Optical_Depth'] = np.log1p(dust)  # 停用以对齐训练脚本
         # 辐射归一化
         flux = mcd_raw_dict['Solar_Flux_DN']
         self._max_flux = np.max(np.abs(flux)) + 1e-6
@@ -168,8 +177,8 @@ class PredictDataService:
         input_arr[:, 0] = o3_clean[indices]
         channel_mask[0] = 1.0
 
-        # Ch 1-6: MCD Variables (U, V, P, D, S, T)
-        for ch_idx, var_name in enumerate(MCD_VARIABLES, start=1):
+        # Ch 1-6: MCD Variables (严格对齐 TRAINING_MASTER_ORDER)
+        for ch_idx, var_name in enumerate(TRAINING_MASTER_ORDER, start=1):
             if var_name in selected_variables and var_name in aligned_mcd:
                 input_arr[:, ch_idx] = aligned_mcd[var_name][indices]
                 channel_mask[ch_idx] = 1.0
