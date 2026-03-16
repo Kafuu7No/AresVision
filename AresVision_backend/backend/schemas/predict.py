@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 class PredictRequest(BaseModel):
     selected_variables: list[str] = Field(
         default=["Temperature", "Dust_Optical_Depth", "Solar_Flux_DN",
-                 "U_Wind", "V_Wind", "Pressure"],
+                 "U_Wind", "V_Wind"],
     )
     horizon: int = Field(default=3, ge=1, le=3)
     ls_start: float = Field(default=90.0, ge=0, le=360)
@@ -30,6 +30,7 @@ class PredictResponse(BaseModel):
     selected_variables: list[str]
     horizon: int
     ls_values: list[float]
+    model_info: dict = Field(default_factory=dict)
 
 
 class StepMetrics(BaseModel):
@@ -71,3 +72,4 @@ class PerformancePoint(BaseModel):
 
 class PerformanceResponse(BaseModel):
     items: list[PerformancePoint]
+    global_r2: float = 0.0
