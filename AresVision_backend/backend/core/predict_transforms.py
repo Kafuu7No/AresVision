@@ -49,11 +49,21 @@ class PredictTransforms:
                 data = torch.load(tensor_path, weights_only=False)
                 self.y_mean = data['y_mean']
                 self.y_std = data['y_std']
-                self.scalers = data['scalers']
-                # 获取 max_flux（如果在 meta 中有存储），用于与训练时保持一致的物理预处理
-                # 如果 meta 中不存在该字段，则回退为 1.0，保持当前行为以兼容旧模型。
+                loaded_scalers = data['scalers']
+                
+                # ─── 维度适配逻辑 ───
+                # 如果加载的 scalers 是 7 个 (含 P)，但当前变量配置已删掉 P (变为 6 个)
+                if len(loaded_scalers) == 7 and len(MCD_VARIABLES) == 5:
+                    logger.info("[Prediction] 检测到 7 通道旧版 Scaler，正在执行动态裁剪...")
+                    # 剔除索引 3 (Pressure)
+                    indices = [0, 1, 2, 4, 5, 6]
+                    self.scalers = [loaded_scalers[i] for i in indices]
+                else:
+                    self.scalers = loaded_scalers
+                
+                # 获取 max_flux
                 self.max_flux = float(data.get('max_flux', 1.0))
-                logger.info(f"[Prediction] 成功从预处理张量加载标准化参数: y_std={self.y_std:.4f}")
+                logger.info(f"[Prediction] 成功从预处理张量加载标准化参数 (Size={len(self.scalers)}): y_std={self.y_std:.4f}")
                 return
             except Exception as e:
                 logger.warning(f"[Prediction] 从张量文件加载参数失败，将回退到计算逻辑: {e}")
@@ -87,12 +97,12 @@ class PredictTransforms:
             
             T_all = o3_all.shape[0]
 
-            # Step 2: 物理预处理 (基于合集) - demo3 L183-191
+            # Step 2: 物理预处理 (基于合集) - demo3 L183-191 (同步 demo3-D.py: 置为注释以对齐线性尺度)
             # 沙尘 Log1p
             if "Dust_Optical_Depth" in am_all:
                 dust = am_all["Dust_Optical_Depth"]
                 dust[dust < 0] = 0.0
-                am_all["Dust_Optical_Depth"] = np.log1p(dust)
+                # am_all["Dust_Optical_Depth"] = np.log1p(dust)
             
             # 辐射归一化 (使用全局 Max)
             if "Solar_Flux_DN" in am_all:
@@ -152,12 +162,12 @@ class PredictTransforms:
         # 通道 0 始终是 O3
         current_vars = ["o3col"] + [v for v in MCD_VARIABLES if v in selected_variables]
 
-        # 2. 沙尘 Log1p (demo3 L187-188)
+        # 2. 沙尘 Log1p (demo3 L187-188) (已在训练脚本中停用)
         if "Dust_Optical_Depth" in current_vars:
             idx = current_vars.index("Dust_Optical_Depth")
             dust = result[:, idx, :, :]
             dust[dust < 0] = 0.0
-            result[:, idx, :, :] = np.log1p(dust)
+            # result[:, idx, :, :] = np.log1p(dust)
 
         # 3. 辐射归一化 (demo3 L190)
         if "Solar_Flux_DN" in current_vars:

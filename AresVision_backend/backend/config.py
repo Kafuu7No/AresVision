@@ -22,10 +22,16 @@ DEFAULT_MARS_YEAR = 27
 N_LAT = 36
 N_LON = 72
 
-# ─── MCD 变量 ───
 MCD_VARIABLES = [
     "U_Wind", "V_Wind", "Dust_Optical_Depth",
     "Solar_Flux_DN", "Temperature",
+]
+
+# 模型训练时的物理主序 (决定了 Tensor 的堆叠顺序)
+# 注意: 训练脚本中 Temperature 往往排在 Dust 和 Solar 之前
+TRAINING_MASTER_ORDER = [
+    "U_Wind", "V_Wind", "Temperature", 
+    "Dust_Optical_Depth", "Solar_Flux_DN",
 ]
 
 VARIABLE_NAMES_CN = {
