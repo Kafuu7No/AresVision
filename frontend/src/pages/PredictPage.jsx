@@ -300,6 +300,7 @@ export default function PredictPage() {
   // 性能曲线数据
   const [performanceData, setPerformanceData] = useState(null);
   const [perfLoading, setPerfLoading] = useState(false);
+  const [activePerfMetric, setActivePerfMetric] = useState('r2');
 
   // ... (toggleVar remains same)
   const toggleVar = (id) => {
@@ -495,7 +496,7 @@ export default function PredictPage() {
               </label>
             ))}
             <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 8, background: 'rgba(199,91,57,0.08)', fontSize: 11, color: C.ice30 }}>
-              O₃ 自回归通道始终启用 · 已选 {selectedVars.length}/6 环境变量
+              O₃ 自回归通道始终启用 · 已选 {selectedVars.length}/5 环境变量
             </div>
           </GlowCard>
 
@@ -820,9 +821,37 @@ export default function PredictPage() {
           {/* 模型性能趋势 (测试集) */}
           <GlowCard style={{ padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
-                TEST SET PERFORMANCE / 测试集性能分析表
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
+                  TEST SET PERFORMANCE / 测试集性能分析表
+                </div>
+                
+                {performanceData && (
+                  <div style={{ display: 'flex', background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 2, border: `1px solid ${C.border}` }}>
+                    {METRIC_META.map(m => (
+                      <button
+                        key={m.key}
+                        onClick={() => setActivePerfMetric(m.key)}
+                        style={{
+                          padding: '4px 12px',
+                          background: activePerfMetric === m.key ? 'rgba(74,158,255,0.12)' : 'transparent',
+                          border: 'none',
+                          borderRadius: 6,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: activePerfMetric === m.key ? C.blue : C.ice30,
+                          cursor: 'pointer',
+                          fontFamily: "'Orbitron', sans-serif",
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {m.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+              
               <button
                 onClick={handleFetchPerformance}
                 disabled={perfLoading}
@@ -852,23 +881,23 @@ export default function PredictPage() {
                       {
                         // 计算连续时间轴：MY27 原始 Ls，MY28 累加 360
                         x: performanceData.items.map(it => it.my === 27 ? it.ls : it.ls + 360),
-                        y: performanceData.items.map(it => it.r2),
+                        y: performanceData.items.map(it => it[activePerfMetric]),
                         type: 'scatter',
                         mode: 'lines+markers',
-                        name: 'R² Score',
+                        name: METRIC_META.find(m => m.key === activePerfMetric)?.name || activePerfMetric,
                         marker: {
-                          color: C.mars,
+                          color: METRIC_META.find(m => m.key === activePerfMetric)?.color || C.mars,
                           size: 7,
                           line: { color: 'rgba(255,255,255,0.5)', width: 1 }
                         },
                         line: {
-                          color: C.mars,
+                          color: METRIC_META.find(m => m.key === activePerfMetric)?.color || C.mars,
                           width: 3,
                           shape: 'spline'
                         },
                         fill: 'tozeroy',
                         fillcolor: 'rgba(199,91,57,0.08)',
-                        hovertemplate: '<b>MY%{text}</b><br>Ls: %{customdata:.2f}°<br>R²: <b>%{y:.4f}</b><extra></extra>',
+                        hovertemplate: `<b>MY%{text}</b><br>Ls: %{customdata:.2f}°<br>${activePerfMetric.toUpperCase()}: <b>%{y:.4f}</b><extra></extra>`,
                         text: performanceData.items.map(it => it.my),
                         customdata: performanceData.items.map(it => it.ls)
                       }
@@ -887,11 +916,12 @@ export default function PredictPage() {
                         showgrid: true
                       },
                       yaxis: {
-                        title: { text: 'R² (Spatial Accuracy)', font: { size: 11, color: C.ice30 } },
+                        title: { text: `${METRIC_META.find(m => m.key === activePerfMetric)?.name} ${METRIC_META.find(m => m.key === activePerfMetric)?.unit ? '(' + METRIC_META.find(m => m.key === activePerfMetric).unit + ')' : ''}`, font: { size: 11, color: C.ice30 } },
                         tickfont: { size: 10, color: C.ice60 },
                         gridcolor: 'rgba(255,255,255,0.05)',
                         zeroline: false,
-                        range: [0, 1.0]
+                        range: (activePerfMetric === 'r2' || activePerfMetric === 'ssim') ? [0, 1.0] : undefined,
+                        autorange: !(activePerfMetric === 'r2' || activePerfMetric === 'ssim')
                       },
                       shapes: [
                         {
@@ -921,60 +951,84 @@ export default function PredictPage() {
 
                 {/* 底部数据明细表 */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div style={{ 
-                      padding: '12px 16px', 
-                      background: 'rgba(74,207,172,0.1)', 
-                      borderRadius: 10, 
-                      border: '1px solid rgba(74,207,172,0.3)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 4
-                    }}>
-                      <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>平均决定系数 AVG R²</span>
-                      <span style={{ fontSize: 20, color: '#4acfac', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
-                        {(performanceData.items.reduce((acc, it) => acc + it.r2, 0) / performanceData.items.length).toFixed(4)}
-                      </span>
-                    </div>
-
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
                     <div style={{ 
                       padding: '12px 16px', 
                       background: 'rgba(74,158,255,0.1)', 
                       borderRadius: 10, 
                       border: '1px solid rgba(74,158,255,0.3)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 4
+                      display: 'flex', flexDirection: 'column', gap: 4
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>全局决定系数 GLOBAL R²</span>
-                        <div style={{ padding: '2px 6px', background: 'rgba(255,255,255,0.05)', borderRadius: 4, fontSize: 8, color: C.ice30 }}>Flattened</div>
                       </div>
-                      <span style={{ fontSize: 20, color: C.blue, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                      <span style={{ fontSize: 18, color: C.blue, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
                         {performanceData.global_r2 ? performanceData.global_r2.toFixed(4) : '0.0000'}
+                      </span>
+                    </div>
+
+                    <div style={{ 
+                      padding: '12px 16px', 
+                      background: 'rgba(199,91,57,0.1)', 
+                      borderRadius: 10, 
+                      border: '1px solid rgba(199,91,57,0.3)',
+                      display: 'flex', flexDirection: 'column', gap: 4
+                    }}>
+                      <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>全局 RMSE</span>
+                      <span style={{ fontSize: 18, color: C.mars, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                        {performanceData.global_rmse ? performanceData.global_rmse.toFixed(5) : '0.00000'}
+                      </span>
+                    </div>
+
+                    <div style={{ 
+                      padding: '12px 16px', 
+                      background: 'rgba(199,91,57,0.06)', 
+                      borderRadius: 10, 
+                      border: '1px solid rgba(199,91,57,0.2)',
+                      display: 'flex', flexDirection: 'column', gap: 4
+                    }}>
+                      <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>全局 MAE</span>
+                      <span style={{ fontSize: 18, color: C.mars, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                        {performanceData.global_mae ? performanceData.global_mae.toFixed(5) : '0.00000'}
+                      </span>
+                    </div>
+
+                    <div style={{ 
+                      padding: '12px 16px', 
+                      background: 'rgba(74,207,172,0.1)', 
+                      borderRadius: 10, 
+                      border: '1px solid rgba(74,207,172,0.3)',
+                      display: 'flex', flexDirection: 'column', gap: 4
+                    }}>
+                      <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>全局 SSIM</span>
+                      <span style={{ fontSize: 18, color: '#4acfac', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                        {performanceData.global_ssim ? performanceData.global_ssim.toFixed(4) : '0.0000'}
                       </span>
                     </div>
                   </div>
 
-                  <div style={{ maxHeight: 180, overflowY: 'auto', borderRadius: 8, border: `1px solid ${C.border}` }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <div style={{ maxHeight: 220, overflowY: 'auto', borderRadius: 8, border: `1px solid ${C.border}` }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
                       <thead style={{ position: 'sticky', top: 0, background: '#0a0a0f', zIndex: 1 }}>
                         <tr>
-                          {['火星年 MY', '太阳黄经 Ls', '决定系数 R² (Spatial)'].map(h => (
-                            <th key={h} style={{ padding: '10px', textAlign: 'center', color: C.ice30, borderBottom: `1px solid ${C.border}`, fontWeight: 600 }}>{h}</th>
+                          {['MY', 'Ls', 'R² (Spatial)', 'RMSE', 'MAE', 'SSIM'].map(h => (
+                            <th key={h} style={{ padding: '10px 6px', textAlign: 'center', color: C.ice30, borderBottom: `1px solid ${C.border}`, fontWeight: 600 }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {performanceData.items.map((it, i) => (
                           <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
-                            <td style={{ padding: '10px', textAlign: 'center', color: C.ice60 }}>MY{it.my}</td>
-                            <td style={{ padding: '10px', textAlign: 'center', color: C.ice60 }}>{it.ls.toFixed(2)}°</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice60 }}>MY{it.my}</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice60 }}>{it.ls.toFixed(2)}°</td>
                             <td style={{
-                              padding: '10px', textAlign: 'center',
+                              padding: '8px 6px', textAlign: 'center',
                               color: it.r2 > 0.9 ? '#4acfac' : it.r2 > 0.8 ? '#ffd740' : C.mars,
                               fontWeight: 700
                             }}>{it.r2.toFixed(4)}</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice }}>{it.rmse.toFixed(5)}</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice }}>{it.mae.toFixed(5)}</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: '#4acfac' }}>{it.ssim.toFixed(4)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -987,7 +1041,7 @@ export default function PredictPage() {
                 {perfLoading ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                     <div style={{ width: 20, height: 20, border: '2px solid rgba(74,207,172,0.2)', borderTop: '2px solid #4acfac', borderRadius: '50%', animation: 'spin-slow 0.8s linear infinite' }} />
-                    正在遍历测试集并计算 R² 指标，请稍候...
+                    正在遍历测试集并计算模型评价指标，请稍候...
                   </div>
                 ) : '点击上方按钮，系统将自动汇总模型在测试集 (MY27 352° ~ MY28 69°) 上的预测精度数据'}
               </div>

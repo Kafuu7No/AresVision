@@ -68,8 +68,14 @@ class PerformancePoint(BaseModel):
     ls: float
     my: int
     r2: float
+    rmse: float
+    mae: float
+    ssim: float
 
 
 class PerformanceResponse(BaseModel):
     items: list[PerformancePoint]
     global_r2: float = 0.0
+    global_rmse: float = 0.0
+    global_mae: float = 0.0
+    global_ssim: float = 0.0
