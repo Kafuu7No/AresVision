@@ -122,10 +122,11 @@ class PredictOrchestratorService:
         # b. 构造满足模型维度要求的输入
         if input_dim < 7:
             indices = [0]
-            from config import MCD_VARIABLES
-            for i, var in enumerate(MCD_VARIABLES, start=1):
+            from config import TRAINING_MASTER_ORDER
+            for i, var in enumerate(TRAINING_MASTER_ORDER, start=1):
                 if channel_mask[i] == 1.0:
                     indices.append(i)
+            # 这里的 indices 顺序决定了 final_input_arr 的通道顺序
             final_input_arr = input_arr[:, indices[:input_dim]]
         else:
             final_input_arr = input_arr

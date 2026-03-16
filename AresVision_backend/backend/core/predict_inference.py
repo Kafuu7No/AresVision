@@ -77,6 +77,9 @@ class PredictInference:
         elif selected_set == {"U_Wind", "Dust_Optical_Depth", "Solar_Flux_DN"}:
             suffix = "UDS"
             input_dim = 4
+        elif selected_set == {"U_Wind", "Dust_Optical_Depth", "Temperature"}:
+            suffix = "UDT"
+            input_dim = 4
         elif selected_set == {"U_Wind", "Dust_Optical_Depth", "Solar_Flux_DN", "Temperature"}:
             suffix = "UDST"
             input_dim = 5
