@@ -257,7 +257,6 @@ const VARIABLES = [
   { id: 'Solar_Flux_DN', label: '太阳辐射通量', icon: '☀️', color: '#ffd740' },
   { id: 'U_Wind', label: '纬向风 U Wind', icon: '💨', color: '#4a9eff' },
   { id: 'V_Wind', label: '经向风 V Wind', icon: '🌬', color: '#7c5cbf' },
-  { id: 'Pressure', label: '气压 Pressure', icon: '📊', color: '#4acfac' },
 ];
 
 const METRIC_META = [

@@ -24,13 +24,13 @@ N_LON = 72
 
 # ─── MCD 变量 ───
 MCD_VARIABLES = [
-    "U_Wind", "V_Wind", "Pressure", "Dust_Optical_Depth",
+    "U_Wind", "V_Wind", "Dust_Optical_Depth",
     "Solar_Flux_DN", "Temperature",
 ]
 
 VARIABLE_NAMES_CN = {
     "o3col": "臭氧柱浓度", "U_Wind": "纬向风", "V_Wind": "经向风",
-    "Pressure": "气压", "Temperature": "温度",
+    "Temperature": "温度",
     "Dust_Optical_Depth": "沙尘光学厚度", "Solar_Flux_DN": "太阳下行辐射通量",
 }
 
@@ -38,16 +38,15 @@ VARIABLE_NAMES_CN = {
 VARIABLE_SHORTHANDS = {
     "U_Wind": "U",
     "V_Wind": "V",
-    "Pressure": "P",
     "Temperature": "T",
     "Dust_Optical_Depth": "D",
     "Solar_Flux_DN": "S",
 }
-DEFAULT_MODEL_SUFFIX = "UVPDST"
+DEFAULT_MODEL_SUFFIX = "UVDST"
 
 # ─── 模型 ───
 MODEL_CONFIG = {
-    "total_channels": 7,
+    "total_channels": 6,
     "img_height": N_LAT,
     "img_width": N_LON,
     "input_window": 3,

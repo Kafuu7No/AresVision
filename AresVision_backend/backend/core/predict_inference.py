@@ -83,19 +83,13 @@ class PredictInference:
         elif selected_set == {"U_Wind", "V_Wind", "Dust_Optical_Depth", "Solar_Flux_DN", "Temperature"}:
             suffix = "UVDST"
             input_dim = 6
-        elif selected_set == {"U_Wind", "V_Wind", "Pressure", "Dust_Optical_Depth", "Solar_Flux_DN"}:
-            suffix = "UVPDS"
-            input_dim = 6
-        elif selected_set == {"U_Wind", "V_Wind", "Pressure", "Dust_Optical_Depth", "Solar_Flux_DN", "Temperature"}:
-            suffix = "UVPDST"
-            input_dim = 7
         else:
             # 默认回退逻辑
             is_fallback = True
             fallback_reason = "所选变量组合未定义对应模型分支"
             self._print_fallback_warning(selected_variables, DEFAULT_MODEL_SUFFIX, fallback_reason)
             suffix = DEFAULT_MODEL_SUFFIX
-            input_dim = 7
+            input_dim = 6
 
         # 检查是否存在对应权重
         weight_path = self._find_weight_file(suffix)
@@ -105,9 +99,9 @@ class PredictInference:
             self._print_fallback_warning(selected_variables, DEFAULT_MODEL_SUFFIX, fallback_reason)
             suffix = DEFAULT_MODEL_SUFFIX
             weight_path = self._find_weight_file(suffix)
-            input_dim = 7
+            input_dim = 6
 
-        input_vars = ["Ozone"] + (selected_variables if not is_fallback else ["U_Wind", "V_Wind", "Pressure", "Dust", "Solar", "Temp"])
+        input_vars = ["Ozone"] + (selected_variables if not is_fallback else ["U_Wind", "V_Wind", "Dust", "Solar", "Temp"])
 
         model_info = {
             "suffix": suffix,
