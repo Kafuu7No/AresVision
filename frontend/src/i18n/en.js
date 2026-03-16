@@ -1,0 +1,322 @@
+/**
+ * AresVision English Language Pack
+ * Organized by module/page, mirroring the zh.js structure exactly.
+ */
+const en = {
+  nav: {
+    home: 'Home',
+    overview: 'Overview',
+    explore: 'Explore',
+    predict: 'Predict',
+    ai: 'AI Insight',
+    about: 'About',
+    subtitle: 'Mars Vision',
+  },
+
+  footer: {
+    copyright: '© 2025 AresVision · SUSCC Big Data Track',
+    powered: 'POWERED BY OPENMARS · MCD 6.1 · PREDRNNV2',
+  },
+
+  common: {
+    loading: 'Loading...',
+    loadingGlobe: 'Loading globe data...',
+    noData: 'No Data',
+    error: 'Load Failed',
+    retry: 'Retry',
+    marsYear: 'Mars Year',
+    play: 'PLAY',
+    pause: 'PAUSE',
+    season: {
+      spring: 'N. Hemisphere Spring / S. Autumn',
+      summer: 'N. Hemisphere Summer / S. Winter',
+      autumn: 'N. Hemisphere Autumn / S. Spring',
+      winter: 'N. Hemisphere Winter / S. Summer',
+    },
+    seasonMark: {
+      summer: 'Summer Solstice',
+      autumn: 'Autumnal Equinox',
+      winter: 'Winter Solstice',
+    },
+    latRegion: {
+      n90: ({ lat }) => `N. Polar (${lat}°N)`,
+      n60: ({ lat }) => `N. Mid-lat (${lat}°N)`,
+      eq:  ({ lat }) => `Equatorial (${lat}°)`,
+      s60: ({ lat }) => `S. Mid-lat (${lat}°S)`,
+      s90: ({ lat }) => `S. Polar (${lat}°S)`,
+    },
+    positive: 'positive correlation',
+    negative: 'negative correlation',
+  },
+
+  settings: {
+    title: 'Preferences',
+    titleEn: 'PREFERENCES',
+    autoSave: 'Changes apply instantly · Auto-saved',
+    reset: 'Reset Defaults',
+    resetConfirm: 'Reset all preferences to defaults?',
+    language: {
+      label: 'LANGUAGE / 语言',
+      zh: '中文', zhSub: 'Chinese',
+      en: 'English', enSub: '英文',
+    },
+    theme: {
+      label: 'THEME / 主题',
+      dark: 'Dark Mode', darkSub: 'Dark',
+      light: 'Light Mode', lightSub: 'Light',
+      note: 'Light theme is active. Some chart colors are still optimized for dark mode.',
+    },
+    colormap: {
+      label: 'COLORMAP / 色彩映射',
+      desc: 'Applies to all heatmaps and prediction field visualizations',
+      notes: {
+        inferno: 'Default',
+        viridis: 'Perceptually uniform',
+        plasma: 'Perceptually uniform',
+        magma: 'High contrast',
+        cividis: 'CVD-friendly',
+        jet: 'Classic rainbow',
+        rdbu: 'Best for residuals',
+      },
+    },
+    units: {
+      label: 'UNITS / 单位制',
+      ozone: 'Ozone',
+      temperature: 'Temperature',
+      wind: 'Wind Speed',
+      pressure: 'Pressure',
+    },
+    precision: {
+      label: 'PRECISION / 数据精度',
+      desc: 'Controls decimal places in tooltips and metric values',
+      opt2: '2 dp',
+      opt4: '4 dp',
+      opt6: '6 dp',
+      optFull: 'Full',
+    },
+    export: {
+      label: 'EXPORT / 导出偏好',
+      desc: 'Used as defaults; adjustable per export in the export dialog',
+      format: 'Default Format',
+      dpi: 'Resolution (DPI)',
+      fontSize: 'Axis Label Size',
+      includeTitle: 'Include chart title in export',
+      png: 'PNG', pngSub: 'Raster',
+      svg: 'SVG', svgSub: 'Vector',
+      pdf: 'PDF', pdfSub: 'Document',
+      dpi150Sub: 'Screen', dpi300Sub: 'Print', dpi600Sub: 'Ultra HD',
+    },
+  },
+
+  home: {
+    subtitle: 'M A R S   V I S I O N',
+    desc: 'Mars Ozone Column Concentration Prediction & Visualization powered by PredRNNv2',
+    descEn: 'Mars Ozone Column Prediction & Visualization — Powered by OpenMARS & MCD 6.1',
+    exploreBtn: 'Start Exploring',
+    predictBtn: 'Run Prediction →',
+    features: {
+      viz3d:   { title: '3D Visualization', desc: 'Real-time WebGL Mars sphere rendering' },
+      ai:      { title: 'AI Prediction',    desc: 'PredRNNv2 spatiotemporal sequence model' },
+      chart:   { title: 'Scientific Charts', desc: 'Ls-latitude heatmaps & multi-dim analysis' },
+      insight: { title: 'AI Insight',        desc: 'LLM-powered natural language Q&A' },
+    },
+  },
+
+  overview: {
+    menuItems: {
+      globe3d:      '3D GLOBE',
+      seasonal:     'Ozone Heatmap',
+      correlation:  'CORRELATION',
+      realtime:     'REALTIME',
+      environment:  'ENVIRONMENT',
+      prediction:   'PREDICTION',
+      distribution: 'DISTRIBUTION',
+    },
+    controls: {
+      marsYear: 'Mars Year',
+      startLs: 'Start Ls',
+      autoRotate: 'Enable Auto-Rotate',
+      gesture: 'AI Gesture Control',
+      loadingData: 'Loading data...',
+      interactionHint: '• Drag: Rotate sphere\n• Scroll: Zoom\n• Click point: View details\n• ▶ PLAY: Animate time series',
+      dataPoints: 'Data Pts',
+      maxVal: 'Max Val',
+      cameraTracking: 'Camera active... One hand: rotate / Two hands: zoom',
+      resetLs: 'Reset to Ls=0°',
+    },
+    charts: {
+      heatmapTitle: ({ year }) => `MY ${year} Ozone Seasonal Distribution (Zonal Mean O₃)`,
+      noData: 'NO DATA',
+      unknownType: 'Unknown chart type',
+      currentValue: 'Current Value',
+      ozoneDist: 'Ozone Column Distribution Statistics',
+      realtimeResult: 'Real-time Prediction Result',
+      processingProgress: 'Progress',
+      engineTitle: 'PredRNNv2 Spatiotemporal Engine',
+      inputChannels: 'Input Channels',
+      timeWindow: 'Time Window',
+      spatialGrid: 'Spatial Grid',
+    },
+    env: {
+      temperature: 'Temperature',
+      pressure: 'Pressure',
+      dust: 'Dust',
+      wind: 'Wind Speed',
+    },
+  },
+
+  explore: {
+    title: 'Data Exploration',
+    subtitle: 'DATA EXPLORATION',
+    ozoneMap: 'OZONE MAP · Global Distribution',
+    heatmapTitle: 'SEASONAL HEATMAP · Ls-Latitude Ozone',
+    heatmapSub: ({ year }) => `O₃ Column Density (zonal mean) · MY${year}`,
+    bandsTitle: 'LATITUDE BANDS · Seasonal Variation',
+    corrTitle: 'CORRELATION MATRIX · Variable Correlations',
+    corrSub: ({ year }) => `Pearson Correlation · O₃ vs Environmental Variables · MY${year}`,
+    heatmapInsight: ({ year, latMaxDesc, lsMax, valMax, latMinDesc, lsMin, valMin, ratio, unit }) =>
+      `MY${year} annual ozone column density by latitude and season. ` +
+      `${latMaxDesc} peaks at Ls≈${lsMax}° with ${valMax} ${unit}; ` +
+      `${latMinDesc} reaches minimum at Ls≈${lsMin}° with ${valMin} ${unit}. ` +
+      `Polar-to-equatorial concentration ratio ≈ ${ratio}:1.`,
+    bandsInsight: ({ maxBandName, maxAmp, minBandName, minAmp, phaseDiff, unit }) =>
+      `Seasonal curves across 5 latitude bands: ${maxBandName} shows the largest amplitude ` +
+      `(peak-to-trough ${maxAmp} ${unit}); ${minBandName} is most stable (${minAmp} ${unit}). ` +
+      `North/south polar peaks differ by ~${phaseDiff}° in Ls phase.`,
+    corrInsight: ({ year, varName, corrVal, corrSign }) =>
+      `Pearson correlation analysis (MY${year}): among all environmental variables, ` +
+      `${varName} shows the strongest relationship with ozone (r=${corrVal}, ${corrSign}). ` +
+      `Matrix is computed from globally averaged time series, revealing planetary-scale covariance.`,
+  },
+
+  predict: {
+    title: 'Prediction Analysis',
+    subtitle: 'PREDICTION & ANALYSIS',
+    runBtn: '🚀 RUN PREDICTION',
+    runningBtn: 'Running...',
+    horizon: 'Prediction Horizon',
+    marsYear: 'Mars Year',
+    startLs: 'Start Ls',
+    lsMarks: {
+      spring: '0° Vernal Eq.',
+      summer: '90° Summer Sol.',
+      autumn: '180° Autumnal Eq.',
+      winter: '270° Winter Sol.',
+    },
+    envVarsLabel: 'Select environmental driver variables for PredRNNv2',
+    envVarsNote: ({ selected }) => `O₃ autoregressive channel always enabled · ${selected}/6 env vars selected`,
+    variables: {
+      Temperature:         'Temperature',
+      Dust_Optical_Depth:  'Dust Optical Depth (DOD)',
+      Solar_Flux_DN:       'Solar Flux',
+      U_Wind:              'Zonal Wind (U)',
+      V_Wind:              'Meridional Wind (V)',
+    },
+    fileUpload: {
+      drag: 'Drop .nc file here',
+      click: 'or click to select',
+    },
+    viewModes: {
+      triptych:   'Triptych',
+      original:   'Ground Truth',
+      prediction: 'Prediction',
+      diff:       'Residual',
+    },
+    panels: {
+      truth:      'Ground Truth',
+      prediction: 'Model Prediction',
+      residual:   'Residual Field',
+    },
+    showStep: 'Show step:',
+    computing: 'Computing...',
+    clickToStart: 'Click "Run Prediction" to view results',
+    errorPrefix: 'Prediction failed. Check if the backend service is running.',
+    evalTitle: 'MODEL EVALUATION',
+    perStepTitle: 'Per-Step Metrics',
+    perfTitle: 'TEST SET PERFORMANCE',
+    generateBtn: 'GENERATE',
+    generatingBtn: 'Computing...',
+    avgR2: 'Avg R²',
+    globalR2: 'Global R²',
+    tableHeaders: {
+      my: 'Mars Year',
+      ls: 'Solar Longitude Ls',
+      r2: 'R² (Spatial)',
+    },
+    generatingHint: 'Iterating over test set and computing R² metrics, please wait...',
+    perfEmptyHint: 'Click the button above to generate model accuracy statistics for the test set (MY27 352° – MY28 69°)',
+    testSetNote: '* The test set contains MY28 data unseen during training, providing an unbiased evaluation of model generalization.',
+    fallbackWarning: 'Note: This prediction uses a fallback model selected automatically due to missing weights.',
+    fallbackReason: 'Reason: ',
+    initPrompt: 'Configure parameters and click "Run Prediction" to run PredRNNv2 inference',
+    initDesc: 'The model uses the 3 time steps preceding the selected Ls as input to\npredict up to 3 future steps of global Mars ozone column concentration.',
+    summary: ({ lsStart, year, horizon, varCount, varNames, rmse, ssim, r2 }) =>
+      `<strong>Prediction complete</strong>: Start Ls=${lsStart}°, MY${year}, ${horizon} steps predicted.\n` +
+      `Input: O₃ + ${varCount} env vars${varCount > 0 ? ` (${varNames})` : ' (O₃ autoregressive baseline only)'}.\n` +
+      `Overall: RMSE = ${rmse} μm-atm, SSIM = ${ssim}, R² = ${r2}.`,
+    summaryDone: 'Prediction Complete',
+    summaryL1: ({ lsStart, year, horizon }) => `Start Ls=${lsStart}°, MY${year}, ${horizon} steps predicted.`,
+    summaryL2a: ({ varCount }) => `Input: O₃ + ${varCount} env variable(s)`,
+    summaryL2b: ({ varNames }) => ` (${varNames})`,
+    summaryL2c: ' (O₃ autoregressive baseline only)',
+    summaryL3a: 'Overall: RMSE = ',
+    summaryL3b: ' μm-atm, SSIM = ',
+    summaryL3c: ', R² = ',
+    fullscreen3D: {
+      truth:      'Ground Truth',
+      prediction: 'Model Prediction',
+      residual:   'Residual Field',
+    },
+  },
+
+  ai: {
+    title: 'AI Insight',
+    subtitle: 'AI-POWERED INSIGHT',
+    chatHeader: 'CHAT — AI Q&A',
+    contextTitle: 'Current Analysis Context',
+    quickTitle: 'Quick Questions',
+    placeholder: 'Ask a question...',
+    send: 'Send',
+    errorChart: 'Real-time Prediction Error',
+    quickQuestions: [
+      'Which region has the largest prediction bias?',
+      'How do dust storms affect ozone?',
+      'Why does polar ozone peak seasonally?',
+      'In which seasons does the model perform worst?',
+      'What is the pattern of diurnal variation?',
+    ],
+    welcome: 'Hello! I am the AresVision AI assistant, ready to help you interpret Mars ozone prediction results.\n\nYou can ask me:\n• Which regions show the largest ozone bias in the current prediction?\n• Why does polar ozone peak near Ls=200°?\n• How do dust storms affect ozone distribution?',
+  },
+
+  about: {
+    title: 'About',
+    subtitle: 'ABOUT ARESVISION',
+    description:
+      'AresVision is an ozone prediction and visualization platform for Mars atmospheric science research. ' +
+      'Built on OpenMARS reanalysis data and MCD 6.1 climate simulation data, it employs the PredRNNv2 ' +
+      'spatiotemporal deep learning model to achieve multi-step prediction of global Mars ozone column concentration.',
+    techCats: {
+      frontend: 'Frontend',
+      backend:  'Backend',
+      model:    'Model',
+      data:     'Data',
+    },
+    openmarsTitle: 'OpenMARS Reanalysis Data',
+    openmarsContent:
+      'Variable: o3col (ozone column, μm-atm)\n' +
+      'Dimensions: Ls × lat(36) × lon(72) × lev(35)\n' +
+      'Coverage: MY27 full year (Ls 2°–360°)\n' +
+      'Resolution: 5° lat/lon grid',
+    mcdTitle: 'MCD 6.1 Climate Simulation Data',
+    mcdContent:
+      'Variables: U/V Wind, Pressure, Temperature, DOD, Solar Flux\n' +
+      'Dimensions: sol(669) × hour(8) × lat(36) × lon(72)\n' +
+      'Coverage: MY27 full (5352 time steps)\n' +
+      'Alignment: Ls-interpolated to OpenMARS grid',
+    teamRoles: ['Full-Stack Dev', 'Data Science', 'UI/UX', 'Model Training'],
+    member: ({ n }) => `Member ${n}`,
+    competition: 'SUSCC — Big Data Track',
+  },
+};
+
+export default en;
