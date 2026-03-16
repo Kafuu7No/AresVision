@@ -30,6 +30,7 @@ class PredictResponse(BaseModel):
     selected_variables: list[str]
     horizon: int
     ls_values: list[float]
+    model_info: dict = Field(default_factory=dict)
 
 
 class StepMetrics(BaseModel):
@@ -71,3 +72,4 @@ class PerformancePoint(BaseModel):
 
 class PerformanceResponse(BaseModel):
     items: list[PerformancePoint]
+    global_r2: float = 0.0

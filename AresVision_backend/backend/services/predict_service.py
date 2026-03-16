@@ -7,6 +7,7 @@ import hashlib
 import json
 import numpy as np
 import torch
+from sklearn.metrics import r2_score
 
 from cachetools import LRUCache
 
@@ -44,8 +45,12 @@ class PredictOrchestratorService:
     ) -> dict:
         cache_key = self._make_cache_key(mars_year, ls_start, selected_variables, horizon)
         if cache_key in self._result_cache:
-            logger.info("命中预测缓存")
-            return self._result_cache[cache_key]
+            cached_res = self._result_cache[cache_key]
+            if "model_info" in cached_res:
+                logger.info("命中有效预测缓存")
+                return cached_res
+            else:
+                logger.info("响应缓存存在但缺少元数据，强制刷新")
 
         cfg = MODEL_CONFIG
         window = cfg["input_window"]
@@ -67,7 +72,7 @@ class PredictOrchestratorService:
             truth_ls = np.array([ls_start + i * 5.0 for i in range(horizon)])
 
         # 3. 编排并执行推理流程
-        pred_arr = self._run_inference_pipeline(input_arr, channel_mask, ls_start, selected_variables, horizon)
+        pred_arr, model_info = self._run_inference_pipeline(input_arr, channel_mask, ls_start, selected_variables, horizon)
 
         # 4. 计算指标与组装
         actual_horizon = pred_arr.shape[0]
@@ -97,6 +102,7 @@ class PredictOrchestratorService:
             "selected_variables": selected_variables,
             "horizon": actual_horizon,
             "metrics": metrics,
+            "model_info": model_info,
         }
 
         self._result_cache[cache_key] = result
@@ -109,9 +115,9 @@ class PredictOrchestratorService:
         ls_start: float,
         selected_variables: list[str],
         horizon: int,
-    ) -> np.ndarray:
+    ) -> tuple[np.ndarray, dict]:
         # a. 动态获取模型
-        model, input_dim = self.inference.get_model_for_variables(selected_variables)
+        model, input_dim, model_info = self.inference.get_model_for_variables(selected_variables)
 
         # b. 构造满足模型维度要求的输入
         if input_dim < 7:
@@ -141,7 +147,7 @@ class PredictOrchestratorService:
 
         # e. 反标准化
         pred_physical = self.transforms.postprocess_output(pred_scaled)
-        return pred_physical
+        return pred_physical, model_info
 
     def get_ablation_results(
         self,
@@ -180,13 +186,14 @@ class PredictOrchestratorService:
 
         return results
 
-    def get_performance_curve(self, selected_variables: list[str]) -> list[dict]:
+    def get_performance_curve(self, selected_variables: list[str]) -> dict:
         """
-        获取模型在测试集上的性能曲线数据 (R2 分数)
+        获取模型在测试集上的性能曲线数据 (R2 分数) 以及全局汇总 R2。
         """
+
         if self.ml_data_prep.processed_data is None:
             logger.warning("未加载预处理数据，无法生成性能曲线")
-            return []
+            return {"items": [], "global_r2": 0.0}
             
         data = self.ml_data_prep.processed_data
         ls_array = data['om_ls_raw']
@@ -199,6 +206,9 @@ class PredictOrchestratorService:
         my28_start = split_indices[0] + 1 if len(split_indices) > 0 else total_len
         
         results = []
+        all_truths = []
+        all_preds = []
+
         # 为了保证前端渲染性能，我们对测试集进行抽样 (增加采样密度)
         test_samples_count = total_len - split_idx
         step = max(1, test_samples_count // 150) 
@@ -213,6 +223,18 @@ class PredictOrchestratorService:
                 # 调用 predict 获取指标
                 res = self.predict(my, ls, selected_variables, horizon=3)
                 r2 = res["metrics"]["overall"]["r2"]
+                
+                # 收集用于全局 R2 计算的数据
+                for h_idx in range(res["horizon"]):
+                    # res["ground_truth"][h_idx]["field"] 是 list[list[float]]
+                    f_truth = np.array(res["ground_truth"][h_idx]["field"]).flatten()
+                    f_pred = np.array(res["prediction"][h_idx]["field"]).flatten()
+                    
+                    # 排除 NaN
+                    valid = ~np.isnan(f_truth)
+                    all_truths.append(f_truth[valid])
+                    all_preds.append(f_pred[valid])
+
                 results.append({
                     "ls": round(ls, 2),
                     "my": my,
@@ -221,7 +243,17 @@ class PredictOrchestratorService:
             except Exception as e:
                 logger.debug(f"性能曲线采样失败 (MY{my} Ls{ls}): {e}")
                 
-        return results
+        global_r2 = 0.0
+        if all_truths:
+            t_cat = np.concatenate(all_truths)
+            p_cat = np.concatenate(all_preds)
+            if len(t_cat) > 10:
+                global_r2 = float(r2_score(t_cat, p_cat))
+
+        return {
+            "items": results,
+            "global_r2": round(global_r2, 4)
+        }
 
     def _fields_to_dicts(
         self,

@@ -24,8 +24,8 @@ N_LON = 72
 
 # ─── MCD 变量 ───
 MCD_VARIABLES = [
-    "U_Wind", "V_Wind", "Pressure", "Temperature",
-    "Dust_Optical_Depth", "Solar_Flux_DN",
+    "U_Wind", "V_Wind", "Pressure", "Dust_Optical_Depth",
+    "Solar_Flux_DN", "Temperature",
 ]
 
 VARIABLE_NAMES_CN = {

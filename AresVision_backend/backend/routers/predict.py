@@ -53,6 +53,7 @@ async def run_prediction(
             "selected_variables": result["selected_variables"],
             "horizon": result["horizon"],
             "ls_values": result["ls_values"],
+            "model_info": result["model_info"],
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -114,8 +115,8 @@ async def get_performance_results(
     """
     try:
         ps = _get_predict_service(request)
-        items = ps.get_performance_curve(selected_variables=body.selected_variables)
-        return {"items": items}
+        result = ps.get_performance_curve(selected_variables=body.selected_variables)
+        return result
     except Exception as e:
         logger.error(f"性能曲线接口错误: {e}")
         raise HTTPException(status_code=500, detail=f"性能曲线计算失败: {e}")

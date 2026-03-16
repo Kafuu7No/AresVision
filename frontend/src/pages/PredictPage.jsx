@@ -657,6 +657,72 @@ export default function PredictPage() {
             );
           })()}
 
+          {/* 当前应用模型信息 */}
+          {results && results.model_info && (
+            <GlowCard style={{ padding: '16px 20px', border: results.model_info.is_fallback ? '1px solid rgba(255,80,80,0.3)' : `1px solid ${C.border}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ 
+                    width: 32, height: 32, borderRadius: '50%', 
+                    background: results.model_info.is_fallback ? 'rgba(255,80,80,0.1)' : 'rgba(74,207,172,0.1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 16
+                  }}>
+                    {results.model_info.is_fallback ? '⚠️' : '🎯'}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>CURRENT ACTIVE MODEL</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.ice, marginTop: 2 }}>
+                      PredRNNv2 <span style={{ color: C.blue }}>_{results.model_info.suffix}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 24 }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 9, color: C.ice30 }}>INPUT CHANNELS</div>
+                    <div style={{ 
+                      fontSize: 11, fontWeight: 600, color: results.model_info.is_fallback ? '#ff8a8a' : '#4acfac', 
+                      marginTop: 2, display: 'flex', gap: 4, justifyContent: 'flex-end', flexWrap: 'wrap', maxWidth: 200 
+                    }}>
+                      {results.model_info.input_vars.map((v, idx) => (
+                        <span key={v} style={{ 
+                          padding: '1px 5px', background: 'rgba(255,255,255,0.05)', borderRadius: 4 
+                        }}>
+                          {v.replace('_Optical_Depth', '').replace('_Flux_DN', '').replace('_Wind', '')}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 9, color: C.ice30 }}>INPUT DIM</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.ice }}>{results.model_info.input_dim} Ch</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 9, color: C.ice30 }}>WEIGHT FILE</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.ice }}>{results.model_info.weight_file}</div>
+                  </div>
+                </div>
+              </div>
+
+              {results.model_info.is_fallback && (
+                <div style={{ 
+                  marginTop: 12, padding: '10px 14px', borderRadius: 8, 
+                  background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.2)',
+                  display: 'flex', alignItems: 'flex-start', gap: 10
+                }}>
+                  <span style={{ fontSize: 14 }}>💡</span>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b' }}>注意：此预测使用了由于缺失而自动选择的回退模型</div>
+                    <div style={{ fontSize: 10, color: 'rgba(255,107,107,0.7)', marginTop: 2 }}>
+                      原因：{results.model_info.fallback_reason}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </GlowCard>
+          )}
+
           {/* 评估指标 */}
           <GlowCard style={{ padding: 20 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
@@ -775,10 +841,10 @@ export default function PredictPage() {
             {performanceData ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 {/* 2D 趋势图表 */}
-                <div style={{ 
-                  background: 'rgba(255,255,255,0.02)', 
-                  borderRadius: 12, 
-                  border: `1px solid ${C.border}`, 
+                <div style={{
+                  background: 'rgba(255,255,255,0.02)',
+                  borderRadius: 12,
+                  border: `1px solid ${C.border}`,
                   padding: '16px',
                   height: 380
                 }}>
@@ -791,15 +857,15 @@ export default function PredictPage() {
                         type: 'scatter',
                         mode: 'lines+markers',
                         name: 'R² Score',
-                        marker: { 
-                          color: C.mars, 
-                          size: 7, 
-                          line: { color: 'rgba(255,255,255,0.5)', width: 1 } 
+                        marker: {
+                          color: C.mars,
+                          size: 7,
+                          line: { color: 'rgba(255,255,255,0.5)', width: 1 }
                         },
-                        line: { 
-                          color: C.mars, 
-                          width: 3, 
-                          shape: 'spline' 
+                        line: {
+                          color: C.mars,
+                          width: 3,
+                          shape: 'spline'
                         },
                         fill: 'tozeroy',
                         fillcolor: 'rgba(199,91,57,0.08)',
@@ -826,7 +892,7 @@ export default function PredictPage() {
                         tickfont: { size: 10, color: C.ice60 },
                         gridcolor: 'rgba(255,255,255,0.05)',
                         zeroline: false,
-                        range: [0, 1.1]
+                        range: [0, 1.0]
                       },
                       shapes: [
                         {
@@ -856,48 +922,68 @@ export default function PredictPage() {
 
                 {/* 底部数据明细表 */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ 
-                    padding: '10px 16px', 
-                    background: 'rgba(74,207,172,0.1)', 
-                    borderRadius: 8, 
-                    border: '1px solid rgba(74,207,172,0.3)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <span style={{ fontSize: 11, color: C.ice60, fontWeight: 600 }}>平均决定系数 AVG R²</span>
-                    <span style={{ fontSize: 16, color: '#4acfac', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
-                      {(performanceData.items.reduce((acc, it) => acc + it.r2, 0) / performanceData.items.length).toFixed(4)}
-                    </span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div style={{ 
+                      padding: '12px 16px', 
+                      background: 'rgba(74,207,172,0.1)', 
+                      borderRadius: 10, 
+                      border: '1px solid rgba(74,207,172,0.3)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4
+                    }}>
+                      <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>平均决定系数 AVG R²</span>
+                      <span style={{ fontSize: 20, color: '#4acfac', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                        {(performanceData.items.reduce((acc, it) => acc + it.r2, 0) / performanceData.items.length).toFixed(4)}
+                      </span>
+                    </div>
+
+                    <div style={{ 
+                      padding: '12px 16px', 
+                      background: 'rgba(74,158,255,0.1)', 
+                      borderRadius: 10, 
+                      border: '1px solid rgba(74,158,255,0.3)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>全局决定系数 GLOBAL R²</span>
+                        <div style={{ padding: '2px 6px', background: 'rgba(255,255,255,0.05)', borderRadius: 4, fontSize: 8, color: C.ice30 }}>Flattened</div>
+                      </div>
+                      <span style={{ fontSize: 20, color: C.blue, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                        {performanceData.global_r2 ? performanceData.global_r2.toFixed(4) : '0.0000'}
+                      </span>
+                    </div>
                   </div>
-                  
+
                   <div style={{ maxHeight: 180, overflowY: 'auto', borderRadius: 8, border: `1px solid ${C.border}` }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                    <thead style={{ position: 'sticky', top: 0, background: '#0a0a0f', zIndex: 1 }}>
-                      <tr>
-                        {['火星年 MY', '太阳黄经 Ls', '决定系数 R² (Spatial)'].map(h => (
-                          <th key={h} style={{ padding: '10px', textAlign: 'center', color: C.ice30, borderBottom: `1px solid ${C.border}`, fontWeight: 600 }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {performanceData.items.map((it, i) => (
-                        <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
-                          <td style={{ padding: '10px', textAlign: 'center', color: C.ice60 }}>MY{it.my}</td>
-                          <td style={{ padding: '10px', textAlign: 'center', color: C.ice60 }}>{it.ls.toFixed(2)}°</td>
-                          <td style={{
-                            padding: '10px', textAlign: 'center',
-                            color: it.r2 > 0.9 ? '#4acfac' : it.r2 > 0.8 ? '#ffd740' : C.mars,
-                            fontWeight: 700
-                          }}>{it.r2.toFixed(4)}</td>
+                      <thead style={{ position: 'sticky', top: 0, background: '#0a0a0f', zIndex: 1 }}>
+                        <tr>
+                          {['火星年 MY', '太阳黄经 Ls', '决定系数 R² (Spatial)'].map(h => (
+                            <th key={h} style={{ padding: '10px', textAlign: 'center', color: C.ice30, borderBottom: `1px solid ${C.border}`, fontWeight: 600 }}>{h}</th>
+                          ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {performanceData.items.map((it, i) => (
+                          <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
+                            <td style={{ padding: '10px', textAlign: 'center', color: C.ice60 }}>MY{it.my}</td>
+                            <td style={{ padding: '10px', textAlign: 'center', color: C.ice60 }}>{it.ls.toFixed(2)}°</td>
+                            <td style={{
+                              padding: '10px', textAlign: 'center',
+                              color: it.r2 > 0.9 ? '#4acfac' : it.r2 > 0.8 ? '#ffd740' : C.mars,
+                              fontWeight: 700
+                            }}>{it.r2.toFixed(4)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
+            ) : (
               <div style={{ padding: '40px 0', textAlign: 'center', color: C.ice30, fontSize: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: `1px dashed ${C.border}` }}>
                 {perfLoading ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
