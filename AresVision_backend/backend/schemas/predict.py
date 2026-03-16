@@ -79,3 +79,13 @@ class PerformanceResponse(BaseModel):
     global_rmse: float = 0.0
     global_mae: float = 0.0
     global_ssim: float = 0.0
+
+
+class PerformanceCompareRequest(BaseModel):
+    # 每个项包含一个变量组合
+    configs: list[list[str]]
+
+
+class PerformanceCompareResponse(BaseModel):
+    # key 为模型后缀或变量标识，val 为对应的性能数据
+    results: dict[str, PerformanceResponse]

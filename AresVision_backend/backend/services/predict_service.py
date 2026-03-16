@@ -195,7 +195,25 @@ class PredictOrchestratorService:
     def get_performance_curve(self, selected_variables: list[str]) -> dict:
         """
         获取模型在测试集上的性能曲线数据 (R2 分数) 以及全局汇总 R2。
+        引入文件持久化缓存以优化计算效率。
         """
+        from config import PERF_CACHE_DIR
+        
+        # 构造持久化缓存 key
+        perf_key_data = {
+            "vars": sorted(selected_variables),
+            "data_mtime": self.ml_data_prep.processed_data_mtime if hasattr(self.ml_data_prep, 'processed_data_mtime') else "default"
+        }
+        perf_hash = hashlib.md5(json.dumps(perf_key_data).encode()).hexdigest()
+        cache_file = PERF_CACHE_DIR / f"perf_{perf_hash}.json"
+
+        if cache_file.exists():
+            try:
+                with open(cache_file, 'r', encoding='utf-8') as f:
+                    logger.info(f"命中持久化性能缓存: {cache_file.name}")
+                    return json.load(f)
+            except Exception as e:
+                logger.warning(f"读取性能缓存失败: {e}")
 
         if self.ml_data_prep.processed_data is None:
             logger.warning("未加载预处理数据，无法生成性能曲线")
@@ -265,13 +283,26 @@ class PredictOrchestratorService:
                 # 全局 SSIM 通常取采样点的均值比较有物理意义
                 global_ssim = float(np.mean([r["ssim"] for r in results]))
 
-        return {
+        final_res = {
             "items": results,
             "global_r2": round(global_r2, 4),
             "global_rmse": round(global_rmse, 6),
             "global_mae": round(global_mae, 6),
             "global_ssim": round(global_ssim, 4),
         }
+
+        # 写入持久化缓存
+        try:
+            if not PERF_CACHE_DIR.exists():
+                PERF_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            with open(cache_file, 'w', encoding='utf-8') as f:
+                json.dump(final_res, f, ensure_ascii=False, indent=2)
+                logger.info(f"已保存性能分析结果至持久化缓存: {cache_file.name}")
+        except Exception as e:
+            logger.warning(f"保存性能缓存失败: {e}")
+
+        return final_res
+
 
     def _fields_to_dicts(
         self,
