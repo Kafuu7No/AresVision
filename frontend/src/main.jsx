@@ -2,12 +2,22 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
+import AuthModal from './components/AuthModal';
+import Toast from './components/Toast';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <SettingsProvider>
-      <App />
+      <ToastProvider>
+        <AuthProvider>
+          <App />
+          <AuthModal />
+          <Toast />
+        </AuthProvider>
+      </ToastProvider>
     </SettingsProvider>
   </React.StrictMode>
 );
