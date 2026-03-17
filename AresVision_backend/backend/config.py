@@ -87,3 +87,16 @@ API_PREFIX = "/api"
 AI_API_URL = os.getenv("AI_API_URL", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
 AI_MODEL_NAME = os.getenv("AI_MODEL_NAME", "gemini-1.5-flash")
 AI_API_KEY = os.getenv("AI_API_KEY", "")
+
+# ─── 数据库 ───
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    f"sqlite+aiosqlite:///{DATA_DIR / 'aresvision.db'}",
+)
+
+# ─── 认证 ───
+import secrets
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY") or secrets.token_hex(32)
+JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
+DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@aresvision.com")
+DEFAULT_ADMIN_PASSWORD = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
