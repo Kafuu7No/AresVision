@@ -5,6 +5,71 @@
 
 const BASE = '/api';
 
+// ─── 认证工具 ───
+
+/** 从 localStorage 读取 token，自动附加到请求头 */
+async function authedFetch(url, options = {}) {
+  const token = localStorage.getItem('aresvision_token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    // token 过期或无效，清除本地状态，触发全局事件让 AuthContext 响应
+    localStorage.removeItem('aresvision_token');
+    window.dispatchEvent(new Event('aresvision:logout'));
+  }
+  return res;
+}
+
+// ─── 认证接口 ───
+
+export async function apiLogin(email, password) {
+  const res = await fetch(`${BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function apiRegister(email, username, password) {
+  const res = await fetch(`${BASE}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, username, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function apiGetMe() {
+  const res = await authedFetch(`${BASE}/auth/me`);
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+}
+
+export async function apiChangePassword(oldPassword, newPassword) {
+  const res = await authedFetch(`${BASE}/auth/change-password`, {
+    method: 'PUT',
+    body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
 export async function fetchGlobeData(marsYear = 27, ls = 10, signal = null) {
   const opts = signal ? { signal } : {};
   const res = await fetch(`${BASE}/explore/globe?my=${marsYear}&ls=${ls}`, opts);

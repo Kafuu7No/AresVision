@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import C from '../constants/colors';
+import { useT } from '../i18n';
+import { useSettings } from '../contexts/SettingsContext';
 import Mars3DPlaceholder from '../components/Mars3DPlaceholder';
 import GlowCard from '../components/GlowCard';
 
-// ─── 特性卡片 SVG 图标 ───
+// ─── 图标组件（无文案，保持不变）───
 
 function IconGlobe({ color = C.mars, size = 32 }) {
   return (
@@ -24,22 +26,10 @@ function IconCpu({ color = C.blue, size = 32 }) {
       stroke={color} strokeWidth="1.5" strokeLinecap="round">
       <rect x="9" y="9" width="14" height="14" rx="2" />
       <rect x="12.5" y="12.5" width="7" height="7" rx="1" />
-      {/* Top pins */}
-      <line x1="12" y1="9" x2="12" y2="5.5" />
-      <line x1="16" y1="9" x2="16" y2="5.5" />
-      <line x1="20" y1="9" x2="20" y2="5.5" />
-      {/* Bottom pins */}
-      <line x1="12" y1="23" x2="12" y2="26.5" />
-      <line x1="16" y1="23" x2="16" y2="26.5" />
-      <line x1="20" y1="23" x2="20" y2="26.5" />
-      {/* Left pins */}
-      <line x1="9" y1="12" x2="5.5" y2="12" />
-      <line x1="9" y1="16" x2="5.5" y2="16" />
-      <line x1="9" y1="20" x2="5.5" y2="20" />
-      {/* Right pins */}
-      <line x1="23" y1="12" x2="26.5" y2="12" />
-      <line x1="23" y1="16" x2="26.5" y2="16" />
-      <line x1="23" y1="20" x2="26.5" y2="20" />
+      <line x1="12" y1="9" x2="12" y2="5.5" /><line x1="16" y1="9" x2="16" y2="5.5" /><line x1="20" y1="9" x2="20" y2="5.5" />
+      <line x1="12" y1="23" x2="12" y2="26.5" /><line x1="16" y1="23" x2="16" y2="26.5" /><line x1="20" y1="23" x2="20" y2="26.5" />
+      <line x1="9" y1="12" x2="5.5" y2="12" /><line x1="9" y1="16" x2="5.5" y2="16" /><line x1="9" y1="20" x2="5.5" y2="20" />
+      <line x1="23" y1="12" x2="26.5" y2="12" /><line x1="23" y1="16" x2="26.5" y2="16" /><line x1="23" y1="20" x2="26.5" y2="20" />
     </svg>
   );
 }
@@ -54,7 +44,7 @@ function IconChart({ color = C.mars, size = 32 }) {
       <circle cx="10" cy="15" r="1.5" fill={color} />
       <circle cx="15" cy="18" r="1.5" fill={color} />
       <circle cx="20" cy="10" r="1.5" fill={color} />
-      <circle cx="27" cy="6" r="1.5" fill={color} />
+      <circle cx="27" cy="6"  r="1.5" fill={color} />
     </svg>
   );
 }
@@ -70,12 +60,10 @@ function IconMessage({ color = C.blue, size = 32 }) {
   );
 }
 
-// 图标包装容器
 function IconWrapper({ children, accent = C.mars }) {
   return (
     <div style={{
-      width: 58, height: 58,
-      borderRadius: 16,
+      width: 58, height: 58, borderRadius: 16,
       background: `rgba(${accent === C.mars ? '199,91,57' : '74,158,255'},0.08)`,
       border: `1px solid rgba(${accent === C.mars ? '199,91,57' : '74,158,255'},0.18)`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -86,34 +74,13 @@ function IconWrapper({ children, accent = C.mars }) {
   );
 }
 
-// ─── 特性卡片数据 ───
-
-const features = [
-  {
-    icon: <IconWrapper accent={C.mars}><IconGlobe color={C.mars} size={30} /></IconWrapper>,
-    title: '3D 可视化',
-    desc: 'WebGL 火星球体实时渲染',
-  },
-  {
-    icon: <IconWrapper accent={C.blue}><IconCpu color={C.blue} size={30} /></IconWrapper>,
-    title: 'AI 预测',
-    desc: 'PredRNNv2 时空序列模型',
-  },
-  {
-    icon: <IconWrapper accent={C.mars}><IconChart color={C.mars} size={30} /></IconWrapper>,
-    title: '科学图表',
-    desc: 'Ls-纬度热力图 & 多维分析',
-  },
-  {
-    icon: <IconWrapper accent={C.blue}><IconMessage color={C.blue} size={30} /></IconWrapper>,
-    title: '智能解读',
-    desc: '大模型驱动的自然语言问答',
-  },
-];
-
 // ─── 主页面 ───
 
 export default function HomePage({ onNavigate }) {
+  const t = useT();
+  const { settings } = useSettings();
+  const isLight = settings.theme === 'light';
+
   const [showTitle, setShowTitle] = useState(false);
   const [showSub, setShowSub] = useState(false);
   const [showButtons, setShowButtons] = useState(false);
@@ -126,6 +93,29 @@ export default function HomePage({ onNavigate }) {
     const t4 = setTimeout(() => setShowButtons(true), 2400);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
   }, []);
+
+  const features = [
+    {
+      icon: <IconWrapper accent={C.mars}><IconGlobe color={C.mars} size={30} /></IconWrapper>,
+      title: t('home.features.viz3d.title'),
+      desc:  t('home.features.viz3d.desc'),
+    },
+    {
+      icon: <IconWrapper accent={C.blue}><IconCpu color={C.blue} size={30} /></IconWrapper>,
+      title: t('home.features.ai.title'),
+      desc:  t('home.features.ai.desc'),
+    },
+    {
+      icon: <IconWrapper accent={C.mars}><IconChart color={C.mars} size={30} /></IconWrapper>,
+      title: t('home.features.chart.title'),
+      desc:  t('home.features.chart.desc'),
+    },
+    {
+      icon: <IconWrapper accent={C.blue}><IconMessage color={C.blue} size={30} /></IconWrapper>,
+      title: t('home.features.insight.title'),
+      desc:  t('home.features.insight.desc'),
+    },
+  ];
 
   return (
     <div style={{
@@ -142,6 +132,17 @@ export default function HomePage({ onNavigate }) {
         <circle cx="360" cy="360" r="355" fill="none" stroke={C.ice} strokeWidth="0.3" strokeDasharray="3 14" />
       </svg>
 
+      {/* 球体背后大气散射光晕（浅色主题下增强氛围） */}
+      {isLight && (
+        <div style={{
+          position: 'absolute',
+          top: 'calc(50% - 220px)',
+          width: 560, height: 440,
+          background: 'radial-gradient(ellipse at center, rgba(200,140,100,0.08) 0%, rgba(200,140,100,0) 60%)',
+          pointerEvents: 'none',
+        }} />
+      )}
+
       {/* 火星球体 */}
       <div style={{
         animation: marsReady ? 'marsApproach 1.5s cubic-bezier(0.22,1,0.36,1) forwards' : 'none',
@@ -151,13 +152,12 @@ export default function HomePage({ onNavigate }) {
         <Mars3DPlaceholder size={280} />
       </div>
 
-      {/* 脉冲光环（火星背后装饰） */}
+      {/* 脉冲光环 */}
       <div style={{
-        position: 'absolute',
-        top: 'calc(50% - 100px)',
-        width: 310, height: 310,
-        borderRadius: '50%',
-        border: '1.5px solid rgba(199,91,57,0.18)',
+        position: 'absolute', top: 'calc(50% - 100px)',
+        width: 310, height: 310, borderRadius: '50%',
+        border: isLight ? '1.5px solid rgba(199,91,57,0.12)' : '1.5px solid rgba(199,91,57,0.18)',
+        boxShadow: isLight ? '0 0 40px rgba(180,140,120,0.15)' : 'none',
         animation: 'pulse-ring 3s ease-out infinite',
       }} />
 
@@ -166,8 +166,10 @@ export default function HomePage({ onNavigate }) {
         <h1 style={{
           fontFamily: "'Orbitron', sans-serif",
           fontSize: 56, fontWeight: 900, letterSpacing: 8,
-          color: C.ice, margin: 0,
-          textShadow: '0 0 60px rgba(199,91,57,0.28)',
+          color: isLight ? '#2a2a3a' : C.ice, margin: 0,
+          textShadow: isLight
+            ? '0 2px 16px rgba(199,91,57,0.12)'
+            : '0 0 60px rgba(199,91,57,0.28)',
           opacity: showTitle ? 1 : 0,
           transform: showTitle ? 'translateY(0)' : 'translateY(30px)',
           transition: 'all 1s cubic-bezier(0.22,1,0.36,1)',
@@ -183,20 +185,21 @@ export default function HomePage({ onNavigate }) {
           transform: showTitle ? 'translateY(0)' : 'translateY(20px)',
           transition: 'all 1s cubic-bezier(0.22,1,0.36,1) 0.2s',
         }}>
-          智 绘 赤 星
+          {t('home.subtitle')}
         </div>
 
         <p style={{
-          marginTop: 32, fontSize: 16, color: C.ice60, lineHeight: 1.8,
-          maxWidth: 580,
+          marginTop: 32, fontSize: 16,
+          color: isLight ? 'rgba(42,42,58,0.7)' : C.ice60,
+          lineHeight: 1.8, maxWidth: 580,
           opacity: showSub ? 1 : 0,
           transform: showSub ? 'translateY(0)' : 'translateY(20px)',
           transition: 'all 0.8s cubic-bezier(0.22,1,0.36,1)',
         }}>
-          基于 PredRNNv2 深度学习框架的火星臭氧柱浓度预测与可视化系统
+          {t('home.desc')}
           <br />
-          <span style={{ color: C.ice30, fontSize: 13 }}>
-            Mars Ozone Column Prediction &amp; Visualization — Powered by OpenMARS &amp; MCD 6.1
+          <span style={{ color: isLight ? '#7a7a8a' : C.ice30, fontSize: 13 }}>
+            {t('home.descEn')}
           </span>
         </p>
 
@@ -216,7 +219,7 @@ export default function HomePage({ onNavigate }) {
             cursor: 'pointer',
             boxShadow: '0 4px 24px rgba(199,91,57,0.4)',
           }}>
-            开始探索
+            {t('home.exploreBtn')}
           </button>
           <button onClick={() => onNavigate('predict')} style={{
             background: 'transparent',
@@ -226,7 +229,7 @@ export default function HomePage({ onNavigate }) {
             fontFamily: "'Exo 2', sans-serif", letterSpacing: 1,
             cursor: 'pointer',
           }}>
-            预测分析 →
+            {t('home.predictBtn')}
           </button>
         </div>
       </div>

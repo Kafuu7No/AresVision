@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
+import { useSettings } from '../contexts/SettingsContext';
 
 const MARS_TEXTURE_URLS = [
   '/mars_texture.jpg',
@@ -21,6 +22,15 @@ const CSS_GRADIENT = `
 export default function Mars3DPlaceholder({ size = 320 }) {
   const mountRef = useRef(null);
   const [webglFailed, setWebglFailed] = useState(false);
+  const { settings } = useSettings();
+  const isLight = settings.theme === 'light';
+  // 浅色主题下为球体容器加暖色深底，边缘渐隐至透明避免生硬黑环
+  const sphereBg = isLight
+    ? 'radial-gradient(circle, #3a1808 0%, #240e04 52%, rgba(74,42,22,0) 72%)'
+    : 'transparent';
+  const sphereGlow = isLight
+    ? '0 0 35px rgba(199,91,57,0.4), 0 0 90px rgba(199,91,57,0.18), 0 0 180px rgba(199,91,57,0.07)'
+    : '0 0 80px rgba(199,91,57,0.3), 0 0 150px rgba(199,91,57,0.14), 0 0 260px rgba(199,91,57,0.06)';
 
   useEffect(() => {
     const container = mountRef.current;
@@ -137,10 +147,7 @@ export default function Mars3DPlaceholder({ size = 320 }) {
           width: size, height: size,
           borderRadius: '50%',
           background: CSS_GRADIENT,
-          boxShadow: `
-            0 0 80px rgba(199,91,57,0.3),
-            0 0 150px rgba(199,91,57,0.14)
-          `,
+          boxShadow: sphereGlow,
         }} />
       </div>
     );
@@ -153,11 +160,8 @@ export default function Mars3DPlaceholder({ size = 320 }) {
         width: size, height: size,
         borderRadius: '50%',
         overflow: 'hidden',
-        boxShadow: `
-          0 0 80px rgba(199,91,57,0.3),
-          0 0 150px rgba(199,91,57,0.14),
-          0 0 260px rgba(199,91,57,0.06)
-        `,
+        background: sphereBg,
+        boxShadow: sphereGlow,
       }} />
 
       {/* 大气光晕圆环（CSS，不依赖 WebGL） */}

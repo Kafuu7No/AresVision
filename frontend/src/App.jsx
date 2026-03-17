@@ -1,7 +1,10 @@
 import { useState, useCallback } from 'react';
 import C from './constants/colors';
+import { useT } from './i18n';
 import StarField from './components/StarField';
 import Navbar from './components/Navbar';
+import SettingsPanel from './components/SettingsPanel';
+import SettingsFab from './components/SettingsFab';
 import HomePage from './pages/HomePage';
 import DataOverviewPage from './pages/DataOverviewPage';
 import ExplorePage from './pages/ExplorePage';
@@ -12,6 +15,8 @@ import AboutPage from './pages/AboutPage';
 export default function App() {
   const [page, setPage] = useState('home');
   const [transitioning, setTransitioning] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const t = useT();
 
   const navigate = useCallback(
     (target) => {
@@ -30,6 +35,8 @@ export default function App() {
     <>
       <StarField />
       <Navbar current={page} onChange={navigate} />
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsFab onOpenSettings={() => setSettingsOpen(true)} />
 
       {/* Page content with transition */}
       <div
@@ -63,10 +70,10 @@ export default function App() {
         }}
       >
         <div style={{ fontSize: 11, color: C.ice30 }}>
-          © 2025 AresVision 智绘赤星 · 上海大学生计算机能力大赛
+          {t('footer.copyright')}
         </div>
         <div style={{ fontSize: 10, color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>
-          POWERED BY OPENMARS · MCD 6.1 · PREDRNNV2
+          {t('footer.powered')}
         </div>
       </footer>
     </>
