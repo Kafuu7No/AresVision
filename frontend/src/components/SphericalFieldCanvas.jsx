@@ -1,48 +1,12 @@
 import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import * as THREE from 'three';
 import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
+import { getRgb, rdbuRgb } from '../utils/colormaps';
+import { useSettings } from '../contexts/SettingsContext';
 
 // --- 全局缓存贴图 ---
 let cachedMarsTexture = null;
 let cachedCircleTexture = null;
-
-// ─── 色阶函数（与 PredictPage 保持一致） ───
-function infernoRgb(t) {
-  t = Math.max(0, Math.min(1, t));
-  const stops = [
-    [0, 0, 4], [40, 11, 84], [101, 21, 110], [159, 42, 99],
-    [212, 72, 66], [245, 125, 21], [250, 193, 39], [252, 255, 164],
-  ];
-  const idx = t * (stops.length - 1);
-  const i = Math.min(Math.floor(idx), stops.length - 2);
-  const f = idx - i;
-  const c0 = stops[i], c1 = stops[i + 1];
-  return [
-    Math.round(c0[0] + (c1[0] - c0[0]) * f),
-    Math.round(c0[1] + (c1[1] - c0[1]) * f),
-    Math.round(c0[2] + (c1[2] - c0[2]) * f),
-  ];
-}
-
-function rdbuRgb(t) {
-  // t: 0~1，其中 0.5=零值，0=深蓝，1=深红
-  t = Math.max(0, Math.min(1, t));
-  const stops = [
-    [5, 48, 97], [33, 102, 172], [67, 147, 195], [146, 197, 222],
-    [209, 229, 240], [247, 247, 247], [253, 219, 199], [239, 169, 128],
-    [214, 96, 77], [178, 24, 43], [103, 0, 31],
-  ];
-  const idx = t * (stops.length - 1);
-  const i = Math.min(Math.floor(idx), stops.length - 2);
-  const f = idx - i;
-  const c0 = stops[i], c1 = stops[i + 1];
-  return [
-    Math.round(c0[0] + (c1[0] - c0[0]) * f),
-    Math.round(c1[0] + (c1[0] - c0[0]) * f),
-    Math.round(c0[1] + (c1[1] - c0[1]) * f),
-    Math.round(c0[2] + (c1[2] - c0[2]) * f),
-  ];
-}
 
 // ─── 辅助函数：二维数组双线性插值 ───
 function bilinearInterpolate(field, liFloat, ljFloat) {
@@ -78,12 +42,15 @@ function bilinearInterpolate(field, liFloat, ljFloat) {
 }
 
 const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h = 240, forceFullscreen = false, autoRotate = true }, ref) => {
+  const { settings } = useSettings();
+  const isLight = settings.theme === 'light';
   const containerRef = useRef(null);
   const rendererRef = useRef(null);
   const sphereMeshRef = useRef(null);
   const particlesMeshRef = useRef(null); // 新增针对外层臭氧点云的引用维护
   const controlsRef = useRef(null);
   const autoRotateRef = useRef(autoRotate);
+  const starMeshRef = useRef(null);
 
   // Expose imperative API for gesture control
   useImperativeHandle(ref, () => ({
@@ -203,6 +170,7 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
     });
     const stars = new THREE.Points(starGeometry, starMaterial);
     scene.add(stars);
+    starMeshRef.current = stars;
 
     let reqId;
     const animate = () => {
@@ -239,6 +207,19 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
       starMaterial.dispose();
     };
   }, [forceFullscreen]); // 仅在尺寸模式切换时重新初始化控制台
+
+  // 主题变化：更新场景背景色和星星可见性
+  useEffect(() => {
+    if (!sceneRef.current) return;
+    if (isLight) {
+      sceneRef.current.background = new THREE.Color(0xf5f6f8);
+    } else {
+      sceneRef.current.background = null;
+    }
+    if (starMeshRef.current) {
+      starMeshRef.current.visible = !isLight;
+    }
+  }, [isLight]);
 
   // 2. 响应数据更新，重建臭氧场网格（保持火星本身及分组姿态不变）
   useEffect(() => {
@@ -309,7 +290,7 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
         if (val == null || isNaN(val)) continue;
         const t = (val - dMin) / range;
 
-        const rgbColor = colorMode === 'rdbu' ? rdbuRgb(t) : infernoRgb(t);
+        const rgbColor = colorMode === 'rdbu' ? rdbuRgb(t) : getRgb(settings.colormap, t);
         const rNorm = rgbColor[0] / 255;
         const gNorm = rgbColor[1] / 255;
         const bNorm = rgbColor[2] / 255;
@@ -341,7 +322,7 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
 
           const interpT = (Math.max(dMin, Math.min(dMax, interpVal)) - dMin) / range;
 
-          const interColor = colorMode === 'rdbu' ? rdbuRgb(interpT) : infernoRgb(interpT);
+          const interColor = colorMode === 'rdbu' ? rdbuRgb(interpT) : getRgb(settings.colormap, interpT);
           const iRNorm = interColor[0] / 255;
           const iGNorm = interColor[1] / 255;
           const iBNorm = interColor[2] / 255;
@@ -406,7 +387,7 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
     particlesMeshRef.current = particles;
 
     // 注意：只销毁数据相关的粒子即可，mars 的析构可以留给整个组件销毁时（见下方独立清理 Effect）
-  }, [fieldData, colorMode]);
+  }, [fieldData, colorMode, settings.colormap]);
 
   // 组件完全卸载时，清空 sphereMeshRef / 材质资源
   useEffect(() => {
@@ -447,13 +428,13 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
   return (
     <div
       ref={containerRef}
+      className="observation-window"
       style={{
         width: '100%',
         height: h,
-        background: 'rgba(0,0,0,0.3)',
-        borderRadius: 8,
+        background: isLight ? '#f5f6f8' : 'rgba(0,0,0,0.3)',
         cursor: 'zoom-in',
-        overflow: 'hidden'
+        overflow: 'hidden',
       }}
     />
   );

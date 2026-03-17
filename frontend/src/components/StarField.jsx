@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
+import { useSettings } from '../contexts/SettingsContext';
 
 /**
  * 全屏星空粒子背景
  * 三档亮度：普通星、亮星、超亮星，带星云装饰
  */
 export default function StarField() {
+  const { settings } = useSettings();
   const { dimStars, medStars, brightStars } = useMemo(() => {
     const rng = () => Math.random();
 
@@ -55,6 +57,8 @@ export default function StarField() {
 
     return { dimStars: dim, medStars: med, brightStars: bright };
   }, []);
+
+  if (settings.theme === 'light') return null;
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>

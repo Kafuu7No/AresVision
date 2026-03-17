@@ -6,6 +6,43 @@
    AresVision — Global Styles & Animations
    ═══════════════════════════════════════════ */
 
+/* ─── 主题 CSS 变量 ─── */
+:root {
+  --bg:               #0a0a0f;
+  --bg-card:          rgba(20,20,30,0.55);
+  --bg-nav:           rgba(10,10,15,0.70);
+  --text:             #e8edf3;
+  --text-60:          rgba(232,237,243,0.60);
+  --text-30:          rgba(232,237,243,0.30);
+  --border:           rgba(232,237,243,0.08);
+  --border-hover:     rgba(232,237,243,0.18);
+  --scrollbar:        rgba(232,237,243,0.15);
+  --scrollbar-hover:  rgba(232,237,243,0.30);
+  --breathe-lo:       rgba(74,158,255,0.15);
+  --breathe-hi:       rgba(74,158,255,0.35);
+  --card-shadow:      none;
+  --nav-shadow:       none;
+  --obs-ring:         none;
+}
+
+[data-theme="light"] {
+  --bg:               #f5f6fa;
+  --bg-card:          #ffffff;
+  --bg-nav:           rgba(245,246,250,0.92);
+  --text:             #1a1a2e;
+  --text-60:          rgba(26,26,46,0.62);
+  --text-30:          rgba(26,26,46,0.38);
+  --border:           rgba(26,26,46,0.09);
+  --border-hover:     rgba(26,26,46,0.20);
+  --scrollbar:        rgba(26,26,46,0.18);
+  --scrollbar-hover:  rgba(26,26,46,0.35);
+  --breathe-lo:       rgba(74,158,255,0.18);
+  --breathe-hi:       rgba(74,158,255,0.40);
+  --card-shadow:      0 1px 4px rgba(26,26,46,0.06), 0 4px 16px rgba(26,26,46,0.07);
+  --nav-shadow:       0 1px 0 rgba(26,26,46,0.08), 0 2px 12px rgba(26,26,46,0.06);
+  --obs-ring:         0 0 0 2px rgba(26,26,46,0.10), 0 4px 16px rgba(26,26,46,0.10);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -17,17 +54,18 @@ html {
 }
 
 body {
-  background: #0a0a0f;
-  color: #e8edf3;
+  background: var(--bg);
+  color: var(--text);
   font-family: 'Exo 2', sans-serif;
   overflow-x: hidden;
+  transition: background 0.3s, color 0.3s;
 }
 
 /* ─── Scrollbar ─── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(232,237,243,0.15); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(232,237,243,0.3); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 
 /* ─── Keyframe Animations ─── */
 @keyframes twinkle {
@@ -46,8 +84,8 @@ body {
 }
 
 @keyframes breathe {
-  0%, 100% { box-shadow: 0 0 15px rgba(74,158,255,0.15); }
-  50% { box-shadow: 0 0 30px rgba(74,158,255,0.35); }
+  0%, 100% { box-shadow: 0 0 15px var(--breathe-lo); }
+  50% { box-shadow: 0 0 30px var(--breathe-hi); }
 }
 
 @keyframes pulse-ring {
@@ -73,16 +111,17 @@ body {
 
 /* ─── Reusable Classes ─── */
 .glass-card {
-  background: rgba(20,20,30,0.55);
+  background: var(--bg-card);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(232,237,243,0.08);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  transition: border-color 0.3s, box-shadow 0.3s;
+  box-shadow: var(--card-shadow);
+  transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
 }
 
 .glass-card:hover {
-  border-color: rgba(232,237,243,0.18);
+  border-color: var(--border-hover);
 }
 
 .breathe-border {
@@ -90,10 +129,42 @@ body {
 }
 
 .nav-glass {
-  background: rgba(10,10,15,0.7);
+  background: var(--bg-nav);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border-bottom: 1px solid rgba(232,237,243,0.06);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--nav-shadow);
+  transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+/* 深色背景图表的"观测窗"样式——深色主题无边，浅色主题加圆角+投影 */
+.observation-window {
+  border-radius: 10px;
+  overflow: hidden;
+  transition: box-shadow 0.3s, border-radius 0.3s;
+}
+
+[data-theme="light"] .observation-window {
+  box-shadow: 0 0 0 1.5px rgba(26,26,46,0.14),
+              0 4px 20px rgba(26,26,46,0.14),
+              inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+/* 太空观测场景容器（DataOverviewPage 全屏）——浅色主题改用深空渐变而非纯黑 */
+.space-scene {
+  background: #000;
+}
+[data-theme="light"] .space-scene {
+  background: radial-gradient(ellipse at 40% 30%, #12152e 0%, #070814 55%, #010108 100%);
+}
+
+/* 固定深色面板（如 SettingsPanel）——无论主题如何都保留深色文字 */
+.panel-dark {
+  --text:             #e8edf3;
+  --text-60:          rgba(232,237,243,0.60);
+  --text-30:          rgba(232,237,243,0.30);
+  --border:           rgba(232,237,243,0.08);
+  --border-hover:     rgba(232,237,243,0.18);
 }
 
 .page-enter {

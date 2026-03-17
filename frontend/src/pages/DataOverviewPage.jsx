@@ -3,48 +3,35 @@ import * as THREE from 'three';
 import SphericalFieldCanvas from '../components/SphericalFieldCanvas';
 import GlowCard from '../components/GlowCard';
 import C from '../constants/colors';
+import { useT } from '../i18n';
+import { useSettings } from '../contexts/SettingsContext';
 import { DataOverviewProvider } from '../contexts/DataOverviewContext';
 import { fetchGlobeData, fetchSeasonalHeatmap } from '../services/api';
 import useHandTracking from '../hooks/useHandTracking';
 import Plot from 'react-plotly.js';
+import { PLOTLY_SCALE, makeGradient } from '../utils/colormaps';
+import { convertOzone, ozoneLabel } from '../utils/units';
 
-// 数据选项配置
-const DATA_OPTIONS = [
-  {
-    id: 'globe3d', title: '三维球体 3D GLOBE', icon: '🌍',
-    description: '交互式3D火星球体数据展示', color: C.mars, is3D: true
-  },
-  {
-    id: 'seasonal',
-    title: 'Ls-纬度臭氧热力图',
-    subTitle: 'OZONE HEATMAP',
-    description: '查看特定火星年内，臭氧浓度随太阳经度（LS）和纬度的时空分布热力折线图。',
-    color: C.blue
-  },
-  {
-    id: 'correlation', title: '关联矩阵 CORRELATION', icon: '🔗',
-    description: '环境变量相关性分析', color: C.blue
-  },
-  {
-    id: 'realtime', title: '实时监控 REALTIME', icon: '⚡',
-    description: '动态数据流监测', color: C.mars
-  },
-  {
-    id: 'environment', title: '环境参数 ENVIRONMENT', icon: '🌡️',
-    description: '温度、压力、风速等参数', color: '#4acfac'
-  },
-  {
-    id: 'prediction', title: '预测引擎 PREDICTION', icon: '🔮',
-    description: 'PredRNNv2模型预测结果', color: C.ice
-  },
-  {
-    id: 'distribution', title: '数据分布 DISTRIBUTION', icon: '📊',
-    description: '臭氧浓度分布统计', color: C.blue
-  }
+// 菜单项配置（title/description 由 i18n 在组件内填充）
+const DATA_OPTION_DEFS = [
+  { id: 'globe3d',      icon: '🌍',  color: C.mars,    is3D: true },
+  { id: 'seasonal',     icon: '📈',  color: C.blue },
+  { id: 'correlation',  icon: '🔗',  color: C.blue },
+  { id: 'realtime',     icon: '⚡',  color: C.mars },
+  { id: 'environment',  icon: '🌡️', color: '#4acfac' },
+  { id: 'prediction',   icon: '🔮',  color: C.ice },
+  { id: 'distribution', icon: '📊',  color: C.blue },
 ];
 
 // 左侧菜单组件
 const SidebarMenu = ({ selectedItem, onItemSelect }) => {
+  const t = useT();
+  const DATA_OPTIONS = DATA_OPTION_DEFS.map(def => ({
+    ...def,
+    title: t(`overview.menuItems.${def.id}`),
+    description: '',
+  }));
+
   return (
     <div style={{
       position: 'fixed', left: 0, top: '70px',
@@ -124,10 +111,13 @@ const SidebarMenu = ({ selectedItem, onItemSelect }) => {
 
 // 3D球体时间控制面板
 const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, autoRotate, gestureEnabled, onLsChange, onMarsYearChange, onTogglePlay, onToggleAutoRotate, onToggleGesture }) => {
+  const t = useT();
+  const { settings } = useSettings();
+  const ozoneUnit = settings.units.ozone;
   const seasonName =
-    lsValue < 90 ? '北半球春 / 南半球秋' :
-      lsValue < 180 ? '北半球夏 / 南半球冬' :
-        lsValue < 270 ? '北半球秋 / 南半球春' : '北半球冬 / 南半球夏';
+    lsValue < 90  ? t('common.season.spring') :
+    lsValue < 180 ? t('common.season.summer') :
+    lsValue < 270 ? t('common.season.autumn') : t('common.season.winter');
 
   return (
     <GlowCard style={{
@@ -148,7 +138,7 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
 
       {/* Mars Year 选择 */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 11, color: C.ice30, marginBottom: 6 }}>火星年 Mars Year</div>
+        <div style={{ fontSize: 11, color: C.ice30, marginBottom: 6 }}>{t('overview.controls.marsYear')}</div>
         <div style={{ display: 'flex', gap: 8 }}>
           {[27, 28].map((y) => (
             <button key={y} onClick={() => onMarsYearChange(y)} style={{
@@ -166,7 +156,7 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
       {/* Ls 滑块 */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-          <span style={{ fontSize: 11, color: C.ice30 }}>起始 Ls</span>
+          <span style={{ fontSize: 11, color: C.ice30 }}>{t('overview.controls.startLs')}</span>
           <span style={{ fontSize: 12, color: C.ice, fontFamily: "'Orbitron', sans-serif" }}>{lsValue}°</span>
         </div>
         <input
@@ -199,7 +189,7 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
         </button>
         <button
           onClick={() => { onLsChange(0); }}
-          title="重置到 Ls=0°"
+          title={t('overview.controls.resetLs')}
           style={{
             background: 'rgba(255,255,255,0.03)',
             border: `1px solid ${C.border}`,
@@ -223,7 +213,7 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '14px' }}>🔄</span>
-          <span style={{ color: C.ice, fontSize: '12px', fontFamily: 'Exo 2' }}>开启自动旋转</span>
+          <span style={{ color: C.ice, fontSize: '12px', fontFamily: 'Exo 2' }}>{t('overview.controls.autoRotate')}</span>
         </div>
         <label style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px' }}>
           <input
@@ -259,7 +249,7 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '14px' }}>✋</span>
-          <span style={{ color: C.mars, fontSize: '12px', fontFamily: 'Exo 2', fontWeight: 'bold' }}>AI 手势控制</span>
+          <span style={{ color: C.mars, fontSize: '12px', fontFamily: 'Exo 2', fontWeight: 'bold' }}>{t('overview.controls.gesture')}</span>
         </div>
         <label style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px' }}>
           <input
@@ -302,7 +292,7 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
             borderRadius: '50%',
             animation: 'spin-slow 1s linear infinite'
           }} />
-          <span style={{ color: C.mars, fontSize: '11px', fontFamily: "'Orbitron', sans-serif" }}>加载数据中...</span>
+          <span style={{ color: C.mars, fontSize: '11px', fontFamily: "'Orbitron', sans-serif" }}>{t('overview.controls.loadingData')}</span>
         </div>
       )}
 
@@ -313,21 +303,18 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
         border: `1px solid ${C.border}`
       }}>
         <div style={{ color: C.ice30, fontSize: '10px', fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, marginBottom: '10px' }}>
-          O₃ CONCENTRATION (μm-atm)
+          {`O₃ CONCENTRATION (${ozoneLabel(ozoneUnit)})`}
         </div>
         <div style={{ display: 'flex', alignItems: 'stretch', gap: '12px', height: '100px' }}>
           <div style={{
             width: '14px', flexShrink: 0, borderRadius: '4px',
             border: `1px solid ${C.border}`,
-            background: `linear-gradient(180deg,
-              rgb(252,255,164) 0%, rgb(250,193,39) 14.2%, rgb(245,125,21) 28.5%,
-              rgb(212,72,66) 42.8%, rgb(159,42,99) 57.1%, rgb(101,21,110) 71.4%,
-              rgb(40,11,84) 85.7%, rgb(0,0,4) 100%)`
+            background: makeGradient(settings.colormap),
           }} />
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '11px', color: C.ice60 }}>
-            <span>{(ozoneData.maxVal || 0).toFixed(4)}</span>
-            <span>{(((ozoneData.maxVal || 0) + (ozoneData.minVal || 0)) / 2).toFixed(4)}</span>
-            <span>{(ozoneData.minVal || 0).toFixed(4)}</span>
+            <span>{convertOzone(ozoneData.maxVal || 0, ozoneUnit).toFixed(4)}</span>
+            <span>{convertOzone(((ozoneData.maxVal || 0) + (ozoneData.minVal || 0)) / 2, ozoneUnit).toFixed(4)}</span>
+            <span>{convertOzone(ozoneData.minVal || 0, ozoneUnit).toFixed(4)}</span>
           </div>
         </div>
       </div>
@@ -344,13 +331,13 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
             <div style={{ color: C.mars, fontSize: '18px', fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif" }}>
               {ozoneData.points?.length || 0}
             </div>
-            <div style={{ color: C.ice30, fontSize: '10px', marginTop: '4px' }}>数据点</div>
+            <div style={{ color: C.ice30, fontSize: '10px', marginTop: '4px' }}>{t('overview.controls.dataPoints')}</div>
           </div>
           <div style={{ textAlign: 'center', padding: '10px 6px', background: 'rgba(74,158,255,0.05)', borderRadius: '8px' }}>
             <div style={{ color: C.blue, fontSize: '16px', fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif" }}>
-              {(ozoneData.maxVal || 0).toFixed(3)}
+              {convertOzone(ozoneData.maxVal || 0, ozoneUnit).toFixed(3)}
             </div>
-            <div style={{ color: C.ice30, fontSize: '10px', marginTop: '4px' }}>最大值</div>
+            <div style={{ color: C.ice30, fontSize: '10px', marginTop: '4px' }}>{t('overview.controls.maxVal')}</div>
           </div>
         </div>
       </div>
@@ -363,10 +350,9 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
         border: `1px solid ${C.border}`
       }}>
         <div style={{ color: C.ice60, fontSize: '11px', fontFamily: 'Exo 2', lineHeight: 1.8 }}>
-          • 拖拽：旋转火星球体<br />
-          • 滚轮：缩放视图<br />
-          • 点击数据点：查看详情<br />
-          • ▶ PLAY：播放时序动画
+          {t('overview.controls.interactionHint').split('\n').map((line, i) => (
+            <React.Fragment key={i}>{line}{i < 3 && <br />}</React.Fragment>
+          ))}
         </div>
       </div>
     </GlowCard>
@@ -375,6 +361,7 @@ const Globe3DControls = ({ ozoneData, lsValue, marsYear, playing, loadingGlobe, 
 
 // 详细图表组件
 const DetailPanel = ({ selectedItem, marsYear }) => {
+  const t = useT();
   const is3DMode = selectedItem?.is3D;
 
   const renderChart = () => {
@@ -413,7 +400,7 @@ const DetailPanel = ({ selectedItem, marsYear }) => {
       case 'distribution':
         return <DataDistribution />;
       default:
-        return <div>未知图表类型</div>;
+        return <div>{t('overview.charts.unknownType')}</div>;
     }
   };
 
@@ -472,6 +459,10 @@ const DetailPanel = ({ selectedItem, marsYear }) => {
 
 // 季节分析图表 (Ls-纬度 臭氧热力图)
 const SeasonalChart = ({ marsYear }) => {
+  const t = useT();
+  const { settings } = useSettings();
+  const colormapName = settings.colormap;
+  const ozoneUnit = settings.units.ozone;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -516,7 +507,7 @@ const SeasonalChart = ({ marsYear }) => {
     );
   }
 
-  if (!data) return <div style={{ color: C.mars, padding: 20 }}>暂无数据 NO DATA</div>;
+  if (!data) return <div style={{ color: C.mars, padding: 20 }}>{t('overview.charts.noData')}</div>;
 
   return (
     <div className="seasonal-chart-container" style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -548,30 +539,30 @@ const SeasonalChart = ({ marsYear }) => {
       <Plot
         data={[
           {
-            z: data.z,
+            z: data.z.map(row => row.map(v => convertOzone(v, ozoneUnit))),
             x: data.x,
             y: data.y,
             type: 'heatmap',
             zsmooth: 'best',
-            colorscale: 'Jet',
-            zmin: data.min,
-            zmax: data.max * 0.6, // 将颜色映射极值大幅度压低，凸显浓度区别
-            hovertemplate: 'Ls: %{x:.1f}°<br>Lat: %{y:.1f}°<br>O₃: %{z:.2f} DU<extra></extra>',
+            colorscale: PLOTLY_SCALE[colormapName] ?? 'Jet',
+            zmin: convertOzone(data.min, ozoneUnit),
+            zmax: convertOzone(data.max * 0.6, ozoneUnit), // 将颜色映射极值大幅度压低，凸显浓度区别
+            hovertemplate: `Ls: %{x:.1f}°<br>Lat: %{y:.1f}°<br>O₃: %{z:.2f} ${ozoneLabel(ozoneUnit)}<extra></extra>`,
             colorbar: {
-              title: { text: 'O₃ (DU)', font: { color: C.ice, family: "'Orbitron', sans-serif", size: 10 }, side: 'top' },
+              title: { text: `O₃ (${ozoneLabel(ozoneUnit)})`, font: { color: '#e8edf3', family: "'Orbitron', sans-serif", size: 10 }, side: 'top' },
               orientation: 'h',
               y: -0.25,
               yanchor: 'top',
               len: 0.8,
               thickness: 10,
-              tickfont: { color: C.ice60, family: "'Exo 2', sans-serif" }
+              tickfont: { color: 'rgba(232,237,243,0.6)', family: "'Exo 2', sans-serif" }
             }
           }
         ]}
         layout={{
-          title: { text: `MY ${marsYear} 臭氧时空分布热力图 (Zonal Mean O₃)`, font: { color: C.ice, family: "'Orbitron', sans-serif", size: 14 } },
-          xaxis: { title: 'Solar Longitude Ls (°)', color: C.ice60, gridcolor: C.border, titlefont: { family: "'Exo 2', sans-serif" }, showgrid: false },
-          yaxis: { title: 'Latitude (°)', color: C.ice60, gridcolor: C.border, titlefont: { family: "'Exo 2', sans-serif" }, showgrid: false },
+          title: { text: t('overview.charts.heatmapTitle', { year: marsYear }), font: { color: '#e8edf3', family: "'Orbitron', sans-serif", size: 14 } },
+          xaxis: { title: 'Solar Longitude Ls (°)', color: 'rgba(232,237,243,0.6)', gridcolor: 'rgba(232,237,243,0.08)', titlefont: { family: "'Exo 2', sans-serif" }, showgrid: false },
+          yaxis: { title: 'Latitude (°)', color: 'rgba(232,237,243,0.6)', gridcolor: 'rgba(232,237,243,0.08)', titlefont: { family: "'Exo 2', sans-serif" }, showgrid: false },
           paper_bgcolor: 'transparent',
           plot_bgcolor: 'transparent',
           margin: { t: 40, r: 20, l: 50, b: 120 },
@@ -618,7 +609,7 @@ const CorrelationMatrix = () => {
                     x={j * cellSize + cellSize / 2}
                     y={i * cellSize + cellSize / 2 + 4}
                     textAnchor="middle"
-                    fill={C.ice}
+                    style={{ fill: '#e8edf3' }}
                     fontSize="11"
                     fontFamily="'Exo 2', sans-serif"
                   >
@@ -636,7 +627,7 @@ const CorrelationMatrix = () => {
                 x={i * cellSize + cellSize / 2}
                 y={matrixSize + 24}
                 textAnchor="middle"
-                fill={C.ice60}
+                style={{ fill: '#e8edf3' }}
                 fontSize="12"
                 fontFamily="'Orbitron', sans-serif"
                 fontWeight="bold"
@@ -647,7 +638,7 @@ const CorrelationMatrix = () => {
                 x={-12}
                 y={i * cellSize + cellSize / 2 + 4}
                 textAnchor="end"
-                fill={C.ice60}
+                style={{ fill: '#e8edf3' }}
                 fontSize="12"
                 fontFamily="'Orbitron', sans-serif"
                 fontWeight="bold"
@@ -664,6 +655,7 @@ const CorrelationMatrix = () => {
 
 // 实时监控
 const RealtimeMonitor = () => {
+  const t = useT();
   const [dataPoints, setDataPoints] = useState([]);
 
   useEffect(() => {
@@ -743,7 +735,7 @@ const RealtimeMonitor = () => {
               fontSize="12"
               fontFamily="'Exo 2', sans-serif"
             >
-              当前数值
+              {t('overview.charts.currentValue')}
             </text>
             <text
               x="710"
@@ -765,11 +757,12 @@ const RealtimeMonitor = () => {
 
 // 环境仪表盘
 const EnvironmentDashboard = () => {
+  const t = useT();
   const gauges = [
-    { name: '温度', value: -63, unit: '°C', max: 27, min: -143, color: C.mars },
-    { name: '压力', value: 0.6, unit: 'kPa', max: 1.2, min: 0, color: C.ice },
-    { name: '尘埃', value: 0.3, unit: 'τ', max: 1, min: 0, color: C.mars },
-    { name: '风速', value: 5.8, unit: 'm/s', max: 15, min: 0, color: C.ice }
+    { nameKey: 'temperature', value: -63, unit: '°C', max: 27, min: -143, color: C.mars },
+    { nameKey: 'pressure',    value: 0.6, unit: 'kPa', max: 1.2, min: 0, color: C.ice },
+    { nameKey: 'dust',        value: 0.3, unit: 'τ', max: 1, min: 0, color: C.mars },
+    { nameKey: 'wind',        value: 5.8, unit: 'm/s', max: 15, min: 0, color: C.ice }
   ];
 
   return (
@@ -793,7 +786,7 @@ const EnvironmentDashboard = () => {
               fontSize: '14px', fontWeight: 'bold', margin: '0 0 20px 0',
               textShadow: `0 0 8px ${gauge.color}`, letterSpacing: 1
             }}>
-              {gauge.name}
+              {t(`overview.env.${gauge.nameKey}`)}
             </h4>
 
             {/* 仪表盘 */}
@@ -837,6 +830,7 @@ const EnvironmentDashboard = () => {
 
 // 预测引擎
 const PredictionEngine = () => {
+  const t = useT();
   const [progress, setProgress] = useState(0);
   const [predictions, setPredictions] = useState([]);
 
@@ -868,12 +862,12 @@ const PredictionEngine = () => {
           color: C.ice, fontFamily: "'Orbitron', sans-serif", fontSize: '16px',
           textAlign: 'center', marginBottom: '20px', letterSpacing: 1
         }}>
-          PredRNNv2 时空预测引擎
+          {t('overview.charts.engineTitle')}
         </h4>
 
         <div style={{ marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span style={{ color: C.ice60, fontSize: '13px' }}>处理进度</span>
+            <span style={{ color: C.ice60, fontSize: '13px' }}>{t('overview.charts.processingProgress')}</span>
             <span style={{ color: C.mars, fontSize: '13px', fontWeight: 'bold' }}>{progress}%</span>
           </div>
           <div style={{
@@ -891,15 +885,15 @@ const PredictionEngine = () => {
         <div style={{ display: 'flex', justifyContent: 'space-around' }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ color: C.mars, fontSize: '20px', fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif" }}>7</div>
-            <div style={{ color: C.ice60, fontSize: '11px', marginTop: 4 }}>输入通道</div>
+            <div style={{ color: C.ice60, fontSize: '11px', marginTop: 4 }}>{t('overview.charts.inputChannels')}</div>
           </div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ color: C.blue, fontSize: '20px', fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif" }}>3</div>
-            <div style={{ color: C.ice60, fontSize: '11px', marginTop: 4 }}>时间窗口</div>
+            <div style={{ color: C.ice60, fontSize: '11px', marginTop: 4 }}>{t('overview.charts.timeWindow')}</div>
           </div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ color: C.mars, fontSize: '20px', fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif" }}>36×72</div>
-            <div style={{ color: C.ice60, fontSize: '11px', marginTop: 4 }}>空间网格</div>
+            <div style={{ color: C.ice60, fontSize: '11px', marginTop: 4 }}>{t('overview.charts.spatialGrid')}</div>
           </div>
         </div>
       </div>
@@ -914,7 +908,7 @@ const PredictionEngine = () => {
           color: C.ice, fontFamily: "'Orbitron', sans-serif", fontSize: '14px',
           marginBottom: '16px', letterSpacing: 1
         }}>
-          实时预测结果
+          {t('overview.charts.realtimeResult')}
         </h5>
 
         <svg width="100%" height="200" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid meet">
@@ -954,6 +948,7 @@ const PredictionEngine = () => {
 
 // 数据分布
 const DataDistribution = () => {
+  const t = useT();
   const histogramData = Array.from({ length: 20 }, (_, i) => ({
     bin: i * 0.05,
     count: Math.random() * 100 + 10
@@ -965,7 +960,7 @@ const DataDistribution = () => {
         color: C.ice, fontFamily: "'Orbitron', sans-serif", fontSize: '16px',
         textAlign: 'center', marginBottom: '30px', letterSpacing: 1
       }}>
-        臭氧柱浓度分布统计
+        {t('overview.charts.ozoneDist')}
       </h4>
 
       <svg width="100%" height="300" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid meet">
@@ -986,7 +981,7 @@ const DataDistribution = () => {
                 x={59 + i * 25}
                 y={270}
                 textAnchor="middle"
-                fill={C.ice60}
+                style={{ fill: 'var(--text-60)' }}
                 fontSize="11"
                 fontFamily="'Exo 2', sans-serif"
               >
@@ -996,10 +991,10 @@ const DataDistribution = () => {
           </g>
         ))}
 
-        <text x="300" y="295" textAnchor="middle" fill={C.ice60} fontSize="12" fontFamily="'Exo 2', sans-serif">
+        <text x="300" y="295" textAnchor="middle" style={{ fill: 'var(--text-60)' }} fontSize="12" fontFamily="'Exo 2', sans-serif">
           OZONE COLUMN (DU)
         </text>
-        <text x="20" y="150" textAnchor="middle" fill={C.ice60} fontSize="12" fontFamily="'Exo 2', sans-serif"
+        <text x="20" y="150" textAnchor="middle" style={{ fill: 'var(--text-60)' }} fontSize="12" fontFamily="'Exo 2', sans-serif"
           transform="rotate(-90 20 150)">
           FREQUENCY
         </text>
@@ -1067,9 +1062,10 @@ const Mars3DBackground = forwardRef(({ ozoneData, is3DMode, autoRotate }, ref) =
 
 // 主页面组件内容
 const DataOverviewPageContent = () => {
+  const t = useT();
   const [ozoneData, setOzoneData] = useState({ points: [], minVal: 0, maxVal: 1 });
   const [loadingGlobe, setLoadingGlobe] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(DATA_OPTIONS[0]);
+  const [selectedItem, setSelectedItem] = useState(DATA_OPTION_DEFS[0]);
   const [marsYear, setMarsYear] = useState(27);
   const [lsValue, setLsValue] = useState(90);
   const [playing, setPlaying] = useState(false);
@@ -1185,12 +1181,11 @@ const DataOverviewPageContent = () => {
   }, [playing]);
 
   return (
-    <div style={{
+    <div className="space-scene panel-dark" style={{
       width: '100vw',
       height: '100vh',
       overflow: 'hidden',
       position: 'relative',
-      background: '#000'
     }}>
       {/* 全屏3D火星背景 */}
       <Mars3DBackground
@@ -1247,7 +1242,7 @@ const DataOverviewPageContent = () => {
             zIndex: 3,
             border: `1px solid ${C.mars}`
           }}>
-            摄像头追踪中... 单手拖拽 / 双手缩放
+            {t('overview.controls.cameraTracking')}
           </div>
         </div>
       )}

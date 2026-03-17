@@ -1,15 +1,14 @@
+import { useState, useRef, useEffect } from 'react';
 import C from '../constants/colors';
+import { useT } from '../i18n';
+import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
+import { useToast } from '../contexts/ToastContext';
+import ConfirmDialog from './ConfirmDialog';
+import ChangePasswordModal from './ChangePasswordModal';
 
-const NAV_ITEMS = [
-  { id: 'home',     label: '首页',     en: 'HOME' },
-  { id: 'overview', label: '数据总览', en: 'OVERVIEW' },
-  { id: 'explore',  label: '数据探索', en: 'EXPLORE' },
-  { id: 'predict',  label: '预测分析', en: 'PREDICT' },
-  { id: 'ai',       label: 'AI 解读',  en: 'AI INSIGHT' },
-  { id: 'about',    label: '关于',     en: 'ABOUT' },
-];
+const NAV_IDS = ['home', 'overview', 'explore', 'predict', 'ai', 'about'];
 
-// 火星 + 轨道环的 SVG Logo
 function MarsLogoIcon() {
   return (
     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -21,32 +20,210 @@ function MarsLogoIcon() {
           <stop offset="100%" stopColor="#3a1208" />
         </radialGradient>
       </defs>
-      {/* 轨道环 */}
       <ellipse
         cx="18" cy="18" rx="17" ry="5.5"
         stroke="rgba(199,91,57,0.42)" strokeWidth="1"
         fill="none"
         transform="rotate(-22, 18, 18)"
       />
-      {/* 火星本体 */}
       <circle cx="18" cy="18" r="11" fill="url(#navMarsGrad)" />
-      {/* 北极冰盖 */}
       <ellipse cx="18" cy="9.2" rx="3.6" ry="1.5" fill="rgba(248,240,225,0.58)" />
-      {/* 表面暗斑（Syrtis Major） */}
       <ellipse
         cx="21" cy="16" rx="2.8" ry="2.1"
         fill="rgba(40,14,4,0.35)"
         transform="rotate(-10, 21, 16)"
       />
-      {/* 边缘阴影 */}
-      <circle cx="18" cy="18" r="11"
-        fill="radial-gradient(circle at 68% 65%, rgba(0,0,0,0.4) 0%, transparent 55%)"
-      />
     </svg>
   );
 }
 
+
+function NavUserEntry({ t, isLight }) {
+  const { user, logout, openAuthModal } = useAuth();
+  const { showToast } = useToast();
+  const [dropOpen, setDropOpen] = useState(false);
+  const [logoutConfirm, setLogoutConfirm] = useState(false);
+  const [changePwdOpen, setChangePwdOpen] = useState(false);
+  const [hovLogin, setHovLogin] = useState(false);
+  const wrapRef = useRef(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!dropOpen) return;
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setDropOpen(false);
+    };
+    const timer = setTimeout(() => document.addEventListener('mousedown', handler), 0);
+    return () => { clearTimeout(timer); document.removeEventListener('mousedown', handler); };
+  }, [dropOpen]);
+
+  const L = isLight;
+  const dropBg     = L ? 'rgba(255,255,255,0.97)' : 'rgba(13,13,32,0.97)';
+  const dropBorder = L ? 'rgba(0,0,0,0.09)'       : 'rgba(255,255,255,0.1)';
+  const dropShadow = L
+    ? '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.07)'
+    : '0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.35)';
+  const labelClr   = L ? '#1e1e30'              : '#e8edf3';
+  const dimClr     = L ? 'rgba(42,42,58,0.48)'  : 'rgba(232,237,243,0.45)';
+  const hoverBg    = L ? 'rgba(0,0,0,0.045)'    : 'rgba(255,255,255,0.07)';
+  const divClr     = L ? 'rgba(0,0,0,0.07)'     : 'rgba(255,255,255,0.08)';
+
+  if (!user) {
+    return (
+      <div style={{ width: 130, display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          onClick={() => openAuthModal('login')}
+          onMouseEnter={() => setHovLogin(true)}
+          onMouseLeave={() => setHovLogin(false)}
+          style={{
+            background: 'none', border: 'none',
+            cursor: 'pointer', padding: '4px 0',
+            color: hovLogin ? '#fff' : C.blue,
+            fontSize: 13, fontWeight: 500,
+            textDecoration: hovLogin ? 'underline' : 'none',
+            textUnderlineOffset: 3,
+            transition: 'color 0.18s, text-decoration 0.18s',
+            fontFamily: 'inherit',
+            letterSpacing: 0,
+          }}
+        >
+          {t('auth.menuLogin')}
+        </button>
+      </div>
+    );
+  }
+
+  const initial = (user.username || user.email)[0].toUpperCase();
+  const isAdmin = user.role === 'admin';
+
+  return (
+    <>
+      <div ref={wrapRef} style={{ width: 130, display: 'flex', justifyContent: 'flex-end', position: 'relative' }}>
+        {/* Avatar button */}
+        <button
+          onClick={() => setDropOpen(v => !v)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: dropOpen ? (L ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)') : 'transparent',
+            border: 'none', borderRadius: 8, padding: '5px 10px 5px 6px',
+            cursor: 'pointer', transition: 'background 0.15s',
+          }}
+        >
+          {/* Avatar circle */}
+          <div style={{
+            width: 28, height: 28, borderRadius: '50%',
+            background: `linear-gradient(135deg, ${C.blue}, ${C.mars})`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{initial}</span>
+          </div>
+          {/* Username */}
+          <div style={{ textAlign: 'left', maxWidth: 76, overflow: 'hidden' }}>
+            <div style={{
+              fontSize: 11, fontWeight: 600, color: C.ice,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              lineHeight: 1.2,
+            }}>
+              {user.username || user.email}
+            </div>
+            {isAdmin && (
+              <div style={{
+                display: 'inline-block', fontSize: 9, fontWeight: 700,
+                color: C.mars, letterSpacing: '0.06em',
+                background: 'rgba(199,91,57,0.12)',
+                borderRadius: 4, padding: '1px 5px', marginTop: 1,
+                lineHeight: 1.5,
+              }}>
+                {t('auth.roleAdmin').toUpperCase()}
+              </div>
+            )}
+          </div>
+        </button>
+
+        {/* Dropdown */}
+        {dropOpen && (
+          <div style={{
+            position: 'absolute', top: '100%', right: 0, marginTop: 6,
+            width: 220,
+            background: dropBg,
+            border: `1px solid ${dropBorder}`,
+            borderRadius: 11,
+            boxShadow: dropShadow,
+            backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+            padding: '6px 0',
+            zIndex: 3000,
+          }}>
+            {/* Email display */}
+            <div style={{ padding: '8px 16px 10px' }}>
+              <div style={{ fontSize: 11, color: dimClr, wordBreak: 'break-all' }}>{user.email}</div>
+            </div>
+            <div style={{ height: 1, background: divClr, margin: '0 10px 4px' }} />
+
+            {/* Change password */}
+            <DropItem
+              label={t('auth.changePassword')}
+              onClick={() => { setDropOpen(false); setChangePwdOpen(true); }}
+              hoverBg={hoverBg} color={labelClr}
+            />
+
+            <div style={{ height: 1, background: divClr, margin: '4px 10px' }} />
+
+            {/* Logout */}
+            <DropItem
+              label={t('auth.menuLogout')}
+              onClick={() => { setDropOpen(false); setLogoutConfirm(true); }}
+              hoverBg={hoverBg} color={C.mars}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Logout confirm */}
+      {logoutConfirm && (
+        <ConfirmDialog
+          title={t('auth.logoutConfirmTitle')}
+          message={t('auth.logoutConfirmMsg')}
+          confirmLabel={t('auth.logoutConfirmBtn')}
+          cancelLabel={t('auth.cancelBtn')}
+          onConfirm={() => {
+            setLogoutConfirm(false);
+            logout();
+            showToast(t('auth.toastLoggedOut'), 'success');
+          }}
+          onCancel={() => setLogoutConfirm(false)}
+        />
+      )}
+
+      {/* Change password modal */}
+      {changePwdOpen && <ChangePasswordModal onClose={() => setChangePwdOpen(false)} />}
+    </>
+  );
+}
+
+function DropItem({ label, onClick, hoverBg, color }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        padding: '9px 16px', cursor: 'pointer',
+        background: hov ? hoverBg : 'transparent',
+        transition: 'background 0.1s',
+      }}
+    >
+      <span style={{ fontSize: 13, fontWeight: 500, color, userSelect: 'none' }}>{label}</span>
+    </div>
+  );
+}
+
 export default function Navbar({ current, onChange }) {
+  const t = useT();
+  const { settings } = useSettings();
+  const isLight = settings.theme === 'light';
+
   return (
     <nav
       className="nav-glass"
@@ -75,18 +252,20 @@ export default function Navbar({ current, onChange }) {
           }}>
             ARESVISION
           </div>
-          <div style={{ fontSize: 10, color: C.ice60, letterSpacing: 2 }}>智绘赤星</div>
+          <div style={{ fontSize: 10, color: C.ice60, letterSpacing: 2 }}>
+            {t('nav.subtitle')}
+          </div>
         </div>
       </div>
 
       {/* Nav Links */}
       <div style={{ display: 'flex', gap: 2 }}>
-        {NAV_ITEMS.map((item) => {
-          const isActive = current === item.id;
+        {NAV_IDS.map((id) => {
+          const isActive = current === id;
           return (
             <button
-              key={item.id}
-              onClick={() => onChange(item.id)}
+              key={id}
+              onClick={() => onChange(id)}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -110,22 +289,17 @@ export default function Navbar({ current, onChange }) {
                 fontFamily: "'Orbitron', sans-serif",
                 color: isActive ? C.mars : C.ice60,
                 transition: 'color 0.25s',
+                textTransform: 'uppercase',
               }}>
-                {item.en}
-              </span>
-              <span style={{
-                fontSize: 10,
-                color: isActive ? C.ice : C.ice30,
-                transition: 'color 0.25s',
-              }}>
-                {item.label}
+                {t(`nav.${id}`)}
               </span>
             </button>
           );
         })}
       </div>
 
-      <div style={{ width: 130 }} />
+      {/* Right — user entry */}
+      <NavUserEntry t={t} isLight={isLight} />
     </nav>
   );
 }
