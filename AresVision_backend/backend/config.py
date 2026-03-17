@@ -15,6 +15,7 @@ DATA_DIR = BASE_DIR / "data"
 OPENMARS_DIR = DATA_DIR / "openmars"
 MCD_DIR = DATA_DIR / "mcd"
 MODEL_DIR = BASE_DIR / "models" / "predrnnv2"
+PERF_CACHE_DIR = DATA_DIR / "perf_cache"
 
 # ─── 网格 ───
 SUPPORTED_MARS_YEARS = [27, 28]

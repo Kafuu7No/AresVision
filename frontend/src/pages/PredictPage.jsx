@@ -4,7 +4,7 @@ import { useT } from '../i18n';
 import { useSettings } from '../contexts/SettingsContext';
 import SectionTitle from '../components/SectionTitle';
 import GlowCard from '../components/GlowCard';
-import { runPrediction, fetchPredictMetrics, fetchPerformanceCurve } from '../services/api';
+import { runPrediction, fetchPredictMetrics, fetchPerformanceCurve, fetchPerformanceComparison } from '../services/api';
 import Plot from 'react-plotly.js';
 import SphericalFieldCanvas from '../components/SphericalFieldCanvas';
 
@@ -285,10 +285,14 @@ export default function PredictPage() {
   // 控制整个网页 3D 悬浮球体
   const [fullscreen3D, setFullscreen3D] = useState(null); // { fieldData, colorMode }
 
-  // 性能曲线数据
   const [performanceData, setPerformanceData] = useState(null);
   const [perfLoading, setPerfLoading] = useState(false);
   const [activePerfMetric, setActivePerfMetric] = useState('r2');
+  
+  // 多模型对比配置
+  const [compareConfigs, setCompareConfigs] = useState([]);
+  const [selectedCompareIds, setSelectedCompareIds] = useState([]);
+  const [activeCompareId, setActiveCompareId] = useState(null);
 
   // ... (toggleVar remains same)
   const toggleVar = (id) => {
@@ -298,20 +302,31 @@ export default function PredictPage() {
   const handleFetchPerformance = useCallback(async () => {
     setPerfLoading(true);
     try {
-      const body = {
-        selected_variables: selectedVars,
-        horizon: predStep,
-        ls_start: lsStart,
-        mars_year: marsYear,
-      };
-      const res = await fetchPerformanceCurve(body);
-      setPerformanceData(res);
+      // 如果勾选了多个对比模型，使用 comparison 接口
+      if (selectedCompareIds.length > 1) {
+        const configs = compareConfigs
+          .filter(c => selectedCompareIds.includes(c.id))
+          .map(c => c.vars);
+        const res = await fetchPerformanceComparison(configs);
+        setPerformanceData(res);
+      } else {
+        const body = {
+          selected_variables: selectedVars,
+          horizon: predStep,
+          ls_start: lsStart,
+          mars_year: marsYear,
+        };
+        const res = await fetchPerformanceCurve(body);
+        // 为了保持数据结构一致，转换为 results 对象
+        const key = selectedVars.length === 0 ? 'baseline' : 'current';
+        setPerformanceData({ results: { [key]: res } });
+      }
     } catch (e) {
       console.error('Fetch performance error:', e);
     } finally {
       setPerfLoading(false);
     }
-  }, [selectedVars, predStep, lsStart, marsYear]);
+  }, [selectedVars, predStep, lsStart, marsYear, selectedCompareIds, compareConfigs]);
 
   const handlePredict = useCallback(async () => {
     setLoading(true);
@@ -488,7 +503,108 @@ export default function PredictPage() {
             </div>
           </GlowCard>
 
-          {/* File Upload */}
+          {/* 多模型对比勾选 */}
+          <GlowCard style={{ padding: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
+              COMPARE MODELS
+            </div>
+            <div style={{ fontSize: 11, color: C.ice30, marginBottom: 12, lineHeight: 1.6 }}>
+              在性能图表中同时展示多个模型的曲线
+            </div>
+            {compareConfigs.map((c) => (
+              <div key={c.id} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '4px 10px', marginBottom: 4, borderRadius: 6,
+                background: selectedCompareIds.includes(c.id) ? 'rgba(74,207,172,0.06)' : 'transparent',
+                transition: 'all 0.2s',
+              }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1 }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedCompareIds.includes(c.id)}
+                    onChange={() => {
+                      setSelectedCompareIds(prev => 
+                        prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id]
+                      );
+                    }}
+                    style={{ accentColor: '#4acfac' }}
+                  />
+                  <span style={{ fontSize: 12, color: selectedCompareIds.includes(c.id) ? C.ice : C.ice30 }}>{c.label}</span>
+                </label>
+                
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setCompareConfigs(prev => prev.filter(pc => pc.id !== c.id));
+                    setSelectedCompareIds(prev => prev.filter(pid => pid !== c.id));
+                  }}
+                  style={{
+                    background: 'none', border: 'none', color: 'rgba(199,91,57,0.4)',
+                    fontSize: 14, cursor: 'pointer', padding: '4px 8px',
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.target.style.color = C.mars}
+                  onMouseLeave={(e) => e.target.style.color = 'rgba(199,91,57,0.4)'}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            
+            <button 
+              onClick={() => {
+                // 检查是否已存在完全相同的配置
+                const sortedVars = [...selectedVars].sort();
+                const exists = compareConfigs.find(c => {
+                  const cVars = [...c.vars].sort();
+                  return cVars.length === sortedVars.length && cVars.every((v, i) => v === sortedVars[i]);
+                });
+
+                if (exists) {
+                  // 如果已存在，确保它是勾选状态即可
+                  if (!selectedCompareIds.includes(exists.id)) {
+                    setSelectedCompareIds(prev => [...prev, exists.id]);
+                  }
+                  return;
+                }
+
+                const newId = `custom_${Date.now()}`;
+                
+                // 使用缩写命名，例如 UVDST
+                const shorthands = {
+                  "Temperature": "T",
+                  "Dust_Optical_Depth": "D",
+                  "Solar_Flux_DN": "S",
+                  "U_Wind": "U",
+                  "V_Wind": "V"
+                };
+                
+                let label;
+                if (selectedVars.length === 0) {
+                  label = 'Baseline';
+                } else {
+                  const prefix = selectedVars
+                    .map(v => shorthands[v] || v[0])
+                    .sort()
+                    .join('');
+                  label = prefix;
+                }
+
+                setCompareConfigs(prev => [...prev, { id: newId, label, vars: [...selectedVars] }]);
+                setSelectedCompareIds(prev => [...prev, newId]);
+              }}
+              style={{
+                width: '100%', marginTop: 8, padding: '8px 0',
+                background: 'rgba(255,255,255,0.03)', border: `1px dashed ${C.border}`,
+                borderRadius: 8, color: C.ice60, fontSize: 11, cursor: 'pointer',
+                fontFamily: "'Orbitron', sans-serif"
+              }}
+            >
+              + 将当前配置加入对比
+            </button>
+          </GlowCard>
+
+          {/* File Upload (原有) */}
           <GlowCard style={{ padding: 20 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
               FILE UPLOAD
@@ -866,31 +982,35 @@ export default function PredictPage() {
                   height: 380
                 }}>
                   <Plot
-                    data={[
-                      {
-                        // 计算连续时间轴：MY27 原始 Ls，MY28 累加 360
-                        x: performanceData.items.map(it => it.my === 27 ? it.ls : it.ls + 360),
-                        y: performanceData.items.map(it => it[activePerfMetric]),
+                    data={Object.entries(performanceData.results).map(([key, perf], idx) => {
+                      const colors = [C.mars, C.blue, '#4acfac', '#9c7bea', '#ffd740'];
+                      const config = compareConfigs.find(c => {
+                        // 寻找匹配的配置，或者根据标识匹配
+                        const shorthands = (vars) => vars.length === 0 ? 'baseline' : vars.map(v => v[0]).sort().join('');
+                        return c.id === key || shorthands(c.vars) === key;
+                      });
+                      const label = config?.label || key;
+                      
+                      return {
+                        x: perf.items.map(it => it.my === 27 ? it.ls : it.ls + 360),
+                        y: perf.items.map(it => it[activePerfMetric]),
                         type: 'scatter',
                         mode: 'lines+markers',
-                        name: METRIC_META.find(m => m.key === activePerfMetric)?.name || activePerfMetric,
+                        name: label,
                         marker: {
-                          color: METRIC_META.find(m => m.key === activePerfMetric)?.color || C.mars,
-                          size: 7,
-                          line: { color: 'rgba(255,255,255,0.5)', width: 1 }
+                          color: colors[idx % colors.length],
+                          size: 5,
                         },
                         line: {
-                          color: METRIC_META.find(m => m.key === activePerfMetric)?.color || C.mars,
-                          width: 3,
+                          color: colors[idx % colors.length],
+                          width: idx === 0 ? 3 : 2, // 第一个稍微加粗
                           shape: 'spline'
                         },
-                        fill: 'tozeroy',
-                        fillcolor: 'rgba(199,91,57,0.08)',
-                        hovertemplate: `<b>MY%{text}</b><br>Ls: %{customdata:.2f}°<br>${activePerfMetric.toUpperCase()}: <b>%{y:.4f}</b><extra></extra>`,
-                        text: performanceData.items.map(it => it.my),
-                        customdata: performanceData.items.map(it => it.ls)
-                      }
-                    ]}
+                        hovertemplate: `<b>${label}</b><br>Ls: %{customdata:.2f}°<br>${activePerfMetric.toUpperCase()}: <b>%{y:.4f}</b><extra></extra>`,
+                        text: perf.items.map(it => it.my),
+                        customdata: perf.items.map(it => it.ls)
+                      };
+                    })}
                     layout={{
                       autosize: true,
                       height: 340,
@@ -909,8 +1029,13 @@ export default function PredictPage() {
                         tickfont: { size: 10, color: plotText60 },
                         gridcolor: plotGridColor,
                         zeroline: false,
-                        range: (activePerfMetric === 'r2' || activePerfMetric === 'ssim') ? [0, 1.0] : undefined,
+                        range: (activePerfMetric === 'r2' || activePerfMetric === 'ssim') ? [0.6, 1.0] : undefined,
                         autorange: !(activePerfMetric === 'r2' || activePerfMetric === 'ssim')
+                      },
+                      legend: {
+                        font: { size: 10, color: C.ice60 },
+                        orientation: 'h',
+                        y: 1.12
                       },
                       shapes: [
                         {
@@ -931,7 +1056,7 @@ export default function PredictPage() {
                         }
                       ],
                       hovermode: 'closest',
-                      showlegend: false
+                      showlegend: true
                     }}
                     config={{ displayModeBar: false, responsive: true }}
                     style={{ width: '100%' }}
@@ -940,90 +1065,104 @@ export default function PredictPage() {
 
                 {/* 底部数据明细表 */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
-                    <div style={{ 
-                      padding: '12px 16px', 
-                      background: 'rgba(74,158,255,0.1)', 
-                      borderRadius: 10, 
-                      border: '1px solid rgba(74,158,255,0.3)',
-                      display: 'flex', flexDirection: 'column', gap: 4
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalR2')}</span>
-                        <div style={{ padding: '2px 6px', background: 'rgba(255,255,255,0.05)', borderRadius: 4, fontSize: 8, color: C.ice30 }}>Flattened</div>
-                      </div>
-                      <span style={{ fontSize: 18, color: C.blue, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
-                        {performanceData.global_r2 ? fmtNum(performanceData.global_r2, precision) : fmtNum(0, precision)}
-                      </span>
-                    </div>
-
-                    <div style={{ 
-                      padding: '12px 16px', 
-                      background: 'rgba(199,91,57,0.1)', 
-                      borderRadius: 10, 
-                      border: '1px solid rgba(199,91,57,0.3)',
-                      display: 'flex', flexDirection: 'column', gap: 4
-                    }}>
-                      <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalRMSE')}</span>
-                      <span style={{ fontSize: 18, color: C.mars, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
-                        {performanceData.global_rmse ? fmtNum(performanceData.global_rmse, precision) : fmtNum(0, precision)}
-                      </span>
-                    </div>
-
-                    <div style={{ 
-                      padding: '12px 16px', 
-                      background: 'rgba(199,91,57,0.06)', 
-                      borderRadius: 10, 
-                      border: '1px solid rgba(199,91,57,0.2)',
-                      display: 'flex', flexDirection: 'column', gap: 4
-                    }}>
-                      <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalMAE')}</span>
-                      <span style={{ fontSize: 18, color: C.mars, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
-                        {performanceData.global_mae ? fmtNum(performanceData.global_mae, precision) : fmtNum(0, precision)}
-                      </span>
-                    </div>
-
-                    <div style={{ 
-                      padding: '12px 16px', 
-                      background: 'rgba(74,207,172,0.1)', 
-                      borderRadius: 10, 
-                      border: '1px solid rgba(74,207,172,0.3)',
-                      display: 'flex', flexDirection: 'column', gap: 4
-                    }}>
-                      <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalSSIM')}</span>
-                      <span style={{ fontSize: 18, color: '#4acfac', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
-                        {performanceData.global_ssim ? fmtNum(performanceData.global_ssim, precision) : fmtNum(0, precision)}
-                      </span>
-                    </div>
+                  {/* 多项详情切换 */}
+                  <div style={{ display: 'flex', gap: 10, marginBottom: 4 }}>
+                    {Object.keys(performanceData.results).map(key => {
+                      const label = compareConfigs.find(c => {
+                        const shorthands = (vars) => vars.length === 0 ? 'baseline' : vars.map(v => v[0]).sort().join('');
+                        return c.id === key || shorthands(c.vars) === key;
+                      })?.label || key;
+                      return (
+                        <button key={key} onClick={() => setActiveCompareId(key)} style={{
+                          padding: '4px 12px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                          background: activeCompareId === key ? 'rgba(74,207,172,0.1)' : 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${activeCompareId === key ? '#4acfac' : C.border}`,
+                          color: activeCompareId === key ? '#4acfac' : C.ice30,
+                          cursor: 'pointer', fontFamily: "'Orbitron', sans-serif"
+                        }}>
+                          {label}
+                        </button>
+                      );
+                    })}
                   </div>
 
-                  <div style={{ maxHeight: 220, overflowY: 'auto', borderRadius: 8, border: `1px solid ${C.border}` }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-                      <thead style={{ position: 'sticky', top: 0, background: '#0a0a0f', zIndex: 1 }}>
-                        <tr>
-                          {[t('predict.tableHeaders.my'), t('predict.tableHeaders.ls'), t('predict.tableHeaders.r2'), t('predict.tableHeaders.rmse'), t('predict.tableHeaders.mae'), t('predict.tableHeaders.ssim')].map(h => (
-                            <th key={h} style={{ padding: '10px 6px', textAlign: 'center', color: C.ice30, borderBottom: `1px solid ${C.border}`, fontWeight: 600 }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {performanceData.items.map((it, i) => (
-                          <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
-                            <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice60 }}>MY{it.my}</td>
-                            <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice60 }}>{it.ls.toFixed(2)}°</td>
-                            <td style={{
-                              padding: '8px 6px', textAlign: 'center',
-                              color: it.r2 > 0.9 ? '#4acfac' : it.r2 > 0.8 ? '#ffd740' : C.mars,
-                              fontWeight: 700
-                            }}>{fmtNum(it.r2, precision)}</td>
-                            <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice }}>{fmtNum(it.rmse, precision)}</td>
-                            <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice }}>{fmtNum(it.mae, precision)}</td>
-                            <td style={{ padding: '8px 6px', textAlign: 'center', color: '#4acfac' }}>{fmtNum(it.ssim, precision)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  {(() => {
+                    const activePerf = performanceData.results[activeCompareId] || Object.values(performanceData.results)[0];
+                    if (!activePerf) return null;
+                    return (
+                      <>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+                          <div style={{
+                            padding: '12px 16px', background: 'rgba(74,158,255,0.1)', borderRadius: 10, border: '1px solid rgba(74,158,255,0.3)',
+                            display: 'flex', flexDirection: 'column', gap: 4
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalR2')}</span>
+                              <div style={{ padding: '2px 6px', background: 'rgba(255,255,255,0.05)', borderRadius: 4, fontSize: 8, color: C.ice30 }}>Flattened</div>
+                            </div>
+                            <span style={{ fontSize: 18, color: C.blue, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                              {activePerf.global_r2 ? fmtNum(activePerf.global_r2, precision) : fmtNum(0, precision)}
+                            </span>
+                          </div>
+                          <div style={{
+                            padding: '12px 16px', background: 'rgba(199,91,57,0.1)', borderRadius: 10, border: '1px solid rgba(199,91,57,0.3)',
+                            display: 'flex', flexDirection: 'column', gap: 4
+                          }}>
+                            <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalRMSE')}</span>
+                            <span style={{ fontSize: 18, color: C.mars, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                              {activePerf.global_rmse ? fmtNum(activePerf.global_rmse, precision) : fmtNum(0, precision)}
+                            </span>
+                          </div>
+                          <div style={{
+                            padding: '12px 16px', background: 'rgba(199,91,57,0.06)', borderRadius: 10, border: '1px solid rgba(199,91,57,0.2)',
+                            display: 'flex', flexDirection: 'column', gap: 4
+                          }}>
+                            <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalMAE')}</span>
+                            <span style={{ fontSize: 18, color: C.mars, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                              {activePerf.global_mae ? fmtNum(activePerf.global_mae, precision) : fmtNum(0, precision)}
+                            </span>
+                          </div>
+                          <div style={{
+                            padding: '12px 16px', background: 'rgba(74,207,172,0.1)', borderRadius: 10, border: '1px solid rgba(74,207,172,0.3)',
+                            display: 'flex', flexDirection: 'column', gap: 4
+                          }}>
+                            <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalSSIM')}</span>
+                            <span style={{ fontSize: 18, color: '#4acfac', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                              {activePerf.global_ssim ? fmtNum(activePerf.global_ssim, precision) : fmtNum(0, precision)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div style={{ maxHeight: 220, overflowY: 'auto', borderRadius: 8, border: `1px solid ${C.border}` }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                            <thead style={{ position: 'sticky', top: 0, background: '#0a0a0f', zIndex: 1 }}>
+                              <tr>
+                                {[t('predict.tableHeaders.my'), t('predict.tableHeaders.ls'), t('predict.tableHeaders.r2'), t('predict.tableHeaders.rmse'), t('predict.tableHeaders.mae'), t('predict.tableHeaders.ssim')].map(h => (
+                                  <th key={h} style={{ padding: '10px 6px', textAlign: 'center', color: C.ice30, borderBottom: `1px solid ${C.border}`, fontWeight: 600 }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {activePerf.items.map((it, i) => (
+                                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
+                                  <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice60 }}>MY{it.my}</td>
+                                  <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice60 }}>{it.ls.toFixed(2)}°</td>
+                                  <td style={{
+                                    padding: '8px 6px', textAlign: 'center',
+                                    color: it.r2 > 0.9 ? '#4acfac' : it.r2 > 0.8 ? '#ffd740' : C.mars,
+                                    fontWeight: 700
+                                  }}>{fmtNum(it.r2, precision)}</td>
+                                  <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice }}>{fmtNum(it.rmse, precision)}</td>
+                                  <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice }}>{fmtNum(it.mae, precision)}</td>
+                                  <td style={{ padding: '8px 6px', textAlign: 'center', color: '#4acfac' }}>{fmtNum(it.ssim, precision)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             ) : (

@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Request, Query, Body
 from schemas.predict import (
     PredictRequest, PredictResponse,
     EvalMetricsResponse, AblationResponse, DiurnalResponse,
-    PerformanceResponse,
+    PerformanceResponse, PerformanceCompareRequest, PerformanceCompareResponse,
 )
 from config import DEFAULT_MARS_YEAR, LATITUDE_BANDS
 
@@ -120,6 +120,31 @@ async def get_performance_results(
     except Exception as e:
         logger.error(f"性能曲线接口错误: {e}")
         raise HTTPException(status_code=500, detail=f"性能曲线计算失败: {e}")
+
+
+@router.post("/performance-compare", response_model=PerformanceCompareResponse)
+async def get_performance_comparison(
+    request: Request,
+    body: PerformanceCompareRequest = Body(...),
+):
+    """同时获取多个变量组合的模型性能曲线以便对比分析"""
+    try:
+        ps = _get_predict_service(request)
+        results = {}
+        for vars_list in body.configs:
+            # 使用列表内容作为 key
+            if not vars_list:
+                key = "baseline"
+            else:
+                from config import VARIABLE_SHORTHANDS
+                key = "".join([VARIABLE_SHORTHANDS.get(v, v[0]) for v in sorted(vars_list)])
+            
+            perf = ps.get_performance_curve(selected_variables=vars_list)
+            results[key] = perf
+        return {"results": results}
+    except Exception as e:
+        logger.error(f"多模型对比接口错误: {e}")
+        raise HTTPException(status_code=500, detail=f"对比数据生成失败: {e}")
 
 
 # ─── 昼夜变化 ───

@@ -63,3 +63,13 @@ Thumbs.db
 # Docs excluded from git
 AGENTS.md
 CLAUDE.md
+
+# Python/Testing
+.pytest_cache/
+
+# Project Specific Caches & Temp Files
+perf_debug.json
+frontend/test_heatmap.json
+AresVision_backend/backend/data/perf_cache/
+AresVision_backend/backend/test_output.log
+AresVision_backend/backend/data/processed_tensors.pt
