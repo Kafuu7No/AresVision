@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { useT } from '../i18n';
 import C from '../constants/colors';
+import ConfirmDialog from './ConfirmDialog';
 
 const COLORMAP_IDS = ['inferno', 'viridis', 'plasma', 'magma', 'cividis', 'jet', 'rdbu'];
 
@@ -61,10 +64,33 @@ function SubOption({ label, selected, onClick, hoverBg, labelColor, activeClr })
   );
 }
 
+function UserActionItem({ label, onClick, hoverBg, color }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        padding: '10px 16px', cursor: 'pointer',
+        background: hov ? hoverBg : 'transparent',
+        transition: 'background 0.1s',
+      }}
+    >
+      <span style={{ fontSize: 14, fontWeight: 500, color, userSelect: 'none' }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 export default function SettingsFab({ onOpenSettings }) {
   const { settings, updateSetting } = useSettings();
+  const { user, logout, openAuthModal } = useAuth();
+  const { showToast } = useToast();
   const t = useT();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [logoutConfirm, setLogoutConfirm] = useState(false);
   const [activeSubmenu, setActiveSubmenu] = useState(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const [moreHov, setMoreHov] = useState(false);
@@ -132,6 +158,7 @@ export default function SettingsFab({ onOpenSettings }) {
   const cmapDisplay  = settings.colormap.charAt(0).toUpperCase() + settings.colormap.slice(1);
   const moreLabel    = settings.language === 'zh' ? '更多设置' : 'More Settings';
   const tooltipText  = settings.language === 'zh' ? '设置' : 'Settings';
+  const roleLabel    = user?.role === 'admin' ? t('auth.roleAdmin') : t('auth.roleUser');
 
   const MAIN_ITEMS = [
     { key: 'language', label: t('settings.language.label'), value: langDisplay },
@@ -244,6 +271,52 @@ export default function SettingsFab({ onOpenSettings }) {
                   {moreLabel}
                 </span>
               </div>
+
+              <div style={{ height: 1, background: divClr, margin: '3px 10px' }} />
+
+              {/* User section */}
+              {user ? (
+                <>
+                  {/* User info row */}
+                  <div style={{ padding: '9px 16px 5px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: '50%',
+                        background: `linear-gradient(135deg, ${C.blue}, ${C.mars})`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>
+                          {(user.username || user.email)[0].toUpperCase()}
+                        </span>
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{
+                          fontSize: 13, fontWeight: 600, color: labelClr,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {user.username || user.email}
+                        </div>
+                        <div style={{ fontSize: 11, color: valueClr }}>{roleLabel}</div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Logout */}
+                  <UserActionItem
+                    label={t('auth.menuLogout')}
+                    onClick={() => { setMenuOpen(false); setLogoutConfirm(true); }}
+                    hoverBg={hoverBg}
+                    color={C.mars}
+                  />
+                </>
+              ) : (
+                <UserActionItem
+                  label={t('auth.menuLogin')}
+                  onClick={() => { setMenuOpen(false); openAuthModal('login'); }}
+                  hoverBg={hoverBg}
+                  color={C.blue}
+                />
+              )}
             </div>
 
             {/*
@@ -330,6 +403,22 @@ export default function SettingsFab({ onOpenSettings }) {
       >
         <GearIcon size={17} />
       </button>
+
+      {/* ── Logout confirmation ── */}
+      {logoutConfirm && (
+        <ConfirmDialog
+          title={t('auth.logoutConfirmTitle')}
+          message={t('auth.logoutConfirmMsg')}
+          confirmLabel={t('auth.logoutConfirmBtn')}
+          cancelLabel={t('auth.cancelBtn')}
+          onConfirm={() => {
+            setLogoutConfirm(false);
+            logout();
+            showToast(t('auth.toastLoggedOut'), 'success');
+          }}
+          onCancel={() => setLogoutConfirm(false)}
+        />
+      )}
     </div>
   );
 }

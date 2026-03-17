@@ -2,6 +2,7 @@ import { useEffect, useRef, createContext, useContext } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useT } from '../i18n';
 import C from '../constants/colors';
+import { useScrollLock } from '../hooks/useScrollLock';
 
 /* ─── 面板内 isLight 上下文 ─── */
 const LightCtx = createContext(false);
@@ -164,6 +165,7 @@ export default function SettingsPanel({ open, onClose }) {
   const t = useT();
   const panelRef = useRef(null);
   const isLight = settings.theme === 'light';
+  useScrollLock(open);
 
   // 点击面板外侧关闭
   useEffect(() => {
@@ -216,6 +218,7 @@ export default function SettingsPanel({ open, onClose }) {
           pointerEvents: open ? 'auto' : 'none',
           transition: 'opacity 0.25s',
           backdropFilter: 'blur(2px)',
+          overscrollBehavior: 'contain',
         }}
       />
 
