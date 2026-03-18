@@ -3,15 +3,12 @@ import C from '../constants/colors';
 import { useT } from '../i18n';
 import SectionTitle from '../components/SectionTitle';
 import GlowCard from '../components/GlowCard';
-import ChartPlaceholder from '../components/ChartPlaceholder';
-
-const CONTEXT_ITEMS = [
-  { label: 'Mars Year', value: 'MY 27' },
-  { label: 'Ls Range', value: '90° – 180°' },
-  { label: 'Model', value: 'PredRNNv2' },
-  { label: 'Horizon', value: '+3 steps' },
-  { label: 'Variables', value: 'Full (7ch)' },
-];
+import {
+  ChatMessage,
+  SidebarContext,
+  QuickQuestions,
+  ErrorChart,
+} from './AIPage/AIComponents';
 
 export default function AIPage() {
   const t = useT();
@@ -59,19 +56,7 @@ export default function AIPage() {
           {/* Messages */}
           <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
             {messages.map((msg, i) => (
-              <div key={i} style={{
-                alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                maxWidth: '80%',
-                padding: '12px 16px',
-                borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                background: msg.role === 'user'
-                  ? `linear-gradient(135deg, ${C.mars}, ${C.marsLight})`
-                  : 'rgba(255,255,255,0.04)',
-                border: msg.role === 'user' ? 'none' : `1px solid ${C.border}`,
-                fontSize: 13, lineHeight: 1.7, color: C.ice, whiteSpace: 'pre-wrap',
-              }}>
-                {msg.content}
-              </div>
+              <ChatMessage key={i} msg={msg} i={i} />
             ))}
           </div>
 
@@ -109,49 +94,9 @@ export default function AIPage() {
 
         {/* ─── Right Sidebar ─── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Context */}
-          <GlowCard style={{ padding: 20 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, marginBottom: 12 }}>
-              {t('ai.contextTitle')}
-            </div>
-            {CONTEXT_ITEMS.map((item, i) => (
-              <div key={i} style={{
-                display: 'flex', justifyContent: 'space-between',
-                padding: '6px 0', borderBottom: `1px solid ${C.border}`, fontSize: 12,
-              }}>
-                <span style={{ color: C.ice30 }}>{item.label}</span>
-                <span style={{ color: C.ice, fontWeight: 600 }}>{item.value}</span>
-              </div>
-            ))}
-          </GlowCard>
-
-          {/* Quick Questions */}
-          <GlowCard style={{ padding: 20 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, marginBottom: 12 }}>
-              {t('ai.quickTitle')}
-            </div>
-            {Array.isArray(quickQuestions) && quickQuestions.map((q, i) => (
-              <button
-                key={i}
-                onClick={() => setInput(q)}
-                style={{
-                  display: 'block', width: '100%', textAlign: 'left',
-                  padding: '10px 12px', marginBottom: 6,
-                  background: 'rgba(255,255,255,0.02)',
-                  border: `1px solid ${C.border}`, borderRadius: 8,
-                  fontSize: 12, color: C.ice60, cursor: 'pointer',
-                  transition: 'all 0.2s', fontFamily: "'Exo 2', sans-serif",
-                }}
-              >
-                → {q}
-              </button>
-            ))}
-          </GlowCard>
-
-          {/* Mini chart */}
-          <GlowCard style={{ padding: 16 }}>
-            <ChartPlaceholder title={t('ai.errorChart')} type="heatmap" h={160} />
-          </GlowCard>
+          <SidebarContext t={t} />
+          <QuickQuestions t={t} questions={quickQuestions} onSelect={setInput} />
+          <ErrorChart t={t} />
         </div>
       </div>
     </div>
