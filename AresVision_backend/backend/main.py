@@ -7,6 +7,7 @@ AresVision 后端入口
 
 import logging
 import time
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -94,6 +95,20 @@ async def lifespan(app: FastAPI):
     logger.info("[4/5] 初始化 AI 解读服务...")
     ai_service = AIService()
     app.state.ai_service = ai_service
+
+    # 5. 启动后台任务预生成性能曲线缓存
+    from scripts.pregen_perf_cache import pregenerate_perf_cache
+    import threading
+    
+    def run_pregen():
+        try:
+            # 创建一个新的事件循环来运行异步预生成
+            asyncio.run(pregenerate_perf_cache(predict_orchestrator))
+        except Exception as e:
+            logger.error(f"后台预生成任务崩溃: {e}")
+
+    logger.info("[5/5] 启动性能曲线缓存后台预生成线程...")
+    threading.Thread(target=run_pregen, daemon=True).start()
 
     elapsed = time.time() - t0
     logger.info("=" * 60)

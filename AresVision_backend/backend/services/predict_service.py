@@ -120,11 +120,18 @@ class PredictOrchestratorService:
         model, input_dim, model_info = self.inference.get_model_for_variables(selected_variables)
 
         # b. 构造满足模型维度要求的输入
-        # ARESVISION IMPORTANT: 如果触发了回退 (is_fallback)，说明正在使用全量 6 通道模型
+        # ARESVISION IMPORTANT: 如果触发了回退 (is_fallback)，或者显式请求了全量 6 通道模型 (UVDST)
         # 此时必须跳过按需切片，直接传递全量 input_arr
-        if model_info.get("is_fallback", False) or model_info.get("suffix") == "UVDST":
+        is_fallback = model_info.get("is_fallback", False)
+        suffix = model_info.get("suffix")
+
+        if is_fallback or suffix == "UVDST":
             final_input_arr = input_arr
-            logger.info("回退机制激活: 强制使用全量 6 通道输入适配 UVDST 模型")
+            if is_fallback:
+                reason = model_info.get("fallback_reason", "未知原因")
+                logger.info(f"回退机制激活: {reason}，强制使用全量 6 通道输入适配 {suffix} 模型")
+            else:
+                logger.info(f"匹配成功: 使用全量 6 通道 {suffix} 模型")
         elif input_dim < 7:
             indices = [0]
             from config import TRAINING_MASTER_ORDER

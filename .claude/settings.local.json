@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"F:/xwechat_files/wxid_sonymhjikdg932_3c73/msg/file/2026-03/AresVision\" && rm AresVision_backend/backend/check_data.py AresVision_backend/backend/data/openmars/sample_data_plot.py CODE_SUMMARY.md AGENTS.md \"数据总览页面使用指南.md\" && echo \"后端和文档文件删除完成\")"
+    ]
+  }
+}
