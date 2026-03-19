@@ -5,21 +5,21 @@ import { useSettings } from '../contexts/SettingsContext';
 import SectionTitle from '../components/SectionTitle';
 import GlowCard from '../components/GlowCard';
 import { runPrediction, fetchPredictMetrics, fetchPerformanceCurve, fetchPerformanceComparison } from '../services/api';
-import Plot from 'react-plotly.js';
 import SphericalFieldCanvas from '../components/SphericalFieldCanvas';
+
+import PredictDisplay from '../components/PredictDisplay';
+import PredictMetrics from '../components/PredictMetrics';
+import PredictPerformance from '../components/PredictPerformance';
 
 import { getRgb, rdbuRgb } from '../utils/colormaps';
 import { ozoneLabel, ozoneDeltaLabel, convertOzone } from '../utils/units';
 import { fmtNum } from '../utils/fmt';
 
-// fmtVal 用于 Canvas 色阶标签（精度固定 3 位，与精度设置无关，因其在 useEffect 绘图中使用）
 function fmtVal(v) {
   if (v === 0) return '0';
   if (Math.abs(v) < 0.001) return v.toExponential(2);
   return v.toFixed(3);
 }
-
-// ─── Canvas 场热力图（带坐标轴 + Colorbar） ───
 
 function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
   const canvasRef = useRef(null);
@@ -35,13 +35,12 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const CW = canvas.width;   // 720
-    const CH = canvas.height;  // h
+    const CW = canvas.width;
+    const CH = canvas.height;
     const ML = 46, MR = 72, MT = 22, MB = 42;
     const plotW = CW - ML - MR;
     const plotH = CH - MT - MB;
 
-    const isLight = theme === 'light';
     const axisTextColor  = isLight ? 'rgba(26,26,46,0.65)' : 'rgba(232,237,243,0.6)';
     const axisTitleColor = isLight ? 'rgba(26,26,46,0.4)'  : 'rgba(232,237,243,0.35)';
     const axisLineColor  = isLight ? 'rgba(26,46,80,0.2)'  : 'rgba(255,255,255,0.18)';
@@ -50,16 +49,14 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     const cbLabelColor   = isLight ? 'rgba(26,26,46,0.7)'  : 'rgba(232,237,243,0.7)';
     const cbTitleColor   = isLight ? 'rgba(26,26,46,0.4)'  : 'rgba(232,237,243,0.4)';
 
-    // 只填充绘图区背景，边距保持透明（浅色主题下边距显示卡片白色背景）
     ctx.clearRect(0, 0, CW, CH);
     ctx.fillStyle = '#0a0a0f';
     ctx.fillRect(ML, MT, plotW, plotH);
 
     const { field, minVal, maxVal } = fieldData;
-    const nLat = field.length;    // 36
-    const nLon = field[0].length; // 72
+    const nLat = field.length;
+    const nLon = field[0].length;
 
-    // 计算色阶范围
     let dMin = minVal, dMax = maxVal;
     let absMax = 0;
     if (colorMode === 'rdbu') {
@@ -75,7 +72,6 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     const cellW = plotW / nLon;
     const cellH = plotH / nLat;
 
-    // 绘制热力图主体（ImageData）
     const imgData = ctx.createImageData(plotW, plotH);
     const pixels = imgData.data;
     for (let k = 0; k < pixels.length; k += 4) {
@@ -102,12 +98,10 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     }
     ctx.putImageData(imgData, ML, MT);
 
-    // 图框边框
     ctx.strokeStyle = borderColor;
     ctx.lineWidth = 1;
     ctx.strokeRect(ML, MT, plotW, plotH);
 
-    // X 轴（经度）
     ctx.strokeStyle = axisLineColor;
     ctx.lineWidth = 1;
     ctx.fillStyle = axisTextColor;
@@ -122,7 +116,6 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     ctx.font = '10px sans-serif';
     ctx.fillText('Longitude (°)', ML + plotW / 2, CH - 4);
 
-    // Y 轴（纬度）
     ctx.textAlign = 'right';
     ctx.fillStyle = axisTextColor;
     ctx.font = '10px sans-serif';
@@ -131,7 +124,6 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
       ctx.beginPath(); ctx.moveTo(ML, fy); ctx.lineTo(ML - 4, fy); ctx.stroke();
       ctx.fillText(`${latV}°`, ML - 6, fy + 3);
     });
-    // Y 轴旋转标签
     ctx.save();
     ctx.translate(10, MT + plotH / 2);
     ctx.rotate(-Math.PI / 2);
@@ -141,14 +133,13 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     ctx.fillText('Latitude (°)', 0, 0);
     ctx.restore();
 
-    // Colorbar
     const cbX = ML + plotW + 10;
     const cbW = 14;
     const cbH = plotH;
     const cbImgData = ctx.createImageData(cbW, cbH);
     const cbPx = cbImgData.data;
     for (let py = 0; py < cbH; py++) {
-      const t = 1 - py / cbH; // 顶部=高值
+      const t = 1 - py / cbH;
       const rgb = colorMode === 'rdbu' ? rdbuRgb(t) : getRgb(colormapName, t);
       for (let px = 0; px < cbW; px++) {
         const idx = (py * cbW + px) * 4;
@@ -160,7 +151,6 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     ctx.lineWidth = 1;
     ctx.strokeRect(cbX, MT, cbW, cbH);
 
-    // Colorbar 刻度标签
     const lbX = cbX + cbW + 3;
     ctx.textAlign = 'left';
     ctx.fillStyle = cbLabelColor;
@@ -172,7 +162,6 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     ctx.fillText(midLabel, lbX, MT + cbH / 2 + 3);
     ctx.fillText(botLabel, lbX, MT + cbH);
 
-    // Colorbar 单位
     ctx.save();
     ctx.translate(cbX + cbW / 2, MT + cbH + 22);
     ctx.rotate(-Math.PI / 2);
@@ -196,8 +185,6 @@ function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     </div>
   );
 }
-
-// ─── 辅助组件 ───
 
 function LoadingBox({ h = 240 }) {
   const t = useT();
@@ -230,8 +217,6 @@ function EmptyBox({ h = 240 }) {
   );
 }
 
-// ─── 常量 ───
-
 const VARIABLE_DEFS = [
   { id: 'Temperature',        icon: '🌡',  color: '#ff6b4a' },
   { id: 'Dust_Optical_Depth', icon: '🌫',  color: '#d4a06a' },
@@ -254,8 +239,6 @@ const TRIPTYCH_PANEL_DEFS = [
   { key: 'prediction', color: C.mars,    mode: 'inferno' },
   { key: 'residual',   color: '#9c7bea', mode: 'rdbu' },
 ];
-
-// ─── 主页面 ───
 
 export default function PredictPage() {
   const t = useT();
@@ -282,22 +265,18 @@ export default function PredictPage() {
   const [metrics, setMetrics] = useState(null);
   const [error, setError] = useState(null);
 
-  // 控制整个网页 3D 悬浮球体
-  const [fullscreen3D, setFullscreen3D] = useState(null); // { fieldData, colorMode }
+  const [fullscreen3D, setFullscreen3D] = useState(null);
 
   const [performanceData, setPerformanceData] = useState(null);
   const [perfLoading, setPerfLoading] = useState(false);
   const [activePerfMetric, setActivePerfMetric] = useState('r2');
   
-  // 多模型对比配置
   const [compareConfigs, setCompareConfigs] = useState([]);
   const [selectedCompareIds, setSelectedCompareIds] = useState([]);
   const [activeCompareId, setActiveCompareId] = useState(null);
   
-  // 曲线融合组管理: { id, label, modelKeys }
   const [fusionGroups, setFusionGroups] = useState([]);
 
-  // ... (toggleVar remains same)
   const toggleVar = (id) => {
     setSelectedVars((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
@@ -305,7 +284,6 @@ export default function PredictPage() {
   const handleFetchPerformance = useCallback(async () => {
     setPerfLoading(true);
     try {
-      // 如果勾选了多个对比模型，使用 comparison 接口
       if (selectedCompareIds.length > 1) {
         const configs = compareConfigs
           .filter(c => selectedCompareIds.includes(c.id))
@@ -320,7 +298,6 @@ export default function PredictPage() {
           mars_year: marsYear,
         };
         const res = await fetchPerformanceCurve(body);
-        // 为了保持数据结构一致，转换为 results 对象
         const key = selectedVars.length === 0 ? 'baseline' : 'current';
         setPerformanceData({ results: { [key]: res } });
       }
@@ -359,7 +336,6 @@ export default function PredictPage() {
     }
   }, [selectedVars, predStep, lsStart, marsYear]);
 
-  // 当前显示步数据
   const step = results ? Math.min(activeHorizon, results.horizon - 1) : 0;
   const truthField = results?.ground_truth?.[step] ?? null;
   const predField = results?.prediction?.[step] ?? null;
@@ -439,8 +415,6 @@ export default function PredictPage() {
             <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
               PARAMETERS
             </div>
-
-            {/* 火星年 */}
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, color: C.ice30, marginBottom: 6 }}>{t('predict.marsYear')}</div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -456,8 +430,6 @@ export default function PredictPage() {
                 ))}
               </div>
             </div>
-
-            {/* 起始 Ls 滑块 */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 11, color: C.ice30 }}>{t('predict.startLs')}</span>
@@ -529,7 +501,7 @@ export default function PredictPage() {
                 </div>
               )}
             </div>
-            <div style={{ fontSize: 11, color: C.ice30, marginBottom: 12, lineHeight: 1.6 }}>
+            <div style={{ fontSize: 11, color: C.ice30, marginBottom: 12 }}>
               在性能图表中同时展示多个模型的曲线
             </div>
             {compareConfigs.map((c) => (
@@ -552,73 +524,38 @@ export default function PredictPage() {
                   />
                   <span style={{ fontSize: 12, color: selectedCompareIds.includes(c.id) ? C.ice : C.ice30 }}>{c.label}</span>
                 </label>
-                
                 <button
-                  onClick={(e) => {
-                    e.preventDefault();
+                  onClick={() => {
                     setCompareConfigs(prev => prev.filter(pc => pc.id !== c.id));
                     setSelectedCompareIds(prev => prev.filter(pid => pid !== c.id));
                   }}
-                  style={{
-                    background: 'none', border: 'none', color: 'rgba(199,91,57,0.4)',
-                    fontSize: 14, cursor: 'pointer', padding: '4px 8px',
-                    transition: 'color 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.target.style.color = C.mars}
-                  onMouseLeave={(e) => e.target.style.color = 'rgba(199,91,57,0.4)'}
+                  style={{ background: 'none', border: 'none', color: 'rgba(199,91,57,0.4)', fontSize: 14, cursor: 'pointer' }}
                 >
                   ×
                 </button>
               </div>
             ))}
-            
             <button 
               onClick={() => {
-                // 检查是否已存在完全相同的配置
                 const sortedVars = [...selectedVars].sort();
                 const exists = compareConfigs.find(c => {
                   const cVars = [...c.vars].sort();
                   return cVars.length === sortedVars.length && cVars.every((v, i) => v === sortedVars[i]);
                 });
-
                 if (exists) {
-                  // 如果已存在，确保它是勾选状态即可
-                  if (!selectedCompareIds.includes(exists.id)) {
-                    setSelectedCompareIds(prev => [...prev, exists.id]);
-                  }
+                  if (!selectedCompareIds.includes(exists.id)) setSelectedCompareIds(prev => [...prev, exists.id]);
                   return;
                 }
-
                 const newId = `custom_${Date.now()}`;
-                
-                // 使用缩写命名，例如 UVDST
-                const shorthands = {
-                  "Temperature": "T",
-                  "Dust_Optical_Depth": "D",
-                  "Solar_Flux_DN": "S",
-                  "U_Wind": "U",
-                  "V_Wind": "V"
-                };
-                
-                let label;
-                if (selectedVars.length === 0) {
-                  label = 'Baseline';
-                } else {
-                  const prefix = selectedVars
-                    .map(v => shorthands[v] || v[0])
-                    .sort()
-                    .join('');
-                  label = prefix;
-                }
-
+                const shorthands = { "Temperature": "T", "Dust_Optical_Depth": "D", "Solar_Flux_DN": "S", "U_Wind": "U", "V_Wind": "V" };
+                const label = selectedVars.length === 0 ? 'Baseline' : selectedVars.map(v => shorthands[v] || v[0]).sort().join('');
                 setCompareConfigs(prev => [...prev, { id: newId, label, vars: [...selectedVars] }]);
                 setSelectedCompareIds(prev => [...prev, newId]);
               }}
               style={{
                 width: '100%', marginTop: 8, padding: '8px 0',
                 background: 'rgba(255,255,255,0.03)', border: `1px dashed ${C.border}`,
-                borderRadius: 8, color: C.ice60, fontSize: 11, cursor: 'pointer',
-                fontFamily: "'Orbitron', sans-serif"
+                borderRadius: 8, color: C.ice60, fontSize: 11, cursor: 'pointer'
               }}
             >
               + 将当前配置加入对比
@@ -631,51 +568,24 @@ export default function PredictPage() {
               <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
                 ENSEMBLE GROUPS
               </div>
-              {fusionGroups.length > 0 && (
-                <div 
-                  onClick={() => {
-                    const gIds = fusionGroups.map(g => g.id);
-                    const allSelected = gIds.every(id => selectedCompareIds.includes(id));
-                    if (allSelected) {
-                      setSelectedCompareIds(prev => prev.filter(id => !gIds.includes(id)));
-                    } else {
-                      setSelectedCompareIds(prev => [...new Set([...prev, ...gIds])]);
-                    }
-                  }}
-                  style={{ fontSize: 10, color: '#4acfac', cursor: 'pointer', fontFamily: "'Orbitron', sans-serif", opacity: 0.8 }}
-                >
-                  {fusionGroups.map(g => g.id).every(id => selectedCompareIds.includes(id)) ? 'DESELECT ENSEMBLES' : 'SELECT ALL ENSEMBLES'}
-                </div>
-              )}
             </div>
-            <div style={{ fontSize: 11, color: C.ice30, marginBottom: 12 }}>
-              创建并对比多个集成融合模型
-            </div>
-            
             {fusionGroups.map((g) => (
               <div key={g.id} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '4px 10px', marginBottom: 4, borderRadius: 6,
                 background: selectedCompareIds.includes(g.id) ? 'rgba(74,207,172,0.1)' : 'transparent',
-                transition: 'all 0.2s',
               }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1 }}>
                   <input
                     type="checkbox"
                     checked={selectedCompareIds.includes(g.id)}
                     onChange={() => {
-                      setSelectedCompareIds(prev => 
-                        prev.includes(g.id) ? prev.filter(x => x !== g.id) : [...prev, g.id]
-                      );
+                      setSelectedCompareIds(prev => prev.includes(g.id) ? prev.filter(x => x !== g.id) : [...prev, g.id]);
                     }}
                     style={{ accentColor: '#4acfac' }}
                   />
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: 12, color: selectedCompareIds.includes(g.id) ? C.ice : C.ice30, fontWeight: 700 }}>{g.label}</span>
-                    <span style={{ fontSize: 9, color: 'rgba(74,207,172,0.5)' }}>{g.modelKeys.length} 个模型融合</span>
-                  </div>
+                  <span style={{ fontSize: 12, color: selectedCompareIds.includes(g.id) ? C.ice : C.ice30, fontWeight: 700 }}>{g.label}</span>
                 </label>
-                
                 <button
                   onClick={() => {
                     setFusionGroups(prev => prev.filter(x => x.id !== g.id));
@@ -687,43 +597,34 @@ export default function PredictPage() {
                 </button>
               </div>
             ))}
-
             <button 
               onClick={() => {
                 if (selectedCompareIds.length < 2) return alert('请先在上方勾选至少 2 个模型');
                 const name = prompt('请输入融合组名称', `Ensemble_${fusionGroups.length + 1}`);
                 if (!name) return;
-                
-                // 筛选出当前已选中的“原始模型”IDs (非 fusionId)
                 const modelIds = selectedCompareIds.filter(id => !id.startsWith('fusion_'));
                 const newId = `fusion_${Date.now()}`;
-                
                 setFusionGroups(prev => [...prev, { id: newId, label: name, modelKeys: modelIds }]);
                 setSelectedCompareIds(prev => [...prev, newId]);
               }}
               style={{
                 width: '100%', marginTop: 8, padding: '10px 0',
                 background: 'rgba(74,207,172,0.1)', border: `1px solid rgba(74,207,172,0.3)`,
-                borderRadius: 8, color: '#4acfac', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                fontFamily: "'Orbitron', sans-serif"
+                borderRadius: 8, color: '#4acfac', fontSize: 11, fontWeight: 700, cursor: 'pointer'
               }}
             >
               将选定模型保存为融合组
             </button>
           </GlowCard>
 
-          {/* File Upload (原有) */}
+          {/* File Upload */}
           <GlowCard style={{ padding: 20 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
               FILE UPLOAD
             </div>
             <div style={{
-              border: `2px dashed ${C.border}`,
-              borderRadius: 12,
-              padding: 28,
-              textAlign: 'center',
-              cursor: 'pointer',
-              transition: 'border-color 0.2s',
+              border: `2px dashed ${C.border}`, borderRadius: 12, padding: 28,
+              textAlign: 'center', cursor: 'pointer',
             }}>
               <div style={{ fontSize: 30, marginBottom: 8 }}>📁</div>
               <div style={{ fontSize: 13, color: C.ice60 }}>{t('predict.fileUpload.drag')}</div>
@@ -734,801 +635,67 @@ export default function PredictPage() {
 
         {/* ─── 右侧结果区 ─── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <PredictDisplay
+            viewMode={viewMode} setViewMode={setViewMode} VIEW_MODES={VIEW_MODES}
+            results={results} activeHorizon={activeHorizon} setActiveHorizon={setActiveHorizon}
+            loading={loading} truthField={truthField} predField={predField} residField={residField}
+            stepLs={stepLs} stepLabel={stepLabel} setFullscreen3D={setFullscreen3D}
+            TRIPTYCH_PANELS={TRIPTYCH_PANELS} FieldCanvas={FieldCanvas}
+            LoadingBox={LoadingBox} EmptyBox={EmptyBox}
+          />
 
-          {/* 视图切换 Tab */}
-          <div style={{ display: 'flex', gap: 8 }}>
-            {VIEW_MODES.map((m) => (
-              <button
-                key={m.id}
-                onClick={() => setViewMode(m.id)}
-                style={{
-                  padding: '8px 16px',
-                  background: viewMode === m.id ? 'rgba(74,158,255,0.12)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${viewMode === m.id ? C.blue : C.border}`,
-                  borderRadius: 8, fontSize: 12, fontWeight: 600,
-                  color: viewMode === m.id ? C.blue : C.ice30,
-                  cursor: 'pointer', transition: 'all 0.2s',
-                }}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
+          <PredictMetrics
+            loading={loading} metrics={metrics} results={results} precision={precision}
+            ozoneUnit={ozoneUnit} activeHorizon={activeHorizon} setActiveHorizon={setActiveHorizon}
+            lsStart={lsStart} marsYear={marsYear} METRIC_META={METRIC_META}
+          />
 
-          {/* 预测步骤选择（有多步结果时显示） */}
-          {results && results.horizon > 1 && (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: C.ice30, marginRight: 4 }}>{t('predict.showStep')}</span>
-              {Array.from({ length: results.horizon }, (_, i) => (
-                <button key={i} onClick={() => setActiveHorizon(i)} style={{
-                  padding: '6px 16px',
-                  background: activeHorizon === i ? 'rgba(74,158,255,0.12)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${activeHorizon === i ? C.blue : C.border}`,
-                  borderRadius: 8, fontSize: 12, fontWeight: 600,
-                  color: activeHorizon === i ? C.blue : C.ice30, cursor: 'pointer',
-                }}>
-                  Step {i + 1}{results.ls_values[i] != null ? ` (Ls=${results.ls_values[i].toFixed(3)}°)` : ''}
-                </button>
-              ))}
-            </div>
-          )}
+          <PredictPerformance
+            performanceData={performanceData} perfLoading={perfLoading}
+            activePerfMetric={activePerfMetric} setActivePerfMetric={setActivePerfMetric}
+            handleFetchPerformance={handleFetchPerformance} compareConfigs={compareConfigs}
+            activeCompareId={activeCompareId} setActiveCompareId={setActiveCompareId}
+            plotTextColor={plotTextColor} plotText60={plotText60} plotGridColor={plotGridColor}
+            precision={precision} METRIC_META={METRIC_META}
+            selectedCompareIds={selectedCompareIds} fusionGroups={fusionGroups} t={t}
+          />
 
-          {/* 三联对比视图 */}
-          {viewMode === 'triptych' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-              {TRIPTYCH_PANELS.map((panel, i) => {
-                const fieldData = i === 0 ? truthField : i === 1 ? predField : residField;
-                return (
-                  <GlowCard key={i} breathe style={{ padding: 16 }}>
-                    <div style={{
-                      fontSize: 10, fontWeight: 700, color: panel.color,
-                      fontFamily: "'Orbitron', sans-serif", letterSpacing: 1,
-                      marginBottom: 8, textAlign: 'center',
-                    }}>
-                      {panel.title}
-                      {stepLs != null && (
-                        <span style={{ fontSize: 9, color: C.ice30, marginLeft: 6 }}>
-                          Ls={stepLs.toFixed(3)}°
-                        </span>
-                      )}
-                    </div>
-                    {loading ? (
-                      <LoadingBox h={220} />
-                    ) : fieldData ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <FieldCanvas fieldData={fieldData} colorMode={panel.mode} h={220} />
-                        <button
-                          onClick={() => setFullscreen3D({ fieldData, colorMode: panel.mode })}
-                          style={{
-                            width: '100%', padding: '8px 0',
-                            background: 'rgba(74,158,255,0.06)',
-                            border: `1px solid rgba(74,158,255,0.2)`, borderRadius: 6,
-                            color: '#4acfac', fontSize: 11, cursor: 'pointer',
-                            fontFamily: "'Orbitron', sans-serif", letterSpacing: 1,
-                            transition: 'all 0.2s',
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.15)' }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.06)' }}
-                        >
-                          🌐 3D GLOBE VIEW
-                        </button>
-                      </div>
-                    ) : (
-                      <EmptyBox h={220} />
-                    )}
-                  </GlowCard>
-                );
-              })}
-            </div>
-          )}
-
-          {/* 单图视图 */}
-          {viewMode !== 'triptych' && (() => {
-            // eslint-disable-next-line no-unused-vars
-            const isResid = viewMode === 'diff';
-            const fd = viewMode === 'original' ? truthField : viewMode === 'prediction' ? predField : residField;
-            const panelTitle = viewMode === 'original'
-              ? `${t('predict.panels.truth')}${stepLabel(stepLs)}`
-              : viewMode === 'prediction'
-                ? `${t('predict.panels.prediction')}${stepLabel(stepLs)}`
-                : `${t('predict.panels.residual')}${stepLabel(stepLs)}`;
-            const panelColor = viewMode === 'original' ? C.blue : viewMode === 'prediction' ? C.mars : '#9c7bea';
-            return (
-              <GlowCard breathe style={{ padding: 20 }}>
-                <div style={{
-                  fontSize: 11, fontWeight: 700, color: panelColor,
-                  fontFamily: "'Orbitron', sans-serif", letterSpacing: 1,
-                  marginBottom: 12, textAlign: 'center',
-                }}>
-                  {panelTitle}
-                </div>
-                {loading ? (
-                  <LoadingBox h={400} />
-                ) : fd ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <FieldCanvas fieldData={fd} colorMode={isResid ? 'rdbu' : 'inferno'} h={400} />
-                    <button
-                      onClick={() => setFullscreen3D({ fieldData: fd, colorMode: isResid ? 'rdbu' : 'inferno' })}
-                      style={{
-                        width: '100%', padding: '12px 0',
-                        background: 'rgba(74,158,255,0.06)',
-                        border: `1px dashed rgba(74,158,255,0.3)`, borderRadius: 8,
-                        color: '#4acfac', fontSize: 13, cursor: 'pointer',
-                        fontFamily: "'Orbitron', sans-serif", letterSpacing: 1.5,
-                        transition: 'all 0.2s',
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.15)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.06)' }}
-                    >
-                      🌐 VIEW IN 3D GLOBE
-                    </button>
-                  </div>
-                ) : (
-                  <EmptyBox h={400} />
-                )}
-              </GlowCard>
-            );
-          })()}
-
-          {/* 当前应用模型信息 */}
           {results && results.model_info && (
             <GlowCard style={{ padding: '16px 20px', border: results.model_info.is_fallback ? '1px solid rgba(255,80,80,0.3)' : `1px solid ${C.border}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ 
-                    width: 32, height: 32, borderRadius: '50%', 
-                    background: results.model_info.is_fallback ? 'rgba(255,80,80,0.1)' : 'rgba(74,207,172,0.1)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 16
-                  }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: results.model_info.is_fallback ? 'rgba(255,80,80,0.1)' : 'rgba(74,207,172,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {results.model_info.is_fallback ? '⚠️' : '🎯'}
                   </div>
                   <div>
-                    <div style={{ fontSize: 10, color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>CURRENT ACTIVE MODEL</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: C.ice, marginTop: 2 }}>
-                      PredRNNv2 <span style={{ color: C.blue }}>_{results.model_info.suffix}</span>
-                    </div>
+                    <div style={{ fontSize: 10, color: C.ice30, fontFamily: "'Orbitron', sans-serif" }}>CURRENT ACTIVE MODEL</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.ice }}>PredRNNv2 _{results.model_info.suffix}</div>
                   </div>
                 </div>
-
-                <div style={{ display: 'flex', gap: 24 }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 9, color: C.ice30 }}>INPUT CHANNELS</div>
-                    <div style={{ 
-                      fontSize: 11, fontWeight: 600, color: results.model_info.is_fallback ? '#ff8a8a' : '#4acfac', 
-                      marginTop: 2, display: 'flex', gap: 4, justifyContent: 'flex-end', flexWrap: 'wrap', maxWidth: 200 
-                    }}>
-                      {results.model_info.input_vars.map((v, idx) => (
-                        <span key={v} style={{ 
-                          padding: '1px 5px', background: 'rgba(255,255,255,0.05)', borderRadius: 4 
-                        }}>
-                          {v.replace('_Optical_Depth', '').replace('_Flux_DN', '').replace('_Wind', '')}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 9, color: C.ice30 }}>INPUT DIM</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: C.ice }}>{results.model_info.input_dim} Ch</div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 9, color: C.ice30 }}>WEIGHT FILE</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: C.ice }}>{results.model_info.weight_file}</div>
-                  </div>
-                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.ice }}>{results.model_info.input_dim} Ch | {results.model_info.weight_file}</div>
               </div>
-
-              {results.model_info.is_fallback && (
-                <div style={{ 
-                  marginTop: 12, padding: '10px 14px', borderRadius: 8, 
-                  background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.2)',
-                  display: 'flex', alignItems: 'flex-start', gap: 10
-                }}>
-                  <span style={{ fontSize: 14 }}>💡</span>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b' }}>{t('predict.fallbackWarning')}</div>
-                    <div style={{ fontSize: 10, color: 'rgba(255,107,107,0.7)', marginTop: 2 }}>
-                      {t('predict.fallbackReason')}{results.model_info.fallback_reason}
-                    </div>
-                  </div>
-                </div>
-              )}
             </GlowCard>
           )}
 
-          {/* 评估指标 */}
-          <GlowCard style={{ padding: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
-              {t('predict.evalTitle')}
-            </div>
-
-            {/* 四大指标卡片 */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
-              {METRIC_META.map((m) => {
-                const val = metrics?.overall?.[m.key];
-                return (
-                  <div key={m.key} style={{
-                    padding: 16, borderRadius: 12,
-                    background: 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${C.border}`, textAlign: 'center',
-                  }}>
-                    <div style={{ fontSize: 10, color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>{m.name}</div>
-                    <div style={{
-                      fontSize: 26, fontWeight: 800, color: C.ice,
-                      fontFamily: "'Orbitron', sans-serif", marginTop: 8,
-                    }}>
-                      {loading ? '…' : val != null ? fmtNum(val, precision) : '—'}
-                    </div>
-                    <div style={{ fontSize: 10, color: m.color, marginTop: 4 }}>
-                      {m.better} {m.key === 'rmse' || m.key === 'mae' ? ozoneLabel(ozoneUnit) : m.unit}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* 逐步指标表格 */}
-            {metrics?.per_step && metrics.per_step.length > 1 && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, color: C.ice30, marginBottom: 8 }}>{t('predict.perStepTitle')}</div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                  <thead>
-                    <tr>
-                      {['Step', 'Ls', 'RMSE', 'MAE', 'SSIM', 'R²'].map((hd) => (
-                        <th key={hd} style={{
-                          padding: '6px 10px', textAlign: 'center',
-                          color: C.ice30, fontWeight: 600,
-                          borderBottom: `1px solid ${C.border}`,
-                        }}>{hd}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {metrics.per_step.map((row, i) => (
-                      <tr
-                        key={i}
-                        onClick={() => setActiveHorizon(i)}
-                        style={{
-                          background: activeHorizon === i ? 'rgba(74,158,255,0.06)' : 'transparent',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <td style={{ padding: '6px 10px', textAlign: 'center', color: C.blue, fontWeight: 700 }}>Step {row.step}</td>
-                        <td style={{ padding: '6px 10px', textAlign: 'center', color: C.ice60 }}>
-                          {results?.ls_values?.[i] != null ? `${results.ls_values[i].toFixed(3)}°` : '—'}
-                        </td>
-                        <td style={{ padding: '6px 10px', textAlign: 'center', color: C.ice }}>{fmtNum(row.rmse, precision)}</td>
-                        <td style={{ padding: '6px 10px', textAlign: 'center', color: C.ice }}>{fmtNum(row.mae, precision)}</td>
-                        <td style={{ padding: '6px 10px', textAlign: 'center', color: '#4acfac' }}>{fmtNum(row.ssim, precision)}</td>
-                        <td style={{ padding: '6px 10px', textAlign: 'center', color: '#4acfac' }}>{fmtNum(row.r2, precision)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* 指标解读文字 */}
-            {metrics && results && (
-              <div style={{
-                background: 'rgba(199,91,57,0.06)',
-                borderLeft: '3px solid rgba(199,91,57,0.4)',
-                borderRadius: 8,
-                padding: '12px 16px',
-                fontSize: 12,
-                color: C.ice60,
-                lineHeight: 1.8,
-              }}>
-                <strong style={{ color: C.ice }}>{t('predict.summaryDone')}</strong>：{t('predict.summaryL1', { lsStart, year: marsYear, horizon: results.horizon })}<br />
-                {t('predict.summaryL2a', { varCount: results.selected_variables.length })}
-                {results.selected_variables.length > 0
-                  ? t('predict.summaryL2b', { varNames: results.selected_variables.join('、') })
-                  : t('predict.summaryL2c')}。<br />
-                {t('predict.summaryL3a')}<span style={{ color: C.mars }}>{fmtNum(metrics.overall.rmse, precision)}{t('predict.summaryL3b')}</span>
-                <span style={{ color: '#4acfac' }}>{fmtNum(metrics.overall.ssim, precision)}</span>
-                {t('predict.summaryL3c')}<span style={{ color: '#4acfac' }}>{fmtNum(metrics.overall.r2, precision)}</span>。
-              </div>
-            )}
-          </GlowCard>
-
-          {/* 模型性能趋势 (测试集) */}
-          <GlowCard style={{ padding: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
-                  {t('predict.perfTitle')}
-                </div>
-
-                {performanceData && (
-                  <div style={{ display: 'flex', background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 2, border: `1px solid ${C.border}` }}>
-                    {METRIC_META.map(m => (
-                      <button
-                        key={m.key}
-                        onClick={() => setActivePerfMetric(m.key)}
-                        style={{
-                          padding: '4px 12px',
-                          background: activePerfMetric === m.key ? 'rgba(74,158,255,0.12)' : 'transparent',
-                          border: 'none',
-                          borderRadius: 6,
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: activePerfMetric === m.key ? C.blue : C.ice30,
-                          cursor: 'pointer',
-                          fontFamily: "'Orbitron', sans-serif",
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        {m.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              
-              <button
-                onClick={handleFetchPerformance}
-                disabled={perfLoading}
-                style={{
-                  padding: '6px 12px', background: 'rgba(74,158,255,0.1)',
-                  border: `1px solid ${C.blue}`, borderRadius: 6,
-                  color: C.blue, fontSize: 10, cursor: 'pointer',
-                  fontFamily: "'Orbitron', sans-serif", transition: 'all 0.2s'
-                }}
-              >
-                {perfLoading ? t('predict.generatingBtn') : t('predict.generateBtn')}
-              </button>
-            </div>
-
-            {performanceData ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {/* 2D 趋势图表 */}
-                <div style={{
-                  background: 'rgba(255,255,255,0.02)',
-                  borderRadius: 12,
-                  border: `1px solid ${C.border}`,
-                  padding: '16px',
-                  height: 380
-                }}>
-                  <Plot
-                    data={(() => {
-                      const allResults = performanceData.results;
-                      const traces = [];
-                      const colors = [C.mars, C.blue, '#9c7bea', '#ffd740', '#ff6b4a'];
-                      
-                      const selectedFusionIds = selectedCompareIds.filter(id => id.startsWith('fusion_'));
-                      const isAnyFusionActive = selectedFusionIds.length > 0;
-
-                      // 1. 渲染选中的原始对比模型曲线
-                      Object.entries(allResults).forEach(([key, perf], idx) => {
-                        const config = compareConfigs.find(c => {
-                          const shorthands = (vars) => vars.length === 0 ? 'baseline' : vars.map(v => v[0]).sort().join('');
-                          return c.id === key || shorthands(c.vars) === key;
-                        });
-                        const label = config?.label || key;
-                        
-                        traces.push({
-                          x: perf.items.map(it => it.my === 27 ? it.ls : it.ls + 360),
-                          y: perf.items.map(it => it[activePerfMetric]),
-                          type: 'scatter',
-                          mode: 'lines+markers',
-                          name: label,
-                          marker: { color: colors[idx % colors.length], size: 4 },
-                          line: { color: colors[idx % colors.length], width: 2, shape: 'spline' },
-                          hovertemplate: `<b>${label}</b><br>Ls: %{customdata:.2f}°<br>${activePerfMetric.toUpperCase()}: <b>%{y:.4f}</b><extra></extra>`,
-                          customdata: perf.items.map(it => it.ls),
-                          opacity: isAnyFusionActive ? 0.05 : 1.0 // 如果有融合组，背景原始曲线极度虚化
-                        });
-                      });
-
-                      // 2. 渲染选中的融合组曲线
-                      selectedFusionIds.forEach((fid, fidx) => {
-                        const group = fusionGroups.find(g => g.id === fid);
-                        if (!group) return;
-
-                        // 获取该组内所有模型的 perf 数据
-                        const groupPerfs = group.modelKeys
-                          .map(mkey => {
-                            // 匹配 key 逻辑与 predict.py 保持一致
-                            const config = compareConfigs.find(c => c.id === mkey);
-                            if (!config) return null;
-                            const key = config.vars.length === 0 ? 'baseline' : config.vars.map(v => v[0]).sort().join('');
-                            return allResults[key] || allResults[mkey];
-                          })
-                          .filter(p => p != null);
-
-                        if (groupPerfs.length < 2) return;
-
-                        const firstPerf = groupPerfs[0];
-                        const fusionY = [];
-                        for (let i = 0; i < firstPerf.items.length; i++) {
-                          const vals = groupPerfs.map(p => p.items[i][activePerfMetric]);
-                          const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-                          fusionY.push(avg);
-                        }
-
-                        const fusionColors = ['#4acfac', '#00f7ff', '#afff00'];
-                        traces.push({
-                          x: firstPerf.items.map(it => it.my === 27 ? it.ls : it.ls + 360),
-                          y: fusionY,
-                          type: 'scatter',
-                          mode: 'lines+markers',
-                          name: `🧬 ${group.label}`,
-                          marker: { color: fusionColors[fidx % fusionColors.length], size: 7, symbol: 'diamond' },
-                          line: { color: fusionColors[fidx % fusionColors.length], width: 4, shape: 'spline' },
-                          hovertemplate: `<b>${group.label} (Fusion)</b><br>Ls: %{customdata:.2f}°<br>${activePerfMetric.toUpperCase()}: <b>%{y:.4f}</b><extra></extra>`,
-                          customdata: firstPerf.items.map(it => it.ls)
-                        });
-                      });
-
-                      return traces;
-                    })()}
-                    layout={{
-                      autosize: true,
-                      height: 340,
-                      margin: { l: 50, r: 30, t: 20, b: 50 },
-                      paper_bgcolor: 'rgba(0,0,0,0)',
-                      plot_bgcolor: 'rgba(0,0,0,0)',
-                      xaxis: {
-                        title: { text: 'Solar Longitude progression (MY27 → MY28)', font: { size: 11, color: plotTextColor } },
-                        tickfont: { size: 10, color: plotText60 },
-                        gridcolor: plotGridColor,
-                        zeroline: false,
-                        showgrid: true
-                      },
-                      yaxis: {
-                        title: { text: `${METRIC_META.find(m => m.key === activePerfMetric)?.name ?? activePerfMetric}${METRIC_META.find(m => m.key === activePerfMetric)?.unit ? ' (' + METRIC_META.find(m => m.key === activePerfMetric).unit + ')' : ''}`, font: { size: 11, color: plotTextColor } },
-                        tickfont: { size: 10, color: plotText60 },
-                        gridcolor: plotGridColor,
-                        zeroline: false,
-                        range: (activePerfMetric === 'r2' || activePerfMetric === 'ssim') ? [0.6, 1.0] : undefined,
-                        autorange: !(activePerfMetric === 'r2' || activePerfMetric === 'ssim')
-                      },
-                      legend: {
-                        font: { size: 10, color: C.ice60 },
-                        orientation: 'h',
-                        y: 1.12
-                      },
-                      shapes: [
-                        {
-                          type: 'line',
-                          x0: 360, x1: 360,
-                          y0: 0, y1: 1,
-                          yref: 'paper',
-                          line: { color: 'rgba(255,255,255,0.2)', width: 1, dash: 'dash' }
-                        }
-                      ],
-                      annotations: [
-                        {
-                          x: 360, y: 1.05,
-                          xref: 'x', yref: 'y',
-                          text: 'NEW YEAR (MY28)',
-                          showarrow: false,
-                          font: { color: plotTextColor, size: 9 }
-                        }
-                      ],
-                      hovermode: 'closest',
-                      showlegend: true
-                    }}
-                    config={{ displayModeBar: false, responsive: true }}
-                    style={{ width: '100%' }}
-                  />
-                </div>
-
-                {/* 底部数据明细表 */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {/* 多项详情切换 */}
-                  <div style={{ display: 'flex', gap: 10, marginBottom: 4 }}>
-                    {Object.keys(performanceData.results).map(key => {
-                      const label = compareConfigs.find(c => {
-                        const shorthands = (vars) => vars.length === 0 ? 'baseline' : vars.map(v => v[0]).sort().join('');
-                        return c.id === key || shorthands(c.vars) === key;
-                      })?.label || key;
-                      return (
-                        <button key={key} onClick={() => setActiveCompareId(key)} style={{
-                          padding: '4px 12px', borderRadius: 6, fontSize: 10, fontWeight: 700,
-                          background: activeCompareId === key ? 'rgba(74,207,172,0.1)' : 'rgba(255,255,255,0.03)',
-                          border: `1px solid ${activeCompareId === key ? '#4acfac' : C.border}`,
-                          color: activeCompareId === key ? '#4acfac' : C.ice30,
-                          cursor: 'pointer', fontFamily: "'Orbitron', sans-serif"
-                        }}>
-                          {label}
-                        </button>
-                      );
-                    })}
-
-                    {fusionGroups.filter(g => selectedCompareIds.includes(g.id)).map(g => (
-                      <button key={g.id} onClick={() => setActiveCompareId(g.id)} style={{
-                        padding: '4px 12px', borderRadius: 6, fontSize: 10, fontWeight: 700,
-                        background: activeCompareId === g.id ? 'rgba(74,207,172,0.15)' : 'rgba(74,207,172,0.05)',
-                        border: `2px solid ${activeCompareId === g.id ? '#4acfac' : 'rgba(74,207,172,0.2)'}`,
-                        color: '#4acfac', cursor: 'pointer', fontFamily: "'Orbitron', sans-serif"
-                      }}>
-                        🧬 {g.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {(() => {
-                    let activePerf;
-                    if (activeCompareId?.startsWith('fusion_')) {
-                      const group = fusionGroups.find(g => g.id === activeCompareId);
-                      if (!group) return null;
-
-                      const groupPerfs = group.modelKeys
-                        .map(mkey => {
-                          const config = compareConfigs.find(c => c.id === mkey);
-                          if (!config) return null;
-                          const key = config.vars.length === 0 ? 'baseline' : config.vars.map(v => v[0]).sort().join('');
-                          return performanceData.results[key] || performanceData.results[mkey];
-                        })
-                        .filter(p => p != null);
-
-                      if (groupPerfs.length === 0) return null;
-                      
-                      const itemCount = groupPerfs[0].items.length;
-                      const fusionItems = [];
-                      for (let i = 0; i < itemCount; i++) {
-                        const it0 = groupPerfs[0].items[i];
-                        fusionItems.push({
-                          my: it0.my,
-                          ls: it0.ls,
-                          r2: groupPerfs.reduce((s, p) => s + p.items[i].r2, 0) / groupPerfs.length,
-                          rmse: groupPerfs.reduce((s, p) => s + (p.items[i].rmse || 0), 0) / groupPerfs.length,
-                          mae: groupPerfs.reduce((s, p) => s + (p.items[i].mae || 0), 0) / groupPerfs.length,
-                          ssim: groupPerfs.reduce((s, p) => s + (p.items[i].ssim || 1), 0) / groupPerfs.length,
-                        });
-                      }
-                      
-                      activePerf = {
-                        items: fusionItems,
-                        global_r2: groupPerfs.reduce((s, p) => s + p.global_r2, 0) / groupPerfs.length,
-                        global_rmse: groupPerfs.reduce((s, p) => s + p.global_rmse, 0) / groupPerfs.length,
-                        global_mae: groupPerfs.reduce((s, p) => s + p.global_mae, 0) / groupPerfs.length,
-                        global_ssim: groupPerfs.reduce((s, p) => s + p.global_ssim, 0) / groupPerfs.length,
-                      };
-                    } else {
-                      activePerf = performanceData.results[activeCompareId] || Object.values(performanceData.results)[0];
-                    }
-
-                    if (!activePerf) return null;
-                    return (
-                      <>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
-                          <div style={{
-                            padding: '12px 16px', background: 'rgba(74,158,255,0.1)', borderRadius: 10, border: '1px solid rgba(74,158,255,0.3)',
-                            display: 'flex', flexDirection: 'column', gap: 4
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalR2')}</span>
-                              <div style={{ padding: '2px 6px', background: 'rgba(255,255,255,0.05)', borderRadius: 4, fontSize: 8, color: C.ice30 }}>Flattened</div>
-                            </div>
-                            <span style={{ fontSize: 18, color: C.blue, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
-                              {activePerf.global_r2 ? fmtNum(activePerf.global_r2, precision) : fmtNum(0, precision)}
-                            </span>
-                          </div>
-                          <div style={{
-                            padding: '12px 16px', background: 'rgba(199,91,57,0.1)', borderRadius: 10, border: '1px solid rgba(199,91,57,0.3)',
-                            display: 'flex', flexDirection: 'column', gap: 4
-                          }}>
-                            <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalRMSE')}</span>
-                            <span style={{ fontSize: 18, color: C.mars, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
-                              {activePerf.global_rmse ? fmtNum(activePerf.global_rmse, precision) : fmtNum(0, precision)}
-                            </span>
-                          </div>
-                          <div style={{
-                            padding: '12px 16px', background: 'rgba(199,91,57,0.06)', borderRadius: 10, border: '1px solid rgba(199,91,57,0.2)',
-                            display: 'flex', flexDirection: 'column', gap: 4
-                          }}>
-                            <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalMAE')}</span>
-                            <span style={{ fontSize: 18, color: C.mars, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
-                              {activePerf.global_mae ? fmtNum(activePerf.global_mae, precision) : fmtNum(0, precision)}
-                            </span>
-                          </div>
-                          <div style={{
-                            padding: '12px 16px', background: 'rgba(74,207,172,0.1)', borderRadius: 10, border: '1px solid rgba(74,207,172,0.3)',
-                            display: 'flex', flexDirection: 'column', gap: 4
-                          }}>
-                            <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{t('predict.globalSSIM')}</span>
-                            <span style={{ fontSize: 18, color: '#4acfac', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
-                              {activePerf.global_ssim ? fmtNum(activePerf.global_ssim, precision) : fmtNum(0, precision)}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div style={{ maxHeight: 220, overflowY: 'auto', borderRadius: 8, border: `1px solid ${C.border}` }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-                            <thead style={{ position: 'sticky', top: 0, background: '#0a0a0f', zIndex: 1 }}>
-                              <tr>
-                                {[t('predict.tableHeaders.my'), t('predict.tableHeaders.ls'), t('predict.tableHeaders.r2'), t('predict.tableHeaders.rmse'), t('predict.tableHeaders.mae'), t('predict.tableHeaders.ssim')].map(h => (
-                                  <th key={h} style={{ padding: '10px 6px', textAlign: 'center', color: C.ice30, borderBottom: `1px solid ${C.border}`, fontWeight: 600 }}>{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {activePerf.items.map((it, i) => (
-                                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
-                                  <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice60 }}>MY{it.my}</td>
-                                  <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice60 }}>{it.ls.toFixed(2)}°</td>
-                                  <td style={{
-                                    padding: '8px 6px', textAlign: 'center',
-                                    color: it.r2 > 0.9 ? '#4acfac' : it.r2 > 0.8 ? '#ffd740' : C.mars,
-                                    fontWeight: 700
-                                  }}>{fmtNum(it.r2, precision)}</td>
-                                  <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice }}>{fmtNum(it.rmse, precision)}</td>
-                                  <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice }}>{fmtNum(it.mae, precision)}</td>
-                                  <td style={{ padding: '8px 6px', textAlign: 'center', color: '#4acfac' }}>{fmtNum(it.ssim, precision)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
-            ) : (
-              <div style={{ padding: '40px 0', textAlign: 'center', color: C.ice30, fontSize: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: `1px dashed ${C.border}` }}>
-                {perfLoading ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 20, height: 20, border: '2px solid rgba(74,207,172,0.2)', borderTop: '2px solid #4acfac', borderRadius: '50%', animation: 'spin-slow 0.8s linear infinite' }} />
-                    {t('predict.generatingHint')}
-                  </div>
-                ) : t('predict.perfEmptyHint')}
-              </div>
-            )}
-            <div style={{ marginTop: 12, fontSize: 10, color: C.ice30, fontStyle: 'italic' }}>
-              {t('predict.testSetNote')}
-            </div>
-          </GlowCard>
-
-          {/* 初始提示（无结果时） */}
           {!results && !loading && (
             <GlowCard style={{ padding: 28, textAlign: 'center' }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>🔭</div>
-              <div style={{ fontSize: 14, color: C.ice60, marginBottom: 8 }}>
-                {t('predict.initPrompt')}
-              </div>
-              <div style={{ fontSize: 12, color: C.ice30, lineHeight: 1.7, whiteSpace: 'pre-line' }}>
-                {t('predict.initDesc')}
-              </div>
+              <div style={{ fontSize: 14, color: C.ice60 }}>{t('predict.initPrompt')}</div>
+              <div style={{ fontSize: 12, color: C.ice30, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{t('predict.initDesc')}</div>
             </GlowCard>
           )}
         </div>
       </div>
 
-      {/* 沉浸式 3D 全屏球体层 */}
-      {fullscreen3D && (() => {
-        const titleText = fullscreen3D.colorMode === 'rdbu' ? t('predict.fullscreen3D.residual') :
-          (fullscreen3D.fieldData === truthField ? t('predict.fullscreen3D.truth') : t('predict.fullscreen3D.prediction'));
-        const minValStr = fmtNum(convertOzone(fullscreen3D.fieldData.minVal, ozoneUnit), precision);
-        const maxValStr = fmtNum(convertOzone(fullscreen3D.fieldData.maxVal, ozoneUnit), precision);
-        const rawMin = fullscreen3D.fieldData.minVal, rawMax = fullscreen3D.fieldData.maxVal;
-        const rangeStr = fmtNum(convertOzone(rawMax - rawMin, ozoneUnit), precision);
-        const colorTitle = fullscreen3D.colorMode === 'rdbu' ? ozoneDeltaLabel(ozoneUnit) : ozoneLabel(ozoneUnit);
-        const absExtreme = convertOzone(Math.max(Math.abs(rawMin), Math.abs(rawMax)), ozoneUnit);
-        const topLabel = fullscreen3D.colorMode === 'rdbu' ? `+${fmtNum(absExtreme, precision)}` : maxValStr;
-        const midLabel = fullscreen3D.colorMode === 'rdbu' ? '0' : fmtNum(convertOzone((rawMin + rawMax) / 2, ozoneUnit), precision);
-        const botLabel = fullscreen3D.colorMode === 'rdbu' ? `-${fmtNum(absExtreme, precision)}` : minValStr;
-
-        return (
-          <div
-            onDoubleClick={() => setFullscreen3D(null)}
-            className="panel-dark"
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              zIndex: 9999, background: 'rgba(5, 5, 10, 0.98)',
-              display: 'flex', justifyContent: 'center', alignItems: 'center',
-              cursor: 'zoom-out'
-            }}
-          >
-            <SphericalFieldCanvas
-              fieldData={fullscreen3D.fieldData}
-              colorMode={fullscreen3D.colorMode}
-              h="100vh"
-              forceFullscreen
-            />
-
-            {/* HUD 左侧控制台 (Side Dashboard Panel) */}
-            <div style={{
-              position: 'absolute', top: 80, left: 40, bottom: 40, width: 340,
-              padding: '24px', background: 'rgba(20,20,30,0.65)',
-              backdropFilter: 'blur(16px)', border: `1px solid ${C.border}`,
-              borderRadius: 16, boxShadow: '0 12px 48px rgba(0,0,0,0.6)',
-              display: 'flex', flexDirection: 'column', gap: 24,
-              pointerEvents: 'none', zIndex: 10,
-              boxSizing: 'border-box'
-            }}>
-
-              {/* 1. 顶部块：当前场数据上下文 */}
-              <div style={{ paddingBottom: 16, borderBottom: `1px solid rgba(255,255,255,0.08)` }}>
-                <div style={{
-                  fontSize: 18, fontWeight: 800, color: C.ice,
-                  fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 8,
-                  textShadow: '0 0 10px rgba(255,255,255,0.3)'
-                }}>
-                  {titleText}
-                </div>
-                <div style={{ fontSize: 13, color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>
-                  {stepLs != null ? `Ls = ${stepLs.toFixed(3)}° | Step ${step + 1}` : 'Global View'}
-                </div>
-              </div>
-
-              {/* 2. 中间块上：全局数据统计 */}
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
-                  GLOBAL STATISTICS
-                </div>
-                <div style={{ display: 'grid', gap: 12, fontSize: 14, fontFamily: "'Orbitron', sans-serif" }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: C.ice60 }}>Max Value:</span>
-                    <span style={{ color: C.mars, fontWeight: 700, fontSize: 15 }}>{maxValStr}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: C.ice60 }}>Min Value:</span>
-                    <span style={{ color: '#4acfac', fontWeight: 700, fontSize: 15 }}>{minValStr}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingTop: 12, borderTop: `1px dashed rgba(255,255,255,0.1)` }}>
-                    <span style={{ color: C.ice30 }}>Data Range:</span>
-                    <span style={{ color: C.ice, fontWeight: 600 }}>{rangeStr}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. 中间块下：颜色图例 Colorbar (横向排列) */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
-                  DATA SCALE ({colorTitle})
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  {/* Min Label */}
-                  <div style={{ fontSize: 12, color: C.ice, fontFamily: "'Orbitron', sans-serif", minWidth: 50, textAlign: 'right' }}>
-                    {botLabel}
-                  </div>
-
-                  {/* Color Bar */}
-                  <div style={{
-                    flex: 1, height: 16, borderRadius: 8,
-                    background: fullscreen3D.colorMode === 'rdbu'
-                      ? 'linear-gradient(to right, rgb(5,48,97), rgb(247,247,247), rgb(103,0,31))'
-                      : 'linear-gradient(to right, rgb(0,0,4), rgb(212,72,66), rgb(252,255,164))',
-                    border: `1px solid rgba(255,255,255,0.2)`,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                    position: 'relative'
-                  }}>
-                    {/* Zero tick for rdbu Mode */}
-                    {fullscreen3D.colorMode === 'rdbu' && (
-                      <div style={{
-                        position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)',
-                        fontSize: 10, color: C.ice30, fontFamily: "'Orbitron', sans-serif"
-                      }}>
-                        | {midLabel} |
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Max Label */}
-                  <div style={{ fontSize: 12, color: C.ice, fontFamily: "'Orbitron', sans-serif", minWidth: 50 }}>
-                    {topLabel}
-                  </div>
-                </div>
-              </div>
-
-              {/* 4. 底部块：操作提示 */}
-              <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid rgba(255,255,255,0.08)` }}>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>🖱️</span> Left Click: Rotate | Middle Scroll: Zoom
-                </div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>
-                  Double-click anywhere to close
-                </div>
-              </div>
-
-            </div>
-
+      {fullscreen3D && (
+        <div onDoubleClick={() => setFullscreen3D(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, background: 'rgba(5, 5, 10, 0.98)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <SphericalFieldCanvas fieldData={fullscreen3D.fieldData} colorMode={fullscreen3D.colorMode} h="100vh" forceFullscreen />
+          <div style={{ position: 'absolute', top: 80, left: 40, padding: '24px', background: 'rgba(20,20,30,0.65)', backdropFilter: 'blur(16px)', border: `1px solid ${C.border}`, borderRadius: 16 }}>
+            <div style={{ fontSize: 18, color: C.ice, fontFamily: "'Orbitron', sans-serif" }}>Globe View</div>
+            <div style={{ fontSize: 12, color: C.ice30, marginTop: 4 }}>Double-click anywhere to exit</div>
           </div>
-        );
-      })()}
+        </div>
+      )}
     </div>
   );
 }
