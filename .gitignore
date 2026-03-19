@@ -1,51 +1,88 @@
-# ─── Python / Backend ───
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-.env
-backend_error.log
-test_output.log
-
-# ─── Data & Caches (Important) ───
-AresVision_backend/backend/data/*.db
-AresVision_backend/backend/data/*.pt
-AresVision_backend/backend/data/perf_cache/
-AresVision_backend/backend/data/MCD/
-AresVision_backend/backend/data/openmars/
-
-# ─── Models ───
-AresVision_backend/backend/models/predrnnv2/*.pth
-AresVision_backend/backend/models/predrnnv2/*.pt
-# 如果有“训练模型”目录也建议忽略权重
-AresVision_backend/backend/models/训练模型/
-
-# ─── Frontend (React/Vite) ───
-frontend/node_modules/
-frontend/dist/
-frontend/dist-ssr/
-frontend/*.local
-frontend/.eslintcache
-
-# ─── IDE ───
-.vscode/
+# IDEs
 .idea/
+.vscode/
+.cursor/
 *.swp
 *.swo
+
+# Node.js
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env.*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Python
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+*.egg-info/
+**.venv/
+**venv/
+**ENV/
+**env/
+**/.env.python
+*.nc
+
+# Models & large data
+*.pth
+*.pt
+*.h5
+训练模型/
+
+# Local assets (too large for git)
+frontend/public/mars_texture.jpg
+
+# Logs
+*.log
+backend_error.log
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Tool configs (not project-specific)
+.gitnexus/
+.claude/
+.git_status.txt
+
+# Temporary / backup files
+*.tmp
+*.bak
+*_backup.*
+
+# Docs excluded from git
+AGENTS.md
+CLAUDE.md
+
+# Python/Testing
+.pytest_cache/
+
+# Project Specific Caches & Temp Files
+perf_debug.json
+frontend/test_heatmap.json
+AresVision_backend/backend/data/perf_cache/
+AresVision_backend/backend/test_output.log
+AresVision_backend/backend/data/processed_tensors.pt
+
+# ─── Additional Project Specific ───
+# 根目录下的部分分析/报告文件
+/implementation_report.md
+
+# 后端开发过程中产生的特定测试脚本结果
+AresVision_backend/backend/analyze_split.py
+AresVision_backend/backend/verify_prediction.py
+AresVision_backend/backend/verify_r2.py
+
+# 后端数据目录下的原始数据文件
+AresVision_backend/backend/data/MCD/
+AresVision_backend/backend/data/openmars/

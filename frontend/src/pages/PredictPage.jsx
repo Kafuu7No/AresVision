@@ -293,6 +293,9 @@ export default function PredictPage() {
   const [compareConfigs, setCompareConfigs] = useState([]);
   const [selectedCompareIds, setSelectedCompareIds] = useState([]);
   const [activeCompareId, setActiveCompareId] = useState(null);
+  
+  // 曲线融合组管理: { id, label, modelKeys }
+  const [fusionGroups, setFusionGroups] = useState([]);
 
   // ... (toggleVar remains same)
   const toggleVar = (id) => {
@@ -505,8 +508,26 @@ export default function PredictPage() {
 
           {/* 多模型对比勾选 */}
           <GlowCard style={{ padding: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
-              COMPARE MODELS
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
+                COMPARE MODELS
+              </div>
+              {compareConfigs.length > 0 && (
+                <div 
+                  onClick={() => {
+                    const modelIds = compareConfigs.map(c => c.id);
+                    const allSelected = modelIds.every(id => selectedCompareIds.includes(id));
+                    if (allSelected) {
+                      setSelectedCompareIds(prev => prev.filter(id => !modelIds.includes(id)));
+                    } else {
+                      setSelectedCompareIds(prev => [...new Set([...prev, ...modelIds])]);
+                    }
+                  }}
+                  style={{ fontSize: 10, color: C.blue, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif", opacity: 0.8 }}
+                >
+                  {compareConfigs.map(c => c.id).every(id => selectedCompareIds.includes(id)) ? 'DESELECT MODELS' : 'SELECT ALL MODELS'}
+                </div>
+              )}
             </div>
             <div style={{ fontSize: 11, color: C.ice30, marginBottom: 12, lineHeight: 1.6 }}>
               在性能图表中同时展示多个模型的曲线
@@ -601,6 +622,93 @@ export default function PredictPage() {
               }}
             >
               + 将当前配置加入对比
+            </button>
+          </GlowCard>
+
+          {/* 融合组管理 */}
+          <GlowCard style={{ padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
+                ENSEMBLE GROUPS
+              </div>
+              {fusionGroups.length > 0 && (
+                <div 
+                  onClick={() => {
+                    const gIds = fusionGroups.map(g => g.id);
+                    const allSelected = gIds.every(id => selectedCompareIds.includes(id));
+                    if (allSelected) {
+                      setSelectedCompareIds(prev => prev.filter(id => !gIds.includes(id)));
+                    } else {
+                      setSelectedCompareIds(prev => [...new Set([...prev, ...gIds])]);
+                    }
+                  }}
+                  style={{ fontSize: 10, color: '#4acfac', cursor: 'pointer', fontFamily: "'Orbitron', sans-serif", opacity: 0.8 }}
+                >
+                  {fusionGroups.map(g => g.id).every(id => selectedCompareIds.includes(id)) ? 'DESELECT ENSEMBLES' : 'SELECT ALL ENSEMBLES'}
+                </div>
+              )}
+            </div>
+            <div style={{ fontSize: 11, color: C.ice30, marginBottom: 12 }}>
+              创建并对比多个集成融合模型
+            </div>
+            
+            {fusionGroups.map((g) => (
+              <div key={g.id} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '4px 10px', marginBottom: 4, borderRadius: 6,
+                background: selectedCompareIds.includes(g.id) ? 'rgba(74,207,172,0.1)' : 'transparent',
+                transition: 'all 0.2s',
+              }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1 }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedCompareIds.includes(g.id)}
+                    onChange={() => {
+                      setSelectedCompareIds(prev => 
+                        prev.includes(g.id) ? prev.filter(x => x !== g.id) : [...prev, g.id]
+                      );
+                    }}
+                    style={{ accentColor: '#4acfac' }}
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: 12, color: selectedCompareIds.includes(g.id) ? C.ice : C.ice30, fontWeight: 700 }}>{g.label}</span>
+                    <span style={{ fontSize: 9, color: 'rgba(74,207,172,0.5)' }}>{g.modelKeys.length} 个模型融合</span>
+                  </div>
+                </label>
+                
+                <button
+                  onClick={() => {
+                    setFusionGroups(prev => prev.filter(x => x.id !== g.id));
+                    setSelectedCompareIds(prev => prev.filter(pid => pid !== g.id));
+                  }}
+                  style={{ background: 'none', border: 'none', color: 'rgba(199,91,57,0.3)', fontSize: 14, cursor: 'pointer' }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+
+            <button 
+              onClick={() => {
+                if (selectedCompareIds.length < 2) return alert('请先在上方勾选至少 2 个模型');
+                const name = prompt('请输入融合组名称', `Ensemble_${fusionGroups.length + 1}`);
+                if (!name) return;
+                
+                // 筛选出当前已选中的“原始模型”IDs (非 fusionId)
+                const modelIds = selectedCompareIds.filter(id => !id.startsWith('fusion_'));
+                const newId = `fusion_${Date.now()}`;
+                
+                setFusionGroups(prev => [...prev, { id: newId, label: name, modelKeys: modelIds }]);
+                setSelectedCompareIds(prev => [...prev, newId]);
+              }}
+              style={{
+                width: '100%', marginTop: 8, padding: '10px 0',
+                background: 'rgba(74,207,172,0.1)', border: `1px solid rgba(74,207,172,0.3)`,
+                borderRadius: 8, color: '#4acfac', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                fontFamily: "'Orbitron', sans-serif"
+              }}
+            >
+              将选定模型保存为融合组
             </button>
           </GlowCard>
 
@@ -982,35 +1090,78 @@ export default function PredictPage() {
                   height: 380
                 }}>
                   <Plot
-                    data={Object.entries(performanceData.results).map(([key, perf], idx) => {
-                      const colors = [C.mars, C.blue, '#4acfac', '#9c7bea', '#ffd740'];
-                      const config = compareConfigs.find(c => {
-                        // 寻找匹配的配置，或者根据标识匹配
-                        const shorthands = (vars) => vars.length === 0 ? 'baseline' : vars.map(v => v[0]).sort().join('');
-                        return c.id === key || shorthands(c.vars) === key;
-                      });
-                      const label = config?.label || key;
+                    data={(() => {
+                      const allResults = performanceData.results;
+                      const traces = [];
+                      const colors = [C.mars, C.blue, '#9c7bea', '#ffd740', '#ff6b4a'];
                       
-                      return {
-                        x: perf.items.map(it => it.my === 27 ? it.ls : it.ls + 360),
-                        y: perf.items.map(it => it[activePerfMetric]),
-                        type: 'scatter',
-                        mode: 'lines+markers',
-                        name: label,
-                        marker: {
-                          color: colors[idx % colors.length],
-                          size: 5,
-                        },
-                        line: {
-                          color: colors[idx % colors.length],
-                          width: idx === 0 ? 3 : 2, // 第一个稍微加粗
-                          shape: 'spline'
-                        },
-                        hovertemplate: `<b>${label}</b><br>Ls: %{customdata:.2f}°<br>${activePerfMetric.toUpperCase()}: <b>%{y:.4f}</b><extra></extra>`,
-                        text: perf.items.map(it => it.my),
-                        customdata: perf.items.map(it => it.ls)
-                      };
-                    })}
+                      const selectedFusionIds = selectedCompareIds.filter(id => id.startsWith('fusion_'));
+                      const isAnyFusionActive = selectedFusionIds.length > 0;
+
+                      // 1. 渲染选中的原始对比模型曲线
+                      Object.entries(allResults).forEach(([key, perf], idx) => {
+                        const config = compareConfigs.find(c => {
+                          const shorthands = (vars) => vars.length === 0 ? 'baseline' : vars.map(v => v[0]).sort().join('');
+                          return c.id === key || shorthands(c.vars) === key;
+                        });
+                        const label = config?.label || key;
+                        
+                        traces.push({
+                          x: perf.items.map(it => it.my === 27 ? it.ls : it.ls + 360),
+                          y: perf.items.map(it => it[activePerfMetric]),
+                          type: 'scatter',
+                          mode: 'lines+markers',
+                          name: label,
+                          marker: { color: colors[idx % colors.length], size: 4 },
+                          line: { color: colors[idx % colors.length], width: 2, shape: 'spline' },
+                          hovertemplate: `<b>${label}</b><br>Ls: %{customdata:.2f}°<br>${activePerfMetric.toUpperCase()}: <b>%{y:.4f}</b><extra></extra>`,
+                          customdata: perf.items.map(it => it.ls),
+                          opacity: isAnyFusionActive ? 0.05 : 1.0 // 如果有融合组，背景原始曲线极度虚化
+                        });
+                      });
+
+                      // 2. 渲染选中的融合组曲线
+                      selectedFusionIds.forEach((fid, fidx) => {
+                        const group = fusionGroups.find(g => g.id === fid);
+                        if (!group) return;
+
+                        // 获取该组内所有模型的 perf 数据
+                        const groupPerfs = group.modelKeys
+                          .map(mkey => {
+                            // 匹配 key 逻辑与 predict.py 保持一致
+                            const config = compareConfigs.find(c => c.id === mkey);
+                            if (!config) return null;
+                            const key = config.vars.length === 0 ? 'baseline' : config.vars.map(v => v[0]).sort().join('');
+                            return allResults[key] || allResults[mkey];
+                          })
+                          .filter(p => p != null);
+
+                        if (groupPerfs.length < 2) return;
+
+                        const firstPerf = groupPerfs[0];
+                        const fusionY = [];
+                        for (let i = 0; i < firstPerf.items.length; i++) {
+                          const vals = groupPerfs.map(p => p.items[i][activePerfMetric]);
+                          const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+                          fusionY.push(avg);
+                        }
+
+                        const fusionColors = ['#4acfac', '#00f7ff', '#afff00'];
+                        traces.push({
+                          x: firstPerf.items.map(it => it.my === 27 ? it.ls : it.ls + 360),
+                          y: fusionY,
+                          type: 'scatter',
+                          mode: 'lines+markers',
+                          name: `🧬 ${group.label}`,
+                          marker: { color: fusionColors[fidx % fusionColors.length], size: 7, symbol: 'diamond' },
+                          line: { color: fusionColors[fidx % fusionColors.length], width: 4, shape: 'spline' },
+                          hovertemplate: `<b>${group.label} (Fusion)</b><br>Ls: %{customdata:.2f}°<br>${activePerfMetric.toUpperCase()}: <b>%{y:.4f}</b><extra></extra>`,
+                          customdata: firstPerf.items.map(it => it.ls)
+                        });
+                      });
+
+                      return traces;
+                    })()}
                     layout={{
                       autosize: true,
                       height: 340,
@@ -1084,10 +1235,61 @@ export default function PredictPage() {
                         </button>
                       );
                     })}
+
+                    {fusionGroups.filter(g => selectedCompareIds.includes(g.id)).map(g => (
+                      <button key={g.id} onClick={() => setActiveCompareId(g.id)} style={{
+                        padding: '4px 12px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                        background: activeCompareId === g.id ? 'rgba(74,207,172,0.15)' : 'rgba(74,207,172,0.05)',
+                        border: `2px solid ${activeCompareId === g.id ? '#4acfac' : 'rgba(74,207,172,0.2)'}`,
+                        color: '#4acfac', cursor: 'pointer', fontFamily: "'Orbitron', sans-serif"
+                      }}>
+                        🧬 {g.label}
+                      </button>
+                    ))}
                   </div>
 
                   {(() => {
-                    const activePerf = performanceData.results[activeCompareId] || Object.values(performanceData.results)[0];
+                    let activePerf;
+                    if (activeCompareId?.startsWith('fusion_')) {
+                      const group = fusionGroups.find(g => g.id === activeCompareId);
+                      if (!group) return null;
+
+                      const groupPerfs = group.modelKeys
+                        .map(mkey => {
+                          const config = compareConfigs.find(c => c.id === mkey);
+                          if (!config) return null;
+                          const key = config.vars.length === 0 ? 'baseline' : config.vars.map(v => v[0]).sort().join('');
+                          return performanceData.results[key] || performanceData.results[mkey];
+                        })
+                        .filter(p => p != null);
+
+                      if (groupPerfs.length === 0) return null;
+                      
+                      const itemCount = groupPerfs[0].items.length;
+                      const fusionItems = [];
+                      for (let i = 0; i < itemCount; i++) {
+                        const it0 = groupPerfs[0].items[i];
+                        fusionItems.push({
+                          my: it0.my,
+                          ls: it0.ls,
+                          r2: groupPerfs.reduce((s, p) => s + p.items[i].r2, 0) / groupPerfs.length,
+                          rmse: groupPerfs.reduce((s, p) => s + (p.items[i].rmse || 0), 0) / groupPerfs.length,
+                          mae: groupPerfs.reduce((s, p) => s + (p.items[i].mae || 0), 0) / groupPerfs.length,
+                          ssim: groupPerfs.reduce((s, p) => s + (p.items[i].ssim || 1), 0) / groupPerfs.length,
+                        });
+                      }
+                      
+                      activePerf = {
+                        items: fusionItems,
+                        global_r2: groupPerfs.reduce((s, p) => s + p.global_r2, 0) / groupPerfs.length,
+                        global_rmse: groupPerfs.reduce((s, p) => s + p.global_rmse, 0) / groupPerfs.length,
+                        global_mae: groupPerfs.reduce((s, p) => s + p.global_mae, 0) / groupPerfs.length,
+                        global_ssim: groupPerfs.reduce((s, p) => s + p.global_ssim, 0) / groupPerfs.length,
+                      };
+                    } else {
+                      activePerf = performanceData.results[activeCompareId] || Object.values(performanceData.results)[0];
+                    }
+
                     if (!activePerf) return null;
                     return (
                       <>
