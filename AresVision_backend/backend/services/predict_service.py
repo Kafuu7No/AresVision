@@ -131,8 +131,9 @@ class PredictOrchestratorService:
             for i, var in enumerate(TRAINING_MASTER_ORDER, start=1):
                 if channel_mask[i] == 1.0:
                     indices.append(i)
-            # 这里的 indices 顺序决定了 final_input_arr 的通道顺序
-            final_input_arr = input_arr[:, indices[:input_dim]]
+            # ARESVISION FIX: 移除 [:input_dim] 截断，改用精确选中的 indices。
+            # 否则 DSVU 和 DTUV 都会因 input_dim=5 而取到相同的物理通道子集。
+            final_input_arr = input_arr[:, indices]
         else:
             final_input_arr = input_arr
 

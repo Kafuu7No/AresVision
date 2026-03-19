@@ -59,6 +59,9 @@ class PredictInference:
         elif selected_set == {"V_Wind"}:
             suffix = "V"
             input_dim = 2
+        elif selected_set == {"U_Wind", "V_Wind"}:
+            suffix = "UV"
+            input_dim = 3
         elif selected_set == {"Dust_Optical_Depth", "Solar_Flux_DN"}:
             suffix = "DS"
             input_dim = 3
@@ -71,6 +74,30 @@ class PredictInference:
         elif selected_set == {"U_Wind", "Dust_Optical_Depth"}:
             suffix = "UD"
             input_dim = 3
+        elif selected_set == {"U_Wind", "Solar_Flux_DN"}:
+            suffix = "US"
+            input_dim = 3
+        elif selected_set == {"U_Wind", "Temperature"}:
+            suffix = "UT"
+            input_dim = 3
+        elif selected_set == {"V_Wind", "Dust_Optical_Depth"}:
+            suffix = "VD"
+            input_dim = 3
+        elif selected_set == {"V_Wind", "Solar_Flux_DN"}:
+            suffix = "VS"
+            input_dim = 3
+        elif selected_set == {"V_Wind", "Temperature"}:
+            suffix = "VT"
+            input_dim = 3
+        elif selected_set == {"U_Wind", "V_Wind", "Temperature"}:
+            suffix = "UVT"
+            input_dim = 4
+        elif selected_set == {"U_Wind", "V_Wind", "Solar_Flux_DN"}:
+            suffix = "UVS"
+            input_dim = 4
+        elif selected_set == {"U_Wind", "V_Wind", "Dust_Optical_Depth"}:
+            suffix = "UVD"
+            input_dim = 4
         elif selected_set == {"Dust_Optical_Depth", "Solar_Flux_DN", "Temperature"}:
             suffix = "DST"
             input_dim = 4
@@ -80,8 +107,32 @@ class PredictInference:
         elif selected_set == {"U_Wind", "Dust_Optical_Depth", "Temperature"}:
             suffix = "UDT"
             input_dim = 4
+        elif selected_set == {"U_Wind", "Solar_Flux_DN", "Temperature"}:
+            suffix = "UST"
+            input_dim = 4
+        elif selected_set == {"V_Wind", "Dust_Optical_Depth", "Solar_Flux_DN"}:
+            suffix = "VDS"
+            input_dim = 4
+        elif selected_set == {"V_Wind", "Dust_Optical_Depth", "Temperature"}:
+            suffix = "VDT"
+            input_dim = 4
+        elif selected_set == {"V_Wind", "Solar_Flux_DN", "Temperature"}:
+            suffix = "VST"
+            input_dim = 4
+        elif selected_set == {"U_Wind", "V_Wind", "Solar_Flux_DN", "Temperature"}:
+            suffix = "UVST"
+            input_dim = 5
+        elif selected_set == {"U_Wind", "V_Wind", "Dust_Optical_Depth", "Temperature"}:
+            suffix = "UVDT"
+            input_dim = 5
+        elif selected_set == {"U_Wind", "V_Wind", "Dust_Optical_Depth", "Solar_Flux_DN"}:
+            suffix = "UVDS"
+            input_dim = 5
         elif selected_set == {"U_Wind", "Dust_Optical_Depth", "Solar_Flux_DN", "Temperature"}:
             suffix = "UDST"
+            input_dim = 5
+        elif selected_set == {"V_Wind", "Dust_Optical_Depth", "Solar_Flux_DN", "Temperature"}:
+            suffix = "VDST"
             input_dim = 5
         elif selected_set == {"U_Wind", "V_Wind", "Dust_Optical_Depth", "Solar_Flux_DN", "Temperature"}:
             suffix = "UVDST"
