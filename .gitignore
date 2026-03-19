@@ -75,4 +75,5 @@ AresVision_backend/backend/test_output.log
 AresVision_backend/backend/data/processed_tensors.pt
 AresVision_backend/backend/tests/verify_logic.py
 AresVision_backend/backend/tests/test_model_branches.py
+AresVision_backend/backend/tests/test_model_selection.py
 AresVision_backend/backend/tests/test_dynamic_matching.py
