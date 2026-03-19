@@ -7,6 +7,8 @@ import hashlib
 import json
 import numpy as np
 import torch
+import asyncio
+import itertools
 from sklearn.metrics import r2_score
 
 from cachetools import LRUCache
@@ -302,6 +304,48 @@ class PredictOrchestratorService:
             logger.warning(f"保存性能缓存失败: {e}")
 
         return final_res
+
+    async def ensure_performance_caches(self):
+        """
+        后台异步任务：检查并预生成所有 32 个变量组合的性能缓存。
+        """
+        from config import MCD_VARIABLES
+        logger.info("开始检查 32 个变量组合的性能分析缓存...")
+        
+        # 生成所有组合 (C5_0 到 C5_5)
+        all_combos = []
+        for r in range(len(MCD_VARIABLES) + 1):
+            for combo in itertools.combinations(MCD_VARIABLES, r):
+                all_combos.append(list(combo))
+        
+        count_generated = 0
+        count_skipped = 0
+        
+        for variables in all_combos:
+            # 构造缓存文件名以进行预检查 (逻辑同 get_performance_curve)
+            from config import PERF_CACHE_DIR
+            perf_key_data = {
+                "vars": sorted(variables),
+                "data_mtime": self.ml_data_prep.processed_data_mtime if hasattr(self.ml_data_prep, 'processed_data_mtime') else "default"
+            }
+            perf_hash = hashlib.md5(json.dumps(perf_key_data).encode()).hexdigest()
+            cache_file = PERF_CACHE_DIR / f"perf_{perf_hash}.json"
+            
+            if cache_file.exists():
+                count_skipped += 1
+                continue
+                
+            # 缓存缺失，执行生成 (同步执行以防并发冲突，但此函数由后台 task 调用)
+            try:
+                logger.info(f"正在后台预生成性能缓存: {variables}")
+                self.get_performance_curve(variables)
+                count_generated += 1
+                # 稍微出让 CPU 权限，避免完全阻塞事件循环
+                await asyncio.sleep(0.1)
+            except Exception as e:
+                logger.warning(f"预生成 {variables} 缓存失败: {e}")
+                
+        logger.info(f"性能缓存检查完成: 新生成 {count_generated} 个, 已存在 {count_skipped} 个 (总计 {len(all_combos)} 个)")
 
 
     def _fields_to_dicts(

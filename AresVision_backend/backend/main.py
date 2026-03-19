@@ -95,6 +95,11 @@ async def lifespan(app: FastAPI):
     ai_service = AIService()
     app.state.ai_service = ai_service
 
+    # 5. 后台预生成性能分析缓存 (不阻塞启动)
+    logger.info("[5/5] 启动后台性能缓存预生成检查...")
+    import asyncio
+    asyncio.create_task(predict_orchestrator.ensure_performance_caches())
+
     elapsed = time.time() - t0
     logger.info("=" * 60)
     logger.info(f"  启动完成! 耗时 {elapsed:.1f}s")
