@@ -19,6 +19,7 @@ export default function PredictSidebar({
   selectedCompareIds,
   setSelectedCompareIds,
   setCompareConfigs,
+  handleFuseModels,
 }) {
   const t = useT();
 
@@ -148,9 +149,6 @@ export default function PredictSidebar({
             <span style={{ fontSize: 12, color: selectedVars.includes(v.id) ? C.ice : C.ice30 }}>{v.label}</span>
           </label>
         ))}
-        <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 8, background: 'rgba(199,91,57,0.08)', fontSize: 11, color: C.ice30 }}>
-          {t('predict.envVarsNote', { selected: selectedVars.length })}
-        </div>
       </GlowCard>
 
       {/* 多模型对比勾选 */}
@@ -159,7 +157,7 @@ export default function PredictSidebar({
           COMPARE MODELS
         </div>
         <div style={{ fontSize: 11, color: C.ice30, marginBottom: 12, lineHeight: 1.6 }}>
-          在性能图表中同时展示多个模型的曲线
+          在性能图表中同时展示多个模型的曲线，或进行多模型融合。
         </div>
         {compareConfigs.map((c) => (
           <div key={c.id} style={{
@@ -206,6 +204,7 @@ export default function PredictSidebar({
             // 检查是否已存在完全相同的配置
             const sortedVars = [...selectedVars].sort();
             const exists = compareConfigs.find(c => {
+              if (c.isEnsemble) return false;
               const cVars = [...c.vars].sort();
               return cVars.length === sortedVars.length && cVars.every((v, i) => v === sortedVars[i]);
             });
@@ -221,7 +220,7 @@ export default function PredictSidebar({
             const newId = `custom_${Date.now()}`;
 
             // 使用缩写命名，例如 UVDST
-            const shorthands = {
+            const SHORTHAND_MAP = {
               "Temperature": "T",
               "Dust_Optical_Depth": "D",
               "Solar_Flux_DN": "S",
@@ -234,7 +233,7 @@ export default function PredictSidebar({
               label = 'Baseline';
             } else {
               const prefix = selectedVars
-                .map(v => shorthands[v] || v[0])
+                .map(v => SHORTHAND_MAP[v] || v[0])
                 .sort()
                 .join('');
               label = prefix;
@@ -251,6 +250,23 @@ export default function PredictSidebar({
           }}
         >
           {t('predict.compareAction')}
+        </button>
+
+        {/* 融合已选模型按钮 */}
+        <button
+          onClick={handleFuseModels}
+          disabled={selectedCompareIds.length < 2}
+          style={{
+            width: '100%', marginTop: 8, padding: '10px 0',
+            background: selectedCompareIds.length < 2 ? 'rgba(74,207,172,0.05)' : 'rgba(74,207,172,0.12)',
+            border: `1px solid ${selectedCompareIds.length < 2 ? 'rgba(74,207,172,0.1)' : '#4acfac'}`,
+            borderRadius: 8, color: selectedCompareIds.length < 2 ? 'rgba(74,207,172,0.4)' : '#4acfac',
+            fontSize: 11, fontWeight: 700, cursor: selectedCompareIds.length < 2 ? 'not-allowed' : 'pointer',
+            fontFamily: "'Orbitron', sans-serif",
+            transition: 'all 0.2s'
+          }}
+        >
+          {selectedCompareIds.length < 2 ? 'SELECT 2+ TO FUSE' : 'FUSE SELECTED (ENSEMBLE)'}
         </button>
       </GlowCard>
 
