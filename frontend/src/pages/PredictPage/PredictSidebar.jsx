@@ -1,6 +1,15 @@
-import C from '../../constants/colors'; // Re-triggering vite cache
+import C from '../../constants/colors';
 import { useT } from '../../i18n';
 import GlowCard from '../../components/GlowCard';
+
+const SHORTHAND_MAP = {
+  "Temperature": "T",
+  "Dust_Optical_Depth": "D",
+  "Surface_Pressure": "P",
+  "Solar_Flux_DN": "S",
+  "U_Wind": "U",
+  "V_Wind": "V"
+};
 
 export default function PredictSidebar({
   loading,
@@ -22,6 +31,35 @@ export default function PredictSidebar({
   handleFuseModels,
 }) {
   const t = useT();
+
+  const handleSeed32 = () => {
+    // 强制按 5 种核心变量生成全部 32 种组合
+    const vars = ["Temperature", "Dust_Optical_Depth", "Solar_Flux_DN", "U_Wind", "V_Wind"];
+    const combinations = [];
+    for (let i = 0; i < (1 << vars.length); i++) {
+      const combo = [];
+      for (let j = 0; j < vars.length; j++) {
+        if ((i >> j) & 1) combo.push(vars[j]);
+      }
+      combinations.push(combo);
+    }
+    const newConfigs = combinations.map((combo, idx) => {
+      const shorthand = combo.map(v => SHORTHAND_MAP[v] || v[0]).sort().join('') || 'Baseline';
+      // 这里的 id 必须稳定
+      return { id: `seed_${idx}`, label: shorthand, vars: combo };
+    });
+    setCompareConfigs(newConfigs);
+    setSelectedCompareIds(newConfigs.map(c => c.id));
+  };
+
+  const handleSelectAll = () => {
+    // 这里使用函数式更新，确保拿到最实时的数据
+    if (selectedCompareIds.length === compareConfigs.length && compareConfigs.length > 0) {
+      setSelectedCompareIds([]);
+    } else {
+      setSelectedCompareIds(compareConfigs.map(c => c.id));
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -87,8 +125,6 @@ export default function PredictSidebar({
         <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
           PARAMETERS
         </div>
-
-        {/* 火星年 */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 11, color: C.ice30, marginBottom: 6 }}>{t('predict.marsYear')}</div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -104,8 +140,6 @@ export default function PredictSidebar({
             ))}
           </div>
         </div>
-
-        {/* 起始 Ls 滑块 */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
             <span style={{ fontSize: 11, color: C.ice30 }}>{t('predict.startLs')}</span>
@@ -117,9 +151,6 @@ export default function PredictSidebar({
             onChange={(e) => setLsStart(Number(e.target.value))}
             style={{ width: '100%', accentColor: C.mars }}
           />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.ice30, marginTop: 4 }}>
-            <span>{t('predict.lsMarks.spring')}</span><span>{t('predict.lsMarks.summer')}</span><span>{t('predict.lsMarks.autumn')}</span><span>{t('predict.lsMarks.winter')}</span>
-          </div>
         </div>
       </GlowCard>
 
@@ -128,13 +159,10 @@ export default function PredictSidebar({
         <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
           INPUT VARIABLES
         </div>
-        <div style={{ fontSize: 11, color: C.ice30, marginBottom: 12, lineHeight: 1.6 }}>
-          {t('predict.envVarsLabel')}
-        </div>
         {VARIABLES.map((v) => (
           <label key={v.id} style={{
             display: 'flex', alignItems: 'center', gap: 10,
-            padding: '10px 12px', marginBottom: 4, borderRadius: 8,
+            padding: '8px 12px', marginBottom: 4, borderRadius: 8,
             background: selectedVars.includes(v.id) ? 'rgba(74,158,255,0.06)' : 'transparent',
             border: `1px solid ${selectedVars.includes(v.id) ? 'rgba(74,158,255,0.15)' : 'transparent'}`,
             cursor: 'pointer', transition: 'all 0.2s',
@@ -145,149 +173,122 @@ export default function PredictSidebar({
               onChange={() => toggleVar(v.id)}
               style={{ accentColor: v.color }}
             />
-            <span style={{ fontSize: 14 }}>{v.icon}</span>
             <span style={{ fontSize: 12, color: selectedVars.includes(v.id) ? C.ice : C.ice30 }}>{v.label}</span>
           </label>
         ))}
       </GlowCard>
 
-      {/* 多模型对比勾选 */}
+      {/* 模型对比 - 带上下滑动条 */}
       <GlowCard style={{ padding: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
-          COMPARE MODELS
-        </div>
-        <div style={{ fontSize: 11, color: C.ice30, marginBottom: 12, lineHeight: 1.6 }}>
-          在性能图表中同时展示多个模型的曲线，或进行多模型融合。
-        </div>
-        {compareConfigs.map((c) => (
-          <div key={c.id} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '4px 10px', marginBottom: 4, borderRadius: 6,
-            background: selectedCompareIds.includes(c.id) ? 'rgba(74,207,172,0.06)' : 'transparent',
-            transition: 'all 0.2s',
-          }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1 }}>
-              <input
-                type="checkbox"
-                checked={selectedCompareIds.includes(c.id)}
-                onChange={() => {
-                  setSelectedCompareIds(prev =>
-                    prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id]
-                  );
-                }}
-                style={{ accentColor: '#4acfac' }}
-              />
-              <span style={{ fontSize: 12, color: selectedCompareIds.includes(c.id) ? C.ice : C.ice30 }}>{c.label}</span>
-            </label>
-
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                setCompareConfigs(prev => prev.filter(pc => pc.id !== c.id));
-                setSelectedCompareIds(prev => prev.filter(pid => pid !== c.id));
-              }}
-              style={{
-                background: 'none', border: 'none', color: 'rgba(199,91,57,0.4)',
-                fontSize: 14, cursor: 'pointer', padding: '4px 8px',
-                transition: 'color 0.2s'
-              }}
-              onMouseEnter={(e) => e.target.style.color = C.mars}
-              onMouseLeave={(e) => e.target.style.color = 'rgba(199,91,57,0.4)'}
-            >
-              ×
-            </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
+            MODEL MATRIX
           </div>
-        ))}
-
-        <button
-          onClick={() => {
-            // 检查是否已存在完全相同的配置
-            const sortedVars = [...selectedVars].sort();
-            const exists = compareConfigs.find(c => {
-              if (c.isEnsemble) return false;
-              const cVars = [...c.vars].sort();
-              return cVars.length === sortedVars.length && cVars.every((v, i) => v === sortedVars[i]);
-            });
-
-            if (exists) {
-              // 如果已存在，确保它是勾选状态即可
-              if (!selectedCompareIds.includes(exists.id)) {
-                setSelectedCompareIds(prev => [...prev, exists.id]);
-              }
-              return;
-            }
-
-            const newId = `custom_${Date.now()}`;
-
-            // 使用缩写命名，例如 UVDST
-            const SHORTHAND_MAP = {
-              "Temperature": "T",
-              "Dust_Optical_Depth": "D",
-              "Solar_Flux_DN": "S",
-              "U_Wind": "U",
-              "V_Wind": "V"
-            };
-
-            let label;
-            if (selectedVars.length === 0) {
-              label = 'Baseline';
-            } else {
-              const prefix = selectedVars
-                .map(v => SHORTHAND_MAP[v] || v[0])
-                .sort()
-                .join('');
-              label = prefix;
-            }
-
-            setCompareConfigs(prev => [...prev, { id: newId, label, vars: [...selectedVars] }]);
-            setSelectedCompareIds(prev => [...prev, newId]);
-          }}
-          style={{
-            width: '100%', marginTop: 8, padding: '8px 0',
-            background: 'rgba(255,255,255,0.03)', border: `1px dashed ${C.border}`,
-            borderRadius: 8, color: C.ice60, fontSize: 11, cursor: 'pointer',
-            fontFamily: "'Orbitron', sans-serif"
-          }}
-        >
-          {t('predict.compareAction')}
-        </button>
-
-        {/* 融合已选模型按钮 */}
-        <button
-          onClick={handleFuseModels}
-          disabled={selectedCompareIds.length < 2}
-          style={{
-            width: '100%', marginTop: 8, padding: '10px 0',
-            background: selectedCompareIds.length < 2 ? 'rgba(74,207,172,0.05)' : 'rgba(74,207,172,0.12)',
-            border: `1px solid ${selectedCompareIds.length < 2 ? 'rgba(74,207,172,0.1)' : '#4acfac'}`,
-            borderRadius: 8, color: selectedCompareIds.length < 2 ? 'rgba(74,207,172,0.4)' : '#4acfac',
-            fontSize: 11, fontWeight: 700, cursor: selectedCompareIds.length < 2 ? 'not-allowed' : 'pointer',
-            fontFamily: "'Orbitron', sans-serif",
-            transition: 'all 0.2s'
-          }}
-        >
-          {selectedCompareIds.length < 2 ? 'SELECT 2+ TO FUSE' : 'FUSE SELECTED (ENSEMBLE)'}
-        </button>
-      </GlowCard>
-
-      {/* File Upload (原有) */}
-      <GlowCard style={{ padding: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
-          FILE UPLOAD
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button 
+              onClick={handleSelectAll}
+              style={{ padding: '4px 10px', background: 'rgba(74,207,172,0.15)', border: `1px solid #4acfac50`, borderRadius: 6, color: '#4acfac', fontSize: 10, fontWeight: 800, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
+            >ALL</button>
+            <button 
+              onClick={handleSeed32}
+              style={{ padding: '4px 10px', background: 'rgba(156,123,234,0.15)', border: `1px solid #9c7bea50`, borderRadius: 6, color: '#9c7bea', fontSize: 10, fontWeight: 800, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
+            >SEED 32</button>
+          </div>
         </div>
-        <div style={{
-          border: `2px dashed ${C.border}`,
-          borderRadius: 12,
-          padding: 28,
-          textAlign: 'center',
-          cursor: 'pointer',
-          transition: 'border-color 0.2s',
+
+        {/* 上下滑动区，关闭左右滑动 */}
+        <div style={{ 
+          maxHeight: 280, 
+          overflowY: 'auto', 
+          overflowX: 'hidden', 
+          marginBottom: 12, 
+          paddingRight: 4, 
+          background: 'rgba(0,0,0,0.1)', 
+          borderRadius: 8, 
+          border: `1px solid ${C.border}`
         }}>
-          <div style={{ fontSize: 30, marginBottom: 8 }}>📁</div>
-          <div style={{ fontSize: 13, color: C.ice60 }}>{t('predict.fileUpload.drag')}</div>
-          <div style={{ fontSize: 11, color: C.ice30, marginTop: 4 }}>{t('predict.fileUpload.click')}</div>
+          {compareConfigs.map((c) => (
+            <div key={c.id} style={{ 
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+              padding: '4px 12px', borderRadius: 6,
+              background: selectedCompareIds.includes(c.id) ? 'rgba(74,207,172,0.06)' : 'transparent',
+              transition: 'all 0.2s',
+              borderBottom: `1px solid rgba(255,255,255,0.02)`
+            }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1 }}>
+                <input
+                  type="checkbox"
+                  checked={selectedCompareIds.includes(c.id)}
+                  onChange={() => {
+                    setSelectedCompareIds(prev =>
+                      prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id]
+                    );
+                  }}
+                  style={{ accentColor: '#4acfac' }}
+                />
+                <span style={{ fontSize: 12, color: selectedCompareIds.includes(c.id) ? C.ice : C.ice30, fontFamily: "'Orbitron', sans-serif" }}>{c.label}</span>
+              </label>
+
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCompareConfigs(prev => prev.filter(pc => pc.id !== c.id));
+                  setSelectedCompareIds(prev => prev.filter(pid => pid !== c.id));
+                }}
+                style={{
+                  background: 'none', border: 'none', color: 'rgba(199,91,57,0.4)',
+                  fontSize: 14, cursor: 'pointer', padding: '4px 8px',
+                  transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.color = C.mars}
+                onMouseLeave={(e) => e.target.style.color = 'rgba(199,91,57,0.4)'}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {compareConfigs.length === 0 && (
+            <div style={{ padding: 20, textAlign: 'center', fontSize: 11, color: C.ice30, opacity: 0.5 }}>
+              No models in matrix. Click SEED 32 to start.
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => {
+              const sortedVars = [...selectedVars].sort();
+              const exists = compareConfigs.find(c => {
+                const cVars = [...c.vars].sort();
+                return cVars.length === sortedVars.length && cVars.every((v, i) => v === sortedVars[i]);
+              });
+              if (exists) {
+                if (!selectedCompareIds.includes(exists.id)) setSelectedCompareIds(prev => [...prev, exists.id]);
+                return;
+              }
+              const newId = `custom_${Date.now()}`;
+              const prefix = selectedVars.length === 0 ? 'Baseline' : selectedVars.map(v => SHORTHAND_MAP[v] || v[0]).sort().join('');
+              setCompareConfigs(prev => [...prev, { id: newId, label: prefix, vars: [...selectedVars] }]);
+              setSelectedCompareIds(prev => [...prev, newId]);
+            }}
+            style={{ flex: 1, padding: '10px 0', background: 'rgba(255,255,255,0.03)', border: `1px dashed ${C.border}`, borderRadius: 10, color: C.ice60, fontSize: 11, fontWeight: 800, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
+          >
+            + ADD
+          </button>
+          <button
+            onClick={handleFuseModels}
+            disabled={selectedCompareIds.length < 2}
+            style={{ flex: 2, padding: '10px 0', background: selectedCompareIds.length < 2 ? 'rgba(74,207,172,0.05)' : 'rgba(156,123,234,0.15)', border: `1px solid ${selectedCompareIds.length < 2 ? 'rgba(74,207,172,0.1)' : '#9c7bea'}`, borderRadius: 10, color: selectedCompareIds.length < 2 ? 'rgba(74,207,172,0.4)' : '#9c7bea', fontSize: 11, fontWeight: 800, cursor: selectedCompareIds.length < 2 ? 'not-allowed' : 'pointer', fontFamily: "'Orbitron', sans-serif" }}
+          >
+            FUSE
+          </button>
         </div>
       </GlowCard>
+
+      <div style={{ padding: '0 20px', fontSize: 9, color: C.ice30, textAlign: 'center', opacity: 0.5 }}>
+        ARES_VISION_OS // SYSTEM_VERSION_3.2
+      </div>
     </div>
   );
 }

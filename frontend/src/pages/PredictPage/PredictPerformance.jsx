@@ -193,7 +193,7 @@ export default function PredictPerformance({
                       layout={{
                         autosize: true,
                         height: 340,
-                        margin: { l: 50, r: 30, t: 20, b: 50 },
+                        margin: { l: 50, r: 30, t: plotTraces.length > 5 ? 60 : 30, b: 50 },
                         paper_bgcolor: 'rgba(0,0,0,0)',
                         plot_bgcolor: 'rgba(0,0,0,0)',
                         xaxis: {
@@ -213,13 +213,20 @@ export default function PredictPerformance({
                           range: (activePerfMetric === 'r2' || activePerfMetric === 'ssim') ? [0.6, 1.0] : undefined,
                           autorange: !(activePerfMetric === 'r2' || activePerfMetric === 'ssim')
                         },
-                        legend: { font: { size: 10, color: C.ice60 }, orientation: 'h', y: 1.12 },
+                        legend: { 
+                          font: { size: 10, color: C.ice60 }, 
+                          orientation: 'h', 
+                          yanchor: 'bottom',
+                          y: 1.05,
+                          xanchor: 'center',
+                          x: 0.5
+                        },
                         shapes: [{
                           type: 'line', x0: 360, x1: 360, y0: 0, y1: 1, yref: 'paper',
                           line: { color: 'rgba(255,255,255,0.2)', width: 1, dash: 'dash' }
                         }],
                         annotations: [{
-                          x: 360, y: 1.05, xref: 'x', yref: 'y', text: 'NEW YEAR (MY28)',
+                          x: 360, y: 1.08, xref: 'x', yref: 'paper', text: 'NEW YEAR (MY28)',
                           showarrow: false, font: { color: plotTextColor, size: 9 }
                         }],
                         hovermode: 'closest',
