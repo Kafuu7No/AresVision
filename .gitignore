@@ -66,6 +66,14 @@ CLAUDE.md
 
 # Python/Testing
 .pytest_cache/
+AresVision_backend/backend/test_performance_api.py
+AresVision_backend/backend/verify_prediction.py
+AresVision_backend/backend/verify_r2.py
+AresVision_backend/backend/analyze_split.py
+AresVision_backend/backend/tests/verify_logic.py
+AresVision_backend/backend/tests/test_model_branches.py
+AresVision_backend/backend/tests/test_model_selection.py
+AresVision_backend/backend/tests/test_dynamic_matching.py
 
 # Project Specific Caches & Temp Files
 perf_debug.json
@@ -73,3 +81,17 @@ frontend/test_heatmap.json
 AresVision_backend/backend/data/perf_cache/
 AresVision_backend/backend/test_output.log
 AresVision_backend/backend/data/processed_tensors.pt
+
+# Environments
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+AresVision_backend/backend/.env
+
+# Temporary / backup files
+*.tmp
+*.bak
+*_backup.*
+~*

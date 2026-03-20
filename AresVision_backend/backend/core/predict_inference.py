@@ -40,10 +40,17 @@ class PredictInference:
         is_fallback = False
         fallback_reason = ""
         
-        # ─── 显式分支映射 ───
+        # ─── 32 个显式分支映射 ───
         if not selected_set:
             suffix = "baseline"
             input_dim = 1
+        # --- 1个变量 (5种) ---
+        elif selected_set == {"U_Wind"}:
+            suffix = "U"
+            input_dim = 2
+        elif selected_set == {"V_Wind"}:
+            suffix = "V"
+            input_dim = 2
         elif selected_set == {"Temperature"}:
             suffix = "T"
             input_dim = 2
@@ -53,37 +60,86 @@ class PredictInference:
         elif selected_set == {"Solar_Flux_DN"}:
             suffix = "S"
             input_dim = 2
-        elif selected_set == {"U_Wind"}:
-            suffix = "U"
-            input_dim = 2
-        elif selected_set == {"V_Wind"}:
-            suffix = "V"
-            input_dim = 2
-        elif selected_set == {"Dust_Optical_Depth", "Solar_Flux_DN"}:
-            suffix = "DS"
+        # --- 2个变量 (10种) ---
+        elif selected_set == {"U_Wind", "V_Wind"}:
+            suffix = "UV"
             input_dim = 3
-        elif selected_set == {"Dust_Optical_Depth", "Temperature"}:
-            suffix = "DT"
-            input_dim = 3
-        elif selected_set == {"Solar_Flux_DN", "Temperature"}:
-            suffix = "ST"
+        elif selected_set == {"U_Wind", "Temperature"}:
+            suffix = "UT"
             input_dim = 3
         elif selected_set == {"U_Wind", "Dust_Optical_Depth"}:
             suffix = "UD"
             input_dim = 3
-        elif selected_set == {"Dust_Optical_Depth", "Solar_Flux_DN", "Temperature"}:
-            suffix = "DST"
+        elif selected_set == {"U_Wind", "Solar_Flux_DN"}:
+            suffix = "US"
+            input_dim = 3
+        elif selected_set == {"V_Wind", "Temperature"}:
+            suffix = "VT"
+            input_dim = 3
+        elif selected_set == {"V_Wind", "Dust_Optical_Depth"}:
+            suffix = "VD"
+            input_dim = 3
+        elif selected_set == {"V_Wind", "Solar_Flux_DN"}:
+            suffix = "VS"
+            input_dim = 3
+        elif selected_set == {"Temperature", "Dust_Optical_Depth"}:
+            suffix = "DT"
+            input_dim = 3
+        elif selected_set == {"Temperature", "Solar_Flux_DN"}:
+            suffix = "ST"
+            input_dim = 3
+        elif selected_set == {"Dust_Optical_Depth", "Solar_Flux_DN"}:
+            suffix = "DS"
+            input_dim = 3
+        # --- 3个变量 (10种) ---
+        elif selected_set == {"U_Wind", "V_Wind", "Temperature"}:
+            suffix = "UVT"
+            input_dim = 4
+        elif selected_set == {"U_Wind", "V_Wind", "Dust_Optical_Depth"}:
+            suffix = "UVD"
+            input_dim = 4
+        elif selected_set == {"U_Wind", "V_Wind", "Solar_Flux_DN"}:
+            suffix = "UVS"
+            input_dim = 4
+        elif selected_set == {"U_Wind", "Temperature", "Dust_Optical_Depth"}:
+            suffix = "UDT"
+            input_dim = 4
+        elif selected_set == {"U_Wind", "Temperature", "Solar_Flux_DN"}:
+            suffix = "UST"
             input_dim = 4
         elif selected_set == {"U_Wind", "Dust_Optical_Depth", "Solar_Flux_DN"}:
             suffix = "UDS"
             input_dim = 4
-        elif selected_set == {"U_Wind", "Dust_Optical_Depth", "Temperature"}:
-            suffix = "UDT"
+        elif selected_set == {"V_Wind", "Temperature", "Dust_Optical_Depth"}:
+            suffix = "VDT"
             input_dim = 4
-        elif selected_set == {"U_Wind", "Dust_Optical_Depth", "Solar_Flux_DN", "Temperature"}:
+        elif selected_set == {"V_Wind", "Temperature", "Solar_Flux_DN"}:
+            suffix = "VST"
+            input_dim = 4
+        elif selected_set == {"V_Wind", "Dust_Optical_Depth", "Solar_Flux_DN"}:
+            suffix = "VDS"
+            input_dim = 4
+        elif selected_set == {"Temperature", "Dust_Optical_Depth", "Solar_Flux_DN"}:
+            suffix = "DST"
+            input_dim = 4
+        # --- 4个变量 (5种) ---
+        elif selected_set == {"U_Wind", "V_Wind", "Temperature", "Dust_Optical_Depth"}:
+            suffix = "UVDT"
+            input_dim = 5
+        elif selected_set == {"U_Wind", "V_Wind", "Temperature", "Solar_Flux_DN"}:
+            suffix = "UVST"
+            input_dim = 5
+        elif selected_set == {"U_Wind", "V_Wind", "Dust_Optical_Depth", "Solar_Flux_DN"}:
+            suffix = "UVDS"
+            input_dim = 5
+        elif selected_set == {"U_Wind", "Temperature", "Dust_Optical_Depth", "Solar_Flux_DN"}:
             suffix = "UDST"
             input_dim = 5
-        elif selected_set == {"U_Wind", "V_Wind", "Dust_Optical_Depth", "Solar_Flux_DN", "Temperature"}:
+        elif selected_set == {"V_Wind", "Temperature", "Dust_Optical_Depth", "Solar_Flux_DN"}:
+            suffix = "VDST"
+            input_dim = 5
+        # --- 5个变量 (1种) ---
+        elif selected_set == {"U_Wind", "V_Wind", "Temperature", "Dust_Optical_Depth", "Solar_Flux_DN"}:
             suffix = "UVDST"
             input_dim = 6
         else:
