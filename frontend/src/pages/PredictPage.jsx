@@ -12,6 +12,7 @@ import PredictSidebar from './PredictPage/PredictSidebar';
 import PredictDisplay from './PredictPage/PredictDisplay';
 import PredictMetrics from './PredictPage/PredictMetrics';
 import PredictPerformance from './PredictPage/PredictPerformance';
+import PredictBarChart from './PredictPage/PredictBarChart';
 import PredictFullscreenHUD from './PredictPage/PredictFullscreenHUD';
 
 const SHORTHAND_MAP = {
@@ -329,6 +330,20 @@ export default function PredictPage() {
             setActiveHorizon={setActiveHorizon}
             lsStart={lsStart}
             marsYear={marsYear}
+          />
+
+          <PredictBarChart
+              performanceData={performanceData}
+              compareConfigs={compareConfigs}
+              selectedCompareIds={selectedCompareIds}
+              activeMetric={activePerfMetric}
+              setActiveMetric={setActivePerfMetric}
+              plotTextColor={plotTextColor}
+              plotText60={plotText60}
+              plotGridColor={plotGridColor}
+              precision={precision}
+              handleFetchPerformance={handleFetchPerformance}
+              perfLoading={perfLoading}
           />
 
           <PredictPerformance
