@@ -125,13 +125,50 @@ const zh = {
 
   overview: {
     menuItems: {
-      globe3d:      '三维球体 3D GLOBE',
-      seasonal:     'Ls-纬度臭氧热力图',
-      correlation:  '关联矩阵 CORRELATION',
-      realtime:     '实时监控 REALTIME',
-      environment:  '环境参数 ENVIRONMENT',
-      prediction:   '预测引擎 PREDICTION',
-      distribution: '数据分布 DISTRIBUTION',
+      globe3d:      '三维臭氧球 3D GLOBE',
+      seasonal:     '季节臭氧场 SEASONAL OZONE FIELD',
+      correlation:  '关系研究 RELATION LAB',
+      realtime:     '昼夜变化 DIURNAL PROFILE',
+      environment:  '环境驱动 ENVIRONMENT DRIVERS',
+      prediction:   '模型能力 MODEL SKILL TRACKER',
+      distribution: '空间分布 SPATIAL DISTRIBUTION',
+      globe3d_desc: '查看当前 Ls 切片下的全球臭氧球面分布。',
+      seasonal_desc: '展示臭氧在纬度与季节上的整体结构。',
+      correlation_desc: '查看臭氧与环境变量的相关、共演化与时滞关系。',
+      realtime_desc: '分析不同纬带在当前季节下的臭氧昼夜变化。',
+      environment_desc: '总览温度、沙尘、辐射和风场的季节演变与纬带影响。',
+      prediction_desc: '比较基线模型与完整驱动模型的测试表现。',
+      distribution_desc: '统计当前臭氧切片的分布形态和纬向剖面。',
+    },
+    panel: {
+      globe3d: {
+        title: '三维臭氧球 3D GLOBE',
+        description: '查看当前 Ls 切片下的全球臭氧球面分布。',
+      },
+      seasonal: {
+        title: '季节臭氧场 SEASONAL OZONE FIELD',
+        description: '展示臭氧在纬度与季节上的整体结构，以及季节输运特征。',
+      },
+      correlation: {
+        title: '关系研究 RELATION LAB',
+        description: '从散点回归、共演化和时滞相关三个角度研究臭氧与环境变量的关系。',
+      },
+      realtime: {
+        title: '昼夜变化 DIURNAL PROFILE',
+        description: '按纬带查看当前火星季节下的臭氧昼夜振幅与峰值时刻。',
+      },
+      environment: {
+        title: '环境驱动 ENVIRONMENT DRIVERS',
+        description: '总览温度、沙尘、太阳辐射和风场的季节变化，以及不同纬带的主导驱动差异。',
+      },
+      prediction: {
+        title: '模型能力 MODEL SKILL TRACKER',
+        description: '比较 O3 基线模型与完整驱动模型在测试集上的整体表现。',
+      },
+      distribution: {
+        title: '空间分布 SPATIAL DISTRIBUTION',
+        description: '统计当前臭氧切片的数值分布、分位区间和纬向均值剖面。',
+      },
     },
     controls: {
       marsYear: '火星年 Mars Year',
