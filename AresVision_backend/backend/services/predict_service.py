@@ -305,6 +305,47 @@ class PredictOrchestratorService:
 
         return final_res
 
+    def get_shapley_values(self, metric: str = "r2") -> dict:
+        """
+        计算各特征的 Shapley 值。利用持久化缓存快速读取所有变量组合的性能指标。
+        """
+        from config import MCD_VARIABLES
+        import math
+        import itertools
+
+        n = len(MCD_VARIABLES)
+        shapley_values = {var: 0.0 for var in MCD_VARIABLES}
+
+        for var in MCD_VARIABLES:
+            other_vars = [v for v in MCD_VARIABLES if v != var]
+            # 遍历其他特征的所有可能子集 (大小从 0 到 n-1)
+            for r in range(n):
+                for subset in itertools.combinations(other_vars, r):
+                    subset_list = list(subset)
+                    subset_with_var = subset_list + [var]
+
+                    # 读取不包含该特征的子集性能
+                    perf_without = self.get_performance_curve(selected_variables=subset_list)
+                    # 读取包含该特征的子集性能
+                    perf_with = self.get_performance_curve(selected_variables=subset_with_var)
+
+                    metric_key = f"global_{metric}"
+                    val_without = perf_without.get(metric_key, 0.0)
+                    val_with = perf_with.get(metric_key, 0.0)
+
+                    marginal_contribution = val_with - val_without
+
+                    # 计算 Shapley 权重: |S|! * (n - |S| - 1)! / n!
+                    weight = math.factorial(r) * math.factorial(n - r - 1) / math.factorial(n)
+
+                    shapley_values[var] += weight * marginal_contribution
+        
+        sorted_shapley = dict(sorted(shapley_values.items(), key=lambda item: item[1], reverse=metric in ['r2', 'ssim']))
+        return {
+            "metric": metric,
+            "shapley_values": sorted_shapley
+        }
+
     async def ensure_performance_caches(self):
         """
         后台异步任务：检查并预生成所有 32 个变量组合的性能缓存。

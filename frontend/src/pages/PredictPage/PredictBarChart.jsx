@@ -32,6 +32,8 @@ export default function PredictBarChart({
   precision,
   handleFetchPerformance,
   perfLoading = false,
+  showShapley,
+  setShowShapley,
 }) {
   const t = useT();
 
@@ -141,6 +143,29 @@ export default function PredictBarChart({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <button
+            onClick={() => setShowShapley(!showShapley)}
+            style={{
+              padding: '8px 16px',
+              background: showShapley ? 'rgba(74,207,172,0.2)' : 'rgba(0,0,0,0.4)',
+              border: `1px solid ${showShapley ? 'rgba(74,207,172,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: 12,
+              color: showShapley ? '#4acfac' : 'rgba(255,255,255,0.5)',
+              fontSize: 10,
+              fontWeight: 800,
+              fontFamily: "'Orbitron', sans-serif",
+              cursor: 'pointer',
+              transition: 'all 0.3s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: showShapley ? '0 0 15px rgba(74,207,172,0.2)' : 'inset 0 0 10px rgba(0,0,0,0.5)',
+            }}
+          >
+            <span style={{ fontSize: 14 }}>{showShapley ? '👁️' : '🧠'}</span>
+            {t('predict.toggleShapley', 'SHAPLEY')}
+          </button>
+          
           <div style={{
             display: 'flex', background: 'rgba(0,0,0,0.4)',
             borderRadius: 14, padding: 4, border: `1px solid rgba(156,123,234,0.2)`,

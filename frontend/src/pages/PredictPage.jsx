@@ -13,6 +13,7 @@ import PredictDisplay from './PredictPage/PredictDisplay';
 import PredictMetrics from './PredictPage/PredictMetrics';
 import PredictPerformance from './PredictPage/PredictPerformance';
 import PredictBarChart from './PredictPage/PredictBarChart';
+import ShapleyImportanceChart from './PredictPage/ShapleyImportanceChart';
 import PredictFullscreenHUD from './PredictPage/PredictFullscreenHUD';
 
 const SHORTHAND_MAP = {
@@ -69,7 +70,8 @@ export default function PredictPage() {
   const [selectedCompareIds, setSelectedCompareIds] = useState([]);
   const [activeCompareId, setActiveCompareId] = useState(null);
   const [hiddenCompareIds, setHiddenCompareIds] = useState([]); // 新增：仅控制图表显隐的状态
-
+  const [showShapley, setShowShapley] = useState(false); // 控制特征贡献度的显示与隐藏
+  
   // --- Handlers ---
   const toggleVar = (id) => {
     setSelectedVars((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -344,7 +346,18 @@ export default function PredictPage() {
               precision={precision}
               handleFetchPerformance={handleFetchPerformance}
               perfLoading={perfLoading}
+              showShapley={showShapley}
+              setShowShapley={setShowShapley}
           />
+
+          {showShapley && (
+            <ShapleyImportanceChart
+              plotTextColor={plotTextColor}
+              plotGridColor={plotGridColor}
+              precision={precision}
+              onClose={() => setShowShapley(false)}
+            />
+          )}
 
           <PredictPerformance
             performanceData={performanceData}
