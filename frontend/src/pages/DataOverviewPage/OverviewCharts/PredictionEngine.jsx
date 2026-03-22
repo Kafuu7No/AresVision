@@ -1,119 +1,233 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useT } from '../../../i18n';
+import { useSettings } from '../../../contexts/SettingsContext';
+import { fetchPerformanceComparison } from '../../../services/api';
+import { fmtNum } from '../../../utils/fmt';
+
+const FULL_VARS = ['U_Wind', 'V_Wind', 'Temperature', 'Dust_Optical_Depth', 'Solar_Flux_DN'];
+
+function getCompareData(results) {
+  const keys = Object.keys(results || {});
+  const baselineKey = keys.find((key) => key === 'baseline') || keys[0];
+  const fullKey = keys.find((key) => key !== baselineKey) || keys[1];
+  return {
+    baseline: results?.[baselineKey],
+    full: results?.[fullKey],
+  };
+}
 
 export default function PredictionEngine() {
   const t = useT();
-  const [progress, setProgress] = useState(0);
-  const [predictions, setPredictions] = useState([]);
+  const { settings } = useSettings();
+  const isZh = settings.language !== 'en';
+  const copy = isZh ? {
+    loading: '正在加载模型表现...',
+    baselineLabel: '仅 O3',
+    fullLabel: '完整驱动',
+    baselineR2: '基线模型 R²',
+    fullR2: '完整模型 R²',
+    gain: '相对提升',
+    baselineDesc: '仅使用 O3 自回归',
+    fullDesc: 'O3 + 5 个环境驱动',
+    gainDesc: '全局 R² 提升',
+    rmse: 'RMSE 降幅',
+    ssim: 'SSIM 提升',
+    scope: '评估范围',
+    scopeValue: 'MY27 → MY28',
+    xTitle: '太阳黄经推进',
+    yTitle: '空间 R²',
+    my28Begins: 'MY28 开始',
+  } : {
+    loading: 'LOADING MODEL PERFORMANCE...',
+    baselineLabel: 'O3 Only',
+    fullLabel: 'Full Forcing',
+    baselineR2: 'BASELINE R²',
+    fullR2: 'FULL MODEL R²',
+    gain: 'GAIN OVER BASELINE',
+    baselineDesc: 'O3 autoregressive only',
+    fullDesc: 'O3 + 5 environmental forcings',
+    gainDesc: 'global R² improvement',
+    rmse: 'RMSE reduction',
+    ssim: 'SSIM gain',
+    scope: 'Evaluation scope',
+    scopeValue: 'MY27 → MY28',
+    xTitle: 'Solar longitude progression',
+    yTitle: 'Spatial R²',
+    my28Begins: 'MY28 begins',
+  };
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setProgress(prev => (prev + 1) % 100);
+    let active = true;
+    setLoading(true);
+    fetchPerformanceComparison([[], FULL_VARS])
+      .then((res) => {
+        if (active) {
+          setData(getCompareData(res.results));
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
-      if (predictions.length < 10) {
-        setPredictions(prev => [...prev, {
-          time: Date.now(),
-          accuracy: 85 + Math.random() * 10,
-          confidence: 75 + Math.random() * 20
-        }]);
-      }
-    }, 200);
+  const improvement = useMemo(() => {
+    if (!data?.baseline || !data?.full) return null;
+    return {
+      r2: data.full.global_r2 - data.baseline.global_r2,
+      rmse: data.baseline.global_rmse - data.full.global_rmse,
+      ssim: data.full.global_ssim - data.baseline.global_ssim,
+    };
+  }, [data]);
 
-    return () => clearInterval(interval);
-  }, [predictions.length]);
+  if (loading) {
+    return (
+      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ color: C.ice, fontFamily: "'Orbitron', sans-serif", display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 16,
+            height: 16,
+            border: `2px solid rgba(199,91,57,0.2)`,
+            borderTop: `2px solid ${C.mars}`,
+            borderRadius: '50%',
+            animation: 'spin-slow 1s linear infinite',
+          }} />
+          {copy.loading}
+        </div>
+      </div>
+    );
+  }
+
+  if (!data?.baseline || !data?.full) {
+    return <div style={{ color: C.mars, padding: 20 }}>{t('overview.charts.noData')}</div>;
+  }
 
   return (
-    <div style={{ width: '100%', height: '100%', padding: '20px' }}>
-      {/* 引擎状态 */}
-      <div style={{
-        background: 'rgba(255,255,255,0.02)', borderRadius: '12px',
-        padding: '24px', marginBottom: '20px',
-        border: `1px solid ${C.border}`
-      }}>
-        <h4 style={{
-          color: C.ice, fontFamily: "'Orbitron', sans-serif", fontSize: '16px',
-          textAlign: 'center', marginBottom: '20px', letterSpacing: 1
-        }}>
-          {t('overview.charts.engineTitle')}
-        </h4>
-
-        <div style={{ marginBottom: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span style={{ color: C.ice60, fontSize: '13px' }}>{t('overview.charts.processingProgress')}</span>
-            <span style={{ color: C.mars, fontSize: '13px', fontWeight: 'bold' }}>{progress}%</span>
+    <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateRows: 'auto auto minmax(320px, 1fr)', gap: 16, overflow: 'auto', paddingRight: 4 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(74,158,255,0.08)', border: '1px solid rgba(74,158,255,0.18)' }}>
+          <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.baselineR2}</div>
+          <div style={{ marginTop: 6, color: C.blue, fontSize: 20, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+            {fmtNum(data.baseline.global_r2, 4)}
           </div>
-          <div style={{
-            width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)',
-            borderRadius: '3px', overflow: 'hidden'
-          }}>
-            <div style={{
-              width: `${progress}%`, height: '100%',
-              background: `linear-gradient(90deg, ${C.blue}, ${C.mars})`,
-              transition: 'width 0.2s ease'
-            }} />
-          </div>
+          <div style={{ color: C.ice30, fontSize: 11 }}>{copy.baselineDesc}</div>
         </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ color: C.mars, fontSize: '20px', fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif" }}>7</div>
-            <div style={{ color: C.ice60, fontSize: '11px', marginTop: 4 }}>{t('overview.charts.inputChannels')}</div>
+        <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(199,91,57,0.08)', border: '1px solid rgba(199,91,57,0.18)' }}>
+          <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.fullR2}</div>
+          <div style={{ marginTop: 6, color: C.mars, fontSize: 20, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+            {fmtNum(data.full.global_r2, 4)}
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ color: C.blue, fontSize: '20px', fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif" }}>3</div>
-            <div style={{ color: C.ice60, fontSize: '11px', marginTop: 4 }}>{t('overview.charts.timeWindow')}</div>
+          <div style={{ color: C.ice30, fontSize: 11 }}>{copy.fullDesc}</div>
+        </div>
+        <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(74,207,172,0.08)', border: '1px solid rgba(74,207,172,0.18)' }}>
+          <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.gain}</div>
+          <div style={{ marginTop: 6, color: '#4acfac', fontSize: 20, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+            +{fmtNum(improvement?.r2 ?? 0, 4)}
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ color: C.mars, fontSize: '20px', fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif" }}>36×72</div>
-            <div style={{ color: C.ice60, fontSize: '11px', marginTop: 4 }}>{t('overview.charts.spatialGrid')}</div>
-          </div>
+          <div style={{ color: C.ice30, fontSize: 11 }}>{copy.gainDesc}</div>
         </div>
       </div>
 
-      {/* 预测结果 */}
-      <div style={{
-        background: 'rgba(255,255,255,0.02)', borderRadius: '12px',
-        padding: '24px', height: 'calc(100% - 220px)',
-        overflow: 'hidden', border: `1px solid ${C.border}`
-      }}>
-        <h5 style={{
-          color: C.ice, fontFamily: "'Orbitron', sans-serif", fontSize: '14px',
-          marginBottom: '16px', letterSpacing: 1
-        }}>
-          {t('overview.charts.realtimeResult')}
-        </h5>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}` }}>
+          <div style={{ color: C.ice30, fontSize: 10 }}>{copy.rmse}</div>
+          <div style={{ marginTop: 4, color: C.ice, fontSize: 16, fontWeight: 700 }}>{fmtNum(improvement?.rmse ?? 0, 4)}</div>
+        </div>
+        <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}` }}>
+          <div style={{ color: C.ice30, fontSize: 10 }}>{copy.ssim}</div>
+          <div style={{ marginTop: 4, color: C.ice, fontSize: 16, fontWeight: 700 }}>{fmtNum(improvement?.ssim ?? 0, 4)}</div>
+        </div>
+        <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}` }}>
+          <div style={{ color: C.ice30, fontSize: 10 }}>{copy.scope}</div>
+          <div style={{ marginTop: 4, color: C.ice, fontSize: 16, fontWeight: 700 }}>{copy.scopeValue}</div>
+        </div>
+      </div>
 
-        <svg width="100%" height="200" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid meet">
-          <defs>
-            <linearGradient id="predGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={C.blue} />
-              <stop offset="100%" stopColor="transparent" />
-            </linearGradient>
-            <filter id="predGlow">
-              <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-              <feMerge>
-                <feMergeNode in="coloredBlur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-
-          {predictions.length > 1 && (
-            <>
-              <polyline
-                points={predictions.map((p, i) => `${i * 40 + 20},${180 - p.accuracy * 1.5}`).join(' ')}
-                fill="none" stroke={C.blue} strokeWidth="3" filter="url(#predGlow)"
-              />
-              <path
-                d={`M20,${180 - predictions[0].accuracy * 1.5} ${predictions.map((p, i) =>
-                  `L${i * 40 + 20},${180 - p.accuracy * 1.5}`
-                ).join(' ')} L${(predictions.length - 1) * 40 + 20},180 L20,180 Z`}
-                fill="url(#predGrad)" opacity="0.3"
-              />
-            </>
-          )}
-        </svg>
+      <div style={{ minHeight: 320 }}>
+        <Plot
+          data={[
+            {
+              x: data.baseline.items.map((item) => item.ls + (item.my === 28 ? 360 : 0)),
+              y: data.baseline.items.map((item) => item.r2),
+              type: 'scatter',
+              mode: 'lines',
+              name: copy.baselineLabel,
+              line: { color: C.blue, width: 2.5, shape: 'spline' },
+              hovertemplate: `${copy.baselineLabel}<br>MY%{text} · Ls %{customdata:.1f}°<br>R² %{y:.4f}<extra></extra>`,
+              text: data.baseline.items.map((item) => item.my),
+              customdata: data.baseline.items.map((item) => item.ls),
+            },
+            {
+              x: data.full.items.map((item) => item.ls + (item.my === 28 ? 360 : 0)),
+              y: data.full.items.map((item) => item.r2),
+              type: 'scatter',
+              mode: 'lines',
+              name: copy.fullLabel,
+              line: { color: C.mars, width: 3, shape: 'spline' },
+              hovertemplate: `${copy.fullLabel}<br>MY%{text} · Ls %{customdata:.1f}°<br>R² %{y:.4f}<extra></extra>`,
+              text: data.full.items.map((item) => item.my),
+              customdata: data.full.items.map((item) => item.ls),
+            },
+          ]}
+          layout={{
+            autosize: true,
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            margin: { l: 58, r: 24, t: 24, b: 52 },
+            xaxis: {
+              title: copy.xTitle,
+              gridcolor: 'rgba(255,255,255,0.06)',
+              tickfont: { color: C.ice60, size: 10 },
+              titlefont: { color: C.ice30, size: 11 },
+              automargin: true,
+            },
+            yaxis: {
+              title: copy.yTitle,
+              gridcolor: 'rgba(255,255,255,0.06)',
+              tickfont: { color: C.ice60, size: 10 },
+              titlefont: { color: C.ice30, size: 11 },
+              automargin: true,
+            },
+            legend: {
+              orientation: 'h',
+              y: 1.08,
+              font: { color: C.ice60, size: 11 },
+            },
+            shapes: [
+              {
+                type: 'line',
+                x0: 360,
+                x1: 360,
+                y0: 0,
+                y1: 1,
+                yref: 'paper',
+                line: { color: 'rgba(255,255,255,0.16)', width: 1, dash: 'dash' },
+              },
+            ],
+            annotations: [
+              {
+                x: 360,
+                y: 1.06,
+                xref: 'x',
+                yref: 'paper',
+                text: copy.my28Begins,
+                showarrow: false,
+                font: { color: C.ice30, size: 10 },
+              },
+            ],
+          }}
+          config={{ displayModeBar: false, responsive: true }}
+          useResizeHandler
+          style={{ width: '100%', height: '100%' }}
+        />
       </div>
     </div>
   );

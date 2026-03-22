@@ -163,7 +163,12 @@ const DataOverviewPageContent = () => {
 
       <SidebarMenu selectedItem={selectedItem} onItemSelect={setSelectedItem} />
 
-      <DetailPanel selectedItem={selectedItem} marsYear={marsYear} />
+      <DetailPanel
+        selectedItem={selectedItem}
+        marsYear={marsYear}
+        lsValue={lsValue}
+        ozoneData={ozoneData}
+      />
 
       {is3DMode && (
         <Globe3DControls
