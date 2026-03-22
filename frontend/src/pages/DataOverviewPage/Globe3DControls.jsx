@@ -23,6 +23,18 @@ export default function Globe3DControls({
   const t = useT();
   const { settings } = useSettings();
   const ozoneUnit = settings.units.ozone;
+  const isZh = settings.language !== 'en';
+  const copy = isZh ? {
+    panelTitle: '3D 球体控制',
+    play: '▶ 播放',
+    pause: '⏸ 暂停',
+    statistics: '数据统计',
+  } : {
+    panelTitle: '3D GLOBE CONTROL',
+    play: '▶ PLAY',
+    pause: '⏸ PAUSE',
+    statistics: 'DATA STATISTICS',
+  };
   const seasonName =
     lsValue < 90  ? t('common.season.spring') :
     lsValue < 180 ? t('common.season.summer') :
@@ -42,7 +54,7 @@ export default function Globe3DControls({
         marginBottom: 16, paddingBottom: '12px',
         borderBottom: `1px solid ${C.border}`
       }}>
-        🌍 3D GLOBE CONTROL
+        🌍 {copy.panelTitle}
       </div>
 
       {/* Mars Year 选择 */}
@@ -94,7 +106,7 @@ export default function Globe3DControls({
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
-          {playing ? '⏸ PAUSE' : '▶ PLAY'}
+          {playing ? copy.pause : copy.play}
         </button>
         <button
           onClick={() => { onLsChange(0); }}
@@ -234,7 +246,7 @@ export default function Globe3DControls({
         background: 'rgba(255,255,255,0.02)', borderRadius: '12px',
         border: `1px solid ${C.border}`
       }}>
-        <div style={{ color: C.ice30, fontSize: '10px', fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, marginBottom: '10px' }}>DATA STATISTICS</div>
+        <div style={{ color: C.ice30, fontSize: '10px', fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, marginBottom: '10px' }}>{copy.statistics}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
           <div style={{ textAlign: 'center', padding: '10px 6px', background: 'rgba(199,91,57,0.08)', borderRadius: '8px' }}>
             <div style={{ color: C.mars, fontSize: '18px', fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif" }}>
