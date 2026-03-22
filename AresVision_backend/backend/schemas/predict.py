@@ -89,3 +89,23 @@ class PerformanceCompareRequest(BaseModel):
 class PerformanceCompareResponse(BaseModel):
     # key 为模型后缀或变量标识，val 为对应的性能数据
     results: dict[str, PerformanceResponse]
+
+
+class ScatterData(BaseModel):
+    trues: list[float]
+    preds: list[float]
+    density: list[float]
+
+
+class HistogramData(BaseModel):
+    bin_edges: list[float]
+    counts: list[int]
+
+
+class ErrorDistributionResponse(BaseModel):
+    scatter: ScatterData
+    hist_trues: HistogramData
+    hist_preds: HistogramData
+    hist_errors: HistogramData
+    mae: float
+    rmse: float

@@ -4,7 +4,7 @@ import { useT } from '../i18n';
 import { useSettings } from '../contexts/SettingsContext';
 import SectionTitle from '../components/SectionTitle';
 
-import { runPrediction, fetchPredictMetrics, fetchPerformanceCurve, fetchPerformanceComparison } from '../services/api';
+import { runPrediction, fetchPredictMetrics, fetchPerformanceCurve, fetchPerformanceComparison, fetchErrorDistribution } from '../services/api';
 
 // Sub-components
 import { VARIABLE_DEFS, VIEW_MODE_IDS, TRIPTYCH_PANEL_DEFS } from './PredictPage/PredictComponents';
@@ -15,6 +15,7 @@ import PredictPerformance from './PredictPage/PredictPerformance';
 import PredictBarChart from './PredictPage/PredictBarChart';
 import ShapleyImportanceChart from './PredictPage/ShapleyImportanceChart';
 import PredictFullscreenHUD from './PredictPage/PredictFullscreenHUD';
+import ErrorDistributionChart from './PredictPage/ErrorDistributionChart';
 
 const SHORTHAND_MAP = {
   'Temperature': 'T',
@@ -58,6 +59,7 @@ export default function PredictPage() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [metrics, setMetrics] = useState(null);
+  const [errorDistData, setErrorDistData] = useState(null);
   const [error, setError] = useState(null);
 
   const [fullscreen3D, setFullscreen3D] = useState(null); // { fieldData, colorMode }
@@ -71,7 +73,7 @@ export default function PredictPage() {
   const [activeCompareId, setActiveCompareId] = useState(null);
   const [hiddenCompareIds, setHiddenCompareIds] = useState([]); // 新增：仅控制图表显隐的状态
   const [showShapley, setShowShapley] = useState(false); // 控制特征贡献度的显示与隐藏
-  
+
   // --- Handlers ---
   const toggleVar = (id) => {
     setSelectedVars((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -82,6 +84,7 @@ export default function PredictPage() {
     setError(null);
     setResults(null);
     setMetrics(null);
+    setErrorDistData(null);
 
     const body = {
       selected_variables: selectedVars,
@@ -91,12 +94,14 @@ export default function PredictPage() {
     };
 
     try {
-      const [predResult, metricsResult] = await Promise.all([
+      const [predResult, metricsResult, errorDistResult] = await Promise.all([
         runPrediction(body),
         fetchPredictMetrics(body),
+        fetchErrorDistribution(selectedVars)
       ]);
       setResults(predResult);
       setMetrics(metricsResult);
+      setErrorDistData(errorDistResult);
       setActiveHorizon(0);
     } catch (e) {
       setError(e.message || t('predict.errorPrefix'));
@@ -334,30 +339,24 @@ export default function PredictPage() {
             marsYear={marsYear}
           />
 
-          <PredictBarChart
-              performanceData={performanceData}
-              compareConfigs={compareConfigs}
-              selectedCompareIds={selectedCompareIds}
-              activeMetric={activePerfMetric}
-              setActiveMetric={setActivePerfMetric}
-              plotTextColor={plotTextColor}
-              plotText60={plotText60}
-              plotGridColor={plotGridColor}
-              precision={precision}
-              handleFetchPerformance={handleFetchPerformance}
-              perfLoading={perfLoading}
-              showShapley={showShapley}
-              setShowShapley={setShowShapley}
+          <ErrorDistributionChart
+            data={errorDistData}
+            loading={loading}
           />
 
-          {showShapley && (
-            <ShapleyImportanceChart
-              plotTextColor={plotTextColor}
-              plotGridColor={plotGridColor}
-              precision={precision}
-              onClose={() => setShowShapley(false)}
-            />
-          )}
+          <PredictBarChart
+            performanceData={performanceData}
+            compareConfigs={compareConfigs}
+            selectedCompareIds={selectedCompareIds}
+            activeMetric={activePerfMetric}
+            setActiveMetric={setActivePerfMetric}
+            plotTextColor={plotTextColor}
+            plotText60={plotText60}
+            plotGridColor={plotGridColor}
+            precision={precision}
+            handleFetchPerformance={handleFetchPerformance}
+            perfLoading={perfLoading}
+          />
 
           <PredictPerformance
             performanceData={performanceData}

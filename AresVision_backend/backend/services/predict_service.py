@@ -346,12 +346,155 @@ class PredictOrchestratorService:
             "shapley_values": sorted_shapley
         }
 
+    def get_error_distribution(self, selected_variables: list[str]) -> dict:
+        """
+        获取模型在测试集上整体的预测误差分布、KDE密度及直方图。
+        引入文件持久化缓存以优化计算效率。
+        """
+        from scipy.stats import gaussian_kde
+        from config import PERF_CACHE_DIR
+        import hashlib
+        import json
+        
+        perf_key_data = {
+            "vars": sorted(selected_variables),
+            "data_mtime": self.ml_data_prep.processed_data_mtime if hasattr(self.ml_data_prep, 'processed_data_mtime') else "default"
+        }
+        perf_hash = hashlib.md5(json.dumps(perf_key_data).encode()).hexdigest()
+        cache_file = PERF_CACHE_DIR / f"errdist_{perf_hash}.json"
+
+        if cache_file.exists():
+            try:
+                with open(cache_file, 'r', encoding='utf-8') as f:
+                    logger.info(f"命中持久化误差分布缓存: {cache_file.name}")
+                    return json.load(f)
+            except Exception as e:
+                logger.warning(f"读取误差分布缓存失败: {e}")
+
+        if self.ml_data_prep.processed_data is None:
+            logger.warning("未加载预处理数据，无法生成误差分布")
+            return self._empty_error_distribution()
+            
+        data = self.ml_data_prep.processed_data
+        ls_array = data['om_ls_raw']
+        total_len = len(ls_array)
+        split_idx = int(0.8 * total_len)
+        
+        diffs = np.diff(ls_array)
+        split_indices = np.where(diffs < -180)[0]
+        my28_start = split_indices[0] + 1 if len(split_indices) > 0 else total_len
+
+        all_truths = []
+        all_preds = []
+
+        test_samples_count = total_len - split_idx
+        # 和性能曲线一样的采样密度
+        step = max(1, test_samples_count // 150) 
+        
+        logger.info(f"正在生成全测试集误差分布 (采样步长: {step})")
+        
+        for i in range(split_idx, total_len - 3, step):
+            ls = float(ls_array[i])
+            my = 27 if i < my28_start else 28
+            try:
+                # 只获取当前时间的预测结果
+                res = self.predict(my, ls, selected_variables, horizon=3)
+                for h_idx in range(res["horizon"]):
+                    f_truth = np.array(res["ground_truth"][h_idx]["field"]).flatten()
+                    f_pred = np.array(res["prediction"][h_idx]["field"]).flatten()
+                    valid = ~np.isnan(f_truth)
+                    all_truths.append(f_truth[valid])
+                    all_preds.append(f_pred[valid])
+            except Exception as e:
+                pass
+
+        if not all_truths:
+            return self._empty_error_distribution()
+
+        t_clean = np.concatenate(all_truths)
+        p_clean = np.concatenate(all_preds)
+        
+        valid_mask = np.isfinite(p_clean) & np.isfinite(t_clean)
+        p_clean = p_clean[valid_mask]
+        t_clean = t_clean[valid_mask]
+        
+        if len(p_clean) == 0:
+            return self._empty_error_distribution()
+
+        errors = p_clean - t_clean
+        mae = float(np.mean(np.abs(errors)))
+        rmse = float(np.sqrt(np.mean(errors**2)))
+        
+        num_points = min(8000, len(p_clean))
+        if num_points > 0:
+            indices = np.random.choice(len(p_clean), num_points, replace=False)
+            p_sample = p_clean[indices]
+            t_sample = t_clean[indices]
+            
+            noise_p = np.random.normal(0, 1e-6, len(p_sample))
+            noise_t = np.random.normal(0, 1e-6, len(t_sample))
+            xy = np.vstack([t_sample + noise_t, p_sample + noise_p])
+            
+            try:
+                kde = gaussian_kde(xy)(xy)
+            except Exception as e:
+                kde = np.ones_like(p_sample)
+        else:
+            p_sample, t_sample, kde = np.array([]), np.array([]), np.array([])
+            
+        counts_t, edges_t = np.histogram(t_clean, bins=50)
+        counts_p, edges_p = np.histogram(p_clean, bins=50)
+        counts_e, edges_e = np.histogram(errors, bins=50)
+        
+        final_res = {
+            "scatter": {
+                "trues": t_sample.tolist(),
+                "preds": p_sample.tolist(),
+                "density": kde.tolist()
+            },
+            "hist_trues": {
+                "bin_edges": edges_t.tolist(),
+                "counts": counts_t.tolist()
+            },
+            "hist_preds": {
+                "bin_edges": edges_p.tolist(),
+                "counts": counts_p.tolist()
+            },
+            "hist_errors": {
+                "bin_edges": edges_e.tolist(),
+                "counts": counts_e.tolist()
+            },
+            "mae": mae,
+            "rmse": rmse
+        }
+
+        try:
+            if not PERF_CACHE_DIR.exists():
+                PERF_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            with open(cache_file, 'w', encoding='utf-8') as f:
+                json.dump(final_res, f, ensure_ascii=False, indent=2)
+                logger.info(f"已保存全测试集误差分布结果至持久化缓存: {cache_file.name}")
+        except Exception as e:
+            logger.warning(f"保存误差分布缓存失败: {e}")
+
+        return final_res
+
+    def _empty_error_distribution(self):
+        return {
+            "scatter": {"trues": [], "preds": [], "density": []},
+            "hist_trues": {"bin_edges": [], "counts": []},
+            "hist_preds": {"bin_edges": [], "counts": []},
+            "hist_errors": {"bin_edges": [], "counts": []},
+            "mae": 0.0,
+            "rmse": 0.0
+        }
+
     async def ensure_performance_caches(self):
         """
-        后台异步任务：检查并预生成所有 32 个变量组合的性能缓存。
+        后台异步任务：检查并预生成所有 32 个变量组合的性能和误差分布缓存。
         """
         from config import MCD_VARIABLES
-        logger.info("开始检查 32 个变量组合的性能分析缓存...")
+        logger.info("开始检查 32 个变量组合的性能和误差分布缓存...")
         
         # 生成所有组合 (C5_0 到 C5_5)
         all_combos = []
@@ -363,30 +506,37 @@ class PredictOrchestratorService:
         count_skipped = 0
         
         for variables in all_combos:
-            # 构造缓存文件名以进行预检查 (逻辑同 get_performance_curve)
+            # 构造缓存文件名以进行预检查
             from config import PERF_CACHE_DIR
             perf_key_data = {
                 "vars": sorted(variables),
                 "data_mtime": self.ml_data_prep.processed_data_mtime if hasattr(self.ml_data_prep, 'processed_data_mtime') else "default"
             }
             perf_hash = hashlib.md5(json.dumps(perf_key_data).encode()).hexdigest()
-            cache_file = PERF_CACHE_DIR / f"perf_{perf_hash}.json"
+            perf_cache_file = PERF_CACHE_DIR / f"perf_{perf_hash}.json"
+            errdist_cache_file = PERF_CACHE_DIR / f"errdist_{perf_hash}.json"
             
-            if cache_file.exists():
+            needs_perf = not perf_cache_file.exists()
+            needs_errdist = not errdist_cache_file.exists()
+            
+            if not needs_perf and not needs_errdist:
                 count_skipped += 1
                 continue
                 
             # 缓存缺失，执行生成 (同步执行以防并发冲突，但此函数由后台 task 调用)
             try:
-                logger.info(f"正在后台预生成性能缓存: {variables}")
-                self.get_performance_curve(variables)
+                logger.info(f"正在后台预生成持久化缓存: {variables}")
+                if needs_perf:
+                    self.get_performance_curve(variables)
+                if needs_errdist:
+                    self.get_error_distribution(variables)
                 count_generated += 1
                 # 稍微出让 CPU 权限，避免完全阻塞事件循环
                 await asyncio.sleep(0.1)
             except Exception as e:
                 logger.warning(f"预生成 {variables} 缓存失败: {e}")
                 
-        logger.info(f"性能缓存检查完成: 新生成 {count_generated} 个, 已存在 {count_skipped} 个 (总计 {len(all_combos)} 个)")
+        logger.info(f"后台缓存检查完成: 新生成 {count_generated} 项组, 已存在 {count_skipped} 项组 (总计组合 {len(all_combos)} 个)")
 
 
     def _fields_to_dicts(
