@@ -182,17 +182,17 @@ export default function PredictSidebar({
       <GlowCard style={{ padding: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
-            MODEL MATRIX
+            {t('predict.matrix.title', 'MODEL MATRIX')}
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button 
               onClick={handleSelectAll}
               style={{ padding: '4px 10px', background: 'rgba(74,207,172,0.15)', border: `1px solid #4acfac50`, borderRadius: 6, color: '#4acfac', fontSize: 10, fontWeight: 800, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
-            >ALL</button>
+            >{t('predict.matrix.selectAll', 'ALL')}</button>
             <button 
               onClick={handleSeed32}
               style={{ padding: '4px 10px', background: 'rgba(156,123,234,0.15)', border: `1px solid #9c7bea50`, borderRadius: 6, color: '#9c7bea', fontSize: 10, fontWeight: 800, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
-            >SEED 32</button>
+            >{t('predict.matrix.seed32', 'SEED 32')}</button>
           </div>
         </div>
 
@@ -250,7 +250,7 @@ export default function PredictSidebar({
           ))}
           {compareConfigs.length === 0 && (
             <div style={{ padding: 20, textAlign: 'center', fontSize: 11, color: C.ice30, opacity: 0.5 }}>
-              No models in matrix. Click SEED 32 to start.
+              {t('predict.matrix.emptyHint', 'No models in matrix. Click SEED 32 to start.')}
             </div>
           )}
         </div>
@@ -274,14 +274,14 @@ export default function PredictSidebar({
             }}
             style={{ flex: 1, padding: '10px 0', background: 'rgba(255,255,255,0.03)', border: `1px dashed ${C.border}`, borderRadius: 10, color: C.ice60, fontSize: 11, fontWeight: 800, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
           >
-            + ADD
+            {t('predict.matrix.addBtn', '+ ADD')}
           </button>
           <button
             onClick={handleFuseModels}
             disabled={selectedCompareIds.length < 2}
             style={{ flex: 2, padding: '10px 0', background: selectedCompareIds.length < 2 ? 'rgba(74,207,172,0.05)' : 'rgba(156,123,234,0.15)', border: `1px solid ${selectedCompareIds.length < 2 ? 'rgba(74,207,172,0.1)' : '#9c7bea'}`, borderRadius: 10, color: selectedCompareIds.length < 2 ? 'rgba(74,207,172,0.4)' : '#9c7bea', fontSize: 11, fontWeight: 800, cursor: selectedCompareIds.length < 2 ? 'not-allowed' : 'pointer', fontFamily: "'Orbitron', sans-serif" }}
           >
-            FUSE
+            {t('predict.matrix.fuseBtn', 'FUSE')}
           </button>
         </div>
       </GlowCard>

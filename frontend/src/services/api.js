@@ -159,6 +159,12 @@ export async function fetchDiurnal(marsYear = 27, ls = 90, latBand = 'Equatorial
   return res.json();
 }
 
+export async function fetchShapleyValues(metric = 'r2') {
+  const res = await fetch(`${BASE}/predict/shapley?metric=${metric}`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 export async function aiChat(question, context = null) {
   const res = await fetch(`${BASE}/ai/chat`, {
     method: 'POST',

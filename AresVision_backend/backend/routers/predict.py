@@ -147,6 +147,20 @@ async def get_performance_comparison(
         raise HTTPException(status_code=500, detail=f"对比数据生成失败: {e}")
 
 
+@router.get("/shapley")
+async def get_shapley_values(
+    request: Request,
+    metric: str = Query("r2", description="性能指标 (r2, rmse, mae, ssim)"),
+):
+    """获取所有气象特征的 Shapley 贡献值"""
+    try:
+        ps = _get_predict_service(request)
+        return ps.get_shapley_values(metric)
+    except Exception as e:
+        logger.error(f"Shapley计算失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ─── 昼夜变化 ───
 
 @router.get("/diurnal", response_model=DiurnalResponse)
