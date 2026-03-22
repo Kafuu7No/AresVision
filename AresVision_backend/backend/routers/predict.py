@@ -10,6 +10,7 @@ from schemas.predict import (
     PredictRequest, PredictResponse,
     EvalMetricsResponse, AblationResponse, DiurnalResponse,
     PerformanceResponse, PerformanceCompareRequest, PerformanceCompareResponse,
+    ErrorDistributionResponse,
 )
 from config import DEFAULT_MARS_YEAR, LATITUDE_BANDS
 
@@ -194,3 +195,20 @@ async def get_model_info(request: Request):
         "model_loaded": inference.model is not None,
         "available_bands": [b["name"] for b in LATITUDE_BANDS],
     }
+
+
+@router.get("/error-distribution", response_model=ErrorDistributionResponse)
+async def get_error_distribution(
+    request: Request,
+    vars: str = Query("Temperature,Dust_Optical_Depth,Solar_Flux_DN,U_Wind,V_Wind"),
+):
+    """获取整个测试集上的误差分布、核密度散点及柱状图数据"""
+    try:
+        ps = _get_predict_service(request)
+        selected_variables = [v.strip() for v in vars.split(",") if v.strip()]
+        return ps.get_error_distribution(
+            selected_variables=selected_variables
+        )
+    except Exception as e:
+        logger.error(f"误差分布计算失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
