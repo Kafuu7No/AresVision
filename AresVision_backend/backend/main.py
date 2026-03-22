@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 
-from config import API_PREFIX
+from config import API_PREFIX, USER_UPLOADS_DIR, PENDING_REVIEW_DIR
 from database.init_db import init_database
 from database.engine import async_session_maker
 from services.data_service import DataService
@@ -21,11 +21,13 @@ from services.analysis_service import AnalysisService
 from services.predict_data_service import PredictDataService
 from services.predict_service import PredictOrchestratorService
 from services.ai_service import AIService
+from services.upload_service import UploadService
 from core.analysis_transforms import AnalysisTransforms
 from core.predict_transforms import PredictTransforms
 from core.predict_inference import PredictInference
 from routers import analysis, predict, ai
 from routers import auth
+from routers import upload as upload_router_module
 
 # ─── 日志配置 ───
 logging.basicConfig(
@@ -52,17 +54,25 @@ async def lifespan(app: FastAPI):
     t0 = time.time()
 
     # 0. 数据库初始化（建表 + 默认管理员账号）
-    logger.info("[0/4] 初始化数据库...")
+    logger.info("[0/5] 初始化数据库...")
     await init_database()
     app.state.db_session = async_session_maker
 
+    # 确保上传目录存在
+    USER_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    PENDING_REVIEW_DIR.mkdir(parents=True, exist_ok=True)
+
     # 1. 基础服务：数据加载
-    logger.info("[1/4] 初始化基础数据加载服务...")
+    logger.info("[1/5] 初始化基础数据加载服务...")
     data_service = DataService()
     app.state.data_service = data_service
 
+    # 上传服务（依赖 data_service）
+    upload_service = UploadService(data_service)
+    app.state.upload_service = upload_service
+
     # 2. 领域服务：可视化与 ML 数据准备
-    logger.info("[2/5] 初始化视图与 ML 准备服务...")
+    logger.info("[2/5] 初始化分析与 ML 准备服务...")
     analysis_service = AnalysisService(data_service)
     app.state.analysis_service = analysis_service
 
@@ -142,10 +152,11 @@ app.add_middleware(
 
 # ─── 注册路由 ───
 
-app.include_router(analysis.router, prefix=API_PREFIX)
-app.include_router(predict.router, prefix=API_PREFIX)
-app.include_router(ai.router, prefix=API_PREFIX)
-app.include_router(auth.router, prefix=API_PREFIX)
+app.include_router(analysis.router,                  prefix=API_PREFIX)
+app.include_router(predict.router,                   prefix=API_PREFIX)
+app.include_router(ai.router,                        prefix=API_PREFIX)
+app.include_router(auth.router,                      prefix=API_PREFIX)
+app.include_router(upload_router_module.router,      prefix=API_PREFIX)
 
 
 # ─── 健康检查 ───

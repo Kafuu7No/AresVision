@@ -89,6 +89,12 @@ AI_API_URL = os.getenv("AI_API_URL", "https://generativelanguage.googleapis.com/
 AI_MODEL_NAME = os.getenv("AI_MODEL_NAME", "gemini-1.5-flash")
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 
+# ─── 上传 ───
+USER_UPLOADS_DIR   = DATA_DIR / "user_uploads"
+PENDING_REVIEW_DIR = DATA_DIR / "pending_review"
+MAX_UPLOAD_SIZE_MB = 200
+ALLOWED_NC_EXTENSIONS = [".nc", ".nc4", ".netcdf"]
+
 # ─── 数据库 ───
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
