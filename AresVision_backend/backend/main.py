@@ -28,6 +28,7 @@ from core.predict_inference import PredictInference
 from routers import analysis, predict, ai
 from routers import auth
 from routers import upload as upload_router_module
+from routers import notification as notification_router_module
 
 # ─── 日志配置 ───
 logging.basicConfig(
@@ -156,7 +157,8 @@ app.include_router(analysis.router,                  prefix=API_PREFIX)
 app.include_router(predict.router,                   prefix=API_PREFIX)
 app.include_router(ai.router,                        prefix=API_PREFIX)
 app.include_router(auth.router,                      prefix=API_PREFIX)
-app.include_router(upload_router_module.router,      prefix=API_PREFIX)
+app.include_router(upload_router_module.router,        prefix=API_PREFIX)
+app.include_router(notification_router_module.router,  prefix=API_PREFIX)
 
 
 # ─── 健康检查 ───

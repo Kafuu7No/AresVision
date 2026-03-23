@@ -250,6 +250,51 @@ export async function reviewUpload(uploadId, action, reason = '') {
   return res.json();
 }
 
+export async function getApprovedDatasets() {
+  const res = await authedFetch(`${BASE}/upload/approved-datasets`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function revokeDataset(uploadId) {
+  const res = await authedFetch(`${BASE}/upload/${uploadId}/revoke`, { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getNotifications() {
+  const res = await authedFetch(`${BASE}/notification/list`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getUnreadCount() {
+  const res = await authedFetch(`${BASE}/notification/unread-count`);
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+}
+
+export async function markNotificationRead(id) {
+  const res = await authedFetch(`${BASE}/notification/mark-read/${id}`, { method: 'POST' });
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+}
+
+export async function markAllNotificationsRead() {
+  const res = await authedFetch(`${BASE}/notification/mark-all-read`, { method: 'POST' });
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+}
+
 export async function aiChat(question, context = null) {
   const res = await fetch(`${BASE}/ai/chat`, {
     method: 'POST',

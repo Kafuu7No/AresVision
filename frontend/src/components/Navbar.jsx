@@ -6,7 +6,8 @@ import { useSettings } from '../contexts/SettingsContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmDialog from './ConfirmDialog';
 import ChangePasswordModal from './ChangePasswordModal';
-import { getPendingReviews } from '../services/api';
+import NotificationPanel from './NotificationPanel';
+import { getPendingReviews, getUnreadCount } from '../services/api';
 
 const NAV_IDS = ['home', 'overview', 'explore', 'predict', 'ai', 'about'];
 
@@ -284,6 +285,27 @@ export default function Navbar({ current, onChange, onOpenAdmin, pendingRefreshS
     setTimeout(fetchPendingCount, 2000);
   }, [onOpenAdmin, fetchPendingCount]);
 
+  // 未读通知数量（已登录用户拉取，60s 轮询）
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!user) return;
+    try {
+      const data = await getUnreadCount();
+      setUnreadCount(data.count ?? 0);
+    } catch {
+      // 静默失败
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    if (!user) return;
+    const timer = setInterval(fetchUnreadCount, 60000);
+    return () => clearInterval(timer);
+  }, [fetchUnreadCount, user]);
+
   const navLabelStyle = (isActive) => ({
     fontSize: 10,
     fontWeight: 700,
@@ -358,8 +380,46 @@ export default function Navbar({ current, onChange, onOpenAdmin, pendingRefreshS
 
       </div>
 
-      {/* Right — user entry */}
-      <NavUserEntry t={t} isLight={isLight} onOpenAdmin={handleOpenAdmin} pendingCount={pendingCount} />
+      {/* Right — bell + user entry */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        {/* Bell icon — only for logged-in users */}
+        {user && (
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setNotifOpen(v => !v)}
+              title={t('notification.title')}
+              style={{
+                background: notifOpen ? (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)') : 'transparent',
+                border: 'none', borderRadius: 8, padding: '6px 8px',
+                cursor: 'pointer', display: 'flex', alignItems: 'center',
+                color: isLight ? 'rgba(42,42,58,0.6)' : 'rgba(232,237,243,0.6)',
+                transition: 'background 0.15s',
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+            </button>
+            {unreadCount > 0 && (
+              <span style={{
+                position: 'absolute', top: 4, right: 4,
+                width: 8, height: 8, borderRadius: '50%',
+                background: C.mars, pointerEvents: 'none',
+              }} />
+            )}
+          </div>
+        )}
+        <NavUserEntry t={t} isLight={isLight} onOpenAdmin={handleOpenAdmin} pendingCount={pendingCount} />
+      </div>
+
+      {/* Notification panel */}
+      <NotificationPanel
+        open={notifOpen}
+        onClose={() => setNotifOpen(false)}
+        onReadCountChange={fetchUnreadCount}
+      />
     </nav>
   );
 }

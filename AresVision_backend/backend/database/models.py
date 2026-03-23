@@ -35,6 +35,9 @@ class User(Base):
     reviewed_uploads: Mapped[list["UploadRecord"]] = relationship(
         "UploadRecord", foreign_keys="UploadRecord.reviewed_by", back_populates="reviewer"
     )
+    notifications: Mapped[list["Notification"]] = relationship(
+        "Notification", foreign_keys="Notification.user_id", back_populates="user"
+    )
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email} role={self.role}>"
@@ -71,3 +74,24 @@ class UploadRecord(Base):
 
     def __repr__(self) -> str:
         return f"<UploadRecord id={self.id} file={self.filename} status={self.status}>"
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    type: Mapped[str] = mapped_column(String(30), nullable=False)  # "approved" | "rejected" | "revoked"
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    related_upload_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+
+    # 关系
+    user: Mapped["User"] = relationship(
+        "User", foreign_keys=[user_id], back_populates="notifications"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Notification id={self.id} user_id={self.user_id} type={self.type} read={self.is_read}>"
