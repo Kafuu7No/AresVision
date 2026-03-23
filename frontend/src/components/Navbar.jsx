@@ -40,7 +40,7 @@ function MarsLogoIcon() {
 }
 
 
-function NavUserEntry({ t, isLight, onOpenAdmin, pendingCount }) {
+function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount }) {
   const { user, logout, openAuthModal } = useAuth();
   const { showToast } = useToast();
   const [dropOpen, setDropOpen] = useState(false);
@@ -48,6 +48,7 @@ function NavUserEntry({ t, isLight, onOpenAdmin, pendingCount }) {
   const [changePwdOpen, setChangePwdOpen] = useState(false);
   const [hovLogin, setHovLogin] = useState(false);
   const [hovAdmin, setHovAdmin] = useState(false);
+  const [hovFeedback, setHovFeedback] = useState(false);
   const wrapRef = useRef(null);
 
   // Close dropdown on outside click
@@ -192,6 +193,20 @@ function NavUserEntry({ t, isLight, onOpenAdmin, pendingCount }) {
                     </span>
                   )}
                 </div>
+                <div
+                  onClick={() => { setDropOpen(false); onOpenFeedback?.(); }}
+                  onMouseEnter={() => setHovFeedback(true)}
+                  onMouseLeave={() => setHovFeedback(false)}
+                  style={{
+                    padding: '9px 16px', cursor: 'pointer',
+                    background: hovFeedback ? hoverBg : 'transparent',
+                    transition: 'background 0.1s',
+                  }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 500, color: labelClr, userSelect: 'none' }}>
+                    {t('feedback.adminMenuItem')}
+                  </span>
+                </div>
                 <div style={{ height: 1, background: divClr, margin: '4px 10px' }} />
               </>
             )}
@@ -255,7 +270,7 @@ function DropItem({ label, onClick, hoverBg, color }) {
   );
 }
 
-export default function Navbar({ current, onChange, onOpenAdmin, pendingRefreshSignal }) {
+export default function Navbar({ current, onChange, onOpenAdmin, onOpenFeedback, pendingRefreshSignal }) {
   const t = useT();
   const { settings } = useSettings();
   const { user } = useAuth();
@@ -411,7 +426,7 @@ export default function Navbar({ current, onChange, onOpenAdmin, pendingRefreshS
             )}
           </div>
         )}
-        <NavUserEntry t={t} isLight={isLight} onOpenAdmin={handleOpenAdmin} pendingCount={pendingCount} />
+        <NavUserEntry t={t} isLight={isLight} onOpenAdmin={handleOpenAdmin} onOpenFeedback={onOpenFeedback} pendingCount={pendingCount} />
       </div>
 
       {/* Notification panel */}

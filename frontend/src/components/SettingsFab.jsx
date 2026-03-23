@@ -5,6 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useT } from '../i18n';
 import C from '../constants/colors';
 import ConfirmDialog from './ConfirmDialog';
+import FeedbackModal from './FeedbackModal';
 
 const COLORMAP_IDS = ['inferno', 'viridis', 'plasma', 'magma', 'cividis', 'jet', 'rdbu'];
 
@@ -91,6 +92,7 @@ export default function SettingsFab({ onOpenSettings, onOpenAdmin }) {
   const t = useT();
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [activeSubmenu, setActiveSubmenu] = useState(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const [moreHov, setMoreHov] = useState(false);
@@ -272,6 +274,14 @@ export default function SettingsFab({ onOpenSettings, onOpenAdmin }) {
                 </span>
               </div>
 
+              {/* Feedback */}
+              <UserActionItem
+                label={t('feedback.menuItem')}
+                onClick={() => { setMenuOpen(false); setFeedbackOpen(true); }}
+                hoverBg={hoverBg}
+                color={labelClr}
+              />
+
               <div style={{ height: 1, background: divClr, margin: '3px 10px' }} />
 
               {/* User section */}
@@ -403,6 +413,9 @@ export default function SettingsFab({ onOpenSettings, onOpenAdmin }) {
       >
         <GearIcon size={17} />
       </button>
+
+      {/* ── Feedback modal ── */}
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
       {/* ── Logout confirmation ── */}
       {logoutConfirm && (

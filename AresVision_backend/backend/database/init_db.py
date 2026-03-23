@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from config import DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD
 from database.engine import Base, engine, async_session_maker
-from database.models import User, Notification  # noqa: F401 — 确保模型注册到 Base
+from database.models import User, Notification, Feedback  # noqa: F401 — 确保模型注册到 Base
 
 logger = logging.getLogger("aresvision.db")
 

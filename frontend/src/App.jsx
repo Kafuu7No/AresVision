@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import SettingsPanel from './components/SettingsPanel';
 import SettingsFab from './components/SettingsFab';
 import AdminReviewPanel from './components/AdminReviewPanel';
+import FeedbackManagePanel from './components/FeedbackManagePanel';
 import HomePage from './pages/HomePage';
 import DataOverviewPage from './pages/DataOverviewPage';
 import ExplorePage from './pages/ExplorePage';
@@ -25,6 +26,7 @@ export default function App() {
   const [transitioning, setTransitioning] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+  const [feedbackPanelOpen, setFeedbackPanelOpen] = useState(false);
   const [reviewSignal, setReviewSignal] = useState(0);
   const t = useT();
 
@@ -77,9 +79,10 @@ export default function App() {
   return (
     <>
       <StarField />
-      <Navbar current={page} onChange={navigate} onOpenAdmin={() => setAdminPanelOpen(true)} pendingRefreshSignal={reviewSignal} />
+      <Navbar current={page} onChange={navigate} onOpenAdmin={() => setAdminPanelOpen(true)} onOpenFeedback={() => setFeedbackPanelOpen(true)} pendingRefreshSignal={reviewSignal} />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <AdminReviewPanel open={adminPanelOpen} onClose={() => setAdminPanelOpen(false)} onReviewComplete={() => setReviewSignal(v => v + 1)} />
+      <FeedbackManagePanel open={feedbackPanelOpen} onClose={() => setFeedbackPanelOpen(false)} />
       <SettingsFab
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenAdmin={() => setAdminPanelOpen(true)}
