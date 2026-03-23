@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import C from '../constants/colors';
 import { useT } from '../i18n';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,6 +6,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmDialog from './ConfirmDialog';
 import ChangePasswordModal from './ChangePasswordModal';
+import { getPendingReviews } from '../services/api';
 
 const NAV_IDS = ['home', 'overview', 'explore', 'predict', 'ai', 'about'];
 
@@ -38,13 +39,14 @@ function MarsLogoIcon() {
 }
 
 
-function NavUserEntry({ t, isLight }) {
+function NavUserEntry({ t, isLight, onOpenAdmin, pendingCount }) {
   const { user, logout, openAuthModal } = useAuth();
   const { showToast } = useToast();
   const [dropOpen, setDropOpen] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const [changePwdOpen, setChangePwdOpen] = useState(false);
   const [hovLogin, setHovLogin] = useState(false);
+  const [hovAdmin, setHovAdmin] = useState(false);
   const wrapRef = useRef(null);
 
   // Close dropdown on outside click
@@ -57,6 +59,7 @@ function NavUserEntry({ t, isLight }) {
     return () => { clearTimeout(timer); document.removeEventListener('mousedown', handler); };
   }, [dropOpen]);
 
+  const isAdmin = user?.role === 'admin';
   const L = isLight;
   const dropBg     = L ? 'rgba(255,255,255,0.97)' : 'rgba(13,13,32,0.97)';
   const dropBorder = L ? 'rgba(0,0,0,0.09)'       : 'rgba(255,255,255,0.1)';
@@ -94,7 +97,6 @@ function NavUserEntry({ t, isLight }) {
   }
 
   const initial = (user.username || user.email)[0].toUpperCase();
-  const isAdmin = user.role === 'admin';
 
   return (
     <>
@@ -160,6 +162,39 @@ function NavUserEntry({ t, isLight }) {
             </div>
             <div style={{ height: 1, background: divClr, margin: '0 10px 4px' }} />
 
+            {/* Admin review — only for admin */}
+            {isAdmin && (
+              <>
+                <div
+                  onClick={() => { setDropOpen(false); onOpenAdmin?.(); }}
+                  onMouseEnter={() => setHovAdmin(true)}
+                  onMouseLeave={() => setHovAdmin(false)}
+                  style={{
+                    padding: '9px 16px', cursor: 'pointer',
+                    background: hovAdmin ? hoverBg : 'transparent',
+                    transition: 'background 0.1s',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 500, color: labelClr, userSelect: 'none' }}>
+                    {t('admin.menuItem')}
+                  </span>
+                  {pendingCount > 0 && (
+                    <span style={{
+                      minWidth: 18, height: 18,
+                      background: C.mars, borderRadius: 9,
+                      fontSize: 10, fontWeight: 700, color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '0 5px', lineHeight: 1, flexShrink: 0,
+                    }}>
+                      {pendingCount > 99 ? '99+' : pendingCount}
+                    </span>
+                  )}
+                </div>
+                <div style={{ height: 1, background: divClr, margin: '4px 10px' }} />
+              </>
+            )}
+
             {/* Change password */}
             <DropItem
               label={t('auth.changePassword')}
@@ -219,10 +254,59 @@ function DropItem({ label, onClick, hoverBg, color }) {
   );
 }
 
-export default function Navbar({ current, onChange }) {
+export default function Navbar({ current, onChange, onOpenAdmin, pendingRefreshSignal }) {
   const t = useT();
   const { settings } = useSettings();
+  const { user } = useAuth();
   const isLight = settings.theme === 'light';
+  const isAdmin = user?.role === 'admin';
+
+  // 待审核数量（仅 admin 用户拉取）
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const fetchPendingCount = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const data = await getPendingReviews();
+      setPendingCount(Array.isArray(data) ? data.length : 0);
+    } catch {
+      // 静默失败，不影响导航栏渲染
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    fetchPendingCount();
+  }, [fetchPendingCount, pendingRefreshSignal]);
+
+  const handleOpenAdmin = useCallback(() => {
+    onOpenAdmin?.();
+    // 打开面板后延迟刷新计数（给面板操作留时间）
+    setTimeout(fetchPendingCount, 2000);
+  }, [onOpenAdmin, fetchPendingCount]);
+
+  const navLabelStyle = (isActive) => ({
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: 2,
+    fontFamily: "'Orbitron', sans-serif",
+    color: isActive ? C.mars : C.ice60,
+    transition: 'color 0.25s',
+    textTransform: 'uppercase',
+  });
+
+  const navBtnStyle = (isActive) => ({
+    background: 'transparent',
+    border: 'none',
+    borderBottom: isActive ? `2px solid ${C.mars}` : '2px solid transparent',
+    borderRadius: 0,
+    padding: '10px 22px 8px',
+    cursor: 'pointer',
+    transition: 'all 0.25s',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 2,
+  });
 
   return (
     <nav
@@ -259,47 +343,23 @@ export default function Navbar({ current, onChange }) {
       </div>
 
       {/* Nav Links */}
-      <div style={{ display: 'flex', gap: 2 }}>
-        {NAV_IDS.map((id) => {
-          const isActive = current === id;
-          return (
-            <button
-              key={id}
-              onClick={() => onChange(id)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                borderBottom: isActive
-                  ? `2px solid ${C.mars}`
-                  : '2px solid transparent',
-                borderRadius: 0,
-                padding: '10px 22px 8px',
-                cursor: 'pointer',
-                transition: 'all 0.25s',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 2,
-              }}
-            >
-              <span style={{
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: 2,
-                fontFamily: "'Orbitron', sans-serif",
-                color: isActive ? C.mars : C.ice60,
-                transition: 'color 0.25s',
-                textTransform: 'uppercase',
-              }}>
-                {t(`nav.${id}`)}
-              </span>
-            </button>
-          );
-        })}
+      <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+        {NAV_IDS.map((id) => (
+          <button
+            key={id}
+            onClick={() => onChange(id)}
+            style={navBtnStyle(current === id)}
+          >
+            <span style={navLabelStyle(current === id)}>
+              {t(`nav.${id}`)}
+            </span>
+          </button>
+        ))}
+
       </div>
 
       {/* Right — user entry */}
-      <NavUserEntry t={t} isLight={isLight} />
+      <NavUserEntry t={t} isLight={isLight} onOpenAdmin={handleOpenAdmin} pendingCount={pendingCount} />
     </nav>
   );
 }

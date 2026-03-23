@@ -55,6 +55,8 @@ class UploadRecord(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="validating")
     is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     validation_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    file_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     reviewed_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)

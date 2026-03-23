@@ -6,7 +6,9 @@
 """
 
 import asyncio
+import hashlib
 import logging
+import re
 import shutil
 import uuid
 from dataclasses import dataclass, field
@@ -16,6 +18,7 @@ from typing import Optional
 import numpy as np
 import xarray as xr
 from fastapi import UploadFile
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import (
@@ -86,6 +89,19 @@ class UploadService:
         content = await file.read()
         file_size = len(content)
 
+        # 计算 SHA256 哈希，并检查当前用户是否已上传相同文件
+        file_hash = hashlib.sha256(content).hexdigest()
+        existing = (await db.execute(
+            select(UploadRecord)
+            .where(UploadRecord.user_id == user_id)
+            .where(UploadRecord.file_hash == file_hash)
+        )).scalars().first()
+        if existing:
+            shutil.rmtree(upload_dir, ignore_errors=True)
+            raise ValueError(
+                f"该文件已上传过（与 {existing.filename} 内容相同）"
+            )
+
         # 写入磁盘（≤200 MB 的一次性写入，可接受在当前线程中执行）
         try:
             save_path.write_bytes(content)
@@ -94,9 +110,10 @@ class UploadService:
             raise
 
         # 在线程池中运行同步的 xarray 校验，避免阻塞事件循环
+        original_filename = file.filename or ""
         loop = asyncio.get_event_loop()
         result: ValidationResult = await loop.run_in_executor(
-            None, self.validate_nc_file, save_path, file_size
+            None, self.validate_nc_file, save_path, file_size, original_filename
         )
 
         # 用户手动指定的火星年优先于自动提取结果
@@ -116,6 +133,7 @@ class UploadService:
             ls_end=result.ls_end,
             status="valid" if result.is_valid else "invalid",
             validation_message=warn_msg if result.is_valid else result.error,
+            file_hash=file_hash,
         )
         db.add(record)
         await db.commit()
@@ -124,7 +142,7 @@ class UploadService:
 
     # ── 校验逻辑 ──────────────────────────────────────────────────────────────
 
-    def validate_nc_file(self, file_path: Path, file_size: int) -> ValidationResult:
+    def validate_nc_file(self, file_path: Path, file_size: int, filename: str = "") -> ValidationResult:
         """
         校验 .nc 文件。同步函数，应通过 run_in_executor 调用。
 
@@ -148,19 +166,20 @@ class UploadService:
             return result
 
         # Step 1b — NetCDF 格式检查
+        # decode_times=False：跳过时间轴自动解码，避免非标准时间单位导致文件打不开
         try:
-            ds = xr.open_dataset(file_path, engine="netcdf4")
-        except Exception as exc:
-            result.error = f"无法解析 NetCDF 文件: {exc}"
+            ds = xr.open_dataset(file_path, engine="netcdf4", decode_times=False)
+        except Exception:
+            result.error = "文件格式无效，请确认上传的是标准 NetCDF（.nc）文件"
             return result
 
         try:
-            return self._validate_dataset(ds, result)
+            return self._validate_dataset(ds, result, filename)
         finally:
             ds.close()
 
     def _validate_dataset(
-        self, ds: xr.Dataset, result: ValidationResult
+        self, ds: xr.Dataset, result: ValidationResult, filename: str = ""
     ) -> ValidationResult:
         """在已打开的 Dataset 上执行 Step 2-6。"""
 
@@ -168,8 +187,8 @@ class UploadService:
         data_type = self._detect_data_type(ds)
         if data_type is None:
             result.error = (
-                "无法识别数据类型：文件需要包含 o3col (OpenMARS) "
-                "或环境变量如 U_Wind / Temperature (MCD)"
+                "无法识别数据类型：文件需要包含 o3col（OpenMARS 类型）"
+                "或环境变量如 Temperature、U_Wind 等（MCD 类型）"
             )
             return result
         result.data_type = data_type
@@ -216,7 +235,7 @@ class UploadService:
                 )
             else:
                 result.error = (
-                    f"网格分辨率不兼容：纬度 {n_lat} 点，经度 {n_lon} 点，"
+                    f"网格分辨率不兼容：检测到 {n_lat}×{n_lon}，"
                     f"需要 {N_LAT}×{N_LON} 或其整数倍"
                 )
                 return result
@@ -269,12 +288,12 @@ class UploadService:
             if valid_ratio < 0.10:
                 result.error = (
                     f"有效数据比例过低（{valid_ratio * 100:.1f}%），"
-                    "文件可能为空或损坏"
+                    "请检查文件内容是否完整"
                 )
                 return result
 
         # Step 6 — 元信息提取
-        result.mars_year = self._extract_mars_year(ds)
+        result.mars_year = self._extract_mars_year(ds, filename)
         result.is_valid  = True
         return result
 
@@ -288,8 +307,11 @@ class UploadService:
             return "mcd"
         return None
 
-    def _extract_mars_year(self, ds: xr.Dataset) -> Optional[int]:
-        """从 MY 变量或全局属性中提取火星年，失败返回 None。"""
+    def _extract_mars_year(self, ds: xr.Dataset, filename: str = "") -> Optional[int]:
+        """从 MY 变量、全局属性或文件名中提取火星年，失败返回 None。
+
+        优先级：数据变量 MY > 全局属性 > 文件名正则
+        """
         # OpenMARS 文件含 MY 数据变量
         if "MY" in ds.data_vars:
             my_flat = ds["MY"].values.flatten()
@@ -303,4 +325,9 @@ class UploadService:
                     return int(ds.attrs[attr])
                 except (ValueError, TypeError):
                     pass
+        # 文件名正则：匹配 MY27 / my28 / MY_27 等模式
+        if filename:
+            m = re.search(r"[Mm][Yy]_?(\d{2,3})", filename)
+            if m:
+                return int(m.group(1))
         return None

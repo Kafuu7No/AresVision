@@ -12,14 +12,17 @@
 
 import logging
 import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
-from auth.dependencies import get_current_user
-from config import ALLOWED_NC_EXTENSIONS, PENDING_REVIEW_DIR
+from auth.dependencies import get_current_user, require_admin
+from config import ALLOWED_NC_EXTENSIONS, APPROVED_DIR, PENDING_REVIEW_DIR
 from database.engine import async_session_maker
 from database.models import UploadRecord, User
 
@@ -63,6 +66,8 @@ async def upload_nc_file(
                 mars_year=mars_year,
                 description=description,
             )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
         except OSError as exc:
             raise HTTPException(status_code=500, detail=f"文件存储失败: {exc}")
 
@@ -149,11 +154,105 @@ async def delete_upload(
     return {"message": "上传记录已删除"}
 
 
+# ─── GET /pending-reviews ─────────────────────────────────────────────────────
+
+@router.get("/pending-reviews")
+async def get_pending_reviews(
+    current_user: User = Depends(require_admin),
+):
+    """获取所有待审核上传记录（仅管理员）。"""
+    async with async_session_maker() as db:
+        stmt = (
+            select(UploadRecord)
+            .options(selectinload(UploadRecord.uploader))
+            .where(UploadRecord.status == "pending_review")
+            .order_by(UploadRecord.created_at.asc())
+        )
+        rows = (await db.execute(stmt)).scalars().all()
+
+        # 必须在 session 内构建结果，否则 session 关闭后访问 lazy 关系会报错
+        result = [
+            {
+                "id": r.id,
+                "filename": r.filename,
+                "data_type": r.data_type,
+                "mars_year": r.mars_year,
+                "ls_start": r.ls_start,
+                "ls_end": r.ls_end,
+                "file_size": r.file_size,
+                "created_at": r.created_at.isoformat(),
+                "uploader_username": r.uploader.username if r.uploader else None,
+                "uploader_email": r.uploader.email if r.uploader else None,
+                "validation_message": r.validation_message,
+                "description": r.description,
+            }
+            for r in rows
+        ]
+
+    return result
+
+
+# ─── POST /{upload_id}/review ─────────────────────────────────────────────────
+
+class ReviewBody(BaseModel):
+    action: str          # "approve" | "reject"
+    reason: Optional[str] = ""
+
+
+@router.post("/{upload_id}/review")
+async def review_upload(
+    upload_id: int,
+    body: ReviewBody,
+    current_user: User = Depends(require_admin),
+):
+    """审核上传记录：通过或拒绝（仅管理员）。"""
+    if body.action not in ("approve", "reject"):
+        raise HTTPException(status_code=400, detail="action 必须是 approve 或 reject")
+
+    async with async_session_maker() as db:
+        record = await db.get(UploadRecord, upload_id)
+        if not record:
+            raise HTTPException(status_code=404, detail="上传记录不存在")
+        if record.status != "pending_review":
+            raise HTTPException(
+                status_code=400,
+                detail=f"该记录当前状态为 '{record.status}'，不可审核",
+            )
+
+        now = datetime.now(timezone.utc)
+        record.reviewed_at = now
+        record.reviewed_by = current_user.id
+
+        if body.action == "approve":
+            src = PENDING_REVIEW_DIR / str(record.id) / "original.nc"
+            dest_dir = APPROVED_DIR / str(record.id)
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            if src.exists():
+                try:
+                    shutil.move(str(src), str(dest_dir / "original.nc"))
+                except OSError as exc:
+                    logger.warning("审核通过时移动文件失败: %s", exc)
+            record.status = "approved"
+            record.validation_message = "审核通过"
+        else:
+            record.status = "rejected"
+            record.validation_message = body.reason or "审核未通过"
+
+        await db.commit()
+
+    return {"message": "审核完成", "status": record.status}
+
+
 # ─── POST /{upload_id}/contribute ────────────────────────────────────────────
+
+class ContributeBody(BaseModel):
+    description: Optional[str] = None
+
 
 @router.post("/{upload_id}/contribute")
 async def contribute_upload(
     upload_id: int,
+    body: ContributeBody = ContributeBody(),
     current_user: User = Depends(get_current_user),
 ):
     """将校验通过的文件贡献给网站（标记为待审核）。"""
@@ -179,6 +278,8 @@ async def contribute_upload(
 
         record.is_public = True
         record.status = "pending_review"
+        if body.description:
+            record.description = body.description
         await db.commit()
 
     return {"message": "感谢贡献！文件已提交审核", "status": "pending_review"}

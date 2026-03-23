@@ -84,7 +84,7 @@ function UserActionItem({ label, onClick, hoverBg, color }) {
   );
 }
 
-export default function SettingsFab({ onOpenSettings }) {
+export default function SettingsFab({ onOpenSettings, onOpenAdmin }) {
   const { settings, updateSetting } = useSettings();
   const { user, logout, openAuthModal } = useAuth();
   const { showToast } = useToast();
