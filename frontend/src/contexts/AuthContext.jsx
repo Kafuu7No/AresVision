@@ -48,9 +48,8 @@ export function AuthProvider({ children }) {
     return data.user;
   }, []);
 
-  const register = useCallback(async (email, username, password) => {
-    await apiRegister(email, username, password);
-    // 注册成功后自动登录
+  const register = useCallback(async (email, username, password, verificationCode) => {
+    await apiRegister(email, username, password, verificationCode);
     return login(email, password);
   }, [login]);
 

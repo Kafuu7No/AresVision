@@ -509,6 +509,25 @@ const en = {
     logoutConfirmMsg: 'Are you sure you want to log out?',
     logoutConfirmBtn: 'Sign Out',
     cancelBtn: 'Cancel',
+    // Verification code
+    verificationCode: 'Verification Code',
+    codePlaceholder: '6-digit code',
+    sendCode: 'Send Code',
+    codeSending: 'Sending...',
+    codeSent: 'Code sent, please check your email',
+    errCodeRequired: 'Verification code is required',
+    errSendCodeFailed: 'Failed to send code, please try again',
+    // Forgot password
+    forgotPassword: 'Forgot password?',
+    forgotTitle: 'Reset Password',
+    forgotStep1Hint: 'Enter your email and we\'ll send a verification code',
+    forgotStep2Hint: 'Set your new password (min. 6 characters)',
+    forgotNextBtn: 'Next',
+    forgotResetBtn: 'Reset Password',
+    forgotBackToLogin: '← Back to Sign In',
+    forgotResetting: 'Resetting...',
+    resetSuccess: 'Password reset successful. Please sign in.',
+    errResetFailed: 'Password reset failed. Please try again.',
   },
 
   admin: {

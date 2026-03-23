@@ -39,11 +39,37 @@ export async function apiLogin(email, password) {
   return res.json();
 }
 
-export async function apiRegister(email, username, password) {
+export async function apiRegister(email, username, password, verificationCode) {
   const res = await fetch(`${BASE}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, username, password }),
+    body: JSON.stringify({ email, username, password, verification_code: verificationCode }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function apiSendCode(email, purpose = 'register') {
+  const res = await fetch(`${BASE}/auth/send-code`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, purpose }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function apiResetPassword(email, verificationCode, newPassword) {
+  const res = await fetch(`${BASE}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, verification_code: verificationCode, new_password: newPassword }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
