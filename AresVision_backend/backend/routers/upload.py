@@ -203,6 +203,7 @@ class ReviewBody(BaseModel):
 async def review_upload(
     upload_id: int,
     body: ReviewBody,
+    request: Request,
     current_user: User = Depends(require_admin),
 ):
     """审核上传记录：通过或拒绝（仅管理员）。"""
@@ -255,6 +256,13 @@ async def review_upload(
 
         db.add(notif)
         await db.commit()
+
+    # 审核通过后触发用户数据服务热更新索引
+    if body.action == "approve":
+        try:
+            request.app.state.user_data_service.reload_approved()
+        except Exception as exc:
+            logger.warning("刷新 approved 索引失败: %s", exc)
 
     return {"message": "审核完成", "status": record.status}
 

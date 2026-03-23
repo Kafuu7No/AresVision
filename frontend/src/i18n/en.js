@@ -308,6 +308,18 @@ const en = {
       rejectedReason: 'Reason',
     },
 
+    viewer: {
+      globeTitle: 'OZONE MAP · Global Distribution',
+      heatmapTitle: 'SEASONAL HEATMAP · Ls-Latitude',
+      bandsTitle: 'LATITUDE BANDS · Seasonal Variation',
+      mcdOnly: 'This dataset is MCD type and does not contain ozone column data',
+      mcdVars: 'Available variables',
+      dataType: 'Data Type',
+      gridSize: 'Grid',
+      lsPoints: 'Ls Samples',
+      lsRange: 'Ls Range',
+    },
+
     ozoneMap: 'OZONE MAP · Global Distribution',
     heatmapTitle: 'SEASONAL HEATMAP · Ls-Latitude Ozone',
     heatmapSub: ({ year }) => `O₃ Column Density (zonal mean) · MY${year}`,

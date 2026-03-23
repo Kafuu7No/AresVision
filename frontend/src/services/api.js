@@ -295,6 +295,44 @@ export async function markAllNotificationsRead() {
   return res.json();
 }
 
+// ─── 用户数据分析接口 ───
+
+export async function fetchUserDataSummary(uploadId) {
+  const res = await authedFetch(`${BASE}/user-data/summary/${uploadId}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function fetchUserGlobeData(uploadId, ls = 10) {
+  const res = await authedFetch(`${BASE}/user-data/globe/${uploadId}?ls=${ls}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function fetchUserHeatmap(uploadId, variable = 'o3col') {
+  const res = await authedFetch(`${BASE}/user-data/seasonal-heatmap/${uploadId}?variable=${encodeURIComponent(variable)}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function fetchUserBands(uploadId) {
+  const res = await authedFetch(`${BASE}/user-data/seasonal-bands/${uploadId}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
 export async function aiChat(question, context = null) {
   const res = await fetch(`${BASE}/ai/chat`, {
     method: 'POST',
