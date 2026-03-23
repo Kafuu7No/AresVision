@@ -92,6 +92,7 @@ AI_API_KEY = os.getenv("AI_API_KEY", "")
 # ─── 上传 ───
 USER_UPLOADS_DIR   = DATA_DIR / "user_uploads"
 PENDING_REVIEW_DIR = DATA_DIR / "pending_review"
+APPROVED_DIR       = DATA_DIR / "approved"
 MAX_UPLOAD_SIZE_MB = 200
 ALLOWED_NC_EXTENSIONS = [".nc", ".nc4", ".netcdf"]
 

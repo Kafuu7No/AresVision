@@ -5,6 +5,7 @@ import StarField from './components/StarField';
 import Navbar from './components/Navbar';
 import SettingsPanel from './components/SettingsPanel';
 import SettingsFab from './components/SettingsFab';
+import AdminReviewPanel from './components/AdminReviewPanel';
 import HomePage from './pages/HomePage';
 import DataOverviewPage from './pages/DataOverviewPage';
 import ExplorePage from './pages/ExplorePage';
@@ -16,6 +17,8 @@ export default function App() {
   const [page, setPage] = useState('home');
   const [transitioning, setTransitioning] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+  const [reviewSignal, setReviewSignal] = useState(0);
   const t = useT();
 
   const navigate = useCallback(
@@ -34,9 +37,13 @@ export default function App() {
   return (
     <>
       <StarField />
-      <Navbar current={page} onChange={navigate} />
+      <Navbar current={page} onChange={navigate} onOpenAdmin={() => setAdminPanelOpen(true)} pendingRefreshSignal={reviewSignal} />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      <SettingsFab onOpenSettings={() => setSettingsOpen(true)} />
+      <AdminReviewPanel open={adminPanelOpen} onClose={() => setAdminPanelOpen(false)} onReviewComplete={() => setReviewSignal(v => v + 1)} />
+      <SettingsFab
+        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenAdmin={() => setAdminPanelOpen(true)}
+      />
 
       {/* Page content with transition */}
       <div

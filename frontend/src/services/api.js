@@ -171,6 +171,59 @@ export async function fetchErrorDistribution(vars = []) {
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
+// ─── 上传接口 ───
+
+export async function getMyUploads() {
+  const res = await authedFetch(`${BASE}/upload/my-uploads`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteUpload(uploadId) {
+  const res = await authedFetch(`${BASE}/upload/${uploadId}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function contributeUpload(uploadId, description = '') {
+  const res = await authedFetch(`${BASE}/upload/${uploadId}/contribute`, {
+    method: 'POST',
+    body: JSON.stringify({ description }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getPendingReviews() {
+  const res = await authedFetch(`${BASE}/upload/pending-reviews`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function reviewUpload(uploadId, action, reason = '') {
+  const res = await authedFetch(`${BASE}/upload/${uploadId}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ action, reason }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
 export async function aiChat(question, context = null) {
   const res = await fetch(`${BASE}/ai/chat`, {
     method: 'POST',

@@ -17,10 +17,12 @@ import HeatmapCanvas from './ExplorePage/HeatmapCanvas';
 import LineChart from './ExplorePage/LineChart';
 import GlobePlot from './ExplorePage/GlobePlot';
 import CorrelationChart from './ExplorePage/CorrelationChart';
+import MyDataTab from './ExplorePage/MyDataTab';
 
 export default function ExplorePage() {
   const t = useT();
   const { settings } = useSettings();
+  const [dataSource, setDataSource] = useState('default'); // 'default' | 'myData'
   const [lsValue, setLsValue] = useState(90);
   const [marsYear, setMarsYear] = useState(27);
   const [playing, setPlaying] = useState(false);
@@ -107,6 +109,40 @@ export default function ExplorePage() {
   return (
     <div className="page-enter" style={{ padding: '100px 40px 60px', maxWidth: 1400, margin: '0 auto' }}>
       <SectionTitle title={t('explore.title')} subtitle={t('explore.subtitle')} />
+
+      {/* 页面描述 */}
+      <p style={{ fontSize: 12, color: C.ice30, marginTop: -20, marginBottom: 24 }}>
+        {t('explore.pageDesc')}
+      </p>
+
+      {/* ─── 数据源 Tab 切换 ─── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+        {[
+          { id: 'default', label: t('explore.tabDefault') },
+          { id: 'myData',  label: t('explore.tabMy') },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setDataSource(tab.id)}
+            style={{
+              padding: '8px 16px',
+              background: dataSource === tab.id ? 'rgba(74,158,255,0.12)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${dataSource === tab.id ? C.blue : C.border}`,
+              borderRadius: 8, fontSize: 12, fontWeight: 600,
+              color: dataSource === tab.id ? C.blue : C.ice30,
+              cursor: 'pointer', transition: 'all 0.2s',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ─── 我的数据 Tab ─── */}
+      {dataSource === 'myData' && <MyDataTab />}
+
+      {/* ─── 默认数据集 Tab ─── */}
+      {dataSource === 'default' && <>
 
       {/* ─── 控制栏 ─── */}
       <GlowCard style={{
@@ -233,6 +269,8 @@ export default function ExplorePage() {
             : <CorrelationChart data={corrData} year={marsYear} h={350} />}
         </GlowCard>
       </div>
+
+      </>}  {/* end default tab */}
     </div>
   );
 }
