@@ -22,6 +22,7 @@ from services.predict_data_service import PredictDataService
 from services.predict_service import PredictOrchestratorService
 from services.ai_service import AIService
 from services.upload_service import UploadService
+from services.user_data_service import UserDataService
 from core.analysis_transforms import AnalysisTransforms
 from core.predict_transforms import PredictTransforms
 from core.predict_inference import PredictInference
@@ -29,6 +30,7 @@ from routers import analysis, predict, ai
 from routers import auth
 from routers import upload as upload_router_module
 from routers import notification as notification_router_module
+from routers import user_data as user_data_router_module
 
 # ─── 日志配置 ───
 logging.basicConfig(
@@ -71,6 +73,10 @@ async def lifespan(app: FastAPI):
     # 上传服务（依赖 data_service）
     upload_service = UploadService(data_service)
     app.state.upload_service = upload_service
+
+    # 用户数据服务（按需读取用户上传的 .nc 文件）
+    user_data_service = UserDataService()
+    app.state.user_data_service = user_data_service
 
     # 2. 领域服务：可视化与 ML 数据准备
     logger.info("[2/5] 初始化分析与 ML 准备服务...")
@@ -159,6 +165,7 @@ app.include_router(ai.router,                        prefix=API_PREFIX)
 app.include_router(auth.router,                      prefix=API_PREFIX)
 app.include_router(upload_router_module.router,        prefix=API_PREFIX)
 app.include_router(notification_router_module.router,  prefix=API_PREFIX)
+app.include_router(user_data_router_module.router,     prefix=API_PREFIX)
 
 
 # ─── 健康检查 ───

@@ -309,6 +309,18 @@ const zh = {
       rejectedReason: '原因',
     },
 
+    viewer: {
+      globeTitle: 'OZONE MAP · 全球臭氧分布',
+      heatmapTitle: 'SEASONAL HEATMAP · Ls-纬度热力图',
+      bandsTitle: 'LATITUDE BANDS · 纬度带季节变化',
+      mcdOnly: '该数据集为 MCD 类型，不包含臭氧列浓度数据',
+      mcdVars: '包含变量',
+      dataType: '数据类型',
+      gridSize: '网格',
+      lsPoints: 'Ls 采样数',
+      lsRange: 'Ls 范围',
+    },
+
     ozoneMap: 'OZONE MAP · 全球臭氧分布',
     heatmapTitle: 'SEASONAL HEATMAP · Ls-纬度臭氧热力图',
     heatmapSub: ({ year }) => `O₃ Column Density (zonal mean) · MY${year}`,

@@ -13,7 +13,11 @@ import GlowCard from '../../components/GlowCard';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import ContributeModal from '../../components/ContributeModal';
 import ContributeHistoryPanel from '../../components/ContributeHistoryPanel';
-import { getMyUploads, deleteUpload } from '../../services/api';
+import { getMyUploads, deleteUpload, fetchUserDataSummary, fetchUserGlobeData, fetchUserHeatmap, fetchUserBands } from '../../services/api';
+import HeatmapCanvas from './HeatmapCanvas';
+import LineChart from './LineChart';
+import GlobePlot from './GlobePlot';
+import { LoadingBox } from './ExploreComponents';
 
 // ─── SVG Icons ───────────────────────────────────────────────────────────────
 
@@ -515,6 +519,13 @@ export default function MyDataTab() {
   const [uploadsLoading, setUploadsLoading] = useState(false);
   const [viewingId, setViewingId]           = useState(null);
 
+  // View data state
+  const [viewData, setViewData] = useState({
+    summary: null, globe: null, heatmap: null, bands: null,
+    loading: false, error: null,
+  });
+  const [viewLs, setViewLs] = useState(90);
+
   // Confirm + action
   const [confirmDelete, setConfirmDelete]   = useState(null);
   const [actionLoading, setActionLoading]   = useState({});
@@ -540,6 +551,51 @@ export default function MyDataTab() {
   useEffect(() => {
     if (user) loadUploads();
   }, [user, loadUploads]);
+
+  // ── Load view data ─────────────────────────────────────────────────────────
+  const loadViewData = useCallback(async (uploadId) => {
+    setViewData({ summary: null, globe: null, heatmap: null, bands: null, loading: true, error: null });
+    try {
+      const summary = await fetchUserDataSummary(uploadId);
+      let defaultLs = 90;
+      if (summary.ls_range) {
+        defaultLs = Math.round((summary.ls_range[0] + summary.ls_range[1]) / 2);
+      }
+      setViewLs(defaultLs);
+
+      let globe = null, heatmap = null, bands = null;
+      if (summary.has_ozone) {
+        [globe, heatmap, bands] = await Promise.all([
+          fetchUserGlobeData(uploadId, defaultLs).catch(() => null),
+          fetchUserHeatmap(uploadId, 'o3col').catch(() => null),
+          fetchUserBands(uploadId).catch(() => null),
+        ]);
+      }
+
+      setViewData({ summary, globe, heatmap, bands, loading: false, error: null });
+    } catch (e) {
+      setViewData(prev => ({ ...prev, loading: false, error: e.message || t('common.error') }));
+    }
+  }, [t]);
+
+  useEffect(() => {
+    if (viewingId != null) {
+      loadViewData(viewingId);
+    } else {
+      setViewData({ summary: null, globe: null, heatmap: null, bands: null, loading: false, error: null });
+    }
+  }, [viewingId, loadViewData]);
+
+  const handleViewLsChange = useCallback(async (newLs) => {
+    setViewLs(newLs);
+    if (viewingId == null) return;
+    try {
+      const globe = await fetchUserGlobeData(viewingId, newLs);
+      setViewData(prev => ({ ...prev, globe }));
+    } catch {
+      // 静默失败，保留旧数据
+    }
+  }, [viewingId]);
 
   // valid datasets available for contribution (not yet in review/approved flow)
   const validUploads = uploads.filter(u => u.status === 'valid');
@@ -739,9 +795,10 @@ export default function MyDataTab() {
         )}
       </div>
 
-      {/* ─── Viewing Placeholder ─── */}
+      {/* ─── Data Viewer ─── */}
       {viewingUpload && (
         <GlowCard breathe style={{ padding: 24 }}>
+          {/* Header */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             marginBottom: 16,
@@ -758,6 +815,14 @@ export default function MyDataTab() {
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
                 {viewingUpload.filename}
+                {viewData.summary && (
+                  <span style={{ marginLeft: 8, color: C.ice30, fontSize: 11 }}>
+                    ({viewData.summary.data_type}
+                    {viewData.summary.ls_range
+                      ? ` · Ls ${viewData.summary.ls_range[0].toFixed(0)}°–${viewData.summary.ls_range[1].toFixed(0)}°`
+                      : ''})
+                  </span>
+                )}
               </div>
             </div>
             <button
@@ -772,24 +837,134 @@ export default function MyDataTab() {
             </button>
           </div>
 
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'center', padding: '48px 20px', gap: 14, textAlign: 'center',
-            border: `1px dashed ${C.border}`, borderRadius: 12,
-          }}>
-            <div style={{ color: C.ice30, opacity: 0.4 }}>
-              <SearchIcon size={44} color="currentColor" />
-            </div>
+          {/* Loading */}
+          {viewData.loading && <LoadingBox h={300} />}
+
+          {/* Error */}
+          {!viewData.loading && viewData.error && (
             <div style={{
-              fontSize: 15, fontWeight: 700, color: C.ice,
-              fontFamily: "'Orbitron', sans-serif",
+              padding: '24px', textAlign: 'center', color: C.mars,
+              fontSize: 13, border: `1px dashed ${C.border}`, borderRadius: 12,
             }}>
-              {t('explore.myData.viewComingSoon')}
+              {viewData.error}
             </div>
-            <div style={{ fontSize: 12, color: C.ice30 }}>
-              {t('explore.myData.viewComingSoonSub')}
+          )}
+
+          {/* Visualizations */}
+          {!viewData.loading && !viewData.error && viewData.summary && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+              {/* OpenMARS: ozone charts */}
+              {viewData.summary.has_ozone && (
+                <>
+                  {/* Ls slider */}
+                  {viewData.summary.ls_range && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{
+                        fontSize: 11, color: C.ice60, fontFamily: "'Orbitron', sans-serif",
+                        letterSpacing: 1, whiteSpace: 'nowrap',
+                      }}>Ls</span>
+                      <input
+                        type="range"
+                        min={Math.round(viewData.summary.ls_range[0])}
+                        max={Math.round(viewData.summary.ls_range[1])}
+                        step={5}
+                        value={viewLs}
+                        onChange={e => handleViewLsChange(Number(e.target.value))}
+                        style={{ flex: 1, accentColor: C.mars }}
+                      />
+                      <span style={{
+                        fontSize: 14, fontWeight: 700, color: C.mars,
+                        fontFamily: "'Orbitron', sans-serif", minWidth: 50, textAlign: 'right',
+                      }}>
+                        {viewLs}°
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Globe + heatmap side by side */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div>
+                      <div style={{
+                        fontSize: 10, fontWeight: 700, color: C.mars,
+                        fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 8,
+                      }}>
+                        {t('explore.viewer.globeTitle')}
+                      </div>
+                      {viewData.globe ? <GlobePlot data={viewData.globe} h={260} /> : <LoadingBox h={260} />}
+                    </div>
+                    <div>
+                      <div style={{
+                        fontSize: 10, fontWeight: 700, color: C.blue,
+                        fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 8,
+                      }}>
+                        {t('explore.viewer.heatmapTitle')}
+                      </div>
+                      {viewData.heatmap ? <HeatmapCanvas data={viewData.heatmap} h={260} /> : <LoadingBox h={260} />}
+                    </div>
+                  </div>
+
+                  {/* Bands (full width) */}
+                  {viewData.bands && (
+                    <div>
+                      <div style={{
+                        fontSize: 10, fontWeight: 700, color: C.blue,
+                        fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 8,
+                      }}>
+                        {t('explore.viewer.bandsTitle')}
+                      </div>
+                      <LineChart data={viewData.bands} h={200} />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* MCD-only: no ozone */}
+              {!viewData.summary.has_ozone && viewData.summary.has_mcd_vars?.length > 0 && (
+                <div style={{
+                  padding: '32px 20px', textAlign: 'center',
+                  border: `1px dashed ${C.border}`, borderRadius: 12,
+                }}>
+                  <div style={{ fontSize: 13, color: C.ice60, marginBottom: 8 }}>
+                    {t('explore.viewer.mcdOnly')}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.ice30 }}>
+                    {t('explore.viewer.mcdVars')}: {viewData.summary.has_mcd_vars.join(', ')}
+                  </div>
+                </div>
+              )}
+
+              {/* Info cards */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                gap: '8px 16px', padding: '12px 16px',
+                background: 'rgba(255,255,255,0.03)',
+                border: `1px solid ${C.border}`, borderRadius: 10,
+                fontSize: 11,
+              }}>
+                <div>
+                  <span style={{ color: C.ice30 }}>{t('explore.viewer.dataType')}: </span>
+                  <span style={{ color: C.ice60 }}>{viewData.summary.data_type}</span>
+                </div>
+                <div>
+                  <span style={{ color: C.ice30 }}>{t('explore.viewer.gridSize')}: </span>
+                  <span style={{ color: C.ice60 }}>{viewData.summary.lat_points}×{viewData.summary.lon_points}</span>
+                </div>
+                <div>
+                  <span style={{ color: C.ice30 }}>{t('explore.viewer.lsPoints')}: </span>
+                  <span style={{ color: C.ice60 }}>{viewData.summary.ls_points}</span>
+                </div>
+                {viewData.summary.ls_range && (
+                  <div>
+                    <span style={{ color: C.ice30 }}>{t('explore.viewer.lsRange')}: </span>
+                    <span style={{ color: C.ice60 }}>
+                      {viewData.summary.ls_range[0].toFixed(1)}° – {viewData.summary.ls_range[1].toFixed(1)}°
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </GlowCard>
       )}
 
