@@ -9,11 +9,19 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   </head>
-  <body>
+  <body style="background:#0a0a0f">
     <script>
       if (typeof window.global === 'undefined') {
         window.global = window;
       }
+      // 在 React 挂载前立即应用已保存的主题，避免深→浅闪烁
+      try {
+        var _s = JSON.parse(localStorage.getItem('aresvision_settings'));
+        if (_s && _s.theme) {
+          document.documentElement.setAttribute('data-theme', _s.theme);
+          if (_s.theme === 'light') document.body.style.background = '#f5f6fa';
+        }
+      } catch(e) {}
     </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>

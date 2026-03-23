@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import C from './constants/colors';
 import { useT } from './i18n';
 import StarField from './components/StarField';
@@ -13,8 +13,15 @@ import PredictPage from './pages/PredictPage';
 import AIPage from './pages/AIPage';
 import AboutPage from './pages/AboutPage';
 
+const VALID_PAGES = ['home', 'overview', 'explore', 'predict', 'ai', 'about'];
+
+function getPageFromHash() {
+  const hash = window.location.hash.replace('#/', '').replace('#', '');
+  return VALID_PAGES.includes(hash) ? hash : 'home';
+}
+
 export default function App() {
-  const [page, setPage] = useState('home');
+  const [page, setPage] = useState(getPageFromHash);
   const [transitioning, setTransitioning] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
@@ -25,6 +32,7 @@ export default function App() {
     (target) => {
       if (target === page) return;
       setTransitioning(true);
+      window.history.pushState(null, '', target === 'home' ? '#/' : `#/${target}`);
       setTimeout(() => {
         setPage(target);
         setTransitioning(false);
@@ -33,6 +41,38 @@ export default function App() {
     },
     [page]
   );
+
+  // 监听浏览器前进/后退
+  useEffect(() => {
+    const handlePopState = () => {
+      const target = getPageFromHash();
+      if (target !== page) {
+        setTransitioning(true);
+        setTimeout(() => {
+          setPage(target);
+          setTransitioning(false);
+          window.scrollTo({ top: 0, behavior: 'instant' });
+        }, 200);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [page]);
+
+  // 首次加载时确保 hash 存在
+  useEffect(() => {
+    if (!window.location.hash || window.location.hash === '#') {
+      window.history.replaceState(null, '', '#/');
+    }
+  }, []);
+
+  // 禁用浏览器自动滚动恢复，刷新后始终从顶部开始
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <>
