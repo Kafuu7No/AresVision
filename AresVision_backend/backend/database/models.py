@@ -95,3 +95,23 @@ class Notification(Base):
 
     def __repr__(self) -> str:
         return f"<Notification id={self.id} user_id={self.user_id} type={self.type} read={self.is_read}>"
+
+
+class Feedback(Base):
+    __tablename__ = "feedbacks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    type: Mapped[str] = mapped_column(String(20), nullable=False)   # "bug" | "suggestion" | "other"
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    screenshot_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")  # "pending" | "resolved"
+    admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    user: Mapped["User | None"] = relationship("User", foreign_keys=[user_id])
+
+    def __repr__(self) -> str:
+        return f"<Feedback id={self.id} type={self.type} status={self.status}>"

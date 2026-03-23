@@ -295,6 +295,52 @@ export async function markAllNotificationsRead() {
   return res.json();
 }
 
+// ─── 反馈接口 ───
+
+export async function submitFeedback(formData) {
+  const token = localStorage.getItem('aresvision_token');
+  const headers = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${BASE}/feedback/submit`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getFeedbackList(status = '') {
+  const url = status ? `${BASE}/feedback/list?status=${encodeURIComponent(status)}` : `${BASE}/feedback/list`;
+  const res = await authedFetch(url);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getFeedbackCount() {
+  const res = await authedFetch(`${BASE}/feedback/count`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function resolveFeedback(feedbackId) {
+  const res = await authedFetch(`${BASE}/feedback/${feedbackId}/resolve`, { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
 // ─── 用户数据分析接口 ───
 
 export async function fetchUserDataSummary(uploadId) {

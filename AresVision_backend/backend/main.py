@@ -31,6 +31,7 @@ from routers import auth
 from routers import upload as upload_router_module
 from routers import notification as notification_router_module
 from routers import user_data as user_data_router_module
+from routers import feedback as feedback_router_module
 
 # ─── 日志配置 ───
 logging.basicConfig(
@@ -166,6 +167,7 @@ app.include_router(auth.router,                      prefix=API_PREFIX)
 app.include_router(upload_router_module.router,        prefix=API_PREFIX)
 app.include_router(notification_router_module.router,  prefix=API_PREFIX)
 app.include_router(user_data_router_module.router,     prefix=API_PREFIX)
+app.include_router(feedback_router_module.router,      prefix=API_PREFIX)
 
 
 # ─── 健康检查 ───
