@@ -69,6 +69,8 @@ export function SettingsProvider({ children }) {
   // 应用主题到 <html> 元素
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', settings.theme);
+    // 清除 body 上可能残留的内联背景色，让 CSS 变量生效
+    document.body.style.removeProperty('background');
   }, [settings.theme]);
 
   // 主题变化时自动切换 colormap

@@ -108,3 +108,12 @@ JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY") or secrets.token_hex(32)
 JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
 DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@aresvision.com")
 DEFAULT_ADMIN_PASSWORD = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
+
+# ─── 邮箱 SMTP ───
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.qq.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+SMTP_USER = os.getenv("SMTP_USER", "")           # QQ 邮箱地址，如 123456@qq.com
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")    # QQ 邮箱授权码（非登录密码）
+SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "AresVision 智绘赤星")
+VERIFICATION_CODE_EXPIRE_MINUTES = 10             # 验证码有效期（分钟）
+VERIFICATION_CODE_COOLDOWN_SECONDS = 60           # 发送冷却时间（秒）

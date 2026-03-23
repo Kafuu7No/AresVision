@@ -5,6 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useT } from '../i18n';
 import C from '../constants/colors';
 import { useScrollLock } from '../hooks/useScrollLock';
+import { apiSendCode, apiResetPassword } from '../services/api';
 
 function CloseIcon() {
   return (
@@ -102,6 +103,7 @@ export default function AuthModal() {
   const isLight = settings.theme === 'light';
   useScrollLock(authModalOpen);
 
+  // ── 登录/注册 state ──
   const [tab, setTab] = useState(authModalTab);
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -110,25 +112,58 @@ export default function AuthModal() {
   const [globalError, setGlobalError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Reset form state when switching tabs
+  // ── 验证码 state ──
+  const [verificationCode, setVerificationCode] = useState('');
+  const [codeSending, setCodeSending] = useState(false);
+  const [codeCountdown, setCodeCountdown] = useState(0);
+
+  // ── 忘记密码 state ──
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotStep, setForgotStep] = useState(1);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotCode, setForgotCode] = useState('');
+  const [forgotNewPwd, setForgotNewPwd] = useState('');
+  const [forgotConfirmPwd, setForgotConfirmPwd] = useState('');
+  const [forgotError, setForgotError] = useState('');
+  const [forgotCodeSending, setForgotCodeSending] = useState(false);
+  const [forgotCodeCountdown, setForgotCodeCountdown] = useState(0);
+
+  // ── 倒计时 ──
+  useEffect(() => {
+    if (codeCountdown <= 0) return;
+    const timer = setTimeout(() => setCodeCountdown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [codeCountdown]);
+
+  useEffect(() => {
+    if (forgotCodeCountdown <= 0) return;
+    const timer = setTimeout(() => setForgotCodeCountdown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [forgotCodeCountdown]);
+
+  // ── 切换 tab 时重置全部状态 ──
   const switchTab = (newTab) => {
     setTab(newTab);
-    setEmail('');
-    setUsername('');
-    setPassword('');
-    setErrors({});
-    setGlobalError('');
+    setEmail(''); setUsername(''); setPassword('');
+    setErrors({}); setGlobalError('');
+    setVerificationCode(''); setCodeCountdown(0);
+    setForgotMode(false); setForgotStep(1);
+    setForgotEmail(''); setForgotCode('');
+    setForgotNewPwd(''); setForgotConfirmPwd('');
+    setForgotError(''); setForgotCodeCountdown(0);
   };
 
-  // Sync tab + reset when modal opens
+  // ── Modal 打开时同步 tab ──
   useEffect(() => {
     if (authModalOpen) {
       setTab(authModalTab);
-      setEmail('');
-      setUsername('');
-      setPassword('');
-      setErrors({});
-      setGlobalError('');
+      setEmail(''); setUsername(''); setPassword('');
+      setErrors({}); setGlobalError('');
+      setVerificationCode(''); setCodeCountdown(0);
+      setForgotMode(false); setForgotStep(1);
+      setForgotEmail(''); setForgotCode('');
+      setForgotNewPwd(''); setForgotConfirmPwd('');
+      setForgotError(''); setForgotCodeCountdown(0);
     }
   }, [authModalOpen, authModalTab]);
 
@@ -145,16 +180,44 @@ export default function AuthModal() {
   const subtitleClr  = L ? 'rgba(42,42,58,0.48)'   : 'rgba(232,237,243,0.45)';
   const closeColor   = L ? 'rgba(42,42,58,0.45)'   : 'rgba(232,237,243,0.45)';
   const switchColor  = L ? 'rgba(42,42,58,0.55)'   : 'rgba(232,237,243,0.5)';
+  const hintColor    = L ? 'rgba(42,42,58,0.52)'   : 'rgba(232,237,243,0.48)';
+  const inputBg      = L ? 'rgba(0,0,0,0.04)'      : 'rgba(255,255,255,0.05)';
+  const inputBorder  = L ? 'rgba(0,0,0,0.15)'      : 'rgba(255,255,255,0.15)';
+  const inputText    = L ? '#1e1e30'               : '#e8edf3';
+  const labelColor   = L ? 'rgba(42,42,58,0.55)'   : 'rgba(232,237,243,0.55)';
 
+  // ── 注册/登录校验 ──
   const validate = () => {
     const e = {};
     if (!email.trim()) e.email = t('auth.errEmailRequired');
     if (!password.trim()) e.password = t('auth.errPasswordRequired');
-    if (tab === 'register' && !username.trim()) e.username = t('auth.errUsernameRequired');
+    if (tab === 'register') {
+      if (!username.trim()) e.username = t('auth.errUsernameRequired');
+      if (!verificationCode.trim()) e.verificationCode = t('auth.errCodeRequired');
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
+  // ── 发送注册验证码 ──
+  const handleSendCode = async () => {
+    if (!email.trim()) {
+      setErrors(prev => ({ ...prev, email: t('auth.errEmailRequired') }));
+      return;
+    }
+    setCodeSending(true);
+    try {
+      await apiSendCode(email.trim(), 'register');
+      setCodeCountdown(60);
+      showToast(t('auth.codeSent'), 'success');
+    } catch (err) {
+      setGlobalError(err.message || t('auth.errSendCodeFailed'));
+    } finally {
+      setCodeSending(false);
+    }
+  };
+
+  // ── 登录/注册提交 ──
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
@@ -166,22 +229,238 @@ export default function AuthModal() {
         closeAuthModal();
         showToast(t('auth.toastWelcome', { username: user.username || user.email }), 'success');
       } else {
-        const user = await register(email.trim(), username.trim(), password);
+        await register(email.trim(), username.trim(), password, verificationCode.trim());
         closeAuthModal();
         showToast(t('auth.toastRegistered'), 'success');
       }
     } catch (err) {
-      setGlobalError(tab === 'login' ? t('auth.errLoginFailed') : t('auth.errRegisterFailed'));
+      setGlobalError(err.message || (tab === 'login' ? t('auth.errLoginFailed') : t('auth.errRegisterFailed')));
     } finally {
       setLoading(false);
     }
   };
 
-  // Autocomplete attributes per tab
-  const emailAC    = tab === 'login' ? 'email'         : 'off';
-  const passwordAC = tab === 'login' ? 'current-password' : 'new-password';
-  const emailName    = tab === 'login' ? 'login-email'    : 'register-email';
-  const passwordName = tab === 'login' ? 'login-password' : 'register-password';
+  // ── 发送找回密码验证码 ──
+  const handleForgotSendCode = async () => {
+    if (!forgotEmail.trim()) {
+      setForgotError(t('auth.errEmailRequired'));
+      return;
+    }
+    setForgotCodeSending(true);
+    setForgotError('');
+    try {
+      await apiSendCode(forgotEmail.trim(), 'reset_password');
+      setForgotCodeCountdown(60);
+      showToast(t('auth.codeSent'), 'success');
+    } catch (err) {
+      setForgotError(err.message || t('auth.errSendCodeFailed'));
+    } finally {
+      setForgotCodeSending(false);
+    }
+  };
+
+  // ── 忘记密码提交（两步） ──
+  const handleResetPassword = async () => {
+    setForgotError('');
+    if (!forgotEmail.trim()) { setForgotError(t('auth.errEmailRequired')); return; }
+    if (!forgotCode.trim() || forgotCode.length !== 6) { setForgotError(t('auth.errCodeRequired')); return; }
+
+    if (forgotStep === 1) {
+      setForgotStep(2);
+      return;
+    }
+
+    // Step 2
+    if (forgotNewPwd.length < 6) { setForgotError('密码至少需要 6 位'); return; }
+    if (forgotNewPwd !== forgotConfirmPwd) { setForgotError(t('auth.errPasswordMismatch')); return; }
+
+    setLoading(true);
+    try {
+      await apiResetPassword(forgotEmail.trim(), forgotCode.trim(), forgotNewPwd);
+      showToast(t('auth.resetSuccess'), 'success');
+      setForgotMode(false);
+      switchTab('login');
+    } catch (err) {
+      setForgotError(err.message || t('auth.errResetFailed'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const emailAC    = tab === 'login' ? 'email'             : 'off';
+  const passwordAC = tab === 'login' ? 'current-password'  : 'new-password';
+  const emailName    = tab === 'login' ? 'login-email'     : 'register-email';
+  const passwordName = tab === 'login' ? 'login-password'  : 'register-password';
+
+  // ── 忘记密码视图 ──
+  const renderForgotPassword = () => (
+    <div>
+      {/* Back link */}
+      <button
+        type="button"
+        onClick={() => { setForgotMode(false); setForgotError(''); }}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          fontSize: 12, color: C.blue, fontFamily: 'inherit',
+          padding: 0, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 4,
+        }}
+      >
+        {t('auth.forgotBackToLogin')}
+      </button>
+
+      {/* Step indicator */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, alignItems: 'center' }}>
+        {[1, 2].map(n => (
+          <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{
+              width: 24, height: 24, borderRadius: '50%', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              background: forgotStep >= n ? C.blue : (L ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)'),
+              fontSize: 11, fontWeight: 700,
+              color: forgotStep >= n ? '#fff' : (L ? 'rgba(42,42,58,0.4)' : 'rgba(232,237,243,0.35)'),
+            }}>{n}</div>
+            {n < 2 && (
+              <div style={{
+                width: 32, height: 1,
+                background: forgotStep > 1 ? C.blue : (L ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)'),
+              }} />
+            )}
+          </div>
+        ))}
+        <span style={{ fontSize: 12, color: hintColor, marginLeft: 6 }}>
+          {forgotStep === 1 ? t('auth.forgotStep1Hint') : t('auth.forgotStep2Hint')}
+        </span>
+      </div>
+
+      {/* Step 1: email + code */}
+      {forgotStep === 1 && (
+        <>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', color: labelColor, marginBottom: 6, textTransform: 'uppercase' }}>
+              {t('auth.email')}
+            </label>
+            <input
+              type="email"
+              value={forgotEmail}
+              onChange={e => setForgotEmail(e.target.value)}
+              placeholder={t('auth.emailPlaceholder')}
+              disabled={loading}
+              style={{
+                width: '100%', boxSizing: 'border-box', padding: '10px 14px',
+                background: inputBg, border: `1px solid ${inputBorder}`,
+                borderRadius: 8, color: inputText, fontSize: 14,
+                outline: 'none', transition: 'border-color 0.15s', fontFamily: 'inherit',
+              }}
+            />
+          </div>
+
+          {/* Code row */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', color: labelColor, marginBottom: 6, textTransform: 'uppercase' }}>
+              {t('auth.verificationCode')}
+            </label>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <input
+                type="text"
+                maxLength={6}
+                value={forgotCode}
+                onChange={e => setForgotCode(e.target.value.replace(/\D/g, ''))}
+                placeholder={t('auth.codePlaceholder')}
+                disabled={loading}
+                style={{
+                  flex: 1, boxSizing: 'border-box', padding: '10px 14px',
+                  background: L ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${L ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)'}`,
+                  borderRadius: 8, fontSize: 14,
+                  color: L ? '#1e1e30' : '#e8edf3',
+                  outline: 'none', transition: 'border-color 0.15s', fontFamily: 'inherit',
+                }}
+              />
+              <button
+                type="button"
+                disabled={forgotCodeSending || forgotCodeCountdown > 0 || loading}
+                onClick={handleForgotSendCode}
+                style={{
+                  padding: '10px 16px', whiteSpace: 'nowrap', flexShrink: 0,
+                  background: (forgotCodeSending || forgotCodeCountdown > 0)
+                    ? (L ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)') : C.blue,
+                  border: `1px solid ${(forgotCodeSending || forgotCodeCountdown > 0)
+                    ? (L ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)') : C.blue}`,
+                  borderRadius: 8,
+                  color: (forgotCodeSending || forgotCodeCountdown > 0)
+                    ? (L ? 'rgba(42,42,58,0.4)' : 'rgba(232,237,243,0.35)') : '#fff',
+                  fontSize: 12, fontWeight: 600,
+                  cursor: (forgotCodeSending || forgotCodeCountdown > 0 || loading) ? 'default' : 'pointer',
+                  transition: 'all 0.15s', fontFamily: 'inherit',
+                }}
+              >
+                {forgotCodeSending ? t('auth.codeSending')
+                  : forgotCodeCountdown > 0 ? `${forgotCodeCountdown}s`
+                  : t('auth.sendCode')}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Step 2: new password */}
+      {forgotStep === 2 && (
+        <>
+          <Input
+            label={t('auth.newPassword')}
+            type="password"
+            value={forgotNewPwd}
+            onChange={setForgotNewPwd}
+            placeholder={t('auth.newPasswordPlaceholder')}
+            disabled={loading}
+            autoComplete="new-password"
+          />
+          <Input
+            label={t('auth.confirmPassword')}
+            type="password"
+            value={forgotConfirmPwd}
+            onChange={setForgotConfirmPwd}
+            placeholder={t('auth.confirmPasswordPlaceholder')}
+            disabled={loading}
+            autoComplete="new-password"
+          />
+        </>
+      )}
+
+      {forgotError && (
+        <div style={{
+          fontSize: 13, color: C.mars, marginBottom: 14,
+          padding: '8px 12px', borderRadius: 7,
+          background: L ? 'rgba(220,80,50,0.07)' : 'rgba(220,80,50,0.12)',
+          border: '1px solid rgba(220,80,50,0.22)',
+        }}>
+          {forgotError}
+        </div>
+      )}
+
+      <button
+        type="button"
+        disabled={loading}
+        onClick={handleResetPassword}
+        style={{
+          width: '100%', padding: '11px 0',
+          background: loading
+            ? (L ? 'rgba(66,133,244,0.5)' : 'rgba(66,133,244,0.35)')
+            : C.blue,
+          border: 'none', borderRadius: 9,
+          color: '#fff', fontSize: 14, fontWeight: 700,
+          letterSpacing: '0.04em',
+          cursor: loading ? 'default' : 'pointer',
+          fontFamily: 'Orbitron, sans-serif',
+          transition: 'background 0.15s',
+        }}
+      >
+        {loading ? t('auth.forgotResetting')
+          : forgotStep === 1 ? t('auth.forgotNextBtn')
+          : t('auth.forgotResetBtn')}
+      </button>
+    </div>
+  );
 
   return (
     <>
@@ -234,103 +513,180 @@ export default function AuthModal() {
               ARESVISION
             </div>
             <div style={{ fontSize: 20, fontWeight: 700, color: titleColor, fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.02em' }}>
-              {tab === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')}
+              {forgotMode ? t('auth.forgotTitle') : (tab === 'login' ? t('auth.loginTitle') : t('auth.registerTitle'))}
             </div>
             <div style={{ fontSize: 12, color: subtitleClr, marginTop: 4 }}>
               Mars Ozone Intelligence Platform
             </div>
           </div>
 
-          {/* Tabs */}
-          <TabBar tab={tab} setTab={switchTab} t={t} isLight={L} />
+          {forgotMode ? (
+            renderForgotPassword()
+          ) : (
+            <>
+              {/* Tabs */}
+              <TabBar tab={tab} setTab={switchTab} t={t} isLight={L} />
 
-          {/* Form — keyed by tab so DOM resets between tabs, preventing autocomplete bleed */}
-          <form key={tab} onSubmit={handleSubmit} noValidate autoComplete={tab === 'login' ? 'on' : 'off'}>
-            <Input
-              label={t('auth.email')}
-              type="email"
-              name={emailName}
-              autoComplete={emailAC}
-              value={email}
-              onChange={setEmail}
-              placeholder={t('auth.emailPlaceholder')}
-              disabled={loading}
-              error={errors.email}
-            />
+              {/* Form — keyed by tab so DOM resets, preventing autocomplete bleed */}
+              <form key={tab} onSubmit={handleSubmit} noValidate autoComplete={tab === 'login' ? 'on' : 'off'}>
+                <Input
+                  label={t('auth.email')}
+                  type="email"
+                  name={emailName}
+                  autoComplete={emailAC}
+                  value={email}
+                  onChange={setEmail}
+                  placeholder={t('auth.emailPlaceholder')}
+                  disabled={loading}
+                  error={errors.email}
+                />
 
-            {tab === 'register' && (
-              <Input
-                label={t('auth.username')}
-                name="register-username"
-                autoComplete="username"
-                value={username}
-                onChange={setUsername}
-                placeholder={t('auth.usernamePlaceholder')}
-                disabled={loading}
-                error={errors.username}
-              />
-            )}
+                {tab === 'register' && (
+                  <Input
+                    label={t('auth.username')}
+                    name="register-username"
+                    autoComplete="username"
+                    value={username}
+                    onChange={setUsername}
+                    placeholder={t('auth.usernamePlaceholder')}
+                    disabled={loading}
+                    error={errors.username}
+                  />
+                )}
 
-            <Input
-              label={t('auth.password')}
-              type="password"
-              name={passwordName}
-              autoComplete={passwordAC}
-              value={password}
-              onChange={setPassword}
-              placeholder={t('auth.passwordPlaceholder')}
-              disabled={loading}
-              error={errors.password}
-            />
+                <Input
+                  label={t('auth.password')}
+                  type="password"
+                  name={passwordName}
+                  autoComplete={passwordAC}
+                  value={password}
+                  onChange={setPassword}
+                  placeholder={t('auth.passwordPlaceholder')}
+                  disabled={loading}
+                  error={errors.password}
+                />
 
-            {globalError && (
-              <div style={{
-                fontSize: 13, color: C.mars, marginBottom: 14,
-                padding: '8px 12px', borderRadius: 7,
-                background: L ? 'rgba(220,80,50,0.07)' : 'rgba(220,80,50,0.12)',
-                border: '1px solid rgba(220,80,50,0.22)',
-              }}>
-                {globalError}
+                {/* 注册验证码行 */}
+                {tab === 'register' && (
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{
+                      display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+                      color: labelColor, marginBottom: 6, textTransform: 'uppercase',
+                    }}>
+                      {t('auth.verificationCode')}
+                    </label>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        value={verificationCode}
+                        onChange={e => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                        placeholder={t('auth.codePlaceholder')}
+                        disabled={loading}
+                        style={{
+                          flex: 1, boxSizing: 'border-box', padding: '10px 14px',
+                          background: L ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)',
+                          border: `1px solid ${errors.verificationCode ? C.mars : L ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)'}`,
+                          borderRadius: 8, fontSize: 14,
+                          color: L ? '#1e1e30' : '#e8edf3',
+                          outline: 'none', transition: 'border-color 0.15s', fontFamily: 'inherit',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        disabled={codeSending || codeCountdown > 0 || loading}
+                        onClick={handleSendCode}
+                        style={{
+                          padding: '10px 16px', whiteSpace: 'nowrap', flexShrink: 0,
+                          background: (codeSending || codeCountdown > 0)
+                            ? (L ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)') : C.blue,
+                          border: `1px solid ${(codeSending || codeCountdown > 0)
+                            ? (L ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)') : C.blue}`,
+                          borderRadius: 8,
+                          color: (codeSending || codeCountdown > 0)
+                            ? (L ? 'rgba(42,42,58,0.4)' : 'rgba(232,237,243,0.35)') : '#fff',
+                          fontSize: 12, fontWeight: 600,
+                          cursor: (codeSending || codeCountdown > 0 || loading) ? 'default' : 'pointer',
+                          transition: 'all 0.15s', fontFamily: 'inherit',
+                        }}
+                      >
+                        {codeSending ? t('auth.codeSending')
+                          : codeCountdown > 0 ? `${codeCountdown}s`
+                          : t('auth.sendCode')}
+                      </button>
+                    </div>
+                    {errors.verificationCode && (
+                      <div style={{ fontSize: 12, color: C.mars, marginTop: 5 }}>
+                        {errors.verificationCode}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {globalError && (
+                  <div style={{
+                    fontSize: 13, color: C.mars, marginBottom: 14,
+                    padding: '8px 12px', borderRadius: 7,
+                    background: L ? 'rgba(220,80,50,0.07)' : 'rgba(220,80,50,0.12)',
+                    border: '1px solid rgba(220,80,50,0.22)',
+                  }}>
+                    {globalError}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    width: '100%', padding: '11px 0',
+                    background: loading
+                      ? (L ? 'rgba(66,133,244,0.5)' : 'rgba(66,133,244,0.35)')
+                      : C.blue,
+                    border: 'none', borderRadius: 9,
+                    color: '#fff', fontSize: 14, fontWeight: 700,
+                    letterSpacing: '0.04em',
+                    cursor: loading ? 'default' : 'pointer',
+                    fontFamily: 'Orbitron, sans-serif',
+                    transition: 'background 0.15s',
+                    marginTop: 4,
+                  }}
+                >
+                  {loading
+                    ? (tab === 'login' ? t('auth.loggingIn') : t('auth.registering'))
+                    : (tab === 'login' ? t('auth.loginBtn') : t('auth.registerBtn'))}
+                </button>
+              </form>
+
+              {/* 忘记密码 + 切换 tab */}
+              <div style={{ textAlign: 'center', marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {tab === 'login' && (
+                  <button
+                    type="button"
+                    onClick={() => { setForgotMode(true); setForgotStep(1); setGlobalError(''); }}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: 12, color: C.blue,
+                      textDecoration: 'underline', textUnderlineOffset: 3,
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {t('auth.forgotPassword')}
+                  </button>
+                )}
+                <button
+                  onClick={() => switchTab(tab === 'login' ? 'register' : 'login')}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 13, color: switchColor,
+                    textDecoration: 'underline', textUnderlineOffset: 3,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {tab === 'login' ? t('auth.switchToRegister') : t('auth.switchToLogin')}
+                </button>
               </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%', padding: '11px 0',
-                background: loading
-                  ? (L ? 'rgba(66,133,244,0.5)' : 'rgba(66,133,244,0.35)')
-                  : C.blue,
-                border: 'none', borderRadius: 9,
-                color: '#fff', fontSize: 14, fontWeight: 700,
-                letterSpacing: '0.04em',
-                cursor: loading ? 'default' : 'pointer',
-                fontFamily: 'Orbitron, sans-serif',
-                transition: 'background 0.15s',
-                marginTop: 4,
-              }}
-            >
-              {loading
-                ? (tab === 'login' ? t('auth.loggingIn') : t('auth.registering'))
-                : (tab === 'login' ? t('auth.loginBtn') : t('auth.registerBtn'))}
-            </button>
-          </form>
-
-          {/* Switch link */}
-          <div style={{ textAlign: 'center', marginTop: 18 }}>
-            <button
-              onClick={() => switchTab(tab === 'login' ? 'register' : 'login')}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontSize: 13, color: switchColor,
-                textDecoration: 'underline', textUnderlineOffset: 3,
-                fontFamily: 'inherit',
-              }}
-            >
-              {tab === 'login' ? t('auth.switchToRegister') : t('auth.switchToLogin')}
-            </button>
-          </div>
+            </>
+          )}
         </div>
       </div>
     </>

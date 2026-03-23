@@ -530,6 +530,25 @@ const zh = {
     logoutConfirmMsg: '确定要退出登录吗？',
     logoutConfirmBtn: '确认退出',
     cancelBtn: '取消',
+    // 验证码
+    verificationCode: '邮箱验证码',
+    codePlaceholder: '6 位验证码',
+    sendCode: '发送验证码',
+    codeSending: '发送中...',
+    codeSent: '验证码已发送，请查看邮箱',
+    errCodeRequired: '请输入验证码',
+    errSendCodeFailed: '验证码发送失败，请稍后重试',
+    // 忘记密码
+    forgotPassword: '忘记密码？',
+    forgotTitle: '找回密码',
+    forgotStep1Hint: '请输入注册邮箱，我们将发送验证码',
+    forgotStep2Hint: '请设置新密码（至少 6 位）',
+    forgotNextBtn: '下一步',
+    forgotResetBtn: '重置密码',
+    forgotBackToLogin: '← 返回登录',
+    forgotResetting: '重置中...',
+    resetSuccess: '密码重置成功，请使用新密码登录',
+    errResetFailed: '密码重置失败，请重试',
   },
 
   admin: {
