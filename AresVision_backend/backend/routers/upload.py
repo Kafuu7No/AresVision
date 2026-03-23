@@ -24,7 +24,7 @@ from sqlalchemy.orm import selectinload
 from auth.dependencies import get_current_user, require_admin
 from config import ALLOWED_NC_EXTENSIONS, APPROVED_DIR, PENDING_REVIEW_DIR
 from database.engine import async_session_maker
-from database.models import UploadRecord, User
+from database.models import Notification, UploadRecord, User
 
 logger = logging.getLogger("aresvision.upload_router")
 
@@ -234,10 +234,26 @@ async def review_upload(
                     logger.warning("审核通过时移动文件失败: %s", exc)
             record.status = "approved"
             record.validation_message = "审核通过"
+            notif = Notification(
+                user_id=record.user_id,
+                type="approved",
+                title="数据贡献审核通过",
+                content=f"您贡献的数据文件《{record.filename}》已通过审核，已添加到网站数据库。",
+                related_upload_id=record.id,
+            )
         else:
             record.status = "rejected"
             record.validation_message = body.reason or "审核未通过"
+            notif = Notification(
+                user_id=record.user_id,
+                type="rejected",
+                title="数据贡献审核未通过",
+                content=f"您贡献的数据文件《{record.filename}》未通过审核。" +
+                        (f"原因：{body.reason}" if body.reason else ""),
+                related_upload_id=record.id,
+            )
 
+        db.add(notif)
         await db.commit()
 
     return {"message": "审核完成", "status": record.status}
@@ -283,3 +299,82 @@ async def contribute_upload(
         await db.commit()
 
     return {"message": "感谢贡献！文件已提交审核", "status": "pending_review"}
+
+
+# ─── GET /approved-datasets ───────────────────────────────────────────────────
+
+@router.get("/approved-datasets")
+async def get_approved_datasets(
+    current_user: User = Depends(require_admin),
+):
+    """获取所有已通过审核的上传记录（仅管理员）。"""
+    async with async_session_maker() as db:
+        stmt = (
+            select(UploadRecord)
+            .options(selectinload(UploadRecord.uploader))
+            .where(UploadRecord.status == "approved")
+            .order_by(UploadRecord.reviewed_at.desc())
+        )
+        rows = (await db.execute(stmt)).scalars().all()
+
+        result = [
+            {
+                "id": r.id,
+                "filename": r.filename,
+                "data_type": r.data_type,
+                "mars_year": r.mars_year,
+                "ls_start": r.ls_start,
+                "ls_end": r.ls_end,
+                "file_size": r.file_size,
+                "created_at": r.created_at.isoformat(),
+                "reviewed_at": r.reviewed_at.isoformat() if r.reviewed_at else None,
+                "uploader_username": r.uploader.username if r.uploader else None,
+                "uploader_email": r.uploader.email if r.uploader else None,
+                "description": r.description,
+            }
+            for r in rows
+        ]
+
+    return result
+
+
+# ─── POST /{upload_id}/revoke ─────────────────────────────────────────────────
+
+@router.post("/{upload_id}/revoke")
+async def revoke_upload(
+    upload_id: int,
+    current_user: User = Depends(require_admin),
+):
+    """撤销已通过的数据集（仅管理员），并通知上传者。"""
+    async with async_session_maker() as db:
+        record = await db.get(UploadRecord, upload_id)
+        if not record:
+            raise HTTPException(status_code=404, detail="上传记录不存在")
+        if record.status != "approved":
+            raise HTTPException(
+                status_code=400,
+                detail=f"该记录当前状态为 '{record.status}'，无法撤销",
+            )
+
+        # 删除 approved 目录中的文件
+        approved_file = APPROVED_DIR / str(record.id) / "original.nc"
+        if approved_file.exists():
+            try:
+                shutil.rmtree(APPROVED_DIR / str(record.id))
+            except OSError as exc:
+                logger.warning("撤销时删除文件失败: %s", exc)
+
+        record.status = "rejected"
+        record.validation_message = "管理员已撤销该数据集"
+
+        notif = Notification(
+            user_id=record.user_id,
+            type="revoked",
+            title="数据集已被撤销",
+            content=f"您贡献的数据文件《{record.filename}》已被管理员从数据库中撤销。",
+            related_upload_id=record.id,
+        )
+        db.add(notif)
+        await db.commit()
+
+    return {"message": "已撤销", "status": "rejected"}
