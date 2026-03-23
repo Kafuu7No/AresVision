@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { getPredictCache, setPredictCache } from '../stores/predictCache';
 import C from '../constants/colors';
 import { useT } from '../i18n';
 import { useSettings } from '../contexts/SettingsContext';
@@ -48,28 +49,30 @@ export default function PredictPage() {
   const plotText60 = isLight ? 'rgba(26,26,46,0.65)' : 'rgba(232,237,243,0.6)';
   const plotGridColor = isLight ? 'rgba(26,26,46,0.08)' : 'rgba(255,255,255,0.05)';
 
-  // --- State ---
-  const [selectedVars, setSelectedVars] = useState(VARIABLE_DEFS.map((v) => v.id));
-  const [predStep, setPredStep] = useState(3);
-  const [lsStart, setLsStart] = useState(90);
-  const [marsYear, setMarsYear] = useState(27);
-  const [activeHorizon, setActiveHorizon] = useState(0);
-  const [viewMode, setViewMode] = useState('triptych');
+  // --- State（从缓存恢复，切换页面后保留预测结果）---
+  const _c = getPredictCache();
+
+  const [selectedVars, setSelectedVars] = useState(_c.params?.selectedVars ?? VARIABLE_DEFS.map((v) => v.id));
+  const [predStep, setPredStep] = useState(_c.params?.predStep ?? 3);
+  const [lsStart, setLsStart] = useState(_c.params?.lsStart ?? 90);
+  const [marsYear, setMarsYear] = useState(_c.params?.marsYear ?? 27);
+  const [activeHorizon, setActiveHorizon] = useState(_c.activeHorizon);
+  const [viewMode, setViewMode] = useState(_c.viewMode);
 
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState(null);
-  const [metrics, setMetrics] = useState(null);
-  const [errorDistData, setErrorDistData] = useState(null);
+  const [results, setResults] = useState(_c.results);
+  const [metrics, setMetrics] = useState(_c.metrics);
+  const [errorDistData, setErrorDistData] = useState(_c.errorDistData);
   const [error, setError] = useState(null);
 
   const [fullscreen3D, setFullscreen3D] = useState(null); // { fieldData, colorMode }
 
-  const [performanceData, setPerformanceData] = useState(null);
+  const [performanceData, setPerformanceData] = useState(_c.performanceData);
   const [perfLoading, setPerfLoading] = useState(false);
   const [activePerfMetric, setActivePerfMetric] = useState('r2');
 
-  const [compareConfigs, setCompareConfigs] = useState([]);
-  const [selectedCompareIds, setSelectedCompareIds] = useState([]);
+  const [compareConfigs, setCompareConfigs] = useState(_c.compareConfigs);
+  const [selectedCompareIds, setSelectedCompareIds] = useState(_c.selectedCompareIds);
   const [activeCompareId, setActiveCompareId] = useState(null);
   const [hiddenCompareIds, setHiddenCompareIds] = useState([]); // 新增：仅控制图表显隐的状态
   const [showShapley, setShowShapley] = useState(false); // 控制特征贡献度的显示与隐藏
@@ -103,12 +106,26 @@ export default function PredictPage() {
       setMetrics(metricsResult);
       setErrorDistData(errorDistResult);
       setActiveHorizon(0);
+      setPredictCache({
+        results: predResult,
+        metrics: metricsResult,
+        errorDistData: errorDistResult,
+        activeHorizon: 0,
+        params: { selectedVars, predStep, lsStart, marsYear },
+      });
     } catch (e) {
       setError(e.message || t('predict.errorPrefix'));
     } finally {
       setLoading(false);
     }
   }, [selectedVars, predStep, lsStart, marsYear, t]);
+
+  // 同步 UI 状态到缓存（用户在页面内的操作也持久化）
+  useEffect(() => { setPredictCache({ viewMode }); }, [viewMode]);
+  useEffect(() => { setPredictCache({ activeHorizon }); }, [activeHorizon]);
+  useEffect(() => { setPredictCache({ performanceData }); }, [performanceData]);
+  useEffect(() => { setPredictCache({ compareConfigs }); }, [compareConfigs]);
+  useEffect(() => { setPredictCache({ selectedCompareIds }); }, [selectedCompareIds]);
 
   const handleFetchPerformance = useCallback(async () => {
     setPerfLoading(true);
