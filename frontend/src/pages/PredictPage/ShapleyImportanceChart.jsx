@@ -15,10 +15,12 @@ export default function ShapleyImportanceChart({
   plotTextColor = '#A0AAB4',
   plotGridColor = 'rgba(255,255,255,0.05)',
   onClose,
+  mode = null, // mode isolation
 }) {
   const t = useT();
   const [loading, setLoading] = useState(true);
-  const [activeMode, setActiveMode] = useState('gradient'); // 'gradient' | 'marginal'
+  const [activeMode, setActiveMode] = useState(mode || 'gradient'); // 'gradient' | 'marginal'
+
   const [gradientData, setGradientData] = useState(null);
   const [marginalData, setMarginalData] = useState(null);
   const [error, setError] = useState(null);
@@ -89,13 +91,13 @@ export default function ShapleyImportanceChart({
   const summaryPlotData = useMemo(() => {
     if (!gradientData?.summary_data) return null;
 
-    
+
     // 我们需要将所有特征的数据合并到同一个 Plotly trace 或多个 trace 中
     // 为了实现 Swarm 效果，我们为每个特征创建一个 trace，并在 Y 轴施加 Jitter
     return gradientData.summary_data.map((feat, idx) => {
       const yBase = idx;
       const jitter = feat.shap_values.map(() => yBase + (Math.random() - 0.5) * 0.4);
-      
+
       return {
         x: feat.shap_values,
         y: jitter,
@@ -195,11 +197,11 @@ export default function ShapleyImportanceChart({
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-2xl flex items-center justify-center p-6 md:p-12 overflow-y-auto"
       onDoubleClick={onClose}
     >
-      <GlowCard 
+      <GlowCard
         className="w-full max-w-7xl bg-[#0A0A0F]/90 border border-[#1E1E26] shadow-2xl cursor-default"
         style={{ animation: 'scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
         onDoubleClick={e => e.stopPropagation()}
@@ -213,37 +215,38 @@ export default function ShapleyImportanceChart({
                 {t('predict.shapley.title')} <span className="text-white/20 ml-2 font-normal text-sm">| {activeMode === 'gradient' ? t('predict.shapley.gradientSystem') : t('predict.shapley.marginalSystem')}</span>
               </h1>
             </div>
-            <div className="flex gap-4 ml-5 mt-2">
-              <button 
-                onClick={() => setActiveMode('gradient')}
-                className={`text-[10px] font-bold px-3 py-1 rounded-full border transition-all ${
-                  activeMode === 'gradient' 
-                  ? 'bg-[#00F0FF] border-[#00F0FF] text-black shadow-[0_0_15px_#00F0FF]' 
-                  : 'bg-transparent border-white/10 text-[#A0AAB4] hover:border-white/30'
-                }`}
-              >
-                {t('predict.shapley.gradientTab')}
-              </button>
-              <button 
-                onClick={() => setActiveMode('marginal')}
-                className={`text-[10px] font-bold px-3 py-1 rounded-full border transition-all ${
-                  activeMode === 'marginal' 
-                  ? 'bg-gradient-to-r from-[#9c7bea] to-[#4acfac] border-transparent text-white shadow-[0_0_15px_#9c7bea]' 
-                  : 'bg-transparent border-white/10 text-[#A0AAB4] hover:border-white/30'
-                }`}
-              >
-                {t('predict.shapley.marginalTab')}
-              </button>
-            </div>
 
+            {!mode && (
+              <div className="flex gap-4 ml-5 mt-2">
+                <button
+                  onClick={() => setActiveMode('gradient')}
+                  className={`text-[10px] font-bold px-3 py-1 rounded-full border transition-all ${activeMode === 'gradient'
+                      ? 'bg-[#00F0FF] border-[#00F0FF] text-black shadow-[0_0_15px_#00F0FF]'
+                      : 'bg-transparent border-white/10 text-[#A0AAB4] hover:border-white/30'
+                    }`}
+                >
+                  {t('predict.shapley.gradientTab')}
+                </button>
+                <button
+                  onClick={() => setActiveMode('marginal')}
+                  className={`text-[10px] font-bold px-3 py-1 rounded-full border transition-all ${activeMode === 'marginal'
+                      ? 'bg-gradient-to-r from-[#9c7bea] to-[#4acfac] border-transparent text-white shadow-[0_0_15px_#9c7bea]'
+                      : 'bg-transparent border-white/10 text-[#A0AAB4] hover:border-white/30'
+                    }`}
+                >
+                  {t('predict.shapley.marginalTab')}
+                </button>
+              </div>
+            )}
           </div>
+
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => {
                 if (activeMode === 'gradient') setGradientData(null);
                 else setMarginalData(null);
                 fetchData();
-              }} 
+              }}
               className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-[#00F0FF]/10 hover:border-[#00F0FF]/50 transition-all text-[#00F0FF]"
             >
               <span className="text-lg">🔄</span>
@@ -254,16 +257,17 @@ export default function ShapleyImportanceChart({
           </div>
         </div>
 
+
         {/* Marginal Description Overlay */}
         {activeMode === 'marginal' && !marginalData && !loading && (
           <div className="m-8 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-center gap-4 animate-in slide-in-from-top duration-300">
-             <span className="text-2xl">⚡</span>
-             <div>
-               <h4 className="text-yellow-400 font-bold text-sm uppercase">{t('predict.shapley.cacheMissing')}</h4>
-               <p className="text-yellow-400/70 text-xs font-mono">
-                 {t('predict.shapley.cacheMissingDesc')}
-               </p>
-             </div>
+            <span className="text-2xl">⚡</span>
+            <div>
+              <h4 className="text-yellow-400 font-bold text-sm uppercase">{t('predict.shapley.cacheMissing')}</h4>
+              <p className="text-yellow-400/70 text-xs font-mono">
+                {t('predict.shapley.cacheMissingDesc')}
+              </p>
+            </div>
           </div>
 
         )}
@@ -335,7 +339,7 @@ export default function ShapleyImportanceChart({
                 </div>
                 <div className="text-[10px] font-mono text-white/30">METRIC: GLOBAL R²</div>
               </div>
-              
+
               <div className="flex-1">
                 <Plot
                   data={[{

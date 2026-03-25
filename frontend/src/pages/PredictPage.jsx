@@ -72,7 +72,8 @@ export default function PredictPage() {
   const [selectedCompareIds, setSelectedCompareIds] = useState([]);
   const [activeCompareId, setActiveCompareId] = useState(null);
   const [hiddenCompareIds, setHiddenCompareIds] = useState([]); // 新增：仅控制图表显隐的状态
-  const [showShapley, setShowShapley] = useState(false); // 控制特征贡献度的显示与隐藏
+  const [showShapley, setShowShapley] = useState({ visible: false, mode: 'gradient' }); // 控制特征贡献度的显示与隐藏
+
 
   // --- Handlers ---
   const toggleVar = (id) => {
@@ -307,7 +308,8 @@ export default function PredictPage() {
           setSelectedCompareIds={setSelectedCompareIds}
           setCompareConfigs={setCompareConfigs}
           handleFuseModels={handleFuseModels}
-          onShapleyClick={() => setShowShapley(true)}
+          onShapleyClick={(mode) => setShowShapley({ visible: true, mode })}
+
         />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -392,13 +394,15 @@ export default function PredictPage() {
         ozoneUnit={ozoneUnit}
       />
 
-      {showShapley && (
+      {showShapley.visible && (
         <ShapleyImportanceChart
           plotTextColor={plotTextColor}
           plotGridColor={plotGridColor}
-          onClose={() => setShowShapley(false)}
+          onClose={() => setShowShapley({ visible: false, mode: 'gradient' })}
+          mode={showShapley.mode}
         />
       )}
+
     </div>
   );
 }

@@ -145,13 +145,13 @@ export default function PredictBarChart({
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <button
-            onClick={() => setShowShapley(!showShapley)}
+            onClick={() => setShowShapley({ visible: true, mode: 'marginal' })}
             style={{
               padding: '8px 16px',
-              background: showShapley ? 'rgba(74,207,172,0.2)' : 'rgba(0,0,0,0.4)',
-              border: `1px solid ${showShapley ? 'rgba(74,207,172,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              background: showShapley.visible && showShapley.mode === 'marginal' ? 'rgba(74,207,172,0.2)' : 'rgba(0,0,0,0.4)',
+              border: `1px solid ${showShapley.visible && showShapley.mode === 'marginal' ? 'rgba(74,207,172,0.5)' : 'rgba(255,255,255,0.1)'}`,
               borderRadius: 12,
-              color: showShapley ? '#4acfac' : 'rgba(255,255,255,0.5)',
+              color: showShapley.visible && showShapley.mode === 'marginal' ? '#4acfac' : 'rgba(255,255,255,0.5)',
               fontSize: 10,
               fontWeight: 800,
               fontFamily: "'Orbitron', sans-serif",
@@ -160,12 +160,13 @@ export default function PredictBarChart({
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: showShapley ? '0 0 15px rgba(74,207,172,0.2)' : 'inset 0 0 10px rgba(0,0,0,0.5)',
+              boxShadow: showShapley.visible && showShapley.mode === 'marginal' ? '0 0 15px rgba(74,207,172,0.2)' : 'inset 0 0 10px rgba(0,0,0,0.5)',
             }}
           >
-            <span style={{ fontSize: 14 }}>{showShapley ? '👁️' : '🧠'}</span>
-            {t('predict.toggleShapley', 'SHAPLEY')}
+            <span style={{ fontSize: 14 }}>{showShapley.visible && showShapley.mode === 'marginal' ? '👁️' : '🧬'}</span>
+            {t('predict.shapleyMarginalBtn', '🧬 组合边际分析 (SEED 32)').replace('🧬 ', '')}
           </button>
+
           
           <div style={{
             display: 'flex', background: 'rgba(0,0,0,0.4)',

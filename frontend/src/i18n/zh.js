@@ -125,12 +125,12 @@ const zh = {
 
   overview: {
     menuItems: {
-      globe3d:      '三维臭氧球 3D GLOBE',
-      seasonal:     '季节臭氧场 SEASONAL OZONE FIELD',
-      correlation:  '关系研究 RELATION LAB',
-      realtime:     '昼夜变化 DIURNAL PROFILE',
-      environment:  '环境驱动 ENVIRONMENT DRIVERS',
-      prediction:   '模型能力 MODEL SKILL TRACKER',
+      globe3d: '三维臭氧球 3D GLOBE',
+      seasonal: '季节臭氧场 SEASONAL OZONE FIELD',
+      correlation: '关系研究 RELATION LAB',
+      realtime: '昼夜变化 DIURNAL PROFILE',
+      environment: '环境驱动 ENVIRONMENT DRIVERS',
+      prediction: '模型能力 MODEL SKILL TRACKER',
       distribution: '空间分布 SPATIAL DISTRIBUTION',
       globe3d_desc: '查看当前 Ls 切片下的全球臭氧球面分布。',
       seasonal_desc: '展示臭氧在纬度与季节上的整体结构。',
@@ -286,7 +286,8 @@ const zh = {
     shapleyDesc: '基于博弈论 Shapley 值，计算加入各气象特征对模型整体预测性能的提升边际贡献度',
     shapleyGenerateBtn: '分析特征贡献 ANALYZE',
     shapleyGeneratingBtn: '分析中...',
-    shapleyBtn: '特征归因 SHAPLEY',
+    shapleyBtn: '🧠 全局梯度归因 (SHAP)',
+
     toggleShapley: '贡献度 SHAPLEY',
     shapley: {
       title: '特征归因分析',
