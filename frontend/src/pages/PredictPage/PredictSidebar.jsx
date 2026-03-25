@@ -29,6 +29,7 @@ export default function PredictSidebar({
   setSelectedCompareIds,
   setCompareConfigs,
   handleFuseModels,
+  onShapleyClick,
 }) {
   const t = useT();
 
@@ -118,6 +119,25 @@ export default function PredictSidebar({
             {error}
           </div>
         )}
+
+        <button
+          onClick={onShapleyClick}
+          style={{
+            width: '100%', marginTop: 12, padding: '10px 0',
+            background: 'rgba(0,240,255,0.05)',
+            border: '1px solid rgba(0,240,255,0.3)',
+            borderRadius: 10, color: '#00F0FF',
+            fontSize: 11, fontWeight: 900,
+            fontFamily: "'Orbitron', sans-serif", letterSpacing: 1.5,
+            cursor: 'pointer',
+            transition: 'all 0.3s',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}
+          onMouseEnter={(e) => { e.target.style.background = 'rgba(0,240,255,0.15)'; e.target.style.boxShadow = '0 0 15px rgba(0,240,255,0.2)'; }}
+          onMouseLeave={(e) => { e.target.style.background = 'rgba(0,240,255,0.05)'; e.target.style.boxShadow = 'none'; }}
+        >
+          <span style={{ fontSize: 14 }}>🎯</span> {t('predict.shapleyBtn', 'GLOBAL ATTRIBUTION')}
+        </button>
       </GlowCard>
 
       {/* 参数设置 */}

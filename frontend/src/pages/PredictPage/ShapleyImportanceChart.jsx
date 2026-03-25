@@ -1,254 +1,394 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../constants/colors';
 import { useT } from '../../i18n';
 import GlowCard from '../../components/GlowCard';
 import { fmtNum } from '../../utils/fmt';
-import { fetchShapleyValues } from '../../services/api';
-import { METRIC_META } from './PredictComponents';
+import { fetchShapleyGlobal, fetchShapleyValues } from '../../services/api';
 
+
+/**
+ * SHAP 全局特征归因分析组件
+ * 展示 Mean |SHAP| 条形图与摘要蜂群图 (Summary Plot)
+ */
 export default function ShapleyImportanceChart({
-  plotTextColor,
-  plotGridColor,
-  precision,
+  plotTextColor = '#A0AAB4',
+  plotGridColor = 'rgba(255,255,255,0.05)',
   onClose,
 }) {
   const t = useT();
-  const [activeMetric, setActiveMetric] = useState('r2');
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeMode, setActiveMode] = useState('gradient'); // 'gradient' | 'marginal'
+  const [gradientData, setGradientData] = useState(null);
+  const [marginalData, setMarginalData] = useState(null);
   const [error, setError] = useState(null);
 
-  const handleFetch = useCallback(async () => {
+
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchShapleyValues(activeMetric);
-      setData(result.shapley_values);
+      if (activeMode === 'gradient') {
+        if (!gradientData) {
+          const result = await fetchShapleyGlobal();
+          setGradientData(result);
+        }
+      } else {
+        if (!marginalData) {
+          const result = await fetchShapleyValues('r2');
+          setMarginalData(result);
+        }
+      }
     } catch (err) {
-      setError(err.message || 'Error fetching Shapley values');
+      console.error('SHAP Analysis Error:', err);
+      setError(err.message || 'SHAP Analysis Failed');
     } finally {
       setLoading(false);
     }
-  }, [activeMetric]);
+  }, [activeMode, gradientData, marginalData]);
 
-  // Fetch automatically on mount or when metric changes
+
   useEffect(() => {
-    handleFetch();
-  }, [handleFetch]);
+    fetchData();
+  }, [fetchData]);
 
-  let content;
+  // 辅助函数：获取变量翻译
+  const getVarLabel = (name) => {
+    if (name === 'Ozone') return t('predict.variables.Ozone', 'Ozone (Self)');
+    return t(`predict.variables.${name}`, name);
+  };
 
-  if (loading && !data) {
-    content = (
-      <div style={{ textAlign: 'center', padding: '60px 20px', color: 'rgba(156,123,234,0.5)' }}>
-        <div style={{ fontSize: 30, marginBottom: 16, animation: 'spin 2s linear infinite' }}>⚙️</div>
-        <div style={{ fontFamily: "'Orbitron', sans-serif" }}>{t('predict.shapleyGeneratingBtn')}</div>
+  // --- 1. 条形图数据准备 (Gradient) ---
+  const barPlotData = useMemo(() => {
+    if (!gradientData?.bar_data) return null;
+    const sorted = [...gradientData.bar_data].reverse();
+    return {
+      y: sorted.map(d => getVarLabel(d.name)),
+      x: sorted.map(d => d.value),
+      text: sorted.map(d => d.value.toFixed(4)),
+    };
+  }, [gradientData, t]);
+
+  // --- 1b. 条形图数据准备 (Marginal) ---
+  const marginalPlotData = useMemo(() => {
+    if (!marginalData?.shapley_values) return null;
+    const entries = Object.entries(marginalData.shapley_values);
+    // 过滤掉 'Ozone' (Self) 如果后端没算，或者统一翻译
+    const sorted = entries.reverse(); // 从下往上
+    return {
+      y: sorted.map(([name]) => getVarLabel(name)),
+      x: sorted.map(([, val]) => val),
+      text: sorted.map(([, val]) => val.toFixed(4)),
+    };
+  }, [marginalData, t]);
+
+
+  // --- 2. 摘要蜂群图数据准备 ---
+  const summaryPlotData = useMemo(() => {
+    if (!gradientData?.summary_data) return null;
+
+    
+    // 我们需要将所有特征的数据合并到同一个 Plotly trace 或多个 trace 中
+    // 为了实现 Swarm 效果，我们为每个特征创建一个 trace，并在 Y 轴施加 Jitter
+    return gradientData.summary_data.map((feat, idx) => {
+      const yBase = idx;
+      const jitter = feat.shap_values.map(() => yBase + (Math.random() - 0.5) * 0.4);
+      
+      return {
+        x: feat.shap_values,
+        y: jitter,
+        name: getVarLabel(feat.name),
+        mode: 'markers',
+        type: 'scattergl', // 使用 WebGL 提升大量点渲染性能
+        marker: {
+          size: 4,
+          opacity: 0.6,
+          color: feat.feature_values, // 映射至特征原始数值
+          colorscale: 'RdBu',
+          reversescale: true, // 红色代表高值，蓝色代表低值
+          showscale: idx === 0, // 仅在第一个 trace 显示 colorbar
+          colorbar: idx === 0 ? {
+            title: { text: 'Feature Value', font: { size: 10, color: '#A0AAB4' } },
+            tickfont: { color: '#A0AAB4', size: 9 },
+            thickness: 12,
+            x: 1.05
+          } : undefined,
+        },
+        hovertemplate: `<b>${feat.name}</b><br>SHAP: %{x:.4f}<br>Value: %{marker.color:.2f}<extra></extra>`
+      };
+    }).reverse();
+  }, [gradientData, t]);
+
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-2xl flex items-center justify-center p-10 select-none animate-in fade-in duration-500">
+        <div className="text-center">
+          <div className="relative w-32 h-32 mx-auto mb-10">
+            <div className="absolute inset-0 border-4 border-[#00F0FF]/10 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-t-[#00F0FF] rounded-full animate-spin"></div>
+            <div className="absolute inset-6 border-2 border-dashed border-[#00F0FF]/30 rounded-full animate-reverse-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-[#00F0FF] text-xs font-black font-orbitron animate-pulse">SHAP</span>
+            </div>
+          </div>
+          <h2 className="text-[#00F0FF] font-black text-2xl tracking-[0.4em] font-orbitron mb-4">
+            DECODING NEURAL ATTRIBUTIONS
+          </h2>
+          <div className="flex flex-col gap-2">
+            <p className="text-[#00F0FF]/60 font-mono text-xs tracking-widest uppercase animate-pulse">
+              Scanning Spatiotemporal Engine • Test Set Epochs
+            </p>
+            <p className="text-gray-600 font-mono text-[10px] tracking-tighter uppercase">
+              Global convergence analysis in progress...
+            </p>
+          </div>
+        </div>
+        <style>{`
+          @keyframes reverse-spin { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+          .animate-reverse-spin { animation: reverse-spin 3s linear infinite; }
+        `}</style>
       </div>
     );
-  } else if (error) {
-    content = (
-      <div style={{ textAlign: 'center', padding: '60px 20px', color: '#ff6b6b' }}>
-        <div style={{ fontSize: 30, marginBottom: 16 }}>⚠️</div>
-        <div>{error}</div>
-        <button onClick={handleFetch} style={{ marginTop: 12, padding: '6px 16px', background: 'rgba(255,107,107,0.2)', border: '1px solid #ff6b6b', borderRadius: 6, color: '#fff', cursor: 'pointer' }}>
-          {t('common.retry')}
-        </button>
-      </div>
-    );
-  } else if (data) {
-    // Note: features are returned in sorted order from backend (value descending)
-    const features = Object.keys(data);
-    const values = Object.values(data);
-    
-    // Check if the metric represents an error (where negative means improvement)
-    const isErrorMetric = activeMetric === 'rmse' || activeMetric === 'mae';
-    
-    // For waterfall/bar chart, reverse them so biggest is at top
-    // Plotly horizontal bar chart puts the first element at the bottom
-    features.reverse();
-    values.reverse();
+  }
 
-    const shortLabels = features.map(f => {
-      let tKey = `predict.variables.${f}`;
-      // In case translation returns the key itself because it doesn't exist, we fallback
-      let translated = t(tKey);
-      if (translated === tKey) translated = f.replace('_', ' ');
-      return translated;
-    });
-
-    const colors = values.map((v) => {
-      // If error metric (RMSE), negative is good (green), positive is bad (red)
-      // If quality metric (R2), positive is good (green), negative is bad (red)
-      const isGood = isErrorMetric ? v <= 0 : v >= 0;
-      return isGood ? 'rgba(74, 207, 172, 0.7)' : 'rgba(255, 107, 107, 0.7)';
-    });
-
-    content = (
-      <div style={{ padding: '0 20px 20px' }}>
-        <Plot
-          data={[
-            {
-              type: 'bar',
-              x: values,
-              y: shortLabels,
-              orientation: 'h',
-              marker: {
-                color: colors,
-                line: { color: 'rgba(255,255,255,0.2)', width: 2 }, // Thicker border
-              },
-              hovertemplate: '<b>%{y}</b><br>Shapley Val: %{x}<extra></extra>',
-              text: values.map(v => fmtNum(v, precision)),
-              textposition: 'auto',
-              textfont: { family: "'Orbitron', sans-serif", color: '#fff', size: 14 }, // Larger text
-            }
-          ]}
-          layout={{
-            height: 600, // Make it taller for fullscreen
-            margin: { l: 240, r: 80, t: 40, b: 60 },
-            plot_bgcolor: 'transparent',
-            paper_bgcolor: 'transparent',
-            font: { family: "'Inter', sans-serif", color: plotTextColor },
-            xaxis: {
-              title: { text: `Marginal Contribution to ${activeMetric.toUpperCase()}`, font: { size: 14, color: 'rgba(255,255,255,0.4)' } },
-              gridcolor: plotGridColor,
-              zerolinecolor: 'rgba(255,255,255,0.2)',
-              zerolinewidth: 2,
-              tickfont: { size: 12 },
-            },
-            yaxis: {
-              gridcolor: 'transparent',
-              tickfont: { size: 16, fontWeight: 'bold' },
-            },
-            showlegend: false,
-          }}
-          config={{ displayModeBar: false, responsive: true }}
-          style={{ width: '100%', height: 600 }}
-        />
-        <div style={{ textAlign: 'center', fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 24 }}>
-          {isErrorMetric ? 
-            <span><span style={{ color: '#4acfac' }}>Negative values</span> indicate error reduction (Performance Improvement)</span> : 
-            <span><span style={{ color: '#4acfac' }}>Positive values</span> indicate metric increase (Performance Improvement)</span>
-          }
-          <div style={{ marginTop: 8, opacity: 0.6, fontSize: 11 }}>~ Double Click anywhere to return ~</div>
+  if (error) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex items-center justify-center p-10">
+        <div className="max-w-md w-full p-8 border border-red-500/30 bg-red-500/5 rounded-2xl text-center">
+          <div className="text-4xl mb-6">⚠️</div>
+          <h3 className="text-red-400 font-bold text-lg mb-2">SHAP ANALYSIS INTERRUPTED</h3>
+          <p className="text-red-400/60 text-sm font-mono mb-8">{error}</p>
+          <div className="flex gap-4 justify-center">
+            <button onClick={fetchData} className="px-6 py-2 bg-red-500/20 border border-red-500/50 text-red-100 rounded-lg hover:bg-red-500/40 transition-colors font-bold text-sm">
+              RETRY SEQUENCE
+            </button>
+            <button onClick={onClose} className="px-6 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors text-sm">
+              ABORT
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
+  const commonLayout = {
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    font: { family: "'Orbitron', sans-serif", color: plotTextColor },
+    margin: { t: 40, b: 60, l: 160, r: 40 },
+    xaxis: {
+      gridcolor: plotGridColor,
+      zerolinecolor: 'rgba(255,255,255,0.1)',
+      tickfont: { size: 10 },
+    },
+    yaxis: {
+      gridcolor: 'transparent',
+      tickfont: { size: 12, fontWeight: 'bold' },
+    },
+    showlegend: false,
+    hovermode: 'closest',
+  };
+
   return (
     <div 
+      className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-2xl flex items-center justify-center p-6 md:p-12 overflow-y-auto"
       onDoubleClick={onClose}
-      style={{
-        position: 'fixed',
-        top: 0, left: 0, right: 0, bottom: 0,
-        zIndex: 9999,
-        background: 'rgba(0,0,0,0.85)',
-        backdropFilter: 'blur(20px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 40,
-        animation: 'fadeIn 0.3s ease-out',
-        cursor: 'pointer' // indicating it's clickable
-      }}
     >
       <GlowCard 
-        onDoubleClick={(e) => {
-          // Allow bubbling so the background double click also triggers
-        }}
-        style={{ 
-          background: 'rgba(10,10,15,0.7)', 
-          border: `1px solid ${C.border}`,
-          width: '100%',
-          maxWidth: 1200,
-          cursor: 'default',
-          boxShadow: '0 0 50px rgba(0,0,0,0.8), 0 0 20px rgba(74,207,172,0.1)'
-        }}
+        className="w-full max-w-7xl bg-[#0A0A0F]/90 border border-[#1E1E26] shadow-2xl cursor-default"
+        style={{ animation: 'scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
+        onDoubleClick={e => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px 30px', borderBottom: `1px solid rgba(255,255,255,0.05)` }}>
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 border-b border-white/5 gap-4">
           <div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
-              {t('predict.shapleyTitle', 'FEATURE IMPORTANCE')}
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-2 h-6 bg-[#00F0FF] shadow-[0_0_10px_#00F0FF]"></div>
+              <h1 className="text-xl font-black text-[#00F0FF] tracking-tighter font-orbitron">
+                FEATURE ATTRIBUTION <span className="text-white/20 ml-2 font-normal text-sm">| {activeMode === 'gradient' ? 'GRADIENT SYSTEM' : 'MARGINAL SYSTEM'}</span>
+              </h1>
             </div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 6 }}>
-              {t('predict.shapleyDesc', 'Shapley values for marginal performance contribution')}
+            <div className="flex gap-4 ml-5 mt-2">
+              <button 
+                onClick={() => setActiveMode('gradient')}
+                className={`text-[10px] font-bold px-3 py-1 rounded-full border transition-all ${
+                  activeMode === 'gradient' 
+                  ? 'bg-[#00F0FF] border-[#00F0FF] text-black shadow-[0_0_15px_#00F0FF]' 
+                  : 'bg-transparent border-white/10 text-[#A0AAB4] hover:border-white/30'
+                }`}
+              >
+                GLOBAL GRADIENT (FAST)
+              </button>
+              <button 
+                onClick={() => setActiveMode('marginal')}
+                className={`text-[10px] font-bold px-3 py-1 rounded-full border transition-all ${
+                  activeMode === 'marginal' 
+                  ? 'bg-gradient-to-r from-[#9c7bea] to-[#4acfac] border-transparent text-white shadow-[0_0_15px_#9c7bea]' 
+                  : 'bg-transparent border-white/10 text-[#A0AAB4] hover:border-white/30'
+                }`}
+              >
+                MARGINAL CONTRIBUTION (PRECISE)
+              </button>
             </div>
           </div>
-
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <div style={{
-              display: 'flex', background: 'rgba(0,0,0,0.4)',
-              borderRadius: 14, padding: 6, border: `1px solid rgba(74,207,172,0.2)`
-            }}>
-              {METRIC_META.map(m => (
-                <button
-                  key={m.key}
-                  onClick={(e) => {
-                    e.stopPropagation(); // prevent double clicking the button from closing
-                    setActiveMetric(m.key);
-                  }}
-                  onDoubleClick={(e) => e.stopPropagation()} // double click on buttons should not close
-                  style={{
-                    padding: '8px 16px',
-                    background: activeMetric === m.key ? 'rgba(74,207,172,0.3)' : 'transparent',
-                    border: 'none',
-                    borderRadius: 10,
-                    fontSize: 12,
-                    fontWeight: 900,
-                    color: activeMetric === m.key ? '#fff' : 'rgba(255,255,255,0.3)',
-                    cursor: 'pointer',
-                    fontFamily: "'Orbitron', sans-serif",
-                    transition: 'all 0.3s',
-                    boxShadow: activeMetric === m.key ? '0 0 15px rgba(74,207,172,0.3)' : 'none',
-                  }}
-                >
-                  {m.name}
-                </button>
-              ))}
-            </div>
-            
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleFetch();
-              }}
-              onDoubleClick={(e) => e.stopPropagation()}
-              disabled={loading}
-              style={{
-                width: 40, height: 40, borderRadius: '50%',
-                background: loading ? 'transparent' : 'rgba(74,207,172,0.1)',
-                border: `1px solid ${loading ? 'transparent' : 'rgba(74,207,172,0.3)'}`,
-                color: '#4acfac',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => {
+                if (activeMode === 'gradient') setGradientData(null);
+                else setMarginalData(null);
+                fetchData();
+              }} 
+              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-[#00F0FF]/10 hover:border-[#00F0FF]/50 transition-all text-[#00F0FF]"
             >
-              <span style={{ fontSize: 16, animation: loading ? 'spin 1s linear infinite' : 'none' }}>🔄</span>
+              <span className="text-lg">🔄</span>
             </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onClose();
-              }}
-              onDoubleClick={(e) => e.stopPropagation()}
-              style={{
-                width: 40, height: 40, borderRadius: '50%',
-                background: 'rgba(255,107,107,0.1)',
-                border: `1px solid rgba(255,107,107,0.3)`,
-                color: '#ff6b6b', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                marginLeft: 8
-              }}
-              title="Close (Or double-click background)"
-            >
-              ✕
+            <button onClick={onClose} className="w-10 h-10 rounded-full bg-red-500/5 border border-red-500/20 flex items-center justify-center hover:bg-red-500/20 hover:border-red-500/50 transition-all text-red-500">
+              <span className="text-lg">✕</span>
             </button>
           </div>
         </div>
-        
-        {content}
+
+        {/* Marginal Description Overlay */}
+        {activeMode === 'marginal' && !marginalData && !loading && (
+          <div className="m-8 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-center gap-4 animate-in slide-in-from-top duration-300">
+             <span className="text-2xl">⚡</span>
+             <div>
+               <h4 className="text-yellow-400 font-bold text-sm uppercase">Marginal Cache Missing</h4>
+               <p className="text-yellow-400/70 text-xs font-mono">
+                 This mode averages 32 model combinations. Please use the "SEED 32" button in the sidebar to generate results if this takes too long.
+               </p>
+             </div>
+          </div>
+        )}
+
+
+        {/* Charts Grid */}
+        <div className="p-8">
+          {activeMode === 'gradient' ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Global Importance Bar Chart */}
+              <div className="bg-black/20 rounded-xl border border-white/5 p-4">
+                <div className="mb-4 flex items-center gap-2 px-2">
+                  <div className="w-1 h-3 bg-[#00F0FF]"></div>
+                  <h3 className="text-[10px] font-black tracking-widest text-[#00F0FF] uppercase">Feature Importance (Mean |SHAP|)</h3>
+                </div>
+                <Plot
+                  data={[{
+                    type: 'bar',
+                    x: barPlotData?.x,
+                    y: barPlotData?.y,
+                    orientation: 'h',
+                    marker: {
+                      color: '#00F0FF',
+                      opacity: 0.8,
+                      line: { color: '#00F0FF', width: 1 }
+                    },
+                    text: barPlotData?.text,
+                    textposition: 'outside',
+                    cliponaxis: false,
+                  }]}
+                  layout={{
+                    ...commonLayout,
+                    height: 480,
+                    xaxis: { ...commonLayout.xaxis, title: { text: 'Mean Absolute SHAP Value', font: { size: 10 } } },
+                  }}
+                  config={{ displayModeBar: false, responsive: true }}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              {/* Summary Swarm Plot */}
+              <div className="bg-black/20 rounded-xl border border-white/5 p-4">
+                <div className="mb-4 flex items-center gap-2 px-2">
+                  <div className="w-1 h-3 bg-[#ED213A]"></div>
+                  <h3 className="text-[10px] font-black tracking-widest text-[#ED213A] uppercase">Summary Swarm Plot (Global Distribution)</h3>
+                </div>
+                <Plot
+                  data={summaryPlotData}
+                  layout={{
+                    ...commonLayout,
+                    height: 480,
+                    xaxis: { ...commonLayout.xaxis, title: { text: 'SHAP Value (Impact on Prediction)', font: { size: 10 } } },
+                    yaxis: {
+                      ...commonLayout.yaxis,
+                      tickvals: gradientData?.summary_data.map((_, i) => i),
+                      ticktext: gradientData?.summary_data.map(d => getVarLabel(d.name)),
+                    }
+                  }}
+                  config={{ displayModeBar: false, responsive: true }}
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="bg-black/20 rounded-xl border border-white/5 p-6 min-h-[500px] flex flex-col">
+              <div className="mb-6 flex justify-between items-center px-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-3 bg-[#9c7bea]"></div>
+                  <h3 className="text-[10px] font-black tracking-widest text-[#9c7bea] uppercase">Marginal Contribution Analysis (Ablation SHAP)</h3>
+                </div>
+                <div className="text-[10px] font-mono text-white/30">METRIC: GLOBAL R²</div>
+              </div>
+              
+              <div className="flex-1">
+                <Plot
+                  data={[{
+                    type: 'bar',
+                    x: marginalPlotData?.x,
+                    y: marginalPlotData?.y,
+                    orientation: 'h',
+                    marker: {
+                      color: 'rgba(156, 123, 234, 0.8)',
+                      line: { color: '#9c7bea', width: 1 }
+                    },
+                    text: marginalPlotData?.text,
+                    textposition: 'outside',
+                    cliponaxis: false,
+                  }]}
+                  layout={{
+                    ...commonLayout,
+                    height: 500,
+                    xaxis: { ...commonLayout.xaxis, title: { text: 'Shapley Value (Average Contribution to R²)', font: { size: 11 } } },
+                    margin: { ...commonLayout.margin, l: 200 }
+                  }}
+                  config={{ displayModeBar: false, responsive: true }}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div className="mt-6 p-4 bg-[#9c7bea]/5 border border-[#9c7bea]/20 rounded-lg">
+                <div className="text-[10px] text-[#9c7bea] font-bold mb-2 uppercase tracking-tighter">Mathematical Principle</div>
+                <p className="text-[11px] text-[#A0AAB4] leading-relaxed">
+                  Calculated using the weighted average of marginal improvements to the global R² score across all 2ⁿ variable combinations. 
+                  This represents the game-theoretic fair distribution of model performance boost among individual input features.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+
+        {/* Footer Info */}
+        <div className="px-8 pb-8 pt-2 flex flex-col md:flex-row justify-between text-[9px] font-mono text-gray-600 gap-4 uppercase tracking-tighter">
+          <div className="flex gap-6">
+            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Low Feature Value</span>
+            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> High Feature Value</span>
+          </div>
+          <div>
+            * SHAP Values represent the additive contribution of each feature to the model's spatial mean ozone prediction.
+            <br />
+            * All data points are randomly downsampled from the full test set (MY28) to preserve performance.
+          </div>
+        </div>
       </GlowCard>
+
+      <style>{`
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.95) translateY(10px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }

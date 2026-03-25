@@ -109,3 +109,19 @@ class ErrorDistributionResponse(BaseModel):
     hist_errors: HistogramData
     mae: float
     rmse: float
+
+
+class GlobalShapBarItem(BaseModel):
+    name: str
+    value: float
+
+
+class GlobalShapSummaryItem(BaseModel):
+    name: str
+    shap_values: list[float]
+    feature_values: list[float]
+
+
+class GlobalShapResponse(BaseModel):
+    bar_data: list[GlobalShapBarItem]
+    summary_data: list[GlobalShapSummaryItem]

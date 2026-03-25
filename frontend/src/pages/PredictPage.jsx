@@ -307,6 +307,7 @@ export default function PredictPage() {
           setSelectedCompareIds={setSelectedCompareIds}
           setCompareConfigs={setCompareConfigs}
           handleFuseModels={handleFuseModels}
+          onShapleyClick={() => setShowShapley(true)}
         />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -356,6 +357,8 @@ export default function PredictPage() {
             precision={precision}
             handleFetchPerformance={handleFetchPerformance}
             perfLoading={perfLoading}
+            showShapley={showShapley}
+            setShowShapley={setShowShapley}
           />
 
           <PredictPerformance
@@ -388,6 +391,14 @@ export default function PredictPage() {
         precision={precision}
         ozoneUnit={ozoneUnit}
       />
+
+      {showShapley && (
+        <ShapleyImportanceChart
+          plotTextColor={plotTextColor}
+          plotGridColor={plotGridColor}
+          onClose={() => setShowShapley(false)}
+        />
+      )}
     </div>
   );
 }
