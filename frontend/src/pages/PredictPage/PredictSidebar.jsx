@@ -136,7 +136,7 @@ export default function PredictSidebar({
           onMouseEnter={(e) => { e.target.style.background = 'rgba(0,240,255,0.15)'; e.target.style.boxShadow = '0 0 15px rgba(0,240,255,0.2)'; }}
           onMouseLeave={(e) => { e.target.style.background = 'rgba(0,240,255,0.05)'; e.target.style.boxShadow = 'none'; }}
         >
-          <span style={{ fontSize: 14 }}>🎯</span> {t('predict.shapleyBtn', 'GLOBAL ATTRIBUTION')}
+          <span style={{ fontSize: 14 }}>🧠</span> {t('predict.shapleyBtn', '特征归因 SHAPLEY')}
         </button>
       </GlowCard>
 

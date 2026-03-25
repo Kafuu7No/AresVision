@@ -134,11 +134,12 @@ export default function PredictBarChart({
           </div>
           <div>
             <div style={{ fontSize: 9, color: '#9c7bea', fontWeight: 900, fontFamily: "'Orbitron', sans-serif", letterSpacing: 4, opacity: 0.8 }}>
-              ORBITAL ANALYTICS
+              {t('predict.barChart.analytics').toUpperCase()}
             </div>
             <div style={{ fontSize: 16, fontWeight: 800, color: C.ice, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, textShadow: '0 0 15px rgba(156,123,234,0.4)' }}>
-              PERFORMANCE SPECTRUM
+              {t('predict.barChart.spectrum').toUpperCase()}
             </div>
+
           </div>
         </div>
 
@@ -237,13 +238,14 @@ export default function PredictBarChart({
             zIndex: 1,
             pointerEvents: 'none'
           }}>
-            <div style={{ fontSize: 10, color: '#9c7bea60', fontWeight: 900, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>TOP MODEL</div>
+            <div style={{ fontSize: 10, color: '#9c7bea60', fontWeight: 900, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>{t('predict.barChart.topModel').toUpperCase()}</div>
             <div style={{ fontSize: 24, color: '#fff', fontWeight: 800, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, margin: '4px 0' }}>
               {sortedData[0]?.label.replace('🧪 ', '')}
             </div>
             <div style={{ fontSize: 14, color: '#4acfac', fontWeight: 900, fontFamily: "'Orbitron', sans-serif" }}>
               {fmtNum(sortedData[0]?.value, precision)}
             </div>
+
           </div>
 
           <Plot
@@ -295,11 +297,12 @@ export default function PredictBarChart({
           />
 
           <div style={{ position: 'absolute', bottom: 15, left: 15, fontSize: 8, color: 'rgba(255,255,255,0.15)', fontFamily: "'Orbitron', sans-serif" }}>
-            COORD: POLAR_SYSTEM_ALPHA
+            {t('predict.barChart.coord').toUpperCase()}
           </div>
           <div style={{ position: 'absolute', bottom: 15, right: 15, fontSize: 8, color: 'rgba(255,255,255,0.15)', fontFamily: "'Orbitron', sans-serif" }}>
-            RELIABILITY: OPTIMAL
+            {t('predict.barChart.reliability').toUpperCase()}
           </div>
+
         </div>
       )}
     </GlowCard>

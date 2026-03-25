@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Plot from 'react-plotly.js';
+import { useT } from '../../i18n';
 
 const CompareHorizonMetricsChart = ({ models = "predrnn,ozoneetd,baseline" }) => {
+  const t = useT();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,7 +33,7 @@ const CompareHorizonMetricsChart = ({ models = "predrnn,ozoneetd,baseline" }) =>
     return (
       <div className="h-full w-full flex flex-col items-center justify-center bg-black/20 rounded-xl border border-white/5 animate-pulse">
         <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mb-4" />
-        <span className="text-gray-400 font-mono tracking-widest text-sm">ANALYZING MULTI-MODEL PERFORMANCE...</span>
+        <span className="text-gray-400 font-mono tracking-widest text-sm uppercase">{t('predict.horizonMetrics.analyzing')}</span>
       </div>
     );
   }
@@ -81,7 +83,7 @@ const CompareHorizonMetricsChart = ({ models = "predrnn,ozoneetd,baseline" }) =>
       gridcolor: 'rgba(255,255,255,0.05)',
       tickfont: { color: '#6B7280' },
       dtick: 1,
-      title: { text: 'Horizon Step', font: { size: 10 } }
+      title: { text: t('predict.horizonMetrics.step'), font: { size: 10 } }
     },
     yaxis: {
       gridcolor: 'rgba(255,255,255,0.05)',
@@ -100,10 +102,10 @@ const CompareHorizonMetricsChart = ({ models = "predrnn,ozoneetd,baseline" }) =>
   };
 
   const metrics = [
-    { key: 'mse', title: 'MSE (Mean Squared Error)' },
-    { key: 'rmse', title: 'RMSE (Root Mean Squared Error)' },
-    { key: 'mae', title: 'MAE (Mean Absolute Error)' },
-    { key: 'r2', title: 'R² (Coefficient of Determination)' }
+    { key: 'mse', title: t('predict.horizonMetrics.mse') },
+    { key: 'rmse', title: t('predict.horizonMetrics.rmse') },
+    { key: 'mae', title: t('predict.horizonMetrics.mae') },
+    { key: 'r2', title: t('predict.horizonMetrics.r2') }
   ];
 
   return (

@@ -54,9 +54,11 @@ export default function ShapleyImportanceChart({
 
   // 辅助函数：获取变量翻译
   const getVarLabel = (name) => {
-    if (name === 'Ozone') return t('predict.variables.Ozone', 'Ozone (Self)');
-    return t(`predict.variables.${name}`, name);
+    // 兼容后端返回的不同名称格式
+    const key = name === 'Ozone' ? 'Ozone' : name;
+    return t(`predict.variables.${key}`, name);
   };
+
 
   // --- 1. 条形图数据准备 (Gradient) ---
   const barPlotData = useMemo(() => {
@@ -108,16 +110,17 @@ export default function ShapleyImportanceChart({
           reversescale: true, // 红色代表高值，蓝色代表低值
           showscale: idx === 0, // 仅在第一个 trace 显示 colorbar
           colorbar: idx === 0 ? {
-            title: { text: 'Feature Value', font: { size: 10, color: '#A0AAB4' } },
+            title: { text: t('predict.shapley.featureValue'), font: { size: 10, color: '#A0AAB4' } },
             tickfont: { color: '#A0AAB4', size: 9 },
             thickness: 12,
             x: 1.05
           } : undefined,
         },
-        hovertemplate: `<b>${feat.name}</b><br>SHAP: %{x:.4f}<br>Value: %{marker.color:.2f}<extra></extra>`
+        hovertemplate: `<b>${getVarLabel(feat.name)}</b><br>SHAP: %{x:.4f}<br>Value: %{marker.color:.2f}<extra></extra>`
       };
     }).reverse();
   }, [gradientData, t]);
+
 
 
   if (loading) {
@@ -133,7 +136,7 @@ export default function ShapleyImportanceChart({
             </div>
           </div>
           <h2 className="text-[#00F0FF] font-black text-2xl tracking-[0.4em] font-orbitron mb-4">
-            DECODING NEURAL ATTRIBUTIONS
+            {t('predict.shapleyGeneratingBtn').toUpperCase()}
           </h2>
           <div className="flex flex-col gap-2">
             <p className="text-[#00F0FF]/60 font-mono text-xs tracking-widest uppercase animate-pulse">
@@ -144,6 +147,7 @@ export default function ShapleyImportanceChart({
             </p>
           </div>
         </div>
+
         <style>{`
           @keyframes reverse-spin { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
           .animate-reverse-spin { animation: reverse-spin 3s linear infinite; }
@@ -205,8 +209,8 @@ export default function ShapleyImportanceChart({
           <div>
             <div className="flex items-center gap-3 mb-1">
               <div className="w-2 h-6 bg-[#00F0FF] shadow-[0_0_10px_#00F0FF]"></div>
-              <h1 className="text-xl font-black text-[#00F0FF] tracking-tighter font-orbitron">
-                FEATURE ATTRIBUTION <span className="text-white/20 ml-2 font-normal text-sm">| {activeMode === 'gradient' ? 'GRADIENT SYSTEM' : 'MARGINAL SYSTEM'}</span>
+              <h1 className="text-xl font-black text-[#00F0FF] tracking-tighter font-orbitron uppercase">
+                {t('predict.shapley.title')} <span className="text-white/20 ml-2 font-normal text-sm">| {activeMode === 'gradient' ? t('predict.shapley.gradientSystem') : t('predict.shapley.marginalSystem')}</span>
               </h1>
             </div>
             <div className="flex gap-4 ml-5 mt-2">
@@ -218,7 +222,7 @@ export default function ShapleyImportanceChart({
                   : 'bg-transparent border-white/10 text-[#A0AAB4] hover:border-white/30'
                 }`}
               >
-                GLOBAL GRADIENT (FAST)
+                {t('predict.shapley.gradientTab')}
               </button>
               <button 
                 onClick={() => setActiveMode('marginal')}
@@ -228,9 +232,10 @@ export default function ShapleyImportanceChart({
                   : 'bg-transparent border-white/10 text-[#A0AAB4] hover:border-white/30'
                 }`}
               >
-                MARGINAL CONTRIBUTION (PRECISE)
+                {t('predict.shapley.marginalTab')}
               </button>
             </div>
+
           </div>
           <div className="flex items-center gap-4">
             <button 
@@ -254,12 +259,13 @@ export default function ShapleyImportanceChart({
           <div className="m-8 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-center gap-4 animate-in slide-in-from-top duration-300">
              <span className="text-2xl">⚡</span>
              <div>
-               <h4 className="text-yellow-400 font-bold text-sm uppercase">Marginal Cache Missing</h4>
+               <h4 className="text-yellow-400 font-bold text-sm uppercase">{t('predict.shapley.cacheMissing')}</h4>
                <p className="text-yellow-400/70 text-xs font-mono">
-                 This mode averages 32 model combinations. Please use the "SEED 32" button in the sidebar to generate results if this takes too long.
+                 {t('predict.shapley.cacheMissingDesc')}
                </p>
              </div>
           </div>
+
         )}
 
 
@@ -267,11 +273,10 @@ export default function ShapleyImportanceChart({
         <div className="p-8">
           {activeMode === 'gradient' ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Global Importance Bar Chart */}
               <div className="bg-black/20 rounded-xl border border-white/5 p-4">
                 <div className="mb-4 flex items-center gap-2 px-2">
                   <div className="w-1 h-3 bg-[#00F0FF]"></div>
-                  <h3 className="text-[10px] font-black tracking-widest text-[#00F0FF] uppercase">Feature Importance (Mean |SHAP|)</h3>
+                  <h3 className="text-[10px] font-black tracking-widest text-[#00F0FF] uppercase">{t('predict.shapley.importanceTitle')}</h3>
                 </div>
                 <Plot
                   data={[{
@@ -291,7 +296,7 @@ export default function ShapleyImportanceChart({
                   layout={{
                     ...commonLayout,
                     height: 480,
-                    xaxis: { ...commonLayout.xaxis, title: { text: 'Mean Absolute SHAP Value', font: { size: 10 } } },
+                    xaxis: { ...commonLayout.xaxis, title: { text: t('predict.shapley.meanShap'), font: { size: 10 } } },
                   }}
                   config={{ displayModeBar: false, responsive: true }}
                   style={{ width: '100%' }}
@@ -302,14 +307,14 @@ export default function ShapleyImportanceChart({
               <div className="bg-black/20 rounded-xl border border-white/5 p-4">
                 <div className="mb-4 flex items-center gap-2 px-2">
                   <div className="w-1 h-3 bg-[#ED213A]"></div>
-                  <h3 className="text-[10px] font-black tracking-widest text-[#ED213A] uppercase">Summary Swarm Plot (Global Distribution)</h3>
+                  <h3 className="text-[10px] font-black tracking-widest text-[#ED213A] uppercase">{t('predict.shapley.swarmTitle')}</h3>
                 </div>
                 <Plot
                   data={summaryPlotData}
                   layout={{
                     ...commonLayout,
                     height: 480,
-                    xaxis: { ...commonLayout.xaxis, title: { text: 'SHAP Value (Impact on Prediction)', font: { size: 10 } } },
+                    xaxis: { ...commonLayout.xaxis, title: { text: t('predict.shapley.impactOnPred'), font: { size: 10 } } },
                     yaxis: {
                       ...commonLayout.yaxis,
                       tickvals: gradientData?.summary_data.map((_, i) => i),
@@ -326,7 +331,7 @@ export default function ShapleyImportanceChart({
               <div className="mb-6 flex justify-between items-center px-2">
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-3 bg-[#9c7bea]"></div>
-                  <h3 className="text-[10px] font-black tracking-widest text-[#9c7bea] uppercase">Marginal Contribution Analysis (Ablation SHAP)</h3>
+                  <h3 className="text-[10px] font-black tracking-widest text-[#9c7bea] uppercase">{t('predict.shapley.marginalAnalysisTitle')}</h3>
                 </div>
                 <div className="text-[10px] font-mono text-white/30">METRIC: GLOBAL R²</div>
               </div>
@@ -349,7 +354,7 @@ export default function ShapleyImportanceChart({
                   layout={{
                     ...commonLayout,
                     height: 500,
-                    xaxis: { ...commonLayout.xaxis, title: { text: 'Shapley Value (Average Contribution to R²)', font: { size: 11 } } },
+                    xaxis: { ...commonLayout.xaxis, title: { text: t('predict.shapley.avgContribution'), font: { size: 11 } } },
                     margin: { ...commonLayout.margin, l: 200 }
                   }}
                   config={{ displayModeBar: false, responsive: true }}
@@ -358,29 +363,30 @@ export default function ShapleyImportanceChart({
               </div>
 
               <div className="mt-6 p-4 bg-[#9c7bea]/5 border border-[#9c7bea]/20 rounded-lg">
-                <div className="text-[10px] text-[#9c7bea] font-bold mb-2 uppercase tracking-tighter">Mathematical Principle</div>
+                <div className="text-[10px] text-[#9c7bea] font-bold mb-2 uppercase tracking-tighter">{t('predict.shapley.mathPrinciple')}</div>
                 <p className="text-[11px] text-[#A0AAB4] leading-relaxed">
-                  Calculated using the weighted average of marginal improvements to the global R² score across all 2ⁿ variable combinations. 
-                  This represents the game-theoretic fair distribution of model performance boost among individual input features.
+                  {t('predict.shapley.mathDesc')}
                 </p>
               </div>
             </div>
           )}
+
         </div>
 
 
         {/* Footer Info */}
         <div className="px-8 pb-8 pt-2 flex flex-col md:flex-row justify-between text-[9px] font-mono text-gray-600 gap-4 uppercase tracking-tighter">
           <div className="flex gap-6">
-            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Low Feature Value</span>
-            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> High Feature Value</span>
+            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> {t('predict.shapley.lowValue')}</span>
+            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> {t('predict.shapley.highValue')}</span>
           </div>
           <div>
-            * SHAP Values represent the additive contribution of each feature to the model's spatial mean ozone prediction.
+            {t('predict.shapley.footerNote').split('\n')[0]}
             <br />
-            * All data points are randomly downsampled from the full test set (MY28) to preserve performance.
+            {t('predict.shapley.footerNote').split('\n')[1]}
           </div>
         </div>
+
       </GlowCard>
 
       <style>{`
