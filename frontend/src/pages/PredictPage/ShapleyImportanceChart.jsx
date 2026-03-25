@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import Plot from 'react-plotly.js';
 import C from '../../constants/colors';
 import { useT } from '../../i18n';
@@ -131,7 +132,7 @@ export default function ShapleyImportanceChart({
 
 
   if (loading) {
-    return (
+    return createPortal(
       <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-2xl flex items-center justify-center p-10 select-none animate-in fade-in duration-500">
         <div className="text-center">
           <div className="relative w-32 h-32 mx-auto mb-10">
@@ -159,12 +160,13 @@ export default function ShapleyImportanceChart({
           @keyframes reverse-spin { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
           .animate-reverse-spin { animation: reverse-spin 3s linear infinite; }
         `}</style>
-      </div>
+      </div>,
+      document.body
     );
   }
 
   if (error) {
-    return (
+    return createPortal(
       <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex items-center justify-center p-10">
         <div className="max-w-md w-full p-8 border border-red-500/30 bg-red-500/5 rounded-2xl text-center">
           <div className="text-4xl mb-6">⚠️</div>
@@ -179,7 +181,8 @@ export default function ShapleyImportanceChart({
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
@@ -201,18 +204,18 @@ export default function ShapleyImportanceChart({
     hovermode: 'closest',
   };
 
-  return (
+  const content = (
     <div
-      className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-2xl flex items-center justify-center p-6 md:p-12 overflow-y-auto"
+      className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-2xl flex items-center justify-center p-4 md:p-8"
       onDoubleClick={onClose}
     >
       <GlowCard
-        className="w-full max-w-7xl bg-[#0A0A0F]/90 border border-[#1E1E26] shadow-2xl cursor-default"
+        className="w-full max-w-7xl max-h-[90vh] bg-[#0A0A0F]/90 border border-[#1E1E26] shadow-2xl cursor-default flex flex-col"
         style={{ animation: 'scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
         onDoubleClick={e => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 border-b border-white/5 gap-4">
+        {/* Header - Fixed */}
+        <div className="flex-none flex flex-col md:flex-row justify-between items-start md:items-center p-6 border-b border-white/5 gap-4">
           <div>
             <div className="flex items-center gap-3 mb-1">
               <div className="w-2 h-6 bg-[#00F0FF] shadow-[0_0_10px_#00F0FF]"></div>
@@ -226,8 +229,8 @@ export default function ShapleyImportanceChart({
                 <button
                   onClick={() => setActiveMode('gradient')}
                   className={`text-[10px] font-bold px-3 py-1 rounded-full border transition-all ${activeMode === 'gradient'
-                      ? 'bg-[#00F0FF] border-[#00F0FF] text-black shadow-[0_0_15px_#00F0FF]'
-                      : 'bg-transparent border-white/10 text-[#A0AAB4] hover:border-white/30'
+                    ? 'bg-[#00F0FF] border-[#00F0FF] text-black shadow-[0_0_15px_#00F0FF]'
+                    : 'bg-transparent border-white/10 text-[#A0AAB4] hover:border-white/30'
                     }`}
                 >
                   {t('predict.shapley.gradientTab')}
@@ -235,8 +238,8 @@ export default function ShapleyImportanceChart({
                 <button
                   onClick={() => setActiveMode('marginal')}
                   className={`text-[10px] font-bold px-3 py-1 rounded-full border transition-all ${activeMode === 'marginal'
-                      ? 'bg-gradient-to-r from-[#9c7bea] to-[#4acfac] border-transparent text-white shadow-[0_0_15px_#9c7bea]'
-                      : 'bg-transparent border-white/10 text-[#A0AAB4] hover:border-white/30'
+                    ? 'bg-gradient-to-r from-[#9c7bea] to-[#4acfac] border-transparent text-white shadow-[0_0_15px_#9c7bea]'
+                    : 'bg-transparent border-white/10 text-[#A0AAB4] hover:border-white/30'
                     }`}
                 >
                   {t('predict.shapley.marginalTab')}
@@ -252,11 +255,10 @@ export default function ShapleyImportanceChart({
                   <button
                     key={m}
                     onClick={() => setActiveMetric(m)}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black font-orbitron transition-all ${
-                      activeMetric === m 
-                      ? 'bg-[#9c7bea] text-white shadow-[0_0_10px_rgba(156,123,234,0.3)]' 
-                      : 'text-white/30 hover:text-white/60 hover:bg-white/5'
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black font-orbitron transition-all ${activeMetric === m
+                        ? 'bg-[#9c7bea] text-white shadow-[0_0_10px_rgba(156,123,234,0.3)]'
+                        : 'text-white/30 hover:text-white/60 hover:bg-white/5'
+                      }`}
                   >
                     {m.toUpperCase()}
                   </button>
@@ -279,150 +281,146 @@ export default function ShapleyImportanceChart({
           </div>
         </div>
 
-
-
-        {/* Marginal Description Overlay */}
-        {activeMode === 'marginal' && !marginalData && !loading && (
-          <div className="m-8 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-center gap-4 animate-in slide-in-from-top duration-300">
-            <span className="text-2xl">⚡</span>
-            <div>
-              <h4 className="text-yellow-400 font-bold text-sm uppercase">{t('predict.shapley.cacheMissing')}</h4>
-              <p className="text-yellow-400/70 text-xs font-mono">
-                {t('predict.shapley.cacheMissingDesc')}
-              </p>
-            </div>
-          </div>
-
-        )}
-
-
-        {/* Charts Grid */}
-        <div className="p-8">
-          {activeMode === 'gradient' ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="bg-black/20 rounded-xl border border-white/5 p-4">
-                <div className="mb-4 flex items-center gap-2 px-2">
-                  <div className="w-1 h-3 bg-[#00F0FF]"></div>
-                  <h3 className="text-[10px] font-black tracking-widest text-[#00F0FF] uppercase">{t('predict.shapley.importanceTitle')}</h3>
-                </div>
-                <Plot
-                  data={[{
-                    type: 'bar',
-                    x: barPlotData?.x,
-                    y: barPlotData?.y,
-                    orientation: 'h',
-                    marker: {
-                      color: '#00F0FF',
-                      opacity: 0.8,
-                      line: { color: '#00F0FF', width: 1 }
-                    },
-                    text: barPlotData?.text,
-                    textposition: 'outside',
-                    cliponaxis: false,
-                  }]}
-                  layout={{
-                    ...commonLayout,
-                    height: 480,
-                    xaxis: { ...commonLayout.xaxis, title: { text: t('predict.shapley.meanShap'), font: { size: 10 } } },
-                  }}
-                  config={{ displayModeBar: false, responsive: true }}
-                  style={{ width: '100%' }}
-                />
-              </div>
-
-              {/* Summary Swarm Plot */}
-              <div className="bg-black/20 rounded-xl border border-white/5 p-4">
-                <div className="mb-4 flex items-center gap-2 px-2">
-                  <div className="w-1 h-3 bg-[#ED213A]"></div>
-                  <h3 className="text-[10px] font-black tracking-widest text-[#ED213A] uppercase">{t('predict.shapley.swarmTitle')}</h3>
-                </div>
-                <Plot
-                  data={summaryPlotData}
-                  layout={{
-                    ...commonLayout,
-                    height: 480,
-                    xaxis: { ...commonLayout.xaxis, title: { text: t('predict.shapley.impactOnPred'), font: { size: 10 } } },
-                    yaxis: {
-                      ...commonLayout.yaxis,
-                      tickvals: gradientData?.summary_data.map((_, i) => i),
-                      ticktext: gradientData?.summary_data.map(d => getVarLabel(d.name)),
-                    }
-                  }}
-                  config={{ displayModeBar: false, responsive: true }}
-                  style={{ width: '100%' }}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="bg-black/20 rounded-xl border border-white/5 p-6 min-h-[500px] flex flex-col">
-              <div className="mb-6 flex justify-between items-center px-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-3 bg-[#9c7bea]"></div>
-                  <h3 className="text-[10px] font-black tracking-widest text-[#9c7bea] uppercase">{t('predict.shapley.marginalAnalysisTitle')}</h3>
-                </div>
-                <div className="text-[10px] font-mono text-white/30 tracking-widest uppercase">METRIC: GLOBAL {activeMetric}</div>
-              </div>
-
-              <div className="flex-1">
-                <Plot
-                  data={[{
-                    type: 'bar',
-                    x: marginalPlotData?.x,
-                    y: marginalPlotData?.y,
-                    orientation: 'h',
-                    marker: {
-                      color: marginalPlotData?.x?.map(v => 
-                        (activeMetric === 'r2' || activeMetric === 'ssim')
-                        ? (v > 0 ? '#9c7bea' : 'rgba(156,123,234,0.3)')
-                        : (v < 0 ? '#9c7bea' : 'rgba(156,123,234,0.3)')
-                      ),
-                      line: { color: '#9c7bea', width: 0 }
-                    },
-                    text: marginalPlotData?.text,
-                    textposition: 'outside',
-                    cliponaxis: false,
-                  }]}
-                  layout={{
-                    ...commonLayout,
-                    height: 500,
-                    xaxis: { 
-                      ...commonLayout.xaxis, 
-                      title: { 
-                        text: t('predict.shapley.avgContribution').replace('{metric}', activeMetric.toUpperCase()), 
-                        font: { size: 10, color: 'rgba(232,237,243,0.3)' } 
-                      } 
-                    },
-                    margin: { ...commonLayout.margin, l: 200 }
-                  }}
-                  config={{ displayModeBar: false, responsive: true }}
-                  style={{ width: '100%', height: '100%' }}
-                />
-              </div>
-
-              <div className="mt-8 p-6 bg-white/5 rounded-2xl border border-white/5">
-                <h4 className="flex items-center gap-2 text-[#9c7bea] font-black text-xs uppercase mb-3 font-orbitron">
-                  <span className="w-1.5 h-1.5 bg-[#9c7bea] rounded-full shadow-[0_0_5px_#9c7bea]"></span>
-                  {t('predict.shapley.mathPrinciple')}
-                </h4>
-                <p className="text-white/40 text-[11px] leading-relaxed font-mono">
-                  {t('predict.shapley.mathDesc').replace('{metric}', activeMetric.toUpperCase())}
-                  <span className="text-[#9c7bea]/80 ml-2">
-                    {(activeMetric === 'r2' || activeMetric === 'ssim') 
-                      ? t('predict.shapley.mathDescNote.higher').replace('{metric}', activeMetric.toUpperCase())
-                      : t('predict.shapley.mathDescNote.lower').replace('{metric}', activeMetric.toUpperCase())
-                    }
-                  </span>
+        {/* Scrollable Content Container */}
+        <div className="flex-1 overflow-y-auto px-8 py-4">
+          {/* Marginal Description Overlay */}
+          {activeMode === 'marginal' && !marginalData && !loading && (
+            <div className="mb-8 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-center gap-4 animate-in slide-in-from-top duration-300">
+              <span className="text-2xl">⚡</span>
+              <div>
+                <h4 className="text-yellow-400 font-bold text-sm uppercase">{t('predict.shapley.cacheMissing')}</h4>
+                <p className="text-yellow-400/70 text-xs font-mono">
+                  {t('predict.shapley.cacheMissingDesc')}
                 </p>
               </div>
-
             </div>
           )}
 
+          {/* Charts Grid */}
+          <div className="charts-view-area">
+            {activeMode === 'gradient' ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-black/20 rounded-xl border border-white/5 p-4">
+                  <div className="mb-4 flex items-center gap-2 px-2">
+                    <div className="w-1 h-3 bg-[#00F0FF]"></div>
+                    <h3 className="text-[10px] font-black tracking-widest text-[#00F0FF] uppercase">{t('predict.shapley.importanceTitle')}</h3>
+                  </div>
+                  <Plot
+                    data={[{
+                      type: 'bar',
+                      x: barPlotData?.x,
+                      y: barPlotData?.y,
+                      orientation: 'h',
+                      marker: {
+                        color: '#00F0FF',
+                        opacity: 0.8,
+                        line: { color: '#00F0FF', width: 1 }
+                      },
+                      text: barPlotData?.text,
+                      textposition: 'outside',
+                      cliponaxis: false,
+                    }]}
+                    layout={{
+                      ...commonLayout,
+                      height: 480,
+                      xaxis: { ...commonLayout.xaxis, title: { text: t('predict.shapley.meanShap'), font: { size: 10 } } },
+                    }}
+                    config={{ displayModeBar: false, responsive: true }}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                {/* Summary Swarm Plot */}
+                <div className="bg-black/20 rounded-xl border border-white/5 p-4">
+                  <div className="mb-4 flex items-center gap-2 px-2">
+                    <div className="w-1 h-3 bg-[#ED213A]"></div>
+                    <h3 className="text-[10px] font-black tracking-widest text-[#ED213A] uppercase">{t('predict.shapley.swarmTitle')}</h3>
+                  </div>
+                  <Plot
+                    data={summaryPlotData}
+                    layout={{
+                      ...commonLayout,
+                      height: 480,
+                      xaxis: { ...commonLayout.xaxis, title: { text: t('predict.shapley.impactOnPred'), font: { size: 10 } } },
+                      yaxis: {
+                        ...commonLayout.yaxis,
+                        tickvals: gradientData?.summary_data.map((_, i) => i),
+                        ticktext: gradientData?.summary_data.map(d => getVarLabel(d.name)),
+                      }
+                    }}
+                    config={{ displayModeBar: false, responsive: true }}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="bg-black/20 rounded-xl border border-white/5 p-6 min-h-[500px] flex flex-col">
+                <div className="mb-6 flex justify-between items-center px-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-3 bg-[#9c7bea]"></div>
+                    <h3 className="text-[10px] font-black tracking-widest text-[#9c7bea] uppercase">{t('predict.shapley.marginalAnalysisTitle')}</h3>
+                  </div>
+                  <div className="text-[10px] font-mono text-white/30 tracking-widest uppercase">METRIC: GLOBAL {activeMetric}</div>
+                </div>
+
+                <div className="flex-1">
+                  <Plot
+                    data={[{
+                      type: 'bar',
+                      x: marginalPlotData?.x,
+                      y: marginalPlotData?.y,
+                      orientation: 'h',
+                      marker: {
+                        color: marginalPlotData?.x?.map(v =>
+                          (activeMetric === 'r2' || activeMetric === 'ssim')
+                            ? (v > 0 ? '#9c7bea' : 'rgba(156,123,234,0.3)')
+                            : (v < 0 ? '#9c7bea' : 'rgba(156,123,234,0.3)')
+                        ),
+                        line: { color: '#9c7bea', width: 0 }
+                      },
+                      text: marginalPlotData?.text,
+                      textposition: 'outside',
+                      cliponaxis: false,
+                    }]}
+                    layout={{
+                      ...commonLayout,
+                      height: 500,
+                      xaxis: {
+                        ...commonLayout.xaxis,
+                        title: {
+                          text: t('predict.shapley.avgContribution').replace('{metric}', activeMetric.toUpperCase()),
+                          font: { size: 10, color: 'rgba(232,237,243,0.3)' }
+                        }
+                      },
+                      margin: { ...commonLayout.margin, l: 200 }
+                    }}
+                    config={{ displayModeBar: false, responsive: true }}
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                </div>
+
+                <div className="mt-8 p-6 bg-white/5 rounded-2xl border border-white/5">
+                  <h4 className="flex items-center gap-2 text-[#9c7bea] font-black text-xs uppercase mb-3 font-orbitron">
+                    <span className="w-1.5 h-1.5 bg-[#9c7bea] rounded-full shadow-[0_0_5px_#9c7bea]"></span>
+                    {t('predict.shapley.mathPrinciple')}
+                  </h4>
+                  <p className="text-white/40 text-[11px] leading-relaxed font-mono">
+                    {t('predict.shapley.mathDesc').replace('{metric}', activeMetric.toUpperCase())}
+                    <span className="text-[#9c7bea]/80 ml-2">
+                      {(activeMetric === 'r2' || activeMetric === 'ssim')
+                        ? t('predict.shapley.mathDescNote.higher').replace('{metric}', activeMetric.toUpperCase())
+                        : t('predict.shapley.mathDescNote.lower').replace('{metric}', activeMetric.toUpperCase())
+                      }
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-
-        {/* Footer Info */}
-        <div className="px-8 pb-8 pt-2 flex flex-col md:flex-row justify-between text-[9px] font-mono text-gray-600 gap-4 uppercase tracking-tighter">
+        {/* Footer Info - Fixed */}
+        <div className="flex-none px-8 pb-8 pt-2 flex flex-col md:flex-row justify-between text-[9px] font-mono text-gray-600 gap-4 uppercase tracking-tighter">
           <div className="flex gap-6">
             <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> {t('predict.shapley.lowValue')}</span>
             <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> {t('predict.shapley.highValue')}</span>
@@ -433,7 +431,6 @@ export default function ShapleyImportanceChart({
             {t('predict.shapley.footerNote').split('\n')[1]}
           </div>
         </div>
-
       </GlowCard>
 
       <style>{`
@@ -444,4 +441,6 @@ export default function ShapleyImportanceChart({
       `}</style>
     </div>
   );
+
+  return createPortal(content, document.body);
 }
