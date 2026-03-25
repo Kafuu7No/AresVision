@@ -303,9 +303,20 @@ const zh = {
       highValue: '高值',
       meanShap: '平均绝对 SHAP 值',
       impactOnPred: 'SHAP 值 (对预测的影响)',
-      avgContribution: 'Shapley 值 (对 R² 的平均贡献度)',
+      avgContribution: 'Shapley 值 (对 {metric} 的平均贡献)',
       mathPrinciple: '数学原理',
-      mathDesc: '利用所有 2ⁿ 种变量组合下的边际提升加权平均计算得出。这代表了每个输入特征对模型性能提升的“公平分配”份额。',
+      mathDesc: '利用所有 2ⁿ 种变量组合下的边际提升加权平均计算得出。这代表了每个输入特征对模型 {metric} 性能提升的“公平分配”份额。',
+      metrics: {
+        r2: '决定系数 (R²)',
+        rmse: '均方根误差 (RMSE)',
+        mae: '平均绝对误差 (MAE)',
+        ssim: '结构相似性 (SSIM)',
+      },
+      mathDescNote: {
+        higher: '该特征增加通常会显著提升 {metric}。',
+        lower: '该特征增加通常会显著降低 {metric} (误差)。',
+      },
+
       cacheMissing: '边际缓存缺失',
       cacheMissingDesc: '该模式需要 32 组模型对比。若加载过慢，请先在侧边栏点击 "SEED 32" 生成缓存。',
       footerNote: '* SHAP 值代表每个特征对模型预测场空间均值的加性贡献量。\n* 数据点从全量测试集 (MY28) 中随机下采样以保证渲染性能。',

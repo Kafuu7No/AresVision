@@ -20,10 +20,14 @@ export default function ShapleyImportanceChart({
   const t = useT();
   const [loading, setLoading] = useState(true);
   const [activeMode, setActiveMode] = useState(mode || 'gradient'); // 'gradient' | 'marginal'
-
+  const [activeMetric, setActiveMetric] = useState('r2');
   const [gradientData, setGradientData] = useState(null);
-  const [marginalData, setMarginalData] = useState(null);
+  const [marginalDataCache, setMarginalDataCache] = useState({}); // { r2: data, rmse: data, ... }
   const [error, setError] = useState(null);
+
+  const marginalData = marginalDataCache[activeMetric] || null;
+
+
 
 
   const fetchData = useCallback(async () => {
@@ -36,9 +40,9 @@ export default function ShapleyImportanceChart({
           setGradientData(result);
         }
       } else {
-        if (!marginalData) {
-          const result = await fetchShapleyValues('r2');
-          setMarginalData(result);
+        if (!marginalDataCache[activeMetric]) {
+          const result = await fetchShapleyValues(activeMetric);
+          setMarginalDataCache(prev => ({ ...prev, [activeMetric]: result }));
         }
       }
     } catch (err) {
@@ -47,7 +51,8 @@ export default function ShapleyImportanceChart({
     } finally {
       setLoading(false);
     }
-  }, [activeMode, gradientData, marginalData]);
+  }, [activeMode, activeMetric, gradientData, marginalDataCache]);
+
 
 
   useEffect(() => {
@@ -241,10 +246,27 @@ export default function ShapleyImportanceChart({
           </div>
 
           <div className="flex items-center gap-4">
+            {activeMode === 'marginal' && (
+              <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 gap-1 mr-4">
+                {['r2', 'rmse', 'mae', 'ssim'].map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setActiveMetric(m)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black font-orbitron transition-all ${
+                      activeMetric === m 
+                      ? 'bg-[#9c7bea] text-white shadow-[0_0_10px_rgba(156,123,234,0.3)]' 
+                      : 'text-white/30 hover:text-white/60 hover:bg-white/5'
+                    }`}
+                  >
+                    {m.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            )}
             <button
               onClick={() => {
                 if (activeMode === 'gradient') setGradientData(null);
-                else setMarginalData(null);
+                else setMarginalDataCache(prev => ({ ...prev, [activeMetric]: null }));
                 fetchData();
               }}
               className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-[#00F0FF]/10 hover:border-[#00F0FF]/50 transition-all text-[#00F0FF]"
@@ -256,6 +278,7 @@ export default function ShapleyImportanceChart({
             </button>
           </div>
         </div>
+
 
 
         {/* Marginal Description Overlay */}
@@ -337,7 +360,7 @@ export default function ShapleyImportanceChart({
                   <div className="w-1 h-3 bg-[#9c7bea]"></div>
                   <h3 className="text-[10px] font-black tracking-widest text-[#9c7bea] uppercase">{t('predict.shapley.marginalAnalysisTitle')}</h3>
                 </div>
-                <div className="text-[10px] font-mono text-white/30">METRIC: GLOBAL R²</div>
+                <div className="text-[10px] font-mono text-white/30 tracking-widest uppercase">METRIC: GLOBAL {activeMetric}</div>
               </div>
 
               <div className="flex-1">
@@ -348,8 +371,12 @@ export default function ShapleyImportanceChart({
                     y: marginalPlotData?.y,
                     orientation: 'h',
                     marker: {
-                      color: 'rgba(156, 123, 234, 0.8)',
-                      line: { color: '#9c7bea', width: 1 }
+                      color: marginalPlotData?.x?.map(v => 
+                        (activeMetric === 'r2' || activeMetric === 'ssim')
+                        ? (v > 0 ? '#9c7bea' : 'rgba(156,123,234,0.3)')
+                        : (v < 0 ? '#9c7bea' : 'rgba(156,123,234,0.3)')
+                      ),
+                      line: { color: '#9c7bea', width: 0 }
                     },
                     text: marginalPlotData?.text,
                     textposition: 'outside',
@@ -358,20 +385,36 @@ export default function ShapleyImportanceChart({
                   layout={{
                     ...commonLayout,
                     height: 500,
-                    xaxis: { ...commonLayout.xaxis, title: { text: t('predict.shapley.avgContribution'), font: { size: 11 } } },
+                    xaxis: { 
+                      ...commonLayout.xaxis, 
+                      title: { 
+                        text: t('predict.shapley.avgContribution').replace('{metric}', activeMetric.toUpperCase()), 
+                        font: { size: 10, color: 'rgba(232,237,243,0.3)' } 
+                      } 
+                    },
                     margin: { ...commonLayout.margin, l: 200 }
                   }}
                   config={{ displayModeBar: false, responsive: true }}
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', height: '100%' }}
                 />
               </div>
 
-              <div className="mt-6 p-4 bg-[#9c7bea]/5 border border-[#9c7bea]/20 rounded-lg">
-                <div className="text-[10px] text-[#9c7bea] font-bold mb-2 uppercase tracking-tighter">{t('predict.shapley.mathPrinciple')}</div>
-                <p className="text-[11px] text-[#A0AAB4] leading-relaxed">
-                  {t('predict.shapley.mathDesc')}
+              <div className="mt-8 p-6 bg-white/5 rounded-2xl border border-white/5">
+                <h4 className="flex items-center gap-2 text-[#9c7bea] font-black text-xs uppercase mb-3 font-orbitron">
+                  <span className="w-1.5 h-1.5 bg-[#9c7bea] rounded-full shadow-[0_0_5px_#9c7bea]"></span>
+                  {t('predict.shapley.mathPrinciple')}
+                </h4>
+                <p className="text-white/40 text-[11px] leading-relaxed font-mono">
+                  {t('predict.shapley.mathDesc').replace('{metric}', activeMetric.toUpperCase())}
+                  <span className="text-[#9c7bea]/80 ml-2">
+                    {(activeMetric === 'r2' || activeMetric === 'ssim') 
+                      ? t('predict.shapley.mathDescNote.higher').replace('{metric}', activeMetric.toUpperCase())
+                      : t('predict.shapley.mathDescNote.lower').replace('{metric}', activeMetric.toUpperCase())
+                    }
+                  </span>
                 </p>
               </div>
+
             </div>
           )}
 
