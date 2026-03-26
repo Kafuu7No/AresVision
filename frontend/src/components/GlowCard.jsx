@@ -50,7 +50,9 @@ export default function GlowCard({ children, className = '', style = {}, breathe
           }}
         />
       )}
-      <div style={{ position: 'relative', zIndex: 1 }}>{children}</div>
+      <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        {children}
+      </div>
     </div>
   );
 }

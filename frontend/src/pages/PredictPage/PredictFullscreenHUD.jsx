@@ -1,4 +1,7 @@
+import React from 'react';
+import { createPortal } from 'react-dom';
 import SphericalFieldCanvas from '../../components/SphericalFieldCanvas';
+import GlowCard from '../../components/GlowCard';
 import C from '../../constants/colors';
 import { useT } from '../../i18n';
 import { fmtNum } from '../../utils/fmt';
@@ -29,121 +32,117 @@ export default function PredictFullscreenHUD({
   const midLabel = fullscreen3D.colorMode === 'rdbu' ? '0' : fmtNum(convertOzone((rawMin + rawMax) / 2, ozoneUnit), precision);
   const botLabel = fullscreen3D.colorMode === 'rdbu' ? `-${fmtNum(absExtreme, precision)}` : minValStr;
 
-  return (
+  const content = (
     <div
+      className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-2xl flex items-center justify-center p-1 md:p-2"
       onDoubleClick={() => setFullscreen3D(null)}
-      className="panel-dark"
-      style={{
-        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        zIndex: 9999, background: 'rgba(5, 5, 10, 0.98)',
-        display: 'flex', justifyContent: 'center', alignItems: 'center',
-        cursor: 'zoom-out'
-      }}
     >
-      <SphericalFieldCanvas
-        fieldData={fullscreen3D.fieldData}
-        colorMode={fullscreen3D.colorMode}
-        h="100vh"
-        forceFullscreen
-      />
-
-      {/* HUD 左侧控制台 (Side Dashboard Panel) */}
-      <div style={{
-        position: 'absolute', top: 80, left: 40, bottom: 40, width: 340,
-        padding: '24px', background: 'rgba(20,20,30,0.65)',
-        backdropFilter: 'blur(16px)', border: `1px solid ${C.border}`,
-        borderRadius: 16, boxShadow: '0 12px 48px rgba(0,0,0,0.6)',
-        display: 'flex', flexDirection: 'column', gap: 24,
-        pointerEvents: 'none', zIndex: 10,
-        boxSizing: 'border-box'
-      }}>
-
-        {/* 1. 顶部块：当前场数据上下文 */}
-        <div style={{ paddingBottom: 16, borderBottom: `1px solid rgba(255,255,255,0.08)` }}>
-          <div style={{
-            fontSize: 18, fontWeight: 800, color: C.ice,
-            fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 8,
-            textShadow: '0 0 10px rgba(255,255,255,0.3)'
-          }}>
-            {titleText}
+      <GlowCard
+        className="w-full max-w-[1700px] h-[98vh] bg-[#0A0A0F]/90 border border-[#1E1E26] shadow-2xl cursor-default flex flex-col overflow-hidden"
+        style={{ animation: 'scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)', borderRadius: '24px' }}
+        onDoubleClick={e => e.stopPropagation()}
+      >
+        {/* Header - Aligned with SHAP Mode (Enlarged) */}
+        <div className="flex-none flex justify-between items-center px-8 py-5 border-b border-white/5 gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-2.5 h-8 bg-[#00F0FF] shadow-[0_0_15px_#00F0FF]"></div>
+            <h1 className="text-2xl font-black text-[#00F0FF] tracking-tighter font-orbitron uppercase">
+              3D GLOBE VIEW
+              <span className="text-white/20 ml-3 font-normal text-base lowercase font-sans">
+                | {titleText} Ls {stepLs?.toFixed(1)}°
+              </span>
+            </h1>
           </div>
-          <div style={{ fontSize: 13, color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>
-            {stepLs != null ? `Ls = ${stepLs.toFixed(3)}° | Step ${step + 1}` : 'Global View'}
+
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setFullscreen3D(null)}
+              className="w-12 h-12 rounded-full bg-red-500/5 border border-red-500/20 flex items-center justify-center hover:bg-red-500/20 hover:border-red-500/50 transition-all text-red-500"
+            >
+              <span className="text-xl">✕</span>
+            </button>
           </div>
         </div>
 
-        {/* 2. 中间块上：全局数据统计 */}
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
-            GLOBAL STATISTICS
-          </div>
-          <div style={{ display: 'grid', gap: 12, fontSize: 14, fontFamily: "'Orbitron', sans-serif" }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: C.ice60 }}>Max Value:</span>
-              <span style={{ color: C.mars, fontWeight: 700, fontSize: 15 }}>{maxValStr}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: C.ice60 }}>Min Value:</span>
-              <span style={{ color: '#4acfac', fontWeight: 700, fontSize: 15 }}>{minValStr}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingTop: 12, borderTop: `1px dashed rgba(255,255,255,0.1)` }}>
-              <span style={{ color: C.ice30 }}>Data Range:</span>
-              <span style={{ color: C.ice, fontWeight: 600 }}>{rangeStr}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 3. 中间块下：颜色图例 Colorbar (横向排列) */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
-            DATA SCALE ({colorTitle})
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            {/* Min Label */}
-            <div style={{ fontSize: 12, color: C.ice, fontFamily: "'Orbitron', sans-serif", minWidth: 50, textAlign: 'right' }}>
-              {botLabel}
-            </div>
-
-            {/* Color Bar */}
-            <div style={{
-              flex: 1, height: 16, borderRadius: 8,
-              background: fullscreen3D.colorMode === 'rdbu'
-                ? 'linear-gradient(to right, rgb(5,48,97), rgb(247,247,247), rgb(103,0,31))'
-                : 'linear-gradient(to right, rgb(0,0,4), rgb(212,72,66), rgb(252,255,164))',
-              border: `1px solid rgba(255,255,255,0.2)`,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              position: 'relative'
-            }}>
-              {/* Zero tick for rdbu Mode */}
-              {fullscreen3D.colorMode === 'rdbu' && (
-                <div style={{
-                  position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)',
-                  fontSize: 10, color: C.ice30, fontFamily: "'Orbitron', sans-serif"
-                }}>
-                  | {midLabel} |
+        {/* Modal Main Content Container */}
+        <div className="flex-1 flex flex-row overflow-hidden">
+          {/* Left Data Column (Enlarged) */}
+          <div
+            className="w-[340px] border-r border-white/5 flex flex-col p-8 gap-10 overflow-y-auto"
+            style={{ background: 'rgba(255,255,255,0.02)' }}
+          >
+            {/* Statistics */}
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-1.5 h-4 bg-[#00F0FF]"></div>
+                <h3 className="text-[12px] font-black tracking-widest text-[#00F0FF] uppercase">GLOBE STATISTICS</h3>
+              </div>
+              <div className="space-y-4 font-orbitron">
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/40 uppercase tracking-tighter">MAX VALUE</span>
+                  <span className="text-[#ff6b35] font-bold text-lg">{maxValStr}</span>
                 </div>
-              )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/40 uppercase tracking-tighter">MIN VALUE</span>
+                  <span className="text-[#4acfac] font-bold text-lg">{minValStr}</span>
+                </div>
+                <div className="pt-3 border-t border-white/5 flex justify-between text-xs">
+                  <span className="text-white/20 uppercase tracking-tighter">DATA RANGE</span>
+                  <span className="text-white/80 font-bold">{rangeStr}</span>
+                </div>
+              </div>
             </div>
 
-            {/* Max Label */}
-            <div style={{ fontSize: 12, color: C.ice, fontFamily: "'Orbitron', sans-serif", minWidth: 50 }}>
-              {topLabel}
+            {/* Scale Legend */}
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-1.5 h-4 bg-[#9c7bea]"></div>
+                <h3 className="text-[12px] font-black tracking-widest text-[#9c7bea] uppercase">DATA SCALE ({colorTitle})</h3>
+              </div>
+              <div className="flex items-center gap-4 mt-6">
+                <span className="text-xs text-white/40 font-mono w-14 text-right">{botLabel}</span>
+                <div
+                  className="flex-1 h-4 rounded-full border border-white/10 relative shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]"
+                  style={{
+                    background: fullscreen3D.colorMode === 'rdbu'
+                      ? 'linear-gradient(to right, rgb(5,48,97), rgb(247,247,247), rgb(103,0,31))'
+                      : 'linear-gradient(to right, rgb(0,0,4), rgb(212,72,66), rgb(252,255,164))',
+                  }}
+                >
+                  {fullscreen3D.colorMode === 'rdbu' && (
+                    <div className="absolute top-[-18px] left-1/2 -translate-x-1/2 text-[10px] text-white/30 font-mono">0</div>
+                  )}
+                </div>
+                <span className="text-xs text-white/40 font-mono w-14">{topLabel}</span>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-6 border-t border-white/5">
+              <p className="text-[10px] font-mono text-white/20 uppercase leading-relaxed tracking-tighter">
+                Drag to rotate globe. Scroll to zoom in/out. View global convergence and spatiotemporal distribution patterns across the Martian surface.
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* 4. 底部块：操作提示 */}
-        <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid rgba(255,255,255,0.08)` }}>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>🖱️</span> Left Click: Rotate | Middle Scroll: Zoom
+          {/* Right 3D Visualizer Area */}
+          <div className="flex-1 bg-black/40 relative">
+            <SphericalFieldCanvas
+              fieldData={fullscreen3D.fieldData}
+              colorMode={fullscreen3D.colorMode}
+              h="100%"
+            />
           </div>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>
-            Double-click anywhere to close
-          </div>
         </div>
+      </GlowCard>
 
-      </div>
-
+      <style>{`
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.95) translateY(10px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
     </div>
   );
+
+  return createPortal(content, document.body);
 }
