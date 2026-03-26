@@ -191,6 +191,12 @@ export async function fetchShapleyValues(metric = 'r2') {
   return res.json();
 }
 
+export async function fetchShapleyGlobal() {
+  const res = await fetch(`${BASE}/predict/shapley-global`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 export async function fetchErrorDistribution(vars = []) {
   const varsStr = vars.length > 0 ? vars.join(',') : 'Temperature,Dust_Optical_Depth,Solar_Flux_DN,U_Wind,V_Wind';
   const res = await fetch(`${BASE}/predict/error-distribution?vars=${encodeURIComponent(varsStr)}`);

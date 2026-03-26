@@ -2,13 +2,14 @@
 预测服务编排层
 负责协调 MLDataPrepService, DataTransforms, ModelInferenceService, 获取结果并组装响应
 """
-import logging
+import itertools
 import hashlib
 import json
+import logging
+import asyncio
 import numpy as np
 import torch
-import asyncio
-import itertools
+import shap
 from sklearn.metrics import r2_score
 
 from cachetools import LRUCache
@@ -537,6 +538,180 @@ class PredictOrchestratorService:
                 logger.warning(f"预生成 {variables} 缓存失败: {e}")
                 
         logger.info(f"后台缓存检查完成: 新生成 {count_generated} 项组, 已存在 {count_skipped} 项组 (总计组合 {len(all_combos)} 个)")
+
+
+    def get_global_shap(self) -> dict:
+        """
+        计算模型在整个测试集上的特征归因 (SHAP)。
+        为了防止 OOM，采用分批计算并对结果进行空间/时间维度的降采样。
+        """
+        import traceback
+        try:
+            from config import MCD_VARIABLES, TRAINING_MASTER_ORDER, PERF_CACHE_DIR
+            import os
+
+            # 持久化缓存检查
+            perf_key_data = {
+                "type": "global_shap_v1",
+                "data_mtime": self.ml_data_prep.processed_data_mtime if hasattr(self.ml_data_prep, 'processed_data_mtime') else "default"
+            }
+            perf_hash = hashlib.md5(json.dumps(perf_key_data).encode()).hexdigest()
+            cache_file = PERF_CACHE_DIR / f"shap_global_{perf_hash}.json"
+
+            if cache_file.exists():
+                try:
+                    with open(cache_file, 'r', encoding='utf-8') as f:
+                        logger.info("命中持久化全局 SHAP 缓存")
+                        return json.load(f)
+                except Exception as e:
+                    logger.warning(f"读取全局 SHAP 缓存失败: {e}")
+
+            # 1. 准备模型与包装器
+            # 使用全量 6 通道模型进行分析 (O3 + 5 气象因子)
+            model, input_dim, model_info = self.inference.get_model_for_variables(MCD_VARIABLES)
+            
+            class SHAPScalarWrapper(torch.nn.Module):
+                def __init__(self, model):
+                    super().__init__()
+                    self.model = model
+                def forward(self, x):
+                    # x: [B, T, C, H, W]
+                    # output: [B, Horizon, 1, H, W]
+                    out = self.model(x)
+                    # 聚合为标量：取预测第一步 (horizon=0) 的空间平均
+                    # 重要：必须确保输出梯度正常，且返回 [B, 1] 以适配 GradientExplainer 的索引逻辑
+                    return out[:, 0, 0, :, :].mean(dim=(1, 2)).unsqueeze(1)
+
+            # ARESVISION: 用户要求切回 GPU 计算。由于 M=1 且采样降至 100，显存压力已极大释放，
+            # 现在可以安全在 GPU 上运行，预计 1-2 分钟内即可完成。
+            shap_device = self.inference.device
+            wrapper = SHAPScalarWrapper(model).to(shap_device)
+            wrapper.eval()
+
+            # 2. 准备数据
+            if self.ml_data_prep.processed_data is None:
+                logger.warning("SHAP 计算失败: 缺失预处理数据")
+                return {"bar_data": [], "summary_data": []}
+                
+            data = self.ml_data_prep.processed_data
+            x_all = data['X_torch'] # [N, T, C, H, W]
+            total_len = len(x_all)
+            split_idx = int(0.8 * total_len)
+            
+            # 背景数据：极致优化方案 —— 使用训练集的均值作为唯一背景参考 (M=1)
+            # 这能比之前的随机 16 样本方案快 16 倍，且对于全局趋势分析依然有效
+            if isinstance(x_all, torch.Tensor):
+                bg_mean = x_all[:split_idx].mean(dim=0, keepdim=True).float().to(shap_device)
+            else:
+                bg_mean = torch.from_numpy(x_all[:split_idx].mean(axis=0, keepdims=True)).float().to(shap_device)
+            background_tensor = bg_mean
+            
+            # 测试数据：进一步下采样至 100 个点以确保分钟级完成
+            test_x = x_all[split_idx:]
+            num_test_total = len(test_x)
+            if num_test_total > 100:
+                sample_indices = np.random.choice(num_test_total, 100, replace=False)
+                sample_indices.sort()
+                test_x = test_x[sample_indices]
+            
+            # 3. 初始化 Explainer
+            explainer = shap.GradientExplainer(wrapper, background_tensor)
+            
+            all_shap_values = []
+            all_test_inputs = []
+            
+            batch_size = 4 # CPU 模式下 4~8 左右通常较稳
+            num_test = len(test_x)
+            
+            logger.info(f"执行极致加速 SHAP 计算 (M=1 均值参考, 采样数: {num_test}, Batch: {batch_size})")
+            
+            for i in range(0, num_test, batch_size):
+                end = min(i + batch_size, num_test)
+                batch_x = test_x[i:end]
+                if isinstance(batch_x, torch.Tensor):
+                    batch_tensor = batch_x.float().to(shap_device)
+                else:
+                    batch_tensor = torch.from_numpy(batch_x).float().to(shap_device)
+                
+                # GradientExplainer 在 wrapper 返回单输出 [B, 1] 时返回一个列表 [shap_values]
+                # 形状通常为 [Batch, 3, 6, 32, 64, 1]
+                shap_v_list = explainer.shap_values(batch_tensor)
+                if isinstance(shap_v_list, list):
+                    shap_v = shap_v_list[0]
+                else:
+                    shap_v = shap_v_list
+                
+                # 若存在多余维度 (由于 [B, 1] 包装器产生)，则进行压缩以匹配后续处理逻辑
+                if hasattr(shap_v, 'ndim') and shap_v.ndim == 6:
+                    shap_v = shap_v.squeeze(-1)
+                    
+                all_shap_values.append(shap_v)
+                all_test_inputs.append(batch_x)
+                
+                # 每计算完一个 batch 立即显示进度
+                logger.info(f"SHAP 计算进度: {end}/{num_test} ({(end/num_test)*100:.1f}%)")
+
+            # 聚合结果
+            # 如果是 tensor，先转回 numpy 以便后续分析处理
+            def to_np(obj):
+                if isinstance(obj, torch.Tensor):
+                    return obj.cpu().numpy()
+                if isinstance(obj, list) and len(obj) > 0 and isinstance(obj[0], torch.Tensor):
+                    return np.concatenate([o.cpu().numpy() for o in obj], axis=0)
+                return np.concatenate(obj, axis=0)
+
+            shap_concat = to_np(all_shap_values) # [N_test, T, C, H, W]
+            input_concat = to_np(all_test_inputs)
+            
+            feature_names = ["Ozone"] + TRAINING_MASTER_ORDER
+            
+            # 4. 计算 Bar Chart 数据 (Mean Absolute SHAP)
+            mean_abs_shap = np.mean(np.abs(shap_concat), axis=(0, 1, 3, 4))
+            bar_data = []
+            for name, val in zip(feature_names, mean_abs_shap):
+                bar_data.append({"name": name, "value": float(val)})
+            
+            bar_data.sort(key=lambda x: x["value"], reverse=True)
+            
+            # 5. 计算 Summary Plot 数据 (特征降采样防止前端崩溃)
+            summary_data = []
+            max_points = 3000
+            
+            for c_idx, name in enumerate(feature_names):
+                c_shap = shap_concat[:, :, c_idx, :, :].flatten()
+                c_input = input_concat[:, :, c_idx, :, :].flatten()
+                
+                if len(c_shap) > max_points:
+                    indices = np.random.choice(len(c_shap), max_points, replace=False)
+                    c_shap = c_shap[indices]
+                    c_input = c_input[indices]
+                
+                summary_data.append({
+                    "name": name,
+                    "shap_values": [float(v) for v in c_shap],
+                    "feature_values": [float(v) for v in c_input]
+                })
+                
+            final_res = {
+                "bar_data": bar_data,
+                "summary_data": summary_data
+            }
+
+            # 保存持久化缓存
+            try:
+                if not PERF_CACHE_DIR.exists():
+                    PERF_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+                with open(cache_file, 'w', encoding='utf-8') as f:
+                    json.dump(final_res, f, ensure_ascii=False)
+                    logger.info(f"已保存全局 SHAP 分析数据至持久化缓存: {cache_file.name}")
+            except Exception as e:
+                logger.warning(f"保存 SHAP 缓存失败: {e}")
+
+            return final_res
+        except Exception as e:
+            logger.error(f"全局 SHAP 分析核心流程崩溃: {e}")
+            logger.error(traceback.format_exc())
+            raise e
 
 
     def _fields_to_dicts(

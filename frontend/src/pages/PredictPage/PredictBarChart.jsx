@@ -134,23 +134,24 @@ export default function PredictBarChart({
           </div>
           <div>
             <div style={{ fontSize: 9, color: '#9c7bea', fontWeight: 900, fontFamily: "'Orbitron', sans-serif", letterSpacing: 4, opacity: 0.8 }}>
-              ORBITAL ANALYTICS
+              {t('predict.barChart.analytics').toUpperCase()}
             </div>
             <div style={{ fontSize: 16, fontWeight: 800, color: C.ice, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, textShadow: '0 0 15px rgba(156,123,234,0.4)' }}>
-              PERFORMANCE SPECTRUM
+              {t('predict.barChart.spectrum').toUpperCase()}
             </div>
+
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <button
-            onClick={() => setShowShapley(!showShapley)}
+            onClick={() => setShowShapley({ visible: true, mode: 'marginal' })}
             style={{
               padding: '8px 16px',
-              background: showShapley ? 'rgba(74,207,172,0.2)' : 'rgba(0,0,0,0.4)',
-              border: `1px solid ${showShapley ? 'rgba(74,207,172,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              background: showShapley.visible && showShapley.mode === 'marginal' ? 'rgba(74,207,172,0.2)' : 'rgba(0,0,0,0.4)',
+              border: `1px solid ${showShapley.visible && showShapley.mode === 'marginal' ? 'rgba(74,207,172,0.5)' : 'rgba(255,255,255,0.1)'}`,
               borderRadius: 12,
-              color: showShapley ? '#4acfac' : 'rgba(255,255,255,0.5)',
+              color: showShapley.visible && showShapley.mode === 'marginal' ? '#4acfac' : 'rgba(255,255,255,0.5)',
               fontSize: 10,
               fontWeight: 800,
               fontFamily: "'Orbitron', sans-serif",
@@ -159,12 +160,13 @@ export default function PredictBarChart({
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: showShapley ? '0 0 15px rgba(74,207,172,0.2)' : 'inset 0 0 10px rgba(0,0,0,0.5)',
+              boxShadow: showShapley.visible && showShapley.mode === 'marginal' ? '0 0 15px rgba(74,207,172,0.2)' : 'inset 0 0 10px rgba(0,0,0,0.5)',
             }}
           >
-            <span style={{ fontSize: 14 }}>{showShapley ? '👁️' : '🧠'}</span>
-            {t('predict.toggleShapley', 'SHAPLEY')}
+            <span style={{ fontSize: 14 }}>{showShapley.visible && showShapley.mode === 'marginal' ? '👁️' : '🧬'}</span>
+            {t('predict.shapleyMarginalBtn', '🧬 组合边际分析 (SEED 32)').replace('🧬 ', '')}
           </button>
+
           
           <div style={{
             display: 'flex', background: 'rgba(0,0,0,0.4)',
@@ -237,13 +239,14 @@ export default function PredictBarChart({
             zIndex: 1,
             pointerEvents: 'none'
           }}>
-            <div style={{ fontSize: 10, color: '#9c7bea60', fontWeight: 900, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>TOP MODEL</div>
+            <div style={{ fontSize: 10, color: '#9c7bea60', fontWeight: 900, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>{t('predict.barChart.topModel').toUpperCase()}</div>
             <div style={{ fontSize: 24, color: '#fff', fontWeight: 800, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, margin: '4px 0' }}>
               {sortedData[0]?.label.replace('🧪 ', '')}
             </div>
             <div style={{ fontSize: 14, color: '#4acfac', fontWeight: 900, fontFamily: "'Orbitron', sans-serif" }}>
               {fmtNum(sortedData[0]?.value, precision)}
             </div>
+
           </div>
 
           <Plot
@@ -295,11 +298,12 @@ export default function PredictBarChart({
           />
 
           <div style={{ position: 'absolute', bottom: 15, left: 15, fontSize: 8, color: 'rgba(255,255,255,0.15)', fontFamily: "'Orbitron', sans-serif" }}>
-            COORD: POLAR_SYSTEM_ALPHA
+            {t('predict.barChart.coord').toUpperCase()}
           </div>
           <div style={{ position: 'absolute', bottom: 15, right: 15, fontSize: 8, color: 'rgba(255,255,255,0.15)', fontFamily: "'Orbitron', sans-serif" }}>
-            RELIABILITY: OPTIMAL
+            {t('predict.barChart.reliability').toUpperCase()}
           </div>
+
         </div>
       )}
     </GlowCard>

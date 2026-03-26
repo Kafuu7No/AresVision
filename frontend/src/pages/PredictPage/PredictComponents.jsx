@@ -16,6 +16,7 @@ export function fmtVal(v) {
 
 export function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
   const canvasRef = useRef(null);
+  const t = useT();
   const { settings } = useSettings();
   const colormapName = settings.colormap;
   const ozoneUnit = settings.units.ozone;
@@ -113,7 +114,7 @@ export function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     });
     ctx.fillStyle = axisTitleColor;
     ctx.font = '10px sans-serif';
-    ctx.fillText('Longitude (°)', ML + plotW / 2, CH - 4);
+    ctx.fillText(`${t('overview.controls.longitude', '经度')} (°)`, ML + plotW / 2, CH - 4);
 
     // Y 轴（纬度）
     ctx.textAlign = 'right';
@@ -131,8 +132,9 @@ export function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     ctx.textAlign = 'center';
     ctx.fillStyle = axisTitleColor;
     ctx.font = '10px sans-serif';
-    ctx.fillText('Latitude (°)', 0, 0);
+    ctx.fillText(`${t('overview.controls.latitude', '纬度')} (°)`, 0, 0);
     ctx.restore();
+
 
     // Colorbar
     const cbX = ML + plotW + 10;

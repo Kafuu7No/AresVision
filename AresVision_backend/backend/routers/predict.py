@@ -10,7 +10,7 @@ from schemas.predict import (
     PredictRequest, PredictResponse,
     EvalMetricsResponse, AblationResponse, DiurnalResponse,
     PerformanceResponse, PerformanceCompareRequest, PerformanceCompareResponse,
-    ErrorDistributionResponse,
+    ErrorDistributionResponse, GlobalShapResponse,
 )
 from config import DEFAULT_MARS_YEAR, LATITUDE_BANDS
 
@@ -211,4 +211,15 @@ async def get_error_distribution(
         )
     except Exception as e:
         logger.error(f"误差分布计算失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/shapley-global", response_model=GlobalShapResponse)
+async def get_shapley_global(request: Request):
+    """执行并获取全测试集 SHAP 全局归因分析结果"""
+    try:
+        ps = _get_predict_service(request)
+        return ps.get_global_shap()
+    except Exception as e:
+        logger.error(f"全局 SHAP 分析失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -1,7 +1,9 @@
 import React from 'react';
 import Plot from 'react-plotly.js';
+import { useT } from '../../i18n';
 
 export default function ErrorDistributionChart({ data, loading }) {
+  const t = useT();
   if (!data && !loading) return null;
 
   if (loading || !data) {
@@ -71,7 +73,7 @@ export default function ErrorDistributionChart({ data, loading }) {
     x: getCenters(data.hist_trues.bin_edges),
     y: data.hist_trues.counts,
     type: 'bar',
-    name: 'True DU',
+    name: t('ai.errorDistribution.trueLabel'),
     marker: { color: 'rgba(56, 189, 248, 0.6)' }, // Sky-400
     opacity: 0.8
   };
@@ -79,7 +81,7 @@ export default function ErrorDistributionChart({ data, loading }) {
     x: getCenters(data.hist_preds.bin_edges),
     y: data.hist_preds.counts,
     type: 'bar',
-    name: 'Predicted DU',
+    name: t('ai.errorDistribution.predLabel'),
     marker: { color: 'rgba(52, 211, 153, 0.6)' }, // Emerald-400
     opacity: 0.8
   };
@@ -105,14 +107,14 @@ export default function ErrorDistributionChart({ data, loading }) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
       {/* 散点密度图 */}
       <div className="bg-black/40 border border-gray-800 shadow-[0_0_20px_rgba(0,0,0,0.4)] p-4 rounded-xl flex flex-col backdrop-blur-md relative overflow-hidden group">
-        <h3 className="text-gray-400 font-semibold text-xs mb-1 tracking-widest uppercase">True vs Predicted</h3>
+        <h3 className="text-gray-400 font-semibold text-xs mb-1 tracking-widest uppercase">{t('ai.errorDistribution.trueVsPred')}</h3>
         <div className="flex-1 w-full min-h-[250px] relative z-10">
           <Plot
             data={[scatterTrace, baselineTrace]}
             layout={{ 
               ...baseLayout, 
-              xaxis: { ...baseLayout.xaxis, title: { text: 'True Ozone (DU)', font: { size: 11 } } },
-              yaxis: { ...baseLayout.yaxis, title: { text: 'Predict Ozone (DU)', font: { size: 11 } } },
+              xaxis: { ...baseLayout.xaxis, title: { text: t('ai.errorDistribution.trueOzone'), font: { size: 11 } } },
+              yaxis: { ...baseLayout.yaxis, title: { text: t('ai.errorDistribution.predOzone'), font: { size: 11 } } },
               showlegend: false
             }}
             useResizeHandler
@@ -124,7 +126,7 @@ export default function ErrorDistributionChart({ data, loading }) {
 
       {/* 分布比对柱图 */}
       <div className="bg-black/40 border border-gray-800 shadow-[0_0_20px_rgba(0,0,0,0.4)] p-4 rounded-xl flex flex-col backdrop-blur-md relative overflow-hidden">
-        <h3 className="text-gray-400 font-semibold text-xs mb-1 tracking-widest uppercase">Distribution Match</h3>
+        <h3 className="text-gray-400 font-semibold text-xs mb-1 tracking-widest uppercase">{t('ai.errorDistribution.distMatch')}</h3>
         <div className="flex-1 w-full min-h-[250px] relative z-10">
           <Plot
             data={[trueHist, predHist]}
@@ -143,7 +145,7 @@ export default function ErrorDistributionChart({ data, loading }) {
       {/* 误差与 RMSE 指标板 */}
       <div className="bg-black/40 border border-gray-800 shadow-[0_0_20px_rgba(0,0,0,0.4)] p-4 rounded-xl flex flex-col backdrop-blur-md relative overflow-hidden">
         <div className="flex justify-between items-start mb-1">
-          <h3 className="text-gray-400 font-semibold text-xs tracking-widest uppercase">Error Histogram</h3>
+          <h3 className="text-gray-400 font-semibold text-xs tracking-widest uppercase">{t('ai.errorDistribution.errorHist')}</h3>
           <div className="flex flex-col text-right">
             <span className="text-emerald-400 font-mono text-xs font-bold bg-emerald-400/10 px-1.5 py-0.5 rounded backdrop-blur border border-emerald-400/20">
               RMSE: {data.rmse.toFixed(3)}
@@ -160,7 +162,7 @@ export default function ErrorDistributionChart({ data, loading }) {
               ...baseLayout, 
               shapes: [zeroErrorLine],
               showlegend: false,
-              xaxis: { ...baseLayout.xaxis, title: { text: 'Prediction Error (DU)', font: { size: 11 } } }
+              xaxis: { ...baseLayout.xaxis, title: { text: t('ai.errorDistribution.errorLabel'), font: { size: 11 } } }
             }}
             useResizeHandler
             className="w-full h-full"

@@ -125,12 +125,12 @@ const zh = {
 
   overview: {
     menuItems: {
-      globe3d:      '三维臭氧球 3D GLOBE',
-      seasonal:     '季节臭氧场 SEASONAL OZONE FIELD',
-      correlation:  '关系研究 RELATION LAB',
-      realtime:     '昼夜变化 DIURNAL PROFILE',
-      environment:  '环境驱动 ENVIRONMENT DRIVERS',
-      prediction:   '模型能力 MODEL SKILL TRACKER',
+      globe3d: '三维臭氧球 3D GLOBE',
+      seasonal: '季节臭氧场 SEASONAL OZONE FIELD',
+      correlation: '关系研究 RELATION LAB',
+      realtime: '昼夜变化 DIURNAL PROFILE',
+      environment: '环境驱动 ENVIRONMENT DRIVERS',
+      prediction: '模型能力 MODEL SKILL TRACKER',
       distribution: '空间分布 SPATIAL DISTRIBUTION',
       globe3d_desc: '查看当前 Ls 切片下的全球臭氧球面分布。',
       seasonal_desc: '展示臭氧在纬度与季节上的整体结构。',
@@ -181,7 +181,10 @@ const zh = {
       maxVal: '最大值',
       cameraTracking: '摄像头追踪中... 单手拖拽 / 双手缩放',
       resetLs: '重置到 Ls=0°',
+      longitude: '经度 Longitude',
+      latitude: '纬度 Latitude',
     },
+
     charts: {
       heatmapTitle: ({ year }) => `MY ${year} 臭氧时空分布热力图 (Zonal Mean O₃)`,
       noData: '暂无数据 NO DATA',
@@ -365,7 +368,10 @@ const zh = {
       Solar_Flux_DN: '太阳辐射通量 S',
       U_Wind: '纬向风 U',
       V_Wind: '经向风 V',
+      Ozone: '自回归 O₃',
+      Surface_Pressure: '表面压力 P',
     },
+
     fileUpload: {
       drag: '拖拽 .nc 文件到此处',
       click: '或点击选择文件',
@@ -395,8 +401,60 @@ const zh = {
     shapleyDesc: '基于博弈论 Shapley 值，计算加入各气象特征对模型整体预测性能的提升边际贡献度',
     shapleyGenerateBtn: '分析特征贡献 ANALYZE',
     shapleyGeneratingBtn: '分析中...',
+    shapleyBtn: '🧠 全局梯度归因 (SHAP)',
+
     toggleShapley: '贡献度 SHAPLEY',
+    shapley: {
+      title: '特征归因分析',
+      gradientSystem: '梯度归因系统 (Gradient)',
+      marginalSystem: '公平分配系统 (Marginal)',
+      gradientTab: '全局梯度 (极速)',
+      marginalTab: '组合边际 (精准)',
+      importanceTitle: '特征重要性 (平均绝对 SHAP 值)',
+      swarmTitle: '摘要蜂群图 (全球分布)',
+      marginalAnalysisTitle: '边际贡献分析 (Ablation SHAP)',
+      featureValue: '特征数值',
+      lowValue: '低值',
+      highValue: '高值',
+      meanShap: '平均绝对 SHAP 值',
+      impactOnPred: 'SHAP 值 (对预测的影响)',
+      avgContribution: 'Shapley 值 (对 {metric} 的平均贡献)',
+      mathPrinciple: '数学原理',
+      mathDesc: '利用所有 2ⁿ 种变量组合下的边际提升加权平均计算得出。这代表了每个输入特征对模型 {metric} 性能提升的“公平分配”份额。',
+      metrics: {
+        r2: '决定系数 (R²)',
+        rmse: '均方根误差 (RMSE)',
+        mae: '平均绝对误差 (MAE)',
+        ssim: '结构相似性 (SSIM)',
+      },
+      mathDescNote: {
+        higher: '该特征增加通常会显著提升 {metric}。',
+        lower: '该特征增加通常会显著降低 {metric} (误差)。',
+      },
+
+      cacheMissing: '边际缓存缺失',
+      cacheMissingDesc: '该模式需要 32 组模型对比。若加载过慢，请先在侧边栏点击 "SEED 32" 生成缓存。',
+      footerNote: '* SHAP 值代表每个特征对模型预测场空间均值的加性贡献量。\n* 数据点从全量测试集 (MY28) 中随机下采样以保证渲染性能。',
+    },
+
     barChartTitle: 'PERFORMANCE SPECTRUM / 性能对比分析',
+    barChart: {
+      analytics: '轨道分析 (Analytics)',
+      spectrum: '性能对比分析 (Spectrum)',
+      topModel: '最优模型',
+      coord: '坐标系：极化系统 Alpha',
+      reliability: '可靠性：最优',
+    },
+    horizonMetrics: {
+      analyzing: '多模型性能对比分析中...',
+      step: '预测步长 (Horizon Step)',
+      mse: 'MSE (均方误差)',
+      rmse: 'RMSE (均方根误差)',
+      mae: 'MAE (平均绝对误差)',
+      r2: 'R² (决定系数)',
+    },
+
+
     selectModelsToCompare: '请在侧边栏选择并对比多个模型组合',
     readyToGenerate: '图表已准备就绪，点击生成',
     generateChartAction: '生成对比图表',
@@ -413,7 +471,10 @@ const zh = {
       rmse: 'RMSE',
       mae: 'MAE',
       ssim: 'SSIM',
+      step: '步数 Step',
+      lsShort: '黄经 Ls',
     },
+
     matrix: {
       title: '独立评估矩阵',
       selectAll: '全选',
@@ -457,6 +518,17 @@ const zh = {
     placeholder: '输入你的问题...',
     send: '发送',
     errorChart: '实时预测误差分布',
+    errorDistribution: {
+      trueVsPred: '真实值 vs 预测值',
+      distMatch: '分布匹配度',
+      errorHist: '误差直方图',
+      trueOzone: '真实臭氧 (DU)',
+      predOzone: '预测臭氧 (DU)',
+      trueLabel: '真实值',
+      predLabel: '预测值',
+      errorLabel: '预测误差 (DU)',
+    },
+
     quickQuestions: [
       '预测偏差最大的区域在哪？',
       '沙尘暴如何影响臭氧？',

@@ -157,71 +157,7 @@ export default function PredictDisplay({
         );
       })()}
 
-      {/* 当前应用模型信息 */}
-      {results && results.model_info && (
-        <GlowCard style={{ padding: '16px 20px', border: results.model_info.is_fallback ? '1px solid rgba(255,80,80,0.3)' : `1px solid ${C.border}` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: '50%',
-                background: results.model_info.is_fallback ? 'rgba(255,80,80,0.1)' : 'rgba(74,207,172,0.1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 16
-              }}>
-                {results.model_info.is_fallback ? '⚠️' : '🎯'}
-              </div>
-              <div>
-                <div style={{ fontSize: 10, color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>CURRENT ACTIVE MODEL</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: C.ice, marginTop: 2 }}>
-                  PredRNNv2 <span style={{ color: C.blue }}>_{results.model_info.suffix}</span>
-                </div>
-              </div>
-            </div>
 
-            <div style={{ display: 'flex', gap: 24 }}>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 9, color: C.ice30 }}>INPUT CHANNELS</div>
-                <div style={{
-                  fontSize: 11, fontWeight: 600, color: results.model_info.is_fallback ? '#ff8a8a' : '#4acfac',
-                  marginTop: 2, display: 'flex', gap: 4, justifyContent: 'flex-end', flexWrap: 'wrap', maxWidth: 200
-                }}>
-                  {results.model_info.input_vars.map((v) => (
-                    <span key={v} style={{
-                      padding: '1px 5px', background: 'rgba(255,255,255,0.05)', borderRadius: 4
-                    }}>
-                      {v.replace('_Optical_Depth', '').replace('_Flux_DN', '').replace('_Wind', '')}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 9, color: C.ice30 }}>INPUT DIM</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.ice }}>{results.model_info.input_dim} Ch</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 9, color: C.ice30 }}>WEIGHT FILE</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.ice }}>{results.model_info.weight_file}</div>
-              </div>
-            </div>
-          </div>
-
-          {results.model_info.is_fallback && (
-            <div style={{
-              marginTop: 12, padding: '10px 14px', borderRadius: 8,
-              background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.2)',
-              display: 'flex', alignItems: 'flex-start', gap: 10
-            }}>
-              <span style={{ fontSize: 14 }}>💡</span>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#ff6b6b' }}>{t('predict.fallbackWarning')}</div>
-                <div style={{ fontSize: 10, color: 'rgba(255,107,107,0.7)', marginTop: 2 }}>
-                  {t('predict.fallbackReason')}{results.model_info.fallback_reason}
-                </div>
-              </div>
-            </div>
-          )}
-        </GlowCard>
-      )}
 
       {/* 初始提示（无结果时） */}
       {!results && !loading && (

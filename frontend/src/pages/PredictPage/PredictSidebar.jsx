@@ -29,6 +29,7 @@ export default function PredictSidebar({
   setSelectedCompareIds,
   setCompareConfigs,
   handleFuseModels,
+  onShapleyClick,
 }) {
   const t = useT();
 
@@ -118,6 +119,26 @@ export default function PredictSidebar({
             {error}
           </div>
         )}
+
+        <button
+          onClick={() => onShapleyClick('gradient')}
+          style={{
+            width: '100%', marginTop: 12, padding: '10px 0',
+            background: 'rgba(0,240,255,0.05)',
+            border: '1px solid rgba(0,240,255,0.3)',
+            borderRadius: 10, color: '#00F0FF',
+            fontSize: 10, fontWeight: 900,
+            fontFamily: "'Orbitron', sans-serif", letterSpacing: 1.5,
+            cursor: 'pointer',
+            transition: 'all 0.3s',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,240,255,0.15)'; e.currentTarget.style.boxShadow = '0 0 15px rgba(0,240,255,0.2)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,240,255,0.05)'; e.currentTarget.style.boxShadow = 'none'; }}
+        >
+          {t('predict.shapleyBtn', '🧠 全局梯度归因 (SHAP)')}
+        </button>
+
       </GlowCard>
 
       {/* 参数设置 */}
@@ -185,11 +206,11 @@ export default function PredictSidebar({
             {t('predict.matrix.title', 'MODEL MATRIX')}
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button 
+            <button
               onClick={handleSelectAll}
               style={{ padding: '4px 10px', background: 'rgba(74,207,172,0.15)', border: `1px solid #4acfac50`, borderRadius: 6, color: '#4acfac', fontSize: 10, fontWeight: 800, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
             >{t('predict.matrix.selectAll', 'ALL')}</button>
-            <button 
+            <button
               onClick={handleSeed32}
               style={{ padding: '4px 10px', background: 'rgba(156,123,234,0.15)', border: `1px solid #9c7bea50`, borderRadius: 6, color: '#9c7bea', fontSize: 10, fontWeight: 800, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
             >{t('predict.matrix.seed32', 'SEED 32')}</button>
@@ -197,19 +218,19 @@ export default function PredictSidebar({
         </div>
 
         {/* 上下滑动区，关闭左右滑动 */}
-        <div style={{ 
-          maxHeight: 280, 
-          overflowY: 'auto', 
-          overflowX: 'hidden', 
-          marginBottom: 12, 
-          paddingRight: 4, 
-          background: 'rgba(0,0,0,0.1)', 
-          borderRadius: 8, 
+        <div style={{
+          maxHeight: 280,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          marginBottom: 12,
+          paddingRight: 4,
+          background: 'rgba(0,0,0,0.1)',
+          borderRadius: 8,
           border: `1px solid ${C.border}`
         }}>
           {compareConfigs.map((c) => (
-            <div key={c.id} style={{ 
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+            <div key={c.id} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '4px 12px', borderRadius: 6,
               background: selectedCompareIds.includes(c.id) ? 'rgba(74,207,172,0.06)' : 'transparent',
               transition: 'all 0.2s',

@@ -56,7 +56,7 @@ export default function PredictMetrics({
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr>
-                {['Step', 'Ls', 'RMSE', 'MAE', 'SSIM', 'R²'].map((hd) => (
+                {[t('predict.tableHeaders.step'), t('predict.tableHeaders.lsShort'), 'RMSE', 'MAE', 'SSIM', 'R²'].map((hd) => (
                   <th key={hd} style={{
                     padding: '6px 10px', textAlign: 'center',
                     color: C.ice30, fontWeight: 600,
@@ -75,7 +75,8 @@ export default function PredictMetrics({
                     cursor: 'pointer',
                   }}
                 >
-                  <td style={{ padding: '6px 10px', textAlign: 'center', color: C.blue, fontWeight: 700 }}>Step {row.step}</td>
+                  <td style={{ padding: '6px 10px', textAlign: 'center', color: C.blue, fontWeight: 700 }}>{t('predict.tableHeaders.step').split(' ')[0]} {row.step}</td>
+
                   <td style={{ padding: '6px 10px', textAlign: 'center', color: C.ice60 }}>
                     {results?.ls_values?.[i] != null ? `${results.ls_values[i].toFixed(3)}°` : '—'}
                   </td>
