@@ -59,7 +59,7 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
         // 模型旋转：不要直接修改固定的 Euler 旋转（会产生万向节锁或方向反转）
         // 改为绕着相机空间内的世界轴（Up和Right）进行旋转
         // 放大倍率提高体验灵敏度
-        
+
         // 算出相机在世界空间中的向上和向右向量
         const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(cameraRef.current.quaternion).normalize();
         const cameraRight = new THREE.Vector3(1, 0, 0).applyQuaternion(cameraRef.current.quaternion).normalize();
@@ -71,14 +71,14 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
     },
     applyGestureZoom: (dDist) => {
       if (cameraRef.current) {
-         // 向内捏合变小 (-dDist): 视距变大 (离远); 向外张开 (+dDist): 视距变小 (凑近)
-         const step = -dDist * 8.0; 
-         
-         // 因为用户可能用鼠标（TrackballControls）转动过视角，相机的坐标不再是在纯正的 Z 轴上
-         // 正确做法是直接缩放相机所在坐标向量的长度（维持到原点方向不变）
-         const currentDist = cameraRef.current.position.length();
-         const newDist = Math.max(1.2, Math.min(12.0, currentDist + step));
-         cameraRef.current.position.setLength(newDist);
+        // 向内捏合变小 (-dDist): 视距变大 (离远); 向外张开 (+dDist): 视距变小 (凑近)
+        const step = -dDist * 8.0;
+
+        // 因为用户可能用鼠标（TrackballControls）转动过视角，相机的坐标不再是在纯正的 Z 轴上
+        // 正确做法是直接缩放相机所在坐标向量的长度（维持到原点方向不变）
+        const currentDist = cameraRef.current.position.length();
+        const newDist = Math.max(1.2, Math.min(12.0, currentDist + step));
+        cameraRef.current.position.setLength(newDist);
       }
     }
   }));
@@ -105,7 +105,7 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-    camera.position.set(0, 0, 4.5);
+    camera.position.set(0, 0, 3.3);
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
