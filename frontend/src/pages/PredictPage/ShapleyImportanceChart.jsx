@@ -256,8 +256,8 @@ export default function ShapleyImportanceChart({
                     key={m}
                     onClick={() => setActiveMetric(m)}
                     className={`px-3 py-1.5 rounded-lg text-[10px] font-black font-orbitron transition-all ${activeMetric === m
-                        ? 'bg-[#9c7bea] text-white shadow-[0_0_10px_rgba(156,123,234,0.3)]'
-                        : 'text-white/30 hover:text-white/60 hover:bg-white/5'
+                      ? 'bg-[#9c7bea] text-white shadow-[0_0_10px_rgba(156,123,234,0.3)]'
+                      : 'text-white/30 hover:text-white/60 hover:bg-white/5'
                       }`}
                   >
                     {m.toUpperCase()}
