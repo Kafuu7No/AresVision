@@ -193,6 +193,7 @@ export default function PredictFullscreenHUD({
               fieldData={fullscreen3D.fieldData}
               colorMode={fullscreen3D.colorMode}
               h="100%"
+              zoom={3.3}
             />
             {/* HUD Vignette / Lens Depth Effect */}
             <div className="absolute inset-0 pointer-events-none z-20 shadow-[inset_0_0_200px_rgba(0,0,0,1)] opacity-80" />
