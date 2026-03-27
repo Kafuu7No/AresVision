@@ -10,7 +10,7 @@ from schemas.predict import (
     PredictRequest, PredictResponse,
     EvalMetricsResponse, AblationResponse, DiurnalResponse,
     PerformanceResponse, PerformanceCompareRequest, PerformanceCompareResponse,
-    ErrorDistributionResponse, GlobalShapResponse,
+    ErrorDistributionResponse, GlobalShapResponse, PermutationImportanceResponse,
 )
 from config import DEFAULT_MARS_YEAR, LATITUDE_BANDS
 
@@ -222,4 +222,17 @@ async def get_shapley_global(request: Request):
         return ps.get_global_shap()
     except Exception as e:
         logger.error(f"全局 SHAP 分析失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/permutation-importance", response_model=PermutationImportanceResponse)
+async def get_permutation_importance(
+    request: Request,
+    vars: str = Query("Temperature,Dust_Optical_Depth,Solar_Flux_DN,U_Wind,V_Wind"),
+):
+    """获取排列特征重要性 (Permutation Feature Importance) 分解结果"""
+    try:
+        ps = _get_predict_service(request)
+        selected_variables = [v.strip() for v in vars.split(",") if v.strip()]
+        return ps.get_permutation_importance(selected_variables=selected_variables)
+    except Exception as e:
+        logger.error(f"PFI 分析失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
