@@ -372,6 +372,14 @@ export default function PredictPage() {
             loading={loading}
           />
 
+          <PermutationImportanceChart
+            data={pfiData}
+            loading={pfiLoading}
+            plotTextColor={plotTextColor}
+            plotText60={plotText60}
+            plotGridColor={plotGridColor}
+          />
+
           <PredictBarChart
             performanceData={performanceData}
             compareConfigs={compareConfigs}
@@ -405,14 +413,6 @@ export default function PredictPage() {
             setSelectedCompareIds={setSelectedCompareIds}
             hiddenCompareIds={hiddenCompareIds}
             setHiddenCompareIds={setHiddenCompareIds}
-          />
-
-          <PermutationImportanceChart
-            data={pfiData}
-            loading={pfiLoading}
-            plotTextColor={plotTextColor}
-            plotText60={plotText60}
-            plotGridColor={plotGridColor}
           />
         </div>
       </div>

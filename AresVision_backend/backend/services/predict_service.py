@@ -759,7 +759,7 @@ class PredictOrchestratorService:
         
         # 1. 持久化缓存检查
         perf_key_data = {
-            "type": "pfi_v1",
+            "type": "pfi_v2",
             "vars": sorted(selected_variables),
             "data_mtime": self.ml_data_prep.processed_data_mtime if hasattr(self.ml_data_prep, 'processed_data_mtime') else "default"
         }
@@ -874,7 +874,7 @@ class PredictOrchestratorService:
             shuffled_x[:, :, f_idx] = test_x[perm, :, f_idx]
             
             shuffled_r2 = compute_sampled_r2(shuffled_x)
-            importance = max(0.0, sampled_baseline_r2 - shuffled_r2)
+            importance = sampled_baseline_r2 - shuffled_r2
             
             results.append({
                 "name": feat,

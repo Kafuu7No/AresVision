@@ -13,7 +13,7 @@ export default function PermutationImportanceChart({
   const t = useT();
 
   const chartData = data?.items || [];
-  const names = chartData.map(d => d.name);
+  const names = chartData.map(d => t(`predict.variables.${d.name}`) || d.name);
   const values = chartData.map(d => d.importance);
 
   const trace = {
@@ -29,18 +29,18 @@ export default function PermutationImportanceChart({
         width: 1
       }
     },
-    hovertemplate: '<b>%{y}</b><br>Importance Drop: <b>%{x:.6f}</b><extra></extra>',
+    hovertemplate: t('predict.pfi.hoverTemplate') + '<extra></extra>',
   };
 
   return (
     <GlowCard style={{ padding: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
-          PERMUTATION FEATURE IMPORTANCE (ΔR²)
+          {t('predict.pfi.title')}
         </div>
         {data && (
           <div style={{ fontSize: 10, color: C.ice30, fontFamily: "'Orbitron', sans-serif" }}>
-            Baseline R²: <span style={{ color: '#4acfac', fontWeight: 800 }}>{data.baseline_value?.toFixed(4)}</span>
+            {t('predict.pfi.baselineR2')}<span style={{ color: '#4acfac', fontWeight: 800 }}>{data.baseline_value?.toFixed(4)}</span>
           </div>
         )}
       </div>
@@ -61,10 +61,12 @@ export default function PermutationImportanceChart({
               paper_bgcolor: 'rgba(0,0,0,0)',
               plot_bgcolor: 'rgba(0,0,0,0)',
               xaxis: {
-                title: { text: 'Performance Drop (R²)', font: { size: 10, color: plotTextColor } },
+                title: { text: t('predict.pfi.xaxisTitle'), font: { size: 10, color: plotTextColor } },
                 tickfont: { size: 9, color: plotText60 },
                 gridcolor: plotGridColor,
-                zeroline: false,
+                zeroline: true,
+                zerolinecolor: plotGridColor,
+                zerolinewidth: 1,
               },
               yaxis: {
                 autorange: 'reversed',
@@ -79,12 +81,12 @@ export default function PermutationImportanceChart({
         </div>
       ) : (
         <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.ice30, fontSize: 11, border: `1px dashed ${C.border}`, borderRadius: 12 }}>
-          No PFI analysis data available. Run prediction to generate.
+          {t('predict.pfi.noData')}
         </div>
       )}
 
-      <div style={{ marginTop: 12, fontSize: 10, color: C.ice30, lineLine: 1.5 }}>
-        <span style={{ color: C.blue, fontWeight: 700 }}>Note:</span> PFI measures feature importance by calculating the drop in R² when a feature's values are randomly permuted. A higher drop indicates greater reliance on that feature.
+      <div style={{ marginTop: 12, fontSize: 10, color: C.ice30, lineHeight: 1.5 }}>
+        <span style={{ color: C.blue, fontWeight: 700 }}>{t('predict.pfi.helpTitle')}</span> {t('predict.pfi.helpDesc')}
       </div>
     </GlowCard>
   );
