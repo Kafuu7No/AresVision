@@ -230,7 +230,7 @@ export default function PredictPerformance({
                           showarrow: false, font: { color: plotTextColor, size: 9 }
                         }],
                         hovermode: 'closest',
-                        showlegend: true
+                        showlegend: false
                       }}
                       config={{ displayModeBar: false, responsive: true }}
                       style={{ width: '100%' }}

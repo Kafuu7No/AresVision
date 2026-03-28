@@ -5,7 +5,7 @@ import { useT } from '../i18n';
 import { useSettings } from '../contexts/SettingsContext';
 import SectionTitle from '../components/SectionTitle';
 
-import { runPrediction, fetchPredictMetrics, fetchPerformanceCurve, fetchPerformanceComparison, fetchErrorDistribution } from '../services/api';
+import { runPrediction, fetchPredictMetrics, fetchPerformanceCurve, fetchPerformanceComparison, fetchErrorDistribution, fetchPermutationImportance } from '../services/api';
 
 // Sub-components
 import { VARIABLE_DEFS, VIEW_MODE_IDS, TRIPTYCH_PANEL_DEFS } from './PredictPage/PredictComponents';
@@ -17,6 +17,7 @@ import PredictBarChart from './PredictPage/PredictBarChart';
 import ShapleyImportanceChart from './PredictPage/ShapleyImportanceChart';
 import PredictFullscreenHUD from './PredictPage/PredictFullscreenHUD';
 import ErrorDistributionChart from './PredictPage/ErrorDistributionChart';
+import PermutationImportanceChart from './PredictPage/PermutationImportanceChart';
 
 const SHORTHAND_MAP = {
   'Temperature': 'T',
@@ -63,12 +64,14 @@ export default function PredictPage() {
   const [results, setResults] = useState(_c.results);
   const [metrics, setMetrics] = useState(_c.metrics);
   const [errorDistData, setErrorDistData] = useState(_c.errorDistData);
+  const [pfiData, setPfiData] = useState(_c.pfiData);
   const [error, setError] = useState(null);
 
   const [fullscreen3D, setFullscreen3D] = useState(null); // { fieldData, colorMode }
 
   const [performanceData, setPerformanceData] = useState(_c.performanceData);
   const [perfLoading, setPerfLoading] = useState(false);
+  const [pfiLoading, setPfiLoading] = useState(false);
   const [activePerfMetric, setActivePerfMetric] = useState('r2');
 
   const [compareConfigs, setCompareConfigs] = useState(_c.compareConfigs);
@@ -84,11 +87,11 @@ export default function PredictPage() {
   };
 
   const handlePredict = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setResults(null);
     setMetrics(null);
     setErrorDistData(null);
+    setPfiData(null);
+    setLoading(true); // 注意：由于 PFI 可能较慢，loading 状态可能需要分段显示，这里先统一控制
+    setPfiLoading(true);
 
     const body = {
       selected_variables: selectedVars,
@@ -98,19 +101,22 @@ export default function PredictPage() {
     };
 
     try {
-      const [predResult, metricsResult, errorDistResult] = await Promise.all([
+      const [predResult, metricsResult, errorDistResult, pfiResult] = await Promise.all([
         runPrediction(body),
         fetchPredictMetrics(body),
-        fetchErrorDistribution(selectedVars)
+        fetchErrorDistribution(selectedVars),
+        fetchPermutationImportance(selectedVars)
       ]);
       setResults(predResult);
       setMetrics(metricsResult);
       setErrorDistData(errorDistResult);
+      setPfiData(pfiResult);
       setActiveHorizon(0);
       setPredictCache({
         results: predResult,
         metrics: metricsResult,
         errorDistData: errorDistResult,
+        pfiData: pfiResult,
         activeHorizon: 0,
         params: { selectedVars, predStep, lsStart, marsYear },
       });
@@ -118,6 +124,7 @@ export default function PredictPage() {
       setError(e.message || t('predict.errorPrefix'));
     } finally {
       setLoading(false);
+      setPfiLoading(false);
     }
   }, [selectedVars, predStep, lsStart, marsYear, t]);
 
@@ -127,6 +134,7 @@ export default function PredictPage() {
   useEffect(() => { setPredictCache({ performanceData }); }, [performanceData]);
   useEffect(() => { setPredictCache({ compareConfigs }); }, [compareConfigs]);
   useEffect(() => { setPredictCache({ selectedCompareIds }); }, [selectedCompareIds]);
+  useEffect(() => { setPredictCache({ pfiData }); }, [pfiData]);
 
   const handleFetchPerformance = useCallback(async () => {
     setPerfLoading(true);
@@ -362,6 +370,14 @@ export default function PredictPage() {
           <ErrorDistributionChart
             data={errorDistData}
             loading={loading}
+          />
+
+          <PermutationImportanceChart
+            data={pfiData}
+            loading={pfiLoading}
+            plotTextColor={plotTextColor}
+            plotText60={plotText60}
+            plotGridColor={plotGridColor}
           />
 
           <PredictBarChart

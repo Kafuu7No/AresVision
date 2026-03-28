@@ -125,3 +125,14 @@ class GlobalShapSummaryItem(BaseModel):
 class GlobalShapResponse(BaseModel):
     bar_data: list[GlobalShapBarItem]
     summary_data: list[GlobalShapSummaryItem]
+
+
+class PermutationImportanceItem(BaseModel):
+    name: str
+    importance: float
+
+
+class PermutationImportanceResponse(BaseModel):
+    items: list[PermutationImportanceItem]
+    baseline_metric: str
+    baseline_value: float

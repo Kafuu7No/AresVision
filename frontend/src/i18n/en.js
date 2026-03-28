@@ -363,6 +363,17 @@ const en = {
       Solar_Flux_DN:       'Solar Flux',
       U_Wind:              'Zonal Wind (U)',
       V_Wind:              'Meridional Wind (V)',
+      Ozone:               'Autoregressive O₃',
+      Surface_Pressure:    'Surface Pressure (P)',
+    },
+    pfi: {
+      title: 'PERMUTATION FEATURE IMPORTANCE (ΔR²)',
+      baselineR2: 'Baseline R²: ',
+      helpTitle: 'Note: ',
+      helpDesc: 'PFI measures feature importance by calculating the drop in R² when a feature\'s values are randomly permuted. A higher drop indicates greater reliance on that feature.',
+      xaxisTitle: 'Performance Drop (R²)',
+      hoverTemplate: '<b>%{y}</b><br>Importance Drop: <b>%{x:.6f}</b>',
+      noData: 'No PFI analysis data available. Run prediction to generate.',
     },
     fileUpload: {
       drag: 'Drop .nc file here',

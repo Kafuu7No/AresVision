@@ -516,11 +516,13 @@ class PredictOrchestratorService:
             perf_hash = hashlib.md5(json.dumps(perf_key_data).encode()).hexdigest()
             perf_cache_file = PERF_CACHE_DIR / f"perf_{perf_hash}.json"
             errdist_cache_file = PERF_CACHE_DIR / f"errdist_{perf_hash}.json"
+            pfi_cache_file = PERF_CACHE_DIR / f"pfi_{perf_hash}.json"
             
             needs_perf = not perf_cache_file.exists()
             needs_errdist = not errdist_cache_file.exists()
+            needs_pfi = not pfi_cache_file.exists()
             
-            if not needs_perf and not needs_errdist:
+            if not needs_perf and not needs_errdist and not needs_pfi:
                 count_skipped += 1
                 continue
                 
@@ -531,6 +533,8 @@ class PredictOrchestratorService:
                     self.get_performance_curve(variables)
                 if needs_errdist:
                     self.get_error_distribution(variables)
+                if needs_pfi:
+                    self.get_permutation_importance(variables)
                 count_generated += 1
                 # 稍微出让 CPU 权限，避免完全阻塞事件循环
                 await asyncio.sleep(0.1)
@@ -745,6 +749,158 @@ class PredictOrchestratorService:
             })
 
         return result
+
+    def get_permutation_importance(self, selected_variables: list[str]) -> dict:
+        """
+        计算排列特征重要性 (Permutation Feature Importance)。
+        通过在测试集上打乱单个特征并测量 R2 指标的下降程度。
+        """
+        from config import MCD_VARIABLES, PERF_CACHE_DIR, TRAINING_MASTER_ORDER
+        
+        # 1. 持久化缓存检查
+        perf_key_data = {
+            "type": "pfi_v2",
+            "vars": sorted(selected_variables),
+            "data_mtime": self.ml_data_prep.processed_data_mtime if hasattr(self.ml_data_prep, 'processed_data_mtime') else "default"
+        }
+        perf_hash = hashlib.md5(json.dumps(perf_key_data).encode()).hexdigest()
+        cache_file = PERF_CACHE_DIR / f"pfi_{perf_hash}.json"
+
+        if cache_file.exists():
+            try:
+                with open(cache_file, 'r', encoding='utf-8') as f:
+                    logger.info("命中 PFI 持久化缓存")
+                    return json.load(f)
+            except Exception as e:
+                logger.warning(f"读取 PFI 缓存失败: {e}")
+
+        # 2. 获取基准性能 (利用已有方法)
+        baseline_perf = self.get_performance_curve(selected_variables)
+        baseline_r2 = baseline_perf.get("global_r2", 0.0)
+        
+        if self.ml_data_prep.processed_data is None:
+            return {"items": [], "baseline_metric": "r2", "baseline_value": baseline_r2}
+
+        # 3. 准备测试数据 [N_test, T, C, H, W]
+        data = self.ml_data_prep.processed_data
+        x_all = data['X_torch']
+        total_len = len(x_all)
+        split_idx = int(0.8 * total_len)
+        test_x = x_all[split_idx:].cpu().numpy().copy()
+        
+        # 获取真值
+        # 这里为了简化，我们直接使用 y_torch 及其对应的反标准化参数
+        y_all = data['y_torch']
+        test_y_scaled = y_all[split_idx:].cpu().numpy()
+        y_mean = data.get('y_mean', 0.0)
+        y_std = data.get('y_std', 1.0)
+        test_y = test_y_scaled[:, 0, 0] * y_std + y_mean # [N_test, H, W]
+        
+        # 确定特征列表及其在 X 中的索引
+        # Ozone 永远在 index 0，其他根据 TRAINING_MASTER_ORDER
+        all_features = ["Ozone"] + TRAINING_MASTER_ORDER
+        feature_indices = {name: i for i, name in enumerate(all_features)}
+        
+        # 只分析模型实际使用的特征
+        active_features = ["Ozone"] + selected_variables
+        
+        results = []
+        
+        # 为了加速计算，PFI 采样点数设为 80 (平衡精度与速度)
+        num_test = len(test_x)
+        sample_size = min(80, num_test)
+        indices = np.random.choice(num_test, sample_size, replace=False)
+        
+        # 基准 R2 (基于采样后的点，保证对比公平性)
+        def compute_sampled_r2(x_data):
+            # 推理封装
+            preds = []
+            truths = []
+            
+            # 动态获取模型
+            model, input_dim, model_info = self.inference.get_model_for_variables(selected_variables)
+            device = self.inference.device
+            
+            # 处理输入维度切片 (逻辑同 _run_inference_pipeline)
+            if model_info.get("is_fallback", False) or model_info.get("suffix") == "UVDST":
+                final_x = x_data
+            elif input_dim < 7:
+                # 重新计算索引映射
+                # 这里的逻辑必须与 predict 严格同步
+                # 其实我们可以直接用 self.predict，但那里有缓存且包含了大量多余组装逻辑，这里重写精简版
+                # 找到当前模型需要的通道索引
+                # channel_mask 逻辑这里不适用，因为我们已经有 selected_variables 了
+                var_to_idx = {v: i+1 for i, v in enumerate(TRAINING_MASTER_ORDER)}
+                sel_indices = [0] # Ozone
+                for v in TRAINING_MASTER_ORDER:
+                    if v in selected_variables:
+                        sel_indices.append(var_to_idx[v])
+                final_x = x_data[:, :, sel_indices[:input_dim]]
+            else:
+                final_x = x_data
+
+            for idx in indices:
+                sample_x = torch.from_numpy(final_x[idx]).unsqueeze(0).float().to(device)
+                with torch.no_grad():
+                    out = model(sample_x)
+                    p_scaled = out[0, 0, 0].cpu().numpy()
+                
+                p_phys = p_scaled * y_std + y_mean
+                t_phys = test_y[idx]
+                
+                valid = ~np.isnan(t_phys)
+                preds.append(p_phys[valid])
+                truths.append(t_phys[valid])
+            
+            if not truths: return 0.0
+            t_cat = np.concatenate(truths)
+            p_cat = np.concatenate(preds)
+            return float(r2_score(t_cat, p_cat))
+
+        logger.info(f"正在计算 PFI 基准分数 (采样数: {sample_size})")
+        sampled_baseline_r2 = compute_sampled_r2(test_x)
+        
+        for feat in active_features:
+            if feat not in feature_indices: continue
+            f_idx = feature_indices[feat]
+            
+            logger.info(f"正在评估特征重要性: {feat}")
+            
+            # 克隆数据并打乱该维度
+            shuffled_x = test_x.copy()
+            # 打乱逻辑: 在 N_test 维度上进行置换，保留其它维度 (T, H, W) 
+            # 实际上是把所有样本的该特征观测值随机重排
+            perm = np.random.permutation(num_test)
+            shuffled_x[:, :, f_idx] = test_x[perm, :, f_idx]
+            
+            shuffled_r2 = compute_sampled_r2(shuffled_x)
+            importance = sampled_baseline_r2 - shuffled_r2
+            
+            results.append({
+                "name": feat,
+                "importance": round(importance, 6)
+            })
+
+        # 按重要性排序
+        results.sort(key=lambda x: x["importance"], reverse=True)
+        
+        final_res = {
+            "items": results,
+            "baseline_metric": "r2",
+            "baseline_value": round(sampled_baseline_r2, 4)
+        }
+        
+        # 4. 保存持久化缓存
+        try:
+            if not PERF_CACHE_DIR.exists():
+                PERF_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            with open(cache_file, 'w', encoding='utf-8') as f:
+                json.dump(final_res, f, ensure_ascii=False, indent=2)
+                logger.info(f"已保存 PFI 分析结果至持久化缓存: {cache_file.name}")
+        except Exception as e:
+            logger.warning(f"保存 PFI 缓存失败: {e}")
+
+        return final_res
 
     @staticmethod
     def _make_cache_key(

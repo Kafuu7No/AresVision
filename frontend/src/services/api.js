@@ -203,6 +203,13 @@ export async function fetchErrorDistribution(vars = []) {
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
+
+export async function fetchPermutationImportance(vars = []) {
+  const varsStr = vars.length > 0 ? vars.join(',') : 'Temperature,Dust_Optical_Depth,Solar_Flux_DN,U_Wind,V_Wind';
+  const res = await fetch(`${BASE}/predict/permutation-importance?vars=${encodeURIComponent(varsStr)}`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
 // ─── 上传接口 ───
 
 export async function getMyUploads() {

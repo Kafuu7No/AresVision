@@ -52,6 +52,7 @@ const Mars3DBackground = forwardRef(({ ozoneData, is3DMode, autoRotate }, ref) =
         h="100vh"
         forceFullscreen
         autoRotate={autoRotate}
+        zoom={4.5}
       />
     </div>
   );

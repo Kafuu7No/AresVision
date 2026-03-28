@@ -371,6 +371,15 @@ const zh = {
       Ozone: '自回归 O₃',
       Surface_Pressure: '表面压力 P',
     },
+    pfi: {
+      title: '排列特征重要性 (ΔR²)',
+      baselineR2: '基线 R²：',
+      helpTitle: '注意：',
+      helpDesc: 'PFI 通过计算随机打乱某个特征值后的 R² 下降程度来衡量特征重要性。下降越多，说明模型对该特征的依赖程度越高。',
+      xaxisTitle: '性能下降 (R²)',
+      hoverTemplate: '<b>%{y}</b><br>重要性下降: <b>%{x:.6f}</b>',
+      noData: '暂无 PFI 分析数据。运行预测即可生成。',
+    },
 
     fileUpload: {
       drag: '拖拽 .nc 文件到此处',
