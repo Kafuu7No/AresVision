@@ -90,7 +90,7 @@ function EnvCard({ meta, dataset, copy }) {
   const label = unitLabel(meta.id, meta.unit);
 
   return (
-    <div style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, display: 'grid', gridTemplateRows: 'auto auto 1fr', gap: 12, minHeight: 0 }}>
+    <div style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, display: 'grid', gridTemplateRows: 'auto auto 1fr', gap: 12, minHeight: 280 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ color: meta.color, fontSize: 14, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>{meta.label}</div>
@@ -115,22 +115,24 @@ function EnvCard({ meta, dataset, copy }) {
         </div>
       </div>
 
-      <Plot
-        data={[{
-          x: dataset.ls,
-          y: dataset.series.map((value) => convertValue(meta.id, value)),
-          type: 'scatter',
-          mode: 'lines',
-          line: { color: meta.color, width: 2.5, shape: 'spline' },
-          fill: 'tozeroy',
-          fillcolor: `${meta.color}22`,
-          hovertemplate: 'Ls %{x:.0f} deg<br>%{y:.3f} ' + label + '<extra></extra>',
-        }]}
-        layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 28, r: 12, t: 8, b: 24 }, xaxis: { tickfont: { color: C.ice30, size: 9 }, gridcolor: 'rgba(255,255,255,0.05)', showline: false }, yaxis: { tickfont: { color: C.ice30, size: 9 }, gridcolor: 'rgba(255,255,255,0.05)', zeroline: false }, showlegend: false }}
-        config={{ displayModeBar: false, responsive: true }}
-        useResizeHandler
-        style={{ width: '100%', height: '100%' }}
-      />
+      <div style={{ minHeight: 0 }}>
+        <Plot
+          data={[{
+            x: dataset.ls,
+            y: dataset.series.map((value) => convertValue(meta.id, value)),
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: meta.color, width: 2.5, shape: 'spline' },
+            fill: 'tozeroy',
+            fillcolor: `${meta.color}22`,
+            hovertemplate: 'Ls %{x:.0f} deg<br>%{y:.3f} ' + label + '<extra></extra>',
+          }]}
+          layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 28, r: 12, t: 8, b: 24 }, xaxis: { tickfont: { color: C.ice30, size: 9 }, gridcolor: 'rgba(255,255,255,0.05)', showline: false }, yaxis: { tickfont: { color: C.ice30, size: 9 }, gridcolor: 'rgba(255,255,255,0.05)', zeroline: false }, showlegend: false }}
+          config={{ displayModeBar: false, responsive: true }}
+          useResizeHandler
+          style={{ width: '100%', height: '100%' }}
+        />
+      </div>
     </div>
   );
 }
