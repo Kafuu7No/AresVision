@@ -138,6 +138,14 @@ const en = {
       environment_desc: 'Seasonal summaries of temperature, dust, solar flux and wind.',
       prediction_desc: 'Baseline and full-forcing model skill across the test set.',
       distribution_desc: 'Histogram and latitudinal profile of the current ozone slice.',
+      coupling: 'DUST WASHOUT',
+      coupling_desc: 'Explore the direct impact of global dust storms on mean ozone column.',
+      wave: 'WAVE EXPLORER',
+      wave_desc: 'Analyze stationary atmospheric waves and zonal anomalies induced by Martian topography.',
+      solar: 'SOLAR SENSITIVITY',
+      solar_desc: 'Study the non-linear relationship between daytime UV flux and ozone production.',
+      polar: 'POLAR DYNAMICS',
+      polar_desc: 'Compare rapid ozone accumulation trends between poles before and after polar night.',
     },
     panel: {
       globe3d: {
@@ -167,6 +175,22 @@ const en = {
       distribution: {
         title: 'SPATIAL DISTRIBUTION',
         description: 'Summarize the value distribution, percentile range and latitudinal mean profile of the current ozone slice.',
+      },
+      coupling: {
+        title: 'DUST WASHOUT',
+        description: 'Explore the direct impact of global dust storms on mean ozone column.',
+      },
+      wave: {
+        title: 'WAVE EXPLORER',
+        description: 'Analyze stationary atmospheric waves and zonal anomalies induced by Martian topography.',
+      },
+      solar: {
+        title: 'SOLAR SENSITIVITY',
+        description: 'Study the non-linear relationship between daytime UV flux and ozone production.',
+      },
+      polar: {
+        title: 'POLAR DYNAMICS',
+        description: 'Compare rapid ozone accumulation trends between poles before and after polar night.',
       },
     },
     controls: {

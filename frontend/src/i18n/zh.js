@@ -139,6 +139,14 @@ const zh = {
       environment_desc: '总览温度、沙尘、辐射和风场的季节演变与纬带影响。',
       prediction_desc: '比较基线模型与完整驱动模型的测试表现。',
       distribution_desc: '统计当前臭氧切片的分布形态和纬向剖面。',
+      coupling: '沙尘冲刷 DUST WASHOUT',
+      coupling_desc: '探索沙尘暴爆发对全球平均臭氧含量的直接影响。',
+      wave: '行星波探测 WAVE EXPLORER',
+      wave_desc: '分析火星主导地形产生的大气驻波与纬向距平。',
+      solar: '光化学驱动 SOLAR SENSITIVITY',
+      solar_desc: '研究紫外辐射强度与臭氧生成率的非线性关系。',
+      polar: '极地冬春演化 POLAR DYNAMICS',
+      polar_desc: '对比南北极在极夜前后的臭氧急剧积聚趋势。',
     },
     panel: {
       globe3d: {
@@ -168,6 +176,22 @@ const zh = {
       distribution: {
         title: '空间分布 SPATIAL DISTRIBUTION',
         description: '统计当前臭氧切片的数值分布、分位区间和纬向均值剖面。',
+      },
+      coupling: {
+        title: '沙尘冲刷 DUST WASHOUT',
+        description: '探索沙尘暴爆发对全球平均臭氧含量的直接影响。',
+      },
+      wave: {
+        title: '行星波探测 WAVE EXPLORER',
+        description: '分析火星主导地形产生的大气驻波与纬向距平。',
+      },
+      solar: {
+        title: '光化学驱动 SOLAR SENSITIVITY',
+        description: '研究紫外辐射强度与臭氧生成率的非线性关系。',
+      },
+      polar: {
+        title: '极地冬春演化 POLAR DYNAMICS',
+        description: '对比南北极在极夜前后的臭氧急剧积聚趋势。',
       },
     },
     controls: {

@@ -271,7 +271,7 @@ export default function CorrelationMatrix({ marsYear }) {
   }
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', gap: 16, overflow: 'auto', paddingRight: 4 }}>
+    <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', gap: 16, overflowX: 'hidden', overflowY: 'auto', scrollbarGutter: 'stable', paddingRight: 4 }}>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
         {variableMeta.map((meta) => {
           const active = meta.id === selectedVariable;

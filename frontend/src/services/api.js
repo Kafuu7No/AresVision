@@ -133,6 +133,30 @@ export async function fetchDataInfo() {
   return res.json();
 }
 
+export async function fetchCouplingData(marsYear = 27, var1 = 'o3col', var2 = 'Dust_Optical_Depth') {
+  const res = await fetch(`${BASE}/explore/coupling?my=${marsYear}&var1=${var1}&var2=${var2}`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchZonalAnomaly(marsYear = 27, variable = 'o3col') {
+  const res = await fetch(`${BASE}/explore/zonal-anomaly?my=${marsYear}&variable=${variable}`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchSolarPhotochemical(marsYear = 27, latBand = 'Equatorial (30S-30N)') {
+  const res = await fetch(`${BASE}/explore/solar-photochemical?my=${marsYear}&lat_band=${encodeURIComponent(latBand)}`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchPolarDynamics(marsYear = 27) {
+  const res = await fetch(`${BASE}/explore/polar-dynamics?my=${marsYear}`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 export async function runPrediction(body) {
   const res = await fetch(`${BASE}/predict/run`, {
     method: 'POST',

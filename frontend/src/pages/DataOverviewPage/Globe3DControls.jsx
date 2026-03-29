@@ -197,26 +197,6 @@ export default function Globe3DControls({
         </label>
       </div>
 
-      {/* 加载指示 */}
-      {loadingGlobe && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          marginBottom: '16px', padding: '10px 12px',
-          background: 'rgba(199,91,57,0.08)',
-          border: `1px solid rgba(199,91,57,0.25)`,
-          borderRadius: '8px'
-        }}>
-          <div style={{
-            width: '12px', height: '12px', flexShrink: 0,
-            border: `2px solid rgba(199,91,57,0.2)`,
-            borderTop: `2px solid ${C.mars}`,
-            borderRadius: '50%',
-            animation: 'spin-slow 1s linear infinite'
-          }} />
-          <span style={{ color: C.mars, fontSize: '11px', fontFamily: "'Orbitron', sans-serif" }}>{t('overview.controls.loadingData')}</span>
-        </div>
-      )}
-
       {/* 臭氧浓度色阶图例 */}
       <div style={{
         marginBottom: '16px', padding: '16px',

@@ -109,3 +109,57 @@ async def get_data_info(request: Request):
         ls_min, ls_max = service.get_ls_range(y)
         info[f"MY{y}"] = {"ls_range": [ls_min, ls_max]}
     return {"available_years": years, "details": info}
+
+# ─── 新增科学气象分析接口 ───
+
+@router.get("/coupling")
+async def get_coupling(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    var1: str = Query("o3col", description="变量1"),
+    var2: str = Query("Dust_Optical_Depth", description="变量2"),
+):
+    """沙尘-臭氧耦合数据 (以及任意两个变量的全球平均随Ls变化)"""
+    try:
+        vs = _get_analysis_service(request)
+        return vs.get_coupling_data(my, var1, var2)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/zonal-anomaly")
+async def get_zonal_anomaly(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    variable: str = Query("o3col", description="变量名"),
+):
+    """行星波与纬向距平 (时间平均后的经纬度距平)"""
+    try:
+        vs = _get_analysis_service(request)
+        return vs.get_zonal_anomalies(my, variable)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/solar-photochemical")
+async def get_solar_photochemical(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    lat_band: str = Query("Equatorial (30S-30N)", description="纬度带名称"),
+):
+    """太阳辐射-光化学敏感性分析"""
+    try:
+        vs = _get_analysis_service(request)
+        return vs.get_solar_photochemical(my, lat_band)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/polar-dynamics")
+async def get_polar_dynamics(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+):
+    """极地动力学与涡旋追踪 (南北极对比)"""
+    try:
+        vs = _get_analysis_service(request)
+        return vs.get_polar_dynamics(my)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
