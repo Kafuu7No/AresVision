@@ -260,7 +260,7 @@ export default function EnvironmentDashboard({ marsYear }) {
   }
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateRows: 'auto auto', gap: 18, overflow: 'auto', paddingRight: 4 }}>
+    <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateRows: 'auto auto', gap: 18, overflowX: 'hidden', overflowY: 'auto', scrollbarGutter: 'stable', paddingRight: 4 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 18 }}>
         {variableMeta.map((meta) => (
           <EnvCard key={meta.id} meta={meta} dataset={datasets[meta.id]} copy={copy} />

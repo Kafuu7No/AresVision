@@ -115,7 +115,7 @@ export default function RealtimeMonitor({ marsYear, lsValue }) {
   }
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateRows: 'auto auto minmax(320px, 1fr)', gap: 16, overflow: 'auto', paddingRight: 4 }}>
+    <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateRows: 'auto auto minmax(320px, 1fr)', gap: 16, overflowX: 'hidden', overflowY: 'auto', scrollbarGutter: 'stable', paddingRight: 4 }}>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         {LAT_BANDS.map((item) => {
           const active = item === latBand;

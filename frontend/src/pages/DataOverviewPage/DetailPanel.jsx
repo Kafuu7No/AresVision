@@ -189,7 +189,9 @@ export default function DetailPanel({ selectedItem, marsYear, lsValue, ozoneData
         style={{
           height: '100%',
           padding: '24px',
-          overflow: 'auto',
+          overflowX: 'hidden',
+          overflowY: 'auto',
+          scrollbarGutter: 'stable',
           minHeight: 0,
         }}
       >
