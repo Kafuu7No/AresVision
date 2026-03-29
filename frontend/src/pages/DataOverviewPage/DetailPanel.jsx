@@ -8,6 +8,10 @@ import RealtimeMonitor from './OverviewCharts/RealtimeMonitor';
 import EnvironmentDashboard from './OverviewCharts/EnvironmentDashboard';
 import PredictionEngine from './OverviewCharts/PredictionEngine';
 import DataDistribution from './OverviewCharts/DataDistribution';
+import CouplingAnalysis from './OverviewCharts/CouplingAnalysis';
+import WaveExplorer from './OverviewCharts/WaveExplorer';
+import SolarSensitivity from './OverviewCharts/SolarSensitivity';
+import PolarDynamics from './OverviewCharts/PolarDynamics';
 import { useT } from '../../i18n';
 
 const PANEL_COPY = {
@@ -38,6 +42,22 @@ const PANEL_COPY = {
   distribution: {
     title: '空间分布 SPATIAL DISTRIBUTION',
     description: '统计当前臭氧切片的数值分布、分位区间和纬向均值剖面。',
+  },
+  coupling: {
+    title: '沙尘冲刷 DUST WASHOUT',
+    description: '探索沙尘暴爆发对全球平均臭氧含量的直接影响。',
+  },
+  wave: {
+    title: '行星波探测 WAVE EXPLORER',
+    description: '分析火星主导地形产生的大气驻波与纬向距平。',
+  },
+  solar: {
+    title: '光化学驱动 SOLAR SENSITIVITY',
+    description: '研究紫外辐射强度与臭氧生成率的非线性关系。',
+  },
+  polar: {
+    title: '极地冬春演化 POLAR DYNAMICS',
+    description: '对比南北极在极夜前后的臭氧急剧积聚趋势。',
   },
 };
 
@@ -100,6 +120,14 @@ export default function DetailPanel({ selectedItem, marsYear, lsValue, ozoneData
         return <PredictionEngine />;
       case 'distribution':
         return <DataDistribution marsYear={marsYear} lsValue={lsValue} ozoneData={ozoneData} />;
+      case 'coupling':
+        return <CouplingAnalysis marsYear={marsYear} />;
+      case 'wave':
+        return <WaveExplorer marsYear={marsYear} />;
+      case 'solar':
+        return <SolarSensitivity marsYear={marsYear} />;
+      case 'polar':
+        return <PolarDynamics marsYear={marsYear} />;
       default:
         return <div>Unknown chart type</div>;
     }
