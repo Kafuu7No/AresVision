@@ -107,6 +107,7 @@ const zh = {
       pdf: 'PDF', pdfSub: '文档',
       dpi150Sub: '标准', dpi300Sub: '出版', dpi600Sub: '超清',
     },
+    perfMonitor: '性能监控',
   },
 
   home: {
