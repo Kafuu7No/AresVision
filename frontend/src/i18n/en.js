@@ -106,6 +106,7 @@ const en = {
       pdf: 'PDF', pdfSub: 'Document',
       dpi150Sub: 'Screen', dpi300Sub: 'Print', dpi600Sub: 'Ultra HD',
     },
+    perfMonitor: 'Performance',
   },
 
   home: {

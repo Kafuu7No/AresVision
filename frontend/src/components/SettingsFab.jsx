@@ -6,6 +6,7 @@ import { useT } from '../i18n';
 import C from '../constants/colors';
 import ConfirmDialog from './ConfirmDialog';
 import FeedbackModal from './FeedbackModal';
+import PerformanceMonitor from './PerformanceMonitor';
 
 const COLORMAP_IDS = ['inferno', 'viridis', 'plasma', 'magma', 'cividis', 'jet', 'rdbu'];
 
@@ -65,6 +66,34 @@ function SubOption({ label, selected, onClick, hoverBg, labelColor, activeClr })
   );
 }
 
+function PerfToggleItem({ label, active, onClick, hoverBg, labelClr, valueClr }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 16px', cursor: 'pointer',
+        background: hov ? hoverBg : 'transparent',
+        transition: 'background 0.1s',
+      }}
+    >
+      <span style={{ fontSize: 14, fontWeight: 500, color: labelClr, userSelect: 'none' }}>
+        {label}
+      </span>
+      <span style={{
+        fontSize: 11, fontWeight: 600,
+        color: active ? '#22c55e' : valueClr,
+        userSelect: 'none',
+      }}>
+        {active ? 'ON' : 'OFF'}
+      </span>
+    </div>
+  );
+}
+
 function UserActionItem({ label, onClick, hoverBg, color }) {
   const [hov, setHov] = useState(false);
   return (
@@ -93,6 +122,7 @@ export default function SettingsFab({ onOpenSettings, onOpenAdmin }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [perfMonitor, setPerfMonitor] = useState(false);
   const [activeSubmenu, setActiveSubmenu] = useState(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const [moreHov, setMoreHov] = useState(false);
@@ -282,6 +312,16 @@ export default function SettingsFab({ onOpenSettings, onOpenAdmin }) {
                 color={labelClr}
               />
 
+              {/* Performance Monitor toggle */}
+              <PerfToggleItem
+                label={t('settings.perfMonitor')}
+                active={perfMonitor}
+                onClick={() => setPerfMonitor(v => !v)}
+                hoverBg={hoverBg}
+                labelClr={labelClr}
+                valueClr={valueClr}
+              />
+
               <div style={{ height: 1, background: divClr, margin: '3px 10px' }} />
 
               {/* User section */}
@@ -413,6 +453,9 @@ export default function SettingsFab({ onOpenSettings, onOpenAdmin }) {
       >
         <GearIcon size={17} />
       </button>
+
+      {/* ── Performance Monitor ── */}
+      <PerformanceMonitor visible={perfMonitor} />
 
       {/* ── Feedback modal ── */}
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
