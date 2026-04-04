@@ -37,7 +37,7 @@ export default function HeatmapCanvas({ data, year, h = 300 }) {
     const cellH = plotH / nY;
 
     // Theme tokens
-    const bgColor        = isLight ? '#f5f6f8'              : '#0a0a0f';
+    const bgColor        = isLight ? 'rgba(245, 246, 248, 0.4)' : '#0a0a0f';
     const bgPixel        = isLight ? [245, 246, 248]        : [10, 10, 15];
     const axisColor      = isLight ? '#000000' : '#ffffff';
     const tickColor      = isLight ? '#000000' : '#ffffff';
@@ -219,7 +219,7 @@ export default function HeatmapCanvas({ data, year, h = 300 }) {
 
   return (
     <div>
-      <div style={isLight ? { borderRadius: 10, overflow: 'hidden', background: '#f5f6f8' } : {}}>
+      <div style={isLight ? { borderRadius: 10, overflow: 'hidden', background: 'transparent' } : {}}>
         <canvas
           ref={canvasRef}
           width={720}
