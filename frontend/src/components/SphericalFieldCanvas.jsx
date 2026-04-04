@@ -211,11 +211,7 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
   // 主题变化：更新场景背景色和星星可见性
   useEffect(() => {
     if (!sceneRef.current) return;
-    if (isLight) {
-      sceneRef.current.background = new THREE.Color(0xf5f6f8);
-    } else {
-      sceneRef.current.background = null;
-    }
+    sceneRef.current.background = null;
     if (starMeshRef.current) {
       starMeshRef.current.visible = !isLight;
     }

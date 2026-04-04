@@ -122,7 +122,7 @@ const DataOverviewPageContent = () => {
   }, [playing]);
 
   return (
-    <div className="space-scene panel-dark" style={{ width: '100vw', height: '100vh', overflow: 'hidden', position: 'relative' }}>
+    <div className="space-scene" style={{ width: '100vw', height: '100vh', overflow: 'hidden', position: 'relative' }}>
       <Mars3DBackground
         ref={globeCanvasRef}
         ozoneData={ozoneData}
