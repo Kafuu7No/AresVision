@@ -12,8 +12,8 @@
   --bg-card:          rgba(15,15,22,0.65);
   --bg-nav:           rgba(5,5,8,0.85);
   --text:             #ffffff;
-  --text-60:          rgba(255,255,255,0.70);
-  --text-30:          rgba(255,255,255,0.40);
+  --text-60:          #ffffff;
+  --text-30:          #ffffff;
   --border:           rgba(255,255,255,0.12);
   --border-hover:     rgba(255,255,255,0.25);
   --scrollbar:        rgba(255,255,255,0.15);
@@ -30,8 +30,8 @@
   --bg-card:          #ffffff;
   --bg-nav:           rgba(255,255,255,0.95);
   --text:             #000000;
-  --text-60:          rgba(0,0,0,0.70);
-  --text-30:          rgba(0,0,0,0.45);
+  --text-60:          #000000;
+  --text-30:          #000000;
   --border:           rgba(0,0,0,0.15);
   --border-hover:     rgba(0,0,0,0.25);
   --scrollbar:        rgba(0,0,0,0.20);
@@ -162,8 +162,8 @@ body {
 /* 固定深色面板（如 SettingsPanel）——无论主题如何都保留深色文字 */
 .panel-dark {
   --text:             #ffffff;
-  --text-60:          rgba(255,255,255,0.70);
-  --text-30:          rgba(255,255,255,0.40);
+  --text-60:          #ffffff;
+  --text-30:          #ffffff;
   --border:           rgba(255,255,255,0.12);
   --border-hover:     rgba(255,255,255,0.25);
 }

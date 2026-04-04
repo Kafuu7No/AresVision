@@ -147,9 +147,9 @@ function PanelContent({ t, isLight, onClose, onReadCountChange }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const titleColor  = isLight ? '#1e1e30'              : '#e8edf3';
-  const subColor    = isLight ? 'rgba(42,42,58,0.45)'  : 'rgba(232,237,243,0.40)';
-  const borderColor = isLight ? 'rgba(0,0,0,0.09)'     : 'rgba(255,255,255,0.09)';
+  const titleColor  = isLight ? '#000000' : '#ffffff';
+  const subColor    = isLight ? '#000000' : '#ffffff';
+  const borderColor = isLight ? '#000000' : '#ffffff';
   const hoverBg     = isLight ? 'rgba(0,0,0,0.04)'     : 'rgba(255,255,255,0.06)';
 
   const load = useCallback(async () => {
@@ -294,7 +294,7 @@ function NotificationPanelInner({ open, onClose, onReadCountChange }) {
 
   const panelVars = isLight
     ? { '--text': '#2a2a3a', '--text-60': 'rgba(42,42,58,0.65)', '--text-30': 'rgba(42,42,58,0.35)', '--border': 'rgba(26,26,46,0.12)' }
-    : { '--text': '#e8edf3', '--text-60': 'rgba(232,237,243,0.6)',  '--text-30': 'rgba(232,237,243,0.3)',  '--border': 'rgba(232,237,243,0.08)' };
+    : { '--text': '#ffffff', '--text-60': '#ffffff', '--text-30': '#ffffff',  '--border': 'rgba(232,237,243,0.08)' };
 
   return (
     <>

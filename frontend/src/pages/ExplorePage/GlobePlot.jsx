@@ -146,7 +146,7 @@ export default function GlobePlot({ data, h = 300 }) {
           borderRadius: 8,
           padding: '8px 12px',
           fontSize: 12,
-          color: '#e8edf3',
+          color: C.ice,
           pointerEvents: 'none',
           zIndex: 10,
           whiteSpace: 'nowrap',

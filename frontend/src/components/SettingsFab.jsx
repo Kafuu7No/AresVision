@@ -170,10 +170,10 @@ export default function SettingsFab({ onOpenSettings, onOpenAdmin }) {
   const cardShadow = L
     ? '0 8px 32px rgba(0,0,0,0.14), 0 2px 6px rgba(0,0,0,0.07)'
     : '0 8px 32px rgba(0,0,0,0.7),  0 2px 6px rgba(0,0,0,0.35)';
-  const labelClr   = L ? '#1e1e30'                  : '#e8edf3';
-  const valueClr   = L ? 'rgba(42,42,58,0.52)'      : 'rgba(232,237,243,0.48)';
+  const labelClr   = L ? '#000000' : '#ffffff';
+  const valueClr   = L ? '#000000' : '#ffffff';
   const hoverBg    = L ? 'rgba(0,0,0,0.045)'        : 'rgba(255,255,255,0.07)';
-  const divClr     = L ? 'rgba(0,0,0,0.07)'         : 'rgba(255,255,255,0.08)';
+  const divClr     = L ? '#000000' : '#ffffff';
   const activeClr  = C.blue;
   const fabBg      = L
     ? (menuOpen ? 'rgba(228,232,248,0.97)' : 'rgba(255,255,255,0.88)')
