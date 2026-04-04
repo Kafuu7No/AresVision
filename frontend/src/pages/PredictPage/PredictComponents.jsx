@@ -180,7 +180,7 @@ export function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
   }, [fieldData, colorMode, h, colormapName, ozoneUnit, theme]);
 
   return (
-    <div style={isLight ? { borderRadius: 10, overflow: 'hidden', background: '#f5f6f8' } : {}}>
+    <div style={isLight ? { borderRadius: 10, overflow: 'hidden', background: 'transparent' } : {}}>
       <canvas
         ref={canvasRef}
         width={720}

@@ -64,7 +64,9 @@ export default function GlobePlot({ data, h = 300 }) {
       className={isLight ? 'observation-window' : 'observation-window panel-dark'}
       style={{
         position: 'relative', overflow: 'hidden',
-        background: isLight ? '#f5f6f8' : 'radial-gradient(ellipse at center, #0a1525 0%, #050a12 100%)',
+        background: isLight 
+          ? 'radial-gradient(ellipse at center, #8292a5 0%, #5a687d 55%, #3e4a5d 100%)' 
+          : 'radial-gradient(ellipse at center, #0a1525 0%, #050a12 100%)',
         paddingRight: 90,
       }}
       onClick={handleContainerClick}

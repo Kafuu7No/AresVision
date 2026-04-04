@@ -213,7 +213,8 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
     if (!sceneRef.current) return;
     sceneRef.current.background = null;
     if (starMeshRef.current) {
-      starMeshRef.current.visible = !isLight;
+      starMeshRef.current.visible = true;
+      starMeshRef.current.material.color.setHex(isLight ? 0x1e293b : 0xffffff);
     }
   }, [isLight]);
 
