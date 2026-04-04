@@ -27,8 +27,8 @@
 
 [data-theme="light"] {
   --bg:               #f0f2f5;
-  --bg-card:          #ffffff;
-  --bg-nav:           rgba(255,255,255,0.95);
+  --bg-card:          rgba(255, 255, 255, 0.65);
+  --bg-nav:           rgba(255, 255, 255, 0.75);
   --text:             #000000;
   --text-60:          #000000;
   --text-30:          #000000;
@@ -156,7 +156,7 @@ body {
   background: #000;
 }
 [data-theme="light"] .space-scene {
-  background: radial-gradient(ellipse at 40% 30%, #12152e 0%, #070814 55%, #010108 100%);
+  background: radial-gradient(ellipse at 40% 30%, #8292a5 0%, #5a687d 55%, #3e4a5d 100%);
 }
 
 /* 固定深色面板（如 SettingsPanel）——无论主题如何都保留深色文字 */
