@@ -31,13 +31,13 @@ export function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     const plotW = CW - ML - MR;
     const plotH = CH - MT - MB;
 
-    const axisTextColor  = isLight ? 'rgba(26,26,46,0.65)' : 'rgba(232,237,243,0.6)';
-    const axisTitleColor = isLight ? 'rgba(26,26,46,0.4)'  : 'rgba(232,237,243,0.35)';
-    const axisLineColor  = isLight ? 'rgba(26,46,80,0.2)'  : 'rgba(255,255,255,0.18)';
-    const borderColor    = isLight ? 'rgba(26,46,80,0.25)' : 'rgba(255,255,255,0.18)';
-    const cbBorderColor  = isLight ? 'rgba(26,46,80,0.35)' : 'rgba(255,255,255,0.25)';
-    const cbLabelColor   = isLight ? 'rgba(26,26,46,0.7)'  : 'rgba(232,237,243,0.7)';
-    const cbTitleColor   = isLight ? 'rgba(26,26,46,0.4)'  : 'rgba(232,237,243,0.4)';
+    const axisTextColor  = isLight ? '#000000' : '#ffffff';
+    const axisTitleColor = isLight ? '#000000' : '#ffffff';
+    const axisLineColor  = isLight ? '#000000' : '#ffffff';
+    const borderColor    = isLight ? '#000000' : '#ffffff';
+    const cbBorderColor  = isLight ? '#000000' : '#ffffff';
+    const cbLabelColor   = isLight ? '#000000' : '#ffffff';
+    const cbTitleColor   = isLight ? '#000000' : '#ffffff';
 
     ctx.clearRect(0, 0, CW, CH);
     ctx.fillStyle = '#0a0a0f';

@@ -85,12 +85,12 @@ function RejectionModal({ t, isLight, onConfirm, onCancel }) {
   const overlayBg = isLight ? 'rgba(210,215,235,0.70)' : 'rgba(0,0,8,0.78)';
   const cardBg    = isLight ? 'rgba(255,255,255,0.97)'  : 'rgba(13,13,28,0.95)';
   const cardBorder = isLight ? 'rgba(0,0,0,0.09)'       : 'rgba(255,255,255,0.10)';
-  const titleColor = isLight ? '#1e1e30'                 : '#e8edf3';
-  const msgColor   = isLight ? 'rgba(42,42,58,0.60)'    : 'rgba(232,237,243,0.56)';
+  const titleColor = isLight ? '#000000' : '#ffffff';
+  const msgColor   = isLight ? '#000000' : '#ffffff';
   const inputBg    = isLight ? 'rgba(0,0,0,0.04)'       : 'rgba(255,255,255,0.05)';
   const inputBorder = isLight ? 'rgba(0,0,0,0.12)'      : 'rgba(255,255,255,0.12)';
   const cancelBg   = isLight ? 'rgba(0,0,0,0.07)'       : 'rgba(255,255,255,0.08)';
-  const cancelClr  = isLight ? 'rgba(42,42,58,0.70)'    : 'rgba(232,237,243,0.68)';
+  const cancelClr  = isLight ? '#000000' : '#ffffff';
 
   return ReactDOM.createPortal(
     <div
@@ -340,9 +340,9 @@ function PendingTab({ t, isLight, onReviewComplete, subColor }) {
   const [approvingId, setApprovingId] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);
 
-  const titleColor  = isLight ? '#1e1e30' : '#e8edf3';
+  const titleColor  = isLight ? '#000000' : '#ffffff';
   const hoverBg     = isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)';
-  const borderColor = isLight ? 'rgba(0,0,0,0.09)' : 'rgba(255,255,255,0.09)';
+  const borderColor = isLight ? '#000000' : '#ffffff';
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -448,12 +448,12 @@ function PendingTab({ t, isLight, onReviewComplete, subColor }) {
           >
             <div style={{
               fontSize: 14, fontWeight: 700,
-              color: isLight ? '#1e1e30' : '#e8edf3',
+              color: isLight ? '#000000' : '#ffffff',
               fontFamily: 'Orbitron, sans-serif', marginBottom: 10,
             }}>
               {t('admin.confirmApproveTitle')}
             </div>
-            <div style={{ fontSize: 13, color: isLight ? 'rgba(42,42,58,0.60)' : 'rgba(232,237,243,0.56)', marginBottom: 22, lineHeight: 1.65 }}>
+            <div style={{ fontSize: 13, color: (isLight || L) ? '#000000' : '#ffffff', marginBottom: 22, lineHeight: 1.65 }}>
               {t('admin.confirmApproveMsg')}
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -462,7 +462,7 @@ function PendingTab({ t, isLight, onReviewComplete, subColor }) {
                 style={{
                   padding: '8px 18px', borderRadius: 8,
                   background: isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.08)',
-                  border: 'none', color: isLight ? 'rgba(42,42,58,0.70)' : 'rgba(232,237,243,0.68)',
+                  border: 'none', color: (isLight || L) ? '#000000' : '#ffffff',
                   fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
@@ -505,7 +505,7 @@ function ApprovedTab({ t, isLight, subColor }) {
   const [actionId, setActionId]   = useState(null);
   const [revokingId, setRevokingId] = useState(null);
 
-  const titleColor = isLight ? '#1e1e30' : '#e8edf3';
+  const titleColor = isLight ? '#000000' : '#ffffff';
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -594,12 +594,12 @@ function ApprovedTab({ t, isLight, subColor }) {
           >
             <div style={{
               fontSize: 14, fontWeight: 700,
-              color: isLight ? '#1e1e30' : '#e8edf3',
+              color: isLight ? '#000000' : '#ffffff',
               fontFamily: 'Orbitron, sans-serif', marginBottom: 10,
             }}>
               {t('admin.confirmRevokeTitle')}
             </div>
-            <div style={{ fontSize: 13, color: isLight ? 'rgba(42,42,58,0.60)' : 'rgba(232,237,243,0.56)', marginBottom: 22, lineHeight: 1.65 }}>
+            <div style={{ fontSize: 13, color: (isLight || L) ? '#000000' : '#ffffff', marginBottom: 22, lineHeight: 1.65 }}>
               {t('admin.confirmRevokeMsg')}
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -608,7 +608,7 @@ function ApprovedTab({ t, isLight, subColor }) {
                 style={{
                   padding: '8px 18px', borderRadius: 8,
                   background: isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.08)',
-                  border: 'none', color: isLight ? 'rgba(42,42,58,0.70)' : 'rgba(232,237,243,0.68)',
+                  border: 'none', color: (isLight || L) ? '#000000' : '#ffffff',
                   fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
@@ -638,9 +638,9 @@ function ApprovedTab({ t, isLight, subColor }) {
 function PanelContent({ t, isLight, onClose, onReviewComplete }) {
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'approved'
 
-  const titleColor  = isLight ? '#1e1e30'              : '#e8edf3';
-  const subColor    = isLight ? 'rgba(42,42,58,0.45)'  : 'rgba(232,237,243,0.40)';
-  const borderColor = isLight ? 'rgba(0,0,0,0.09)'     : 'rgba(255,255,255,0.09)';
+  const titleColor  = isLight ? '#000000' : '#ffffff';
+  const subColor    = isLight ? '#000000' : '#ffffff';
+  const borderColor = isLight ? '#000000' : '#ffffff';
   const hoverBg     = isLight ? 'rgba(0,0,0,0.04)'     : 'rgba(255,255,255,0.06)';
 
   const tabActive = isLight
@@ -739,7 +739,7 @@ function AdminReviewPanelInner({ open, onClose, onReviewComplete }) {
 
   const panelVars = isLight
     ? { '--text': '#2a2a3a', '--text-60': 'rgba(42,42,58,0.65)', '--text-30': 'rgba(42,42,58,0.35)', '--border': 'rgba(26,26,46,0.12)' }
-    : { '--text': '#e8edf3', '--text-60': 'rgba(232,237,243,0.6)',  '--text-30': 'rgba(232,237,243,0.3)',  '--border': 'rgba(232,237,243,0.08)' };
+    : { '--text': '#ffffff', '--text-60': '#ffffff', '--text-30': '#ffffff',  '--border': 'rgba(232,237,243,0.08)' };
 
   return (
     <>

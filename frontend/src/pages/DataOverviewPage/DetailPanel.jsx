@@ -146,7 +146,7 @@ export default function DetailPanel({ selectedItem, marsYear, lsValue, ozoneData
         top: '70px',
         right: is3DMode ? '-100vw' : 0,
         height: 'calc(100vh - 70px)',
-        background: 'rgba(10, 10, 15, 0.3)',
+        background: 'var(--bg-nav)',
         backdropFilter: 'blur(10px)',
         zIndex: 500,
         padding: '24px',

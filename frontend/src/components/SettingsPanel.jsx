@@ -198,10 +198,7 @@ export default function SettingsPanel({ open, onClose }) {
         '--text-30': 'rgba(42,42,58,0.35)',
         '--border':  'rgba(26,26,46,0.12)',
       }
-    : {
-        '--text':    '#e8edf3',
-        '--text-60': 'rgba(232,237,243,0.6)',
-        '--text-30': 'rgba(232,237,243,0.3)',
+    : { '--text': '#ffffff', '--text-60': '#ffffff', '--text-30': '#ffffff',
         '--border':  'rgba(232,237,243,0.08)',
       };
 

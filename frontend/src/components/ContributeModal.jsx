@@ -51,8 +51,8 @@ function StepIndicator({ current, t, isLight }) {
     t('explore.contribute.step2'),
     t('explore.contribute.step3'),
   ];
-  const dimClr  = isLight ? 'rgba(42,42,58,0.30)' : 'rgba(232,237,243,0.25)';
-  const lineClr = isLight ? 'rgba(42,42,58,0.12)' : 'rgba(232,237,243,0.12)';
+  const dimClr  = isLight ? '#000000' : '#ffffff';
+  const lineClr = isLight ? '#000000' : '#ffffff';
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, marginBottom: 28 }}>
@@ -99,14 +99,14 @@ function Step1({ validUploads, selected, onToggle, t, isLight }) {
   const rowBorder = isLight ? 'rgba(0,0,0,0.07)'        : 'rgba(255,255,255,0.07)';
   const selBg     = isLight ? 'rgba(74,158,255,0.08)'   : 'rgba(74,158,255,0.10)';
   const selBorder = C.blue;
-  const nameClr   = isLight ? '#1e1e30'                 : '#e8edf3';
-  const metaClr   = isLight ? 'rgba(42,42,58,0.50)'     : 'rgba(232,237,243,0.45)';
+  const nameClr   = isLight ? '#000000' : '#ffffff';
+  const metaClr   = isLight ? '#000000' : '#ffffff';
 
   if (validUploads.length === 0) {
     return (
       <div style={{
         padding: '32px 0', textAlign: 'center',
-        color: isLight ? 'rgba(42,42,58,0.40)' : 'rgba(232,237,243,0.35)',
+        color: (isLight || L) ? '#000000' : '#ffffff',
         fontSize: 13,
       }}>
         {t('explore.contribute.step1Empty')}
@@ -150,7 +150,7 @@ function Step1({ validUploads, selected, onToggle, t, isLight }) {
             </div>
 
             {/* File info */}
-            <span style={{ color: isLight ? 'rgba(42,42,58,0.35)' : 'rgba(232,237,243,0.35)', flexShrink: 0 }}>
+            <span style={{ color: (isLight || L) ? '#000000' : '#ffffff', flexShrink: 0 }}>
               <FileIcon size={14} color="currentColor" />
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -175,8 +175,8 @@ function Step1({ validUploads, selected, onToggle, t, isLight }) {
 
 function Step2({ validUploads, selected, note, onNoteChange, t, isLight }) {
   const selectedList = validUploads.filter(u => selected.has(u.id));
-  const nameClr   = isLight ? '#1e1e30'              : '#e8edf3';
-  const metaClr   = isLight ? 'rgba(42,42,58,0.50)'  : 'rgba(232,237,243,0.45)';
+  const nameClr   = isLight ? '#000000' : '#ffffff';
+  const metaClr   = isLight ? '#000000' : '#ffffff';
   const inputBg   = isLight ? 'rgba(0,0,0,0.04)'     : 'rgba(255,255,255,0.05)';
   const inputBdr  = isLight ? 'rgba(0,0,0,0.12)'     : 'rgba(255,255,255,0.12)';
   const noticeBg  = isLight ? 'rgba(74,158,255,0.07)': 'rgba(74,158,255,0.08)';
@@ -252,8 +252,8 @@ function Step3({ validUploads, selected, results, submitting, t, isLight }) {
   const failCount = results.filter(r => !r.ok).length;
   const allDone  = !submitting && done === total;
 
-  const nameClr = isLight ? '#1e1e30'             : '#e8edf3';
-  const dimClr  = isLight ? 'rgba(42,42,58,0.45)' : 'rgba(232,237,243,0.40)';
+  const nameClr = isLight ? '#000000' : '#ffffff';
+  const dimClr  = isLight ? '#000000' : '#ffffff';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -383,12 +383,12 @@ function ContributeModalInner({ open, onClose, validUploads, onDone }) {
   const overlayBg  = isLight ? 'rgba(200,205,225,0.72)' : 'rgba(0,0,8,0.78)';
   const cardBg     = isLight ? 'rgba(255,255,255,0.98)'  : 'rgba(10,10,22,0.97)';
   const cardBorder = isLight ? 'rgba(0,0,0,0.08)'        : 'rgba(255,255,255,0.10)';
-  const titleClr   = isLight ? '#1e1e30'                  : '#e8edf3';
-  const dimClr     = isLight ? 'rgba(42,42,58,0.45)'      : 'rgba(232,237,243,0.40)';
+  const titleClr   = isLight ? '#000000' : '#ffffff';
+  const dimClr     = isLight ? '#000000' : '#ffffff';
   const btnDisBg   = isLight ? 'rgba(0,0,0,0.05)'         : 'rgba(255,255,255,0.06)';
-  const btnDisClr  = isLight ? 'rgba(42,42,58,0.35)'      : 'rgba(232,237,243,0.30)';
+  const btnDisClr  = isLight ? '#000000' : '#ffffff';
   const cancelBg   = isLight ? 'rgba(0,0,0,0.06)'         : 'rgba(255,255,255,0.07)';
-  const cancelClr  = isLight ? 'rgba(42,42,58,0.70)'      : 'rgba(232,237,243,0.65)';
+  const cancelClr  = isLight ? '#000000' : '#ffffff';
 
   const canNext  = selected.size > 0;
   const allDone  = !submitting && results.length === selected.size && step === 3;

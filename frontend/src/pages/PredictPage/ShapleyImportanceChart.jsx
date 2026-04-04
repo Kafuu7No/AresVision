@@ -389,7 +389,7 @@ export default function ShapleyImportanceChart({
                         ...commonLayout.xaxis,
                         title: {
                           text: t('predict.shapley.avgContribution').replace('{metric}', activeMetric.toUpperCase()),
-                          font: { size: 10, color: 'rgba(232,237,243,0.3)' }
+                          font: { size: 10, color: '#ffffff' }
                         }
                       },
                       margin: { ...commonLayout.margin, l: 200 }

@@ -31,7 +31,7 @@ function Input({ label, type = 'text', value, onChange, placeholder, disabled, e
     <div style={{ marginBottom: 16 }}>
       <label style={{
         display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
-        color: isLight ? 'rgba(42,42,58,0.55)' : 'rgba(232,237,243,0.55)',
+        color: (isLight || L) ? '#000000' : '#ffffff',
         marginBottom: 6, textTransform: 'uppercase',
       }}>
         {label}
@@ -52,7 +52,7 @@ function Input({ label, type = 'text', value, onChange, placeholder, disabled, e
           background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)',
           border: `1px solid ${borderColor}`,
           borderRadius: 8,
-          color: isLight ? '#1e1e30' : '#e8edf3',
+          color: isLight ? '#000000' : '#ffffff',
           fontSize: 14,
           outline: 'none',
           transition: 'border-color 0.15s',
@@ -68,7 +68,7 @@ function Input({ label, type = 'text', value, onChange, placeholder, disabled, e
 
 function TabBar({ tab, setTab, t, isLight }) {
   const activeColor = C.blue;
-  const inactiveColor = isLight ? 'rgba(42,42,58,0.45)' : 'rgba(232,237,243,0.45)';
+  const inactiveColor = isLight ? '#000000' : '#ffffff';
   const borderBase = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
 
   return (
@@ -176,15 +176,15 @@ export default function AuthModal() {
   const cardShadow   = L
     ? '0 16px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.07)'
     : '0 16px 48px rgba(0,0,0,0.75), 0 4px 12px rgba(0,0,0,0.4)';
-  const titleColor   = L ? '#1e1e30'               : '#e8edf3';
-  const subtitleClr  = L ? 'rgba(42,42,58,0.48)'   : 'rgba(232,237,243,0.45)';
-  const closeColor   = L ? 'rgba(42,42,58,0.45)'   : 'rgba(232,237,243,0.45)';
-  const switchColor  = L ? 'rgba(42,42,58,0.55)'   : 'rgba(232,237,243,0.5)';
-  const hintColor    = L ? 'rgba(42,42,58,0.52)'   : 'rgba(232,237,243,0.48)';
+  const titleColor   = L ? '#000000' : '#ffffff';
+  const subtitleClr  = L ? '#000000' : '#ffffff';
+  const closeColor   = L ? '#000000' : '#ffffff';
+  const switchColor  = L ? '#000000' : '#ffffff';
+  const hintColor    = L ? '#000000' : '#ffffff';
   const inputBg      = L ? 'rgba(0,0,0,0.04)'      : 'rgba(255,255,255,0.05)';
   const inputBorder  = L ? 'rgba(0,0,0,0.15)'      : 'rgba(255,255,255,0.15)';
-  const inputText    = L ? '#1e1e30'               : '#e8edf3';
-  const labelColor   = L ? 'rgba(42,42,58,0.55)'   : 'rgba(232,237,243,0.55)';
+  const inputText    = L ? '#000000' : '#ffffff';
+  const labelColor   = L ? '#000000' : '#ffffff';
 
   // ── 注册/登录校验 ──
   const validate = () => {
@@ -372,7 +372,7 @@ export default function AuthModal() {
                   background: L ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)',
                   border: `1px solid ${L ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)'}`,
                   borderRadius: 8, fontSize: 14,
-                  color: L ? '#1e1e30' : '#e8edf3',
+                  color: L ? '#000000' : '#ffffff',
                   outline: 'none', transition: 'border-color 0.15s', fontFamily: 'inherit',
                 }}
               />
@@ -588,7 +588,7 @@ export default function AuthModal() {
                           background: L ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)',
                           border: `1px solid ${errors.verificationCode ? C.mars : L ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)'}`,
                           borderRadius: 8, fontSize: 14,
-                          color: L ? '#1e1e30' : '#e8edf3',
+                          color: L ? '#000000' : '#ffffff',
                           outline: 'none', transition: 'border-color 0.15s', fontFamily: 'inherit',
                         }}
                       />

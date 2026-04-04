@@ -65,7 +65,7 @@ export default function SeasonalChart({ marsYear }) {
           bottom: 0px !important;
           right: 20px !important;
           left: auto !important;
-          background: rgba(10, 10, 15, 0.8) !important;
+          background: 'var(--bg-card) !important',
           border: 1px solid rgba(0, 240, 255, 0.2);
           border-radius: 8px;
           padding: 2px 4px;
@@ -96,18 +96,18 @@ export default function SeasonalChart({ marsYear }) {
             zmax: convertOzone(data.max * 0.6, ozoneUnit), 
             hovertemplate: `Ls: %{x:.1f}°<br>Lat: %{y:.1f}°<br>O₃: %{z:.2f} ${ozoneLabel(ozoneUnit)}<extra></extra>`,
             colorbar: {
-              title: { text: `O₃ (${ozoneLabel(ozoneUnit)})`, font: { color: '#e8edf3', family: "'Orbitron', sans-serif", size: 10 }, side: 'top' },
+              title: { text: `O₃ (${ozoneLabel(ozoneUnit)})`, font: { color: C.ice, family: "'Orbitron', sans-serif", size: 10 }, side: 'top' },
               orientation: 'h',
               y: -0.25,
               yanchor: 'top',
               len: 0.8,
               thickness: 10,
-              tickfont: { color: 'rgba(232,237,243,0.6)', family: "'Exo 2', sans-serif" }
+              tickfont: { color: C.ice60, family: "'Exo 2', sans-serif" }
             }
           }
         ]}
         layout={{
-          title: { text: t('overview.charts.heatmapTitle', { year: marsYear }), font: { color: '#e8edf3', family: "'Orbitron', sans-serif", size: 14 } },
+          title: { text: t('overview.charts.heatmapTitle', { year: marsYear }), font: { color: C.ice, family: "'Orbitron', sans-serif", size: 14 } },
           xaxis: { title: 'Solar Longitude Ls (°)', color: 'rgba(232,237,243,0.6)', gridcolor: 'rgba(232,237,243,0.08)', titlefont: { family: "'Exo 2', sans-serif" }, showgrid: false },
           yaxis: { title: 'Latitude (°)', color: 'rgba(232,237,243,0.6)', gridcolor: 'rgba(232,237,243,0.08)', titlefont: { family: "'Exo 2', sans-serif" }, showgrid: false },
           paper_bgcolor: 'transparent',

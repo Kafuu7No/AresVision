@@ -36,13 +36,13 @@ function FeedbackModalInner({ open, onClose }) {
   const cardBg      = isLight ? 'rgba(255,255,255,0.97)'  : 'rgba(13,13,28,0.96)';
   const cardBorder  = isLight ? 'rgba(0,0,0,0.09)'        : 'rgba(255,255,255,0.10)';
   const cardShadow  = isLight ? '0 16px 48px rgba(0,0,0,0.12)' : '0 16px 48px rgba(0,0,0,0.72)';
-  const titleClr    = isLight ? '#1e1e30'                 : '#e8edf3';
-  const labelClr    = isLight ? 'rgba(42,42,58,0.55)'     : 'rgba(232,237,243,0.50)';
+  const titleClr    = isLight ? '#000000' : '#ffffff';
+  const labelClr    = isLight ? '#000000' : '#ffffff';
   const inputBg     = isLight ? 'rgba(0,0,0,0.04)'        : 'rgba(255,255,255,0.05)';
   const inputBorder = isLight ? 'rgba(0,0,0,0.12)'        : 'rgba(255,255,255,0.12)';
-  const inputClr    = isLight ? '#1e1e30'                 : '#e8edf3';
+  const inputClr    = isLight ? '#000000' : '#ffffff';
   const cancelBg    = isLight ? 'rgba(0,0,0,0.07)'        : 'rgba(255,255,255,0.08)';
-  const cancelClr   = isLight ? 'rgba(42,42,58,0.70)'     : 'rgba(232,237,243,0.68)';
+  const cancelClr   = isLight ? '#000000' : '#ffffff';
 
   const typeLabel = (tp) => ({
     bug: t('feedback.typeBug'),
