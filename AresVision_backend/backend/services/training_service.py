@@ -102,55 +102,27 @@ class TrainingService:
             f.flush()
         
         try:
-            # Use sync subprocess.Popen wrapped in thread for Windows compatibility
-            # This avoids the NotImplementedError on Windows event loops
-            process = subprocess.Popen(
-                args,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                cwd=str(MODELS_DIR),
-                env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"},
-                bufsize=1
-            )
+            # Use sync subprocess.Popen with direct redirection for Windows compatibility
+            # Open in "a" mode so starting info is preserved
+            with open(log_file, "a", encoding="utf-8") as f:
+                process = subprocess.Popen(
+                    args,
+                    stdout=f,
+                    stderr=subprocess.STDOUT,
+                    cwd=str(MODELS_DIR),
+                    env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"},
+                    bufsize=1
+                )
 
-            # SAVE PID
-            async with async_session_maker() as session:
-                task = await session.get(ModelTrainingTask, task_id)
-                if task:
-                    task.pid = process.pid
-                    await session.commit()
-
-            # Define log streaming as a synchronous function to run in a thread
-            def stream_logs():
-                with open(log_file, "a", encoding="utf-8") as f:
-                    # iter(process.stdout.readline, b'') reads until EOF
-                    for line in iter(process.stdout.readline, b''):
-                        if not line:
-                            break
-                        try:
-                            decoded_line = line.decode('utf-8', errors='replace')
-                        except Exception:
-                            try:
-                                decoded_line = line.decode('gbk', errors='replace')
-                            except Exception:
-                                decoded_line = f"[Unable to decode line]\n"
-                        
-                        f.write(decoded_line)
-                        f.flush()
-                        # Optional: limit logging to avoid clutter
-                        # logger.debug(f"Task {task_id}: {decoded_line.strip()}")
-            
-            # Start log streaming thread
-            log_task = asyncio.to_thread(stream_logs)
-            
-            # Wait for the process to finish first
-            returncode = await asyncio.to_thread(process.wait)
-            
-            # Briefly wait for logs to finish catching up (grace period)
-            try:
-                await asyncio.wait_for(log_task, timeout=5.0)
-            except asyncio.TimeoutError:
-                logger.warning(f"Task {task_id} log streaming timed out after process exit.")
+                # SAVE PID
+                async with async_session_maker() as session:
+                    task = await session.get(ModelTrainingTask, task_id)
+                    if task:
+                        task.pid = process.pid
+                        await session.commit()
+                
+                # Wait for the process to finish
+                returncode = await asyncio.to_thread(process.wait)
 
             status = "completed" if returncode == 0 else "failed"
 

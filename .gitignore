@@ -94,3 +94,4 @@ AresVision_backend/backend/.env
 *.bak
 *_backup.*
 ~*
+AresVision_backend/backend/models/训练模型/repair_all.py

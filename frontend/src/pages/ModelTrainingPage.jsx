@@ -16,7 +16,7 @@ export default function ModelTrainingPage() {
   const [scripts, setScripts] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [selectedScript, setSelectedScript] = useState('');
-  
+
   // Form State
   const [epochs, setEpochs] = useState(10);
   const [batchSize, setBatchSize] = useState(32);
@@ -26,12 +26,12 @@ export default function ModelTrainingPage() {
   const [hiddenDims, setHiddenDims] = useState([64, 64, 64]);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   const handleLayersChange = (e) => {
     let newLayers = parseInt(e.target.value, 10);
     if (isNaN(newLayers) || newLayers < 1) newLayers = 1;
     if (newLayers > 10) newLayers = 10;
-    
+
     setStlstmLayers(newLayers);
     setHiddenDims(prev => {
       const next = [...prev];
@@ -49,7 +49,7 @@ export default function ModelTrainingPage() {
     next[index] = Number(value);
     setHiddenDims(next);
   };
-  
+
   // Logs & active task
   const [activeTaskId, setActiveTaskId] = useState(null);
   const [logs, setLogs] = useState([]);
@@ -89,7 +89,7 @@ export default function ModelTrainingPage() {
   // Poll logs for active task
   useEffect(() => {
     if (!activeTaskId || !user) return;
-    
+
     const pollLogs = () => {
       fetchLogs(activeTaskId).then(data => {
         setLogs(data.lines || []);
@@ -232,7 +232,7 @@ export default function ModelTrainingPage() {
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 2fr', gap: 24 }}>
-        
+
         {/* Left Col: Config Form */}
         <div style={cardStyle}>
           <div style={titleStyle}>{t('modelTraining.parameters')}</div>
@@ -243,7 +243,7 @@ export default function ModelTrainingPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <div style={labelStyle}>{t('modelTraining.scriptList')}</div>
-              <select 
+              <select
                 style={{ ...inputStyle, appearance: 'auto' }}
                 value={selectedScript}
                 onChange={e => setSelectedScript(e.target.value)}
@@ -254,54 +254,54 @@ export default function ModelTrainingPage() {
 
             <div>
               <div style={labelStyle}>模型文件命名 (可选)</div>
-              <input 
-                type="text" style={inputStyle} 
+              <input
+                type="text" style={inputStyle}
                 placeholder="例如: predrnn_v1"
-                value={customModelName} onChange={e => setCustomModelName(e.target.value)} 
+                value={customModelName} onChange={e => setCustomModelName(e.target.value)}
               />
             </div>
 
             <div>
               <div style={labelStyle}>{t('modelTraining.epochs')}</div>
-              <input 
-                type="number" style={inputStyle} 
-                value={epochs} onChange={e => setEpochs(Number(e.target.value))} 
+              <input
+                type="number" style={inputStyle}
+                value={epochs} onChange={e => setEpochs(Number(e.target.value))}
               />
             </div>
 
             <div>
               <div style={labelStyle}>{t('modelTraining.batchSize')}</div>
-              <input 
-                type="number" style={inputStyle} 
-                value={batchSize} onChange={e => setBatchSize(Number(e.target.value))} 
+              <input
+                type="number" style={inputStyle}
+                value={batchSize} onChange={e => setBatchSize(Number(e.target.value))}
               />
             </div>
 
             <div>
               <div style={labelStyle}>{t('modelTraining.learningRate')}</div>
-              <input 
-                type="number" step="0.0001" style={inputStyle} 
-                value={learningRate} onChange={e => setLearningRate(Number(e.target.value))} 
+              <input
+                type="number" step="0.0001" style={inputStyle}
+                value={learningRate} onChange={e => setLearningRate(Number(e.target.value))}
               />
             </div>
 
             <div>
               <div style={labelStyle}>{t('modelTraining.stlstmLayers')}</div>
-              <input 
-                type="number" style={inputStyle} 
-                value={stlstmLayers} onChange={handleLayersChange} 
+              <input
+                type="number" style={inputStyle}
+                value={stlstmLayers} onChange={handleLayersChange}
                 min="1" max="10"
               />
             </div>
-            
+
             {hiddenDims.length > 0 && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 12, marginTop: -4 }}>
                 {hiddenDims.map((dim, i) => (
                   <div key={i}>
-                    <div style={{...labelStyle, fontSize: 11, opacity: 0.6}}>Layer {i+1} {t('modelTraining.layerDim')}</div>
-                    <input 
-                      type="number" style={{...inputStyle, padding: '4px 8px', fontSize: 13}} 
-                      value={dim} onChange={e => handleDimChange(i, e.target.value)} 
+                    <div style={{ ...labelStyle, fontSize: 11, opacity: 0.6 }}>Layer {i + 1} {t('modelTraining.layerDim')}</div>
+                    <input
+                      type="number" style={{ ...inputStyle, padding: '4px 8px', fontSize: 13 }}
+                      value={dim} onChange={e => handleDimChange(i, e.target.value)}
                       min="1"
                     />
                   </div>
@@ -309,7 +309,7 @@ export default function ModelTrainingPage() {
               </div>
             )}
 
-            <button 
+            <button
               onClick={handleStartTraining}
               disabled={user ? !selectedScript : false}
               style={{
@@ -337,41 +337,41 @@ export default function ModelTrainingPage() {
             <div style={titleStyle}>{t('modelTraining.trainingStatus')}</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {activeTaskId && (
-                <span style={{ fontSize: 12, padding: '4px 8px', background: C.blue, color:'#fff', borderRadius: 4 }}>
+                <span style={{ fontSize: 12, padding: '4px 8px', background: C.blue, color: '#fff', borderRadius: 4 }}>
                   Task ID: {activeTaskId}
                 </span>
               )}
               {activeTaskId && tasks.find(t => t.id === activeTaskId)?.status === 'running' && (
-                <button 
+                <button
                   onClick={() => handleStopTask(activeTaskId)}
                   disabled={isProcessing}
-                  style={{ 
-                    fontSize: 11, padding: '4px 8px', background: 'rgba(244,67,54,0.15)', 
-                    color: '#F44336', border: '1px solid #F44336', borderRadius: 4, cursor: 'pointer' 
+                  style={{
+                    fontSize: 11, padding: '4px 8px', background: 'rgba(244,67,54,0.15)',
+                    color: '#F44336', border: '1px solid #F44336', borderRadius: 4, cursor: 'pointer'
                   }}>
                   {isProcessing ? '...' : '停止训练'}
                 </button>
               )}
             </div>
           </div>
-          
-            <div 
-              ref={logContainerRef}
-              onScroll={handleScroll}
-              style={{ 
-                flexGrow: 1, 
-                background: isLight ? '#f5f5f5' : '#000', 
-                borderRadius: 8, 
-                padding: 16, 
-                overflowY: 'auto',
-                fontFamily: 'monospace',
-                fontSize: 13,
-                lineHeight: 1.5,
-                color: isLight ? '#333' : '#aeea00',
-                border: `1px solid ${isLight ? '#ddd' : '#333'}`,
-                maxHeight: 400
-              }}
-            >
+
+          <div
+            ref={logContainerRef}
+            onScroll={handleScroll}
+            style={{
+              flexGrow: 1,
+              background: isLight ? '#f5f5f5' : '#000',
+              borderRadius: 8,
+              padding: 16,
+              overflowY: 'auto',
+              fontFamily: 'monospace',
+              fontSize: 13,
+              lineHeight: 1.5,
+              color: isLight ? '#333' : '#aeea00',
+              border: `1px solid ${isLight ? '#ddd' : '#333'}`,
+              maxHeight: 400
+            }}
+          >
             {!activeTaskId ? (
               <div style={{ opacity: 0.5, fontStyle: 'italic' }}>{t('modelTraining.noActiveTask')}</div>
             ) : (
@@ -418,54 +418,54 @@ export default function ModelTrainingPage() {
                     {new Date(tk.start_time).toLocaleString()}
                   </td>
                   <td style={{ padding: '12px 8px' }}>
-                    <span style={{ 
+                    <span style={{
                       padding: '4px 8px', borderRadius: 4, fontSize: 11, fontWeight: 'bold',
-                      background: tk.status === 'completed' ? 'rgba(76,175,80,0.2)' : 
-                                  tk.status === 'failed' ? 'rgba(244,67,54,0.2)' : 'rgba(255,152,0,0.2)',
-                      color: tk.status === 'completed' ? '#4CAF50' : 
-                             tk.status === 'failed' ? '#F44336' : '#FF9800'
+                      background: tk.status === 'completed' ? 'rgba(76,175,80,0.2)' :
+                        tk.status === 'failed' ? 'rgba(244,67,54,0.2)' : 'rgba(255,152,0,0.2)',
+                      color: tk.status === 'completed' ? '#4CAF50' :
+                        tk.status === 'failed' ? '#F44336' : '#FF9800'
                     }}>
                       {tk.status === 'completed' ? t('modelTraining.statusCompleted') :
-                       tk.status === 'failed' ? t('modelTraining.statusFailed') :
-                       tk.status === 'running' ? t('modelTraining.statusRunning') :
-                       t('modelTraining.statusPending')}
+                        tk.status === 'failed' ? t('modelTraining.statusFailed') :
+                          tk.status === 'running' ? t('modelTraining.statusRunning') :
+                            t('modelTraining.statusPending')}
                     </span>
                   </td>
                   <td style={{ padding: '12px 8px' }}>
-                    <button 
-                      onClick={() => setActiveTaskId(tk.id)} 
-                      style={{ 
-                        marginRight: 8, background: 'none', border: `1px solid ${C.blue}`, 
-                        color: C.blue, borderRadius: 4, padding: '4px 8px', cursor: 'pointer' 
+                    <button
+                      onClick={() => setActiveTaskId(tk.id)}
+                      style={{
+                        marginRight: 8, background: 'none', border: `1px solid ${C.blue}`,
+                        color: C.blue, borderRadius: 4, padding: '4px 8px', cursor: 'pointer'
                       }}>
                       看日志
                     </button>
                     {(tk.status === 'running' || tk.status === 'pending') && (
-                      <button 
+                      <button
                         onClick={() => handleStopTask(tk.id)}
                         disabled={isProcessing}
-                        style={{ 
-                          marginRight: 8, background: 'none', border: '1px solid #F44336', 
-                          color: '#F44336', borderRadius: 4, padding: '4px 8px', cursor: 'pointer' 
+                        style={{
+                          marginRight: 8, background: 'none', border: '1px solid #F44336',
+                          color: '#F44336', borderRadius: 4, padding: '4px 8px', cursor: 'pointer'
                         }}>
                         停止
                       </button>
                     )}
-                    <button 
+                    <button
                       onClick={() => setConfirmDeleteId(tk.id)}
                       disabled={isProcessing}
-                      style={{ 
-                        marginRight: 8, background: 'none', border: `1px solid ${isLight ? '#999' : '#555'}`, 
-                        color: isLight ? '#666' : '#999', borderRadius: 4, padding: '4px 8px', cursor: 'pointer' 
+                      style={{
+                        marginRight: 8, background: 'none', border: `1px solid ${isLight ? '#999' : '#555'}`,
+                        color: isLight ? '#666' : '#999', borderRadius: 4, padding: '4px 8px', cursor: 'pointer'
                       }}>
                       删除
                     </button>
                     {tk.status === 'completed' && (
-                      <button style={{ 
-                        background: 'none', border: `1px solid ${C.mars}`, 
-                        color: C.mars, borderRadius: 4, padding: '4px 8px', cursor: 'pointer' 
+                      <button style={{
+                        background: 'none', border: `1px solid ${C.mars}`,
+                        color: C.mars, borderRadius: 4, padding: '4px 8px', cursor: 'pointer'
                       }}>
-                      测试
+                        测试
                       </button>
                     )}
                   </td>
