@@ -202,7 +202,17 @@ for ep in range(epochs):
         xb, yb = xb.to(device), yb.to(device)
         opt.zero_grad(); pred = model(xb); loss = criterion(pred, yb)
         loss.backward(); opt.step(); loss_sum += loss.item()
-    print(f"Epoch {ep+1}/{epochs} Loss={loss_sum/len(train_loader):.4f}")
+    
+    # Validation
+    model.eval()
+    val_loss = 0
+    with torch.no_grad():
+        for xv, yv in test_loader:
+            xv, yv = xv.to(device), yv.to(device)
+            p = model(xv); l = criterion(p, yv)
+            val_loss += l.item()
+    
+    print(f"Epoch {ep+1}/{epochs} Loss={loss_sum/len(train_loader):.4f} Val Loss={val_loss/len(test_loader):.4f}")
 
 model.eval()
 trues, preds_all = [], []
