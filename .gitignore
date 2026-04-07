@@ -37,7 +37,6 @@ yarn-error.log*
 *.pth
 *.pt
 *.h5
-训练模型/
 
 # Local assets (too large for git)
 frontend/public/mars_texture.jpg

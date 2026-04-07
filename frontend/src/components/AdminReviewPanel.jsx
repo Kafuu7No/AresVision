@@ -453,7 +453,7 @@ function PendingTab({ t, isLight, onReviewComplete, subColor }) {
             }}>
               {t('admin.confirmApproveTitle')}
             </div>
-            <div style={{ fontSize: 13, color: (isLight || L) ? '#000000' : '#ffffff', marginBottom: 22, lineHeight: 1.65 }}>
+            <div style={{ fontSize: 13, color: isLight ? '#000000' : '#ffffff', marginBottom: 22, lineHeight: 1.65 }}>
               {t('admin.confirmApproveMsg')}
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -462,7 +462,7 @@ function PendingTab({ t, isLight, onReviewComplete, subColor }) {
                 style={{
                   padding: '8px 18px', borderRadius: 8,
                   background: isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.08)',
-                  border: 'none', color: (isLight || L) ? '#000000' : '#ffffff',
+                  border: 'none', color: isLight ? '#000000' : '#ffffff',
                   fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
@@ -599,7 +599,7 @@ function ApprovedTab({ t, isLight, subColor }) {
             }}>
               {t('admin.confirmRevokeTitle')}
             </div>
-            <div style={{ fontSize: 13, color: (isLight || L) ? '#000000' : '#ffffff', marginBottom: 22, lineHeight: 1.65 }}>
+            <div style={{ fontSize: 13, color: isLight ? '#000000' : '#ffffff', marginBottom: 22, lineHeight: 1.65 }}>
               {t('admin.confirmRevokeMsg')}
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -608,7 +608,7 @@ function ApprovedTab({ t, isLight, subColor }) {
                 style={{
                   padding: '8px 18px', borderRadius: 8,
                   background: isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.08)',
-                  border: 'none', color: (isLight || L) ? '#000000' : '#ffffff',
+                  border: 'none', color: isLight ? '#000000' : '#ffffff',
                   fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >

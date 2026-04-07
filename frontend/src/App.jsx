@@ -13,8 +13,10 @@ import ExplorePage from './pages/ExplorePage';
 import PredictPage from './pages/PredictPage';
 import AIPage from './pages/AIPage';
 import AboutPage from './pages/AboutPage';
+import ModelTrainingPage from './pages/ModelTrainingPage';
+import ErrorBoundary from './components/ErrorBoundary';
 
-const VALID_PAGES = ['home', 'overview', 'explore', 'predict', 'ai', 'about'];
+const VALID_PAGES = ['home', 'overview', 'explore', 'predict', 'training', 'ai', 'about'];
 
 function getPageFromHash() {
   const hash = window.location.hash.replace('#/', '').replace('#', '');
@@ -79,14 +81,15 @@ export default function App() {
   return (
     <>
       <StarField />
-      <Navbar current={page} onChange={navigate} onOpenAdmin={() => setAdminPanelOpen(true)} onOpenFeedback={() => setFeedbackPanelOpen(true)} pendingRefreshSignal={reviewSignal} />
-      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      <AdminReviewPanel open={adminPanelOpen} onClose={() => setAdminPanelOpen(false)} onReviewComplete={() => setReviewSignal(v => v + 1)} />
-      <FeedbackManagePanel open={feedbackPanelOpen} onClose={() => setFeedbackPanelOpen(false)} />
-      <SettingsFab
-        onOpenSettings={() => setSettingsOpen(true)}
-        onOpenAdmin={() => setAdminPanelOpen(true)}
-      />
+      <ErrorBoundary>
+        <Navbar current={page} onChange={navigate} onOpenAdmin={() => setAdminPanelOpen(true)} onOpenFeedback={() => setFeedbackPanelOpen(true)} pendingRefreshSignal={reviewSignal} />
+        <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+        <AdminReviewPanel open={adminPanelOpen} onClose={() => setAdminPanelOpen(false)} onReviewComplete={() => setReviewSignal(v => v + 1)} />
+        <FeedbackManagePanel open={feedbackPanelOpen} onClose={() => setFeedbackPanelOpen(false)} />
+        <SettingsFab
+          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenAdmin={() => setAdminPanelOpen(true)}
+        />
 
       {/* Page content with transition */}
       <div
@@ -103,9 +106,11 @@ export default function App() {
         {page === 'overview' && <DataOverviewPage />}
         {page === 'explore' && <ExplorePage />}
         {page === 'predict' && <PredictPage />}
+        {page === 'training' && <ModelTrainingPage />}
         {page === 'ai' && <AIPage />}
         {page === 'about' && <AboutPage />}
       </div>
+    </ErrorBoundary>
 
       {/* Footer */}
       <footer

@@ -106,7 +106,7 @@ function Step1({ validUploads, selected, onToggle, t, isLight }) {
     return (
       <div style={{
         padding: '32px 0', textAlign: 'center',
-        color: (isLight || L) ? '#000000' : '#ffffff',
+        color: isLight ? '#000000' : '#ffffff',
         fontSize: 13,
       }}>
         {t('explore.contribute.step1Empty')}
@@ -150,7 +150,7 @@ function Step1({ validUploads, selected, onToggle, t, isLight }) {
             </div>
 
             {/* File info */}
-            <span style={{ color: (isLight || L) ? '#000000' : '#ffffff', flexShrink: 0 }}>
+            <span style={{ color: isLight ? '#000000' : '#ffffff', flexShrink: 0 }}>
               <FileIcon size={14} color="currentColor" />
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
