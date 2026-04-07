@@ -57,7 +57,7 @@ function FeedbackTypeTag({ type, t, isLight }) {
     bug: { color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.35)' },
     suggestion: { color: C.blue, bg: 'rgba(74,158,255,0.12)', border: 'rgba(74,158,255,0.35)' },
     other: {
-      color: (isLight || L) ? '#000000' : '#ffffff',
+      color: isLight ? '#000000' : '#ffffff',
       bg: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)',
       border: isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.18)',
     },

@@ -95,7 +95,7 @@ function StatusBlock({ record, t, isLight }) {
       </div>
       {record.status === 'rejected' && record.validation_message && (
         <div style={{
-          fontSize: 11, color: (isLight || L) ? '#000000' : '#ffffff',
+          fontSize: 11, color: isLight ? '#000000' : '#ffffff',
           paddingLeft: 14, lineHeight: 1.55,
         }}>
           <span style={{ fontWeight: 600 }}>{t('explore.contributeHistory.rejectedReason')}：</span>

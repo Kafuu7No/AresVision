@@ -9,7 +9,7 @@ import ChangePasswordModal from './ChangePasswordModal';
 import NotificationPanel from './NotificationPanel';
 import { getPendingReviews, getUnreadCount } from '../services/api';
 
-const NAV_IDS = ['home', 'overview', 'explore', 'predict', 'ai', 'about'];
+const NAV_IDS = ['home', 'overview', 'explore', 'predict', 'training', 'ai', 'about'];
 
 function MarsLogoIcon() {
   return (
@@ -98,7 +98,7 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
     );
   }
 
-  const initial = (user.username || user.email)[0].toUpperCase();
+  const initial = (user?.username || user?.email || "?")[0]?.toUpperCase() || "?";
 
   return (
     <>
@@ -407,7 +407,7 @@ export default function Navbar({ current, onChange, onOpenAdmin, onOpenFeedback,
                 background: notifOpen ? (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)') : 'transparent',
                 border: 'none', borderRadius: 8, padding: '6px 8px',
                 cursor: 'pointer', display: 'flex', alignItems: 'center',
-                color: (isLight || L) ? '#000000' : '#ffffff',
+                color: isLight ? '#000000' : '#ffffff',
                 transition: 'background 0.15s',
               }}
             >

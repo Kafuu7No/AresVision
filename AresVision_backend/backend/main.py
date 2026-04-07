@@ -7,7 +7,13 @@ AresVision 后端入口
 
 import logging
 import time
+import sys
+import asyncio
 from contextlib import asynccontextmanager
+
+# Windows 下异步子进程必须使用 ProactorEventLoop
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,6 +38,7 @@ from routers import upload as upload_router_module
 from routers import notification as notification_router_module
 from routers import user_data as user_data_router_module
 from routers import feedback as feedback_router_module
+from routers import training as training_router_module
 
 # ─── 日志配置 ───
 logging.basicConfig(
@@ -168,6 +175,7 @@ app.include_router(upload_router_module.router,        prefix=API_PREFIX)
 app.include_router(notification_router_module.router,  prefix=API_PREFIX)
 app.include_router(user_data_router_module.router,     prefix=API_PREFIX)
 app.include_router(feedback_router_module.router,      prefix=API_PREFIX)
+app.include_router(training_router_module.router,        prefix=API_PREFIX)
 
 
 # ─── 健康检查 ───

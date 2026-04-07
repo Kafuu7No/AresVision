@@ -115,3 +115,25 @@ class Feedback(Base):
 
     def __repr__(self) -> str:
         return f"<Feedback id={self.id} type={self.type} status={self.status}>"
+
+
+class ModelTrainingTask(Base):
+    __tablename__ = "model_training_tasks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    model_script: Mapped[str] = mapped_column(String(255), nullable=False)
+    hyperparameters: Mapped[str] = mapped_column(Text, nullable=False)  # JSON stored as string
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")  # pending, running, completed, failed
+    start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+    end_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    log_file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    output_model_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    custom_model_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    pid: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    metrics: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON stored as string
+
+    user: Mapped["User | None"] = relationship("User", foreign_keys=[user_id])
+
+    def __repr__(self) -> str:
+        return f"<ModelTrainingTask id={self.id} script={self.model_script} status={self.status}>"
