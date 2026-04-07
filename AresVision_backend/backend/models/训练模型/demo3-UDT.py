@@ -211,7 +211,20 @@ with torch.no_grad():
         xb = xb.to(device); pred = model(xb)
         trues.append(yb.numpy()); preds_all.append(pred.cpu().numpy())
 trues = np.concatenate(trues, axis=0); preds = np.concatenate(preds_all, axis=0)
-print(f"\nRMSE: {np.sqrt(mean_squared_error(trues.flatten(), preds.flatten())):.4f}")
+y_true = trues.flatten()
+y_pred = preds.flatten()
+mse = mean_squared_error(y_true, y_pred)
+rmse = np.sqrt(mse)
+r2 = r2_score(y_true, y_pred)
+mape = np.mean(np.abs((y_true - y_pred) / (np.abs(y_true) + 1e-8))) * 100
+smape = np.mean(2 * np.abs(y_pred - y_true) / (np.abs(y_true) + np.abs(y_pred) + 1e-8)) * 100
+
+print(f"\nMetrics:")
+print(f"MSE: {mse:.4f}")
+print(f"RMSE: {rmse:.4f}")
+print(f"R-Squared: {r2:.4f}")
+print(f"MAPE: {mape:.4f}%")
+print(f"SMAPE: {smape:.4f}%")
 save_path = args.output_path or os.path.join(base_dir, "models", "训练结果", "predrnn_UDT.pth")
 torch.save(model.state_dict(), save_path)
 print(f"模型已保存: {save_path}")

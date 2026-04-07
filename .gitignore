@@ -95,3 +95,8 @@ AresVision_backend/backend/.env
 *_backup.*
 ~*
 AresVision_backend/backend/models/训练模型/repair_all.py
+
+# Training results and progress
+AresVision_backend/backend/models/训练结果/
+AresVision_backend/backend/models/训练过程/
+
