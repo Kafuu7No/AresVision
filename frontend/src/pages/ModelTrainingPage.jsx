@@ -15,7 +15,23 @@ export default function ModelTrainingPage() {
   // --- STATE ---
   const [scripts, setScripts] = useState([]);
   const [tasks, setTasks] = useState([]);
-  const [selectedScript, setSelectedScript] = useState('');
+  
+  // Script Selection & Channel Mapping
+  const CHANNELS = React.useMemo(() => ['U', 'V', 'D', 'S', 'T'], []);
+  const CHANNEL_MAP = {
+    U: { name: '纬向风 U', icon: '🌬️' },
+    V: { name: '经向风 V', icon: '💨' },
+    D: { name: '沙尘 D', icon: '🌪️' },
+    S: { name: '太阳辐射 S', icon: '☀️' },
+    T: { name: '温度 T', icon: '🌡️' }
+  };
+  const [selectedChannels, setSelectedChannels] = useState([]);
+  const [selectedScript, setSelectedScript] = useState('demo3-.py');
+
+  useEffect(() => {
+    const suffix = CHANNELS.filter(c => selectedChannels.includes(c)).join('');
+    setSelectedScript(`demo3-${suffix}.py`);
+  }, [selectedChannels, CHANNELS]);
 
   // Form State
   const [epochs, setEpochs] = useState(10);
@@ -309,8 +325,8 @@ export default function ModelTrainingPage() {
                 padding: '2px 8px', borderRadius: 6, background: 'rgba(128,128,128,0.1)'
               }}>ID:{tk.id}</span>
               
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: isLight ? '#1a1a1a' : '#efefef', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 13, fontWeight: 500, opacity: 0.5 }}>模型名称:</span>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: isLight ? '#1a1a1a' : '#efefef', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>模型名称:</span>
                 {tk.custom_model_name || <span style={{ opacity: 0.3, fontStyle: 'italic' }}>未命名模型</span>}
               </h3>
               
@@ -318,7 +334,13 @@ export default function ModelTrainingPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 15, fontSize: 13, opacity: 0.45, fontWeight: 600 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span>📄</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{tk.model_script}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: isLight ? '#555' : '#ccc' }}>
+                    {(() => {
+                      const suffix = tk.model_script.replace('demo3-', '').replace('.py', '');
+                      if (!suffix) return 'O₃ 基线';
+                      return suffix.split('').map(char => CHANNEL_MAP[char]?.name || char).join(', ');
+                    })()}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span>📅</span>
@@ -438,15 +460,36 @@ export default function ModelTrainingPage() {
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div>
-              <div style={labelStyle}>{t('modelTraining.scriptList')}</div>
-              <select
-                style={{ ...inputStyle, appearance: 'auto' }}
-                value={selectedScript}
-                onChange={e => setSelectedScript(e.target.value)}
-              >
-                {scripts.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+            <div style={{ marginBottom: 4 }}>
+              <div style={{ ...labelStyle, marginBottom: 12 }}>{t('modelTraining.inputChannels')}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                {CHANNELS.map(c => {
+                  const active = selectedChannels.includes(c);
+                  const info = CHANNEL_MAP[c];
+                  return (
+                    <button
+                      key={c}
+                      onClick={() => {
+                        setSelectedChannels(prev => active ? prev.filter(x => x !== c) : [...prev, c]);
+                      }}
+                      style={{
+                        flex: '1 1 80px',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                        padding: '12px 8px', borderRadius: 10,
+                        cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        border: `1.5px solid ${active ? C.mars : (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)')}`,
+                        background: active ? `${C.mars}22` : (isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)'),
+                        color: active ? C.mars : (isLight ? '#666' : '#999'),
+                        boxShadow: active ? `0 0 15px ${C.mars}33` : 'none',
+                        transform: active ? 'scale(1.05)' : 'scale(1)',
+                      }}
+                    >
+                      <span style={{ fontSize: 18 }}>{info.icon}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700 }}>{info.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div>
