@@ -24,6 +24,9 @@ export default function ModelTrainingPage() {
   const [stlstmLayers, setStlstmLayers] = useState(3);
   const [customModelName, setCustomModelName] = useState('');
   const [hiddenDims, setHiddenDims] = useState([64, 64, 64]);
+  const [window_, setWindow] = useState(3);
+  const [horizon, setHorizon] = useState(3);
+  const [earlyStoppingPatience, setEarlyStoppingPatience] = useState(0);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -131,7 +134,10 @@ export default function ModelTrainingPage() {
         epochs,
         batch_size: batchSize,
         learning_rate: learningRate,
-        stlstm_hidden_dims: hiddenDims
+        stlstm_hidden_dims: hiddenDims,
+        window: window_,
+        horizon,
+        early_stopping_patience: earlyStoppingPatience,
       };
       const task = await startTrainingTask(selectedScript, hypers, customModelName);
       setActiveTaskId(task.id);
@@ -283,6 +289,37 @@ export default function ModelTrainingPage() {
                 type="number" step="0.0001" style={inputStyle}
                 value={learningRate} onChange={e => setLearningRate(Number(e.target.value))}
               />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <div style={labelStyle}>输入窗口 (Window)</div>
+                <input
+                  type="number" style={inputStyle}
+                  value={window_} min="1" max="30"
+                  onChange={e => setWindow(Math.max(1, Number(e.target.value)))}
+                />
+              </div>
+              <div>
+                <div style={labelStyle}>输出窗口 (Horizon)</div>
+                <input
+                  type="number" style={inputStyle}
+                  value={horizon} min="1" max="30"
+                  onChange={e => setHorizon(Math.max(1, Number(e.target.value)))}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div style={labelStyle}>早停耐心值 (Early Stop Patience)</div>
+              <input
+                type="number" style={inputStyle}
+                value={earlyStoppingPatience} min="0" max="200"
+                onChange={e => setEarlyStoppingPatience(Math.max(0, Number(e.target.value)))}
+              />
+              <div style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>
+                0 = 禁用早停；建议值：5–20
+              </div>
             </div>
 
             <div>

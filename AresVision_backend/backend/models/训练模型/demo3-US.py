@@ -38,6 +38,9 @@ parser.add_argument("--batch_size", type=int, default=16)
 parser.add_argument("--learning_rate", type=float, default=1e-4)
 parser.add_argument("--stlstm_hidden_dims", type=str, default="[64, 64, 64]")
 parser.add_argument("--output_path", type=str, default=None)
+parser.add_argument("--window", type=int, default=3)
+parser.add_argument("--horizon", type=int, default=3)
+parser.add_argument("--early_stopping_patience", type=int, default=0)
 args, unknown = parser.parse_known_args()
 
 epochs = args.epochs
@@ -47,6 +50,7 @@ try:
     hidden_dims = json.loads(args.stlstm_hidden_dims.replace("'", "\""))
 except:
     hidden_dims = [64, 64, 64]
+early_stopping_patience = args.early_stopping_patience
 
 os.makedirs(os.path.join(base_dir, "models", "训练过程"), exist_ok=True)
 os.makedirs(os.path.join(base_dir, "models", "训练结果"), exist_ok=True)
@@ -58,7 +62,7 @@ print(f"Config: Epochs={epochs}, BatchSize={batch_size}, LR={learning_rate}, Hid
 
 openmars_dir = os.path.join(base_dir, "data", "openmars")
 mcd_dir = os.path.join(base_dir, "data", "MCD")
-window, horizon = 3, 3
+window, horizon = args.window, args.horizon
 ST_H, ST_W = 36, 72 # 使用 ST_ 前缀避免冲突
 
 print("\n[Step 1] Loading OpenMars Data (Global)...")
@@ -109,10 +113,15 @@ X_raw = np.stack([y_raw, vars_dict['u'], vars_dict['fluxsurf_dn_sw']], axis=-1)
 T, H_raw, W_raw, C_feat = X_raw.shape
 print(f"最终数据集 X_raw: {X_raw.shape}")
 
+split_idx = int(0.8 * (T - window - horizon + 1)) + window
 X_scaled = np.zeros_like(X_raw)
 for c in range(C_feat):
-    X_scaled[..., c] = StandardScaler().fit_transform(X_raw[..., c].reshape(T, -1)).reshape(T, H_raw, W_raw)
-y_scaled = (y_raw - y_raw.mean()) / (y_raw.std() + 1e-6)
+    scaler = StandardScaler()
+    scaler.fit(X_raw[:split_idx, ..., c].reshape(split_idx, -1))
+    X_scaled[..., c] = scaler.transform(X_raw[..., c].reshape(T, -1)).reshape(T, H_raw, W_raw)
+y_train_part = y_raw[:split_idx]
+y_mean, y_std = y_train_part.mean(), y_train_part.std()
+y_scaled = (y_raw - y_mean) / (y_std + 1e-6)
 
 X_seq, y_seq = [], []
 for i in range(T - window - horizon + 1):
@@ -195,6 +204,8 @@ opt = torch.optim.Adam(model.parameters(), lr=learning_rate)
 criterion = nn.SmoothL1Loss()
 
 print("\n[Step 3] Start Training...")
+best_val_loss = float('inf')
+patience_counter = 0
 for ep in range(epochs):
     model.train()
     loss_sum = 0
@@ -212,7 +223,19 @@ for ep in range(epochs):
             p = model(xv); l = criterion(p, yv)
             val_loss += l.item()
     
-    print(f"Epoch {ep+1}/{epochs} Loss={loss_sum/len(train_loader):.4f} Val Loss={val_loss/len(test_loader):.4f}")
+    avg_val_loss = val_loss / len(test_loader)
+    print(f"Epoch {ep+1}/{epochs} Loss={loss_sum/len(train_loader):.4f} Val Loss={avg_val_loss:.4f}")
+
+    # Early stopping
+    if early_stopping_patience > 0:
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
+            patience_counter = 0
+        else:
+            patience_counter += 1
+            if patience_counter >= early_stopping_patience:
+                print(f"[Early Stopping] Val loss did not improve for {early_stopping_patience} epochs. Stopped at epoch {ep+1}.")
+                break
 
 model.eval()
 trues, preds_all = [], []
