@@ -25,7 +25,7 @@ function PwdInput({ label, value, onChange, placeholder, disabled, error, name, 
     <div style={{ marginBottom: 14 }}>
       <label style={{
         display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
-        color: L ? 'rgba(42,42,58,0.55)' : 'rgba(232,237,243,0.55)',
+        color: (isLight || L) ? '#000000' : '#ffffff',
         marginBottom: 5, textTransform: 'uppercase',
       }}>
         {label}
@@ -46,7 +46,7 @@ function PwdInput({ label, value, onChange, placeholder, disabled, error, name, 
           background: L ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)',
           border: `1px solid ${error ? C.mars : focused ? C.blue : L ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)'}`,
           borderRadius: 8,
-          color: L ? '#1e1e30' : '#e8edf3',
+          color: L ? '#000000' : '#ffffff',
           fontSize: 14, outline: 'none',
           transition: 'border-color 0.15s',
           fontFamily: 'inherit',
@@ -78,8 +78,8 @@ function ModalContent({ onClose }) {
   const cardShadow = L
     ? '0 16px 48px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.07)'
     : '0 16px 48px rgba(0,0,0,0.72), 0 4px 12px rgba(0,0,0,0.40)';
-  const titleColor = L ? '#1e1e30'              : '#e8edf3';
-  const closeColor = L ? 'rgba(42,42,58,0.45)'  : 'rgba(232,237,243,0.45)';
+  const titleColor = L ? '#000000' : '#ffffff';
+  const closeColor = L ? '#000000' : '#ffffff';
 
   const validate = () => {
     const e = {};

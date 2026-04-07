@@ -59,7 +59,7 @@ export default function PredictFullscreenHUD({
   const chartTheme = {
     paper_bgcolor: 'transparent',
     plot_bgcolor: 'transparent',
-    font: { family: "'Exo 2', sans-serif", color: 'rgba(255,255,255,0.4)', size: 9 },
+    font: { family: "'Exo 2', sans-serif", color: '#ffffff', size: 9 },
     margin: { t: 5, r: 10, l: 30, b: 20 },
   };
 

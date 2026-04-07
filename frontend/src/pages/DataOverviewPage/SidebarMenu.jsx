@@ -79,7 +79,7 @@ export default function SidebarMenu({ selectedItem, onItemSelect }) {
         top: '70px',
         width: '280px',
         height: 'calc(100vh - 70px)',
-        background: 'rgba(10, 10, 15, 0.85)',
+        background: 'var(--bg-nav)',
         backdropFilter: 'blur(20px)',
         borderRight: `1px solid ${C.border}`,
         zIndex: 1000,

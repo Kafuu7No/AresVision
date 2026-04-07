@@ -19,6 +19,9 @@ export const DEFAULT_SETTINGS = {
     includeTitle: true,
     fontSize: 10,       // 8 | 10 | 12
   },
+  appearance: {
+    uiScale: 1,         // 0.9 (Small) | 1 (Medium) | 1.15 (Large)
+  },
 };
 
 /** 深合并：以 defaults 结构为准，用 saved 中的值覆盖，忽略 saved 中多余的键 */
@@ -72,6 +75,12 @@ export function SettingsProvider({ children }) {
     // 清除 body 上可能残留的内联背景色，让 CSS 变量生效
     document.body.style.removeProperty('background');
   }, [settings.theme]);
+
+  // 应用 UI 缩放 (用于调节字体和整体布局大小)
+  useEffect(() => {
+    const scale = settings.appearance?.uiScale || 1;
+    document.documentElement.style.setProperty('--app-zoom', scale);
+  }, [settings.appearance?.uiScale]);
 
   // 主题变化时自动切换 colormap
   useEffect(() => {

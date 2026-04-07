@@ -14,10 +14,10 @@ function ConfirmContent({ title, message, confirmLabel, cancelLabel, onConfirm, 
   const cardShadow = L
     ? '0 12px 36px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)'
     : '0 12px 36px rgba(0,0,0,0.70), 0 2px 8px rgba(0,0,0,0.38)';
-  const titleColor = L ? '#1e1e30'              : '#e8edf3';
-  const msgColor   = L ? 'rgba(42,42,58,0.60)'  : 'rgba(232,237,243,0.56)';
+  const titleColor = L ? '#000000' : '#ffffff';
+  const msgColor   = L ? '#000000' : '#ffffff';
   const cancelBg   = L ? 'rgba(0,0,0,0.07)'     : 'rgba(255,255,255,0.08)';
-  const cancelClr  = L ? 'rgba(42,42,58,0.70)'  : 'rgba(232,237,243,0.68)';
+  const cancelClr  = L ? '#000000' : '#ffffff';
   const color      = confirmColor ?? C.mars;
 
   return (

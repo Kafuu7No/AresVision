@@ -68,10 +68,10 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
   const dropShadow = L
     ? '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.07)'
     : '0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.35)';
-  const labelClr   = L ? '#1e1e30'              : '#e8edf3';
-  const dimClr     = L ? 'rgba(42,42,58,0.48)'  : 'rgba(232,237,243,0.45)';
+  const labelClr   = L ? '#000000' : '#ffffff';
+  const dimClr     = L ? '#000000' : '#ffffff';
   const hoverBg    = L ? 'rgba(0,0,0,0.045)'    : 'rgba(255,255,255,0.07)';
-  const divClr     = L ? 'rgba(0,0,0,0.07)'     : 'rgba(255,255,255,0.08)';
+  const divClr     = L ? '#000000' : '#ffffff';
 
   if (!user) {
     return (
@@ -407,7 +407,7 @@ export default function Navbar({ current, onChange, onOpenAdmin, onOpenFeedback,
                 background: notifOpen ? (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)') : 'transparent',
                 border: 'none', borderRadius: 8, padding: '6px 8px',
                 cursor: 'pointer', display: 'flex', alignItems: 'center',
-                color: isLight ? 'rgba(42,42,58,0.6)' : 'rgba(232,237,243,0.6)',
+                color: (isLight || L) ? '#000000' : '#ffffff',
                 transition: 'background 0.15s',
               }}
             >

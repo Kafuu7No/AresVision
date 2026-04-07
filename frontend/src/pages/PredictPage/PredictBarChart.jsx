@@ -281,7 +281,7 @@ export default function PredictBarChart({
                 bgcolor: 'transparent',
                 hole: 0.25,
                 angularaxis: {
-                  tickfont: { size: 9, color: 'rgba(255,255,255,0.4)', fontWeight: 600 },
+                  tickfont: { size: 9, color: '#ffffff', fontWeight: 600 },
                   gridcolor: 'rgba(255,255,255,0.05)',
                   linecolor: 'rgba(255,255,255,0.1)',
                   direction: 'clockwise',

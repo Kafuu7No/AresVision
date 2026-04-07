@@ -30,9 +30,9 @@ function ToastContent() {
 
   const isSuccess     = toast.type === 'success';
   const accentColor   = isSuccess ? C.blue : C.mars;   // 蓝色 for success，红色 for error
-  const bgColor       = L ? 'rgba(255,255,255,0.95)' : 'rgba(13,13,28,0.92)';
+  const bgColor       = L ? '#000000' : '#ffffff';
   const borderColor   = isSuccess ? 'rgba(74,158,255,0.28)' : 'rgba(199,91,57,0.28)';
-  const textColor     = L ? '#1e1e30' : '#e8edf3';
+  const textColor     = L ? '#000000' : '#ffffff';
   const shadow        = L
     ? '0 8px 28px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)'
     : '0 8px 28px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.32)';

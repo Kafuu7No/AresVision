@@ -198,10 +198,7 @@ export default function SettingsPanel({ open, onClose }) {
         '--text-30': 'rgba(42,42,58,0.35)',
         '--border':  'rgba(26,26,46,0.12)',
       }
-    : {
-        '--text':    '#e8edf3',
-        '--text-60': 'rgba(232,237,243,0.6)',
-        '--text-30': 'rgba(232,237,243,0.3)',
+    : { '--text': '#ffffff', '--text-60': '#ffffff', '--text-30': '#ffffff',
         '--border':  'rgba(232,237,243,0.08)',
       };
 
@@ -309,6 +306,76 @@ export default function SettingsPanel({ open, onClose }) {
           flexDirection: 'column',
           gap: 0,
         }}>
+
+          {/* ── 显示偏好 ── */}
+          <SectionHeader label={t('settings.appearance.label')} />
+          <p style={{ fontSize: 10, color: 'var(--text-30)', marginBottom: 12, lineHeight: 1.5 }}>
+            {t('settings.appearance.desc')}
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, marginBottom: 12 }}>
+            <div style={{
+              width: 44,
+              fontSize: 11,
+              fontWeight: 600,
+              color: 'var(--text-60)',
+              textAlign: 'right',
+            }}>
+              A
+            </div>
+            
+            <input
+              type="range"
+              min="0.7"
+              max="1.5"
+              step="0.1"
+              value={settings.appearance?.uiScale || 1}
+              onChange={e => updateSetting('appearance.uiScale', parseFloat(e.target.value))}
+              style={{
+                flex: 1,
+                cursor: 'pointer',
+                accentColor: C.blue,
+                height: 4,
+              }}
+            />
+            
+            <div style={{
+              width: 44,
+              fontSize: 14,
+              fontWeight: 600,
+              color: 'var(--text)',
+              textAlign: 'left',
+            }}>
+              A
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 8px' }}>
+            <button
+              onClick={() => updateSetting('appearance.uiScale', 1)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: (settings.appearance?.uiScale || 1) !== 1 ? C.blue : 'var(--text-30)',
+                fontSize: 10,
+                cursor: 'pointer',
+                padding: 0,
+                textDecoration: (settings.appearance?.uiScale || 1) !== 1 ? 'underline' : 'none',
+              }}
+            >
+              {t('settings.appearance.scaleMedium') || 'Reset'}
+            </button>
+            <div style={{
+              fontSize: 11,
+              color: C.ice,
+              background: 'rgba(74, 158, 255, 0.1)',
+              padding: '2px 8px',
+              borderRadius: 4,
+              fontWeight: 600,
+              fontFamily: "'Orbitron', sans-serif"
+            }}>
+              {Math.round((settings.appearance?.uiScale || 1) * 100)}%
+            </div>
+          </div>
+          <Divider />
 
           {/* ── 单位制 ── */}
           <SectionHeader label={t('settings.units.label')} />

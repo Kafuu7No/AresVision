@@ -37,16 +37,16 @@ export default function HeatmapCanvas({ data, year, h = 300 }) {
     const cellH = plotH / nY;
 
     // Theme tokens
-    const bgColor        = isLight ? '#f5f6f8'              : '#0a0a0f';
+    const bgColor        = isLight ? 'rgba(245, 246, 248, 0.4)' : '#0a0a0f';
     const bgPixel        = isLight ? [245, 246, 248]        : [10, 10, 15];
-    const axisColor      = isLight ? 'rgba(26,26,46,0.2)'  : 'rgba(255,255,255,0.2)';
-    const tickColor      = isLight ? 'rgba(26,26,46,0.7)'  : 'rgba(232,237,243,0.65)';
-    const titleColor     = isLight ? 'rgba(26,26,46,0.45)' : 'rgba(232,237,243,0.4)';
+    const axisColor      = isLight ? '#000000' : '#ffffff';
+    const tickColor      = isLight ? '#000000' : '#ffffff';
+    const titleColor     = isLight ? '#000000' : '#ffffff';
     const seasonLine     = isLight ? 'rgba(26,26,46,0.2)'  : 'rgba(255,255,255,0.35)';
     const seasonLabel    = isLight ? 'rgba(26,26,46,0.65)' : 'rgba(255,255,255,0.55)';
-    const cbLabelColor   = isLight ? 'rgba(26,26,46,0.7)'  : 'rgba(232,237,243,0.7)';
-    const cbBorderColor  = isLight ? 'rgba(26,26,46,0.2)'  : 'rgba(255,255,255,0.2)';
-    const cbTitleColor   = isLight ? 'rgba(26,26,46,0.45)' : 'rgba(232,237,243,0.4)';
+    const cbLabelColor   = isLight ? '#000000' : '#ffffff';
+    const cbBorderColor  = isLight ? '#000000' : '#ffffff';
+    const cbTitleColor   = isLight ? '#000000' : '#ffffff';
 
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, CW, CH);
@@ -219,7 +219,7 @@ export default function HeatmapCanvas({ data, year, h = 300 }) {
 
   return (
     <div>
-      <div style={isLight ? { borderRadius: 10, overflow: 'hidden', background: '#f5f6f8' } : {}}>
+      <div style={isLight ? { borderRadius: 10, overflow: 'hidden', background: 'transparent' } : {}}>
         <canvas
           ref={canvasRef}
           width={720}

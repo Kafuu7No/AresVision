@@ -107,6 +107,13 @@ const zh = {
       pdf: 'PDF', pdfSub: '文档',
       dpi150Sub: '标准', dpi300Sub: '出版', dpi600Sub: '超清',
     },
+    appearance: {
+      label: 'APPEARANCE / 显示与字体',
+      desc: '调节全局界面元素和字体缩放大小',
+      scaleSmall: '较小',
+      scaleMedium: '默认',
+      scaleLarge: '较大',
+    },
     perfMonitor: '性能监控',
   },
 

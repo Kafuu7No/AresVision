@@ -8,16 +8,16 @@
 
 /* ─── 主题 CSS 变量 ─── */
 :root {
-  --bg:               #0a0a0f;
-  --bg-card:          rgba(20,20,30,0.55);
-  --bg-nav:           rgba(10,10,15,0.70);
-  --text:             #e8edf3;
-  --text-60:          rgba(232,237,243,0.60);
-  --text-30:          rgba(232,237,243,0.30);
-  --border:           rgba(232,237,243,0.08);
-  --border-hover:     rgba(232,237,243,0.18);
-  --scrollbar:        rgba(232,237,243,0.15);
-  --scrollbar-hover:  rgba(232,237,243,0.30);
+  --bg:               #050508;
+  --bg-card:          rgba(15,15,22,0.65);
+  --bg-nav:           rgba(5,5,8,0.85);
+  --text:             #ffffff;
+  --text-60:          #ffffff;
+  --text-30:          #ffffff;
+  --border:           rgba(255,255,255,0.12);
+  --border-hover:     rgba(255,255,255,0.25);
+  --scrollbar:        rgba(255,255,255,0.15);
+  --scrollbar-hover:  rgba(255,255,255,0.30);
   --breathe-lo:       rgba(74,158,255,0.15);
   --breathe-hi:       rgba(74,158,255,0.35);
   --card-shadow:      none;
@@ -26,21 +26,21 @@
 }
 
 [data-theme="light"] {
-  --bg:               #f5f6fa;
-  --bg-card:          #ffffff;
-  --bg-nav:           rgba(245,246,250,0.92);
-  --text:             #1a1a2e;
-  --text-60:          rgba(26,26,46,0.62);
-  --text-30:          rgba(26,26,46,0.38);
-  --border:           rgba(26,26,46,0.09);
-  --border-hover:     rgba(26,26,46,0.20);
-  --scrollbar:        rgba(26,26,46,0.18);
-  --scrollbar-hover:  rgba(26,26,46,0.35);
+  --bg:               #f0f2f5;
+  --bg-card:          rgba(255, 255, 255, 0.65);
+  --bg-nav:           rgba(255, 255, 255, 0.75);
+  --text:             #000000;
+  --text-60:          #000000;
+  --text-30:          #000000;
+  --border:           rgba(0,0,0,0.15);
+  --border-hover:     rgba(0,0,0,0.25);
+  --scrollbar:        rgba(0,0,0,0.20);
+  --scrollbar-hover:  rgba(0,0,0,0.40);
   --breathe-lo:       rgba(74,158,255,0.18);
   --breathe-hi:       rgba(74,158,255,0.40);
-  --card-shadow:      0 1px 4px rgba(26,26,46,0.06), 0 4px 16px rgba(26,26,46,0.07);
-  --nav-shadow:       0 1px 0 rgba(26,26,46,0.08), 0 2px 12px rgba(26,26,46,0.06);
-  --obs-ring:         0 0 0 2px rgba(26,26,46,0.10), 0 4px 16px rgba(26,26,46,0.10);
+  --card-shadow:      0 1px 4px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.10);
+  --nav-shadow:       0 1px 0 rgba(0,0,0,0.10), 0 2px 12px rgba(0,0,0,0.08);
+  --obs-ring:         0 0 0 2px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.15);
 }
 
 * {
@@ -59,6 +59,7 @@ body {
   font-family: 'Exo 2', sans-serif;
   overflow-x: hidden;
   transition: background 0.3s, color 0.3s;
+  zoom: var(--app-zoom, 1);
 }
 
 /* ─── Scrollbar ─── */
@@ -155,16 +156,16 @@ body {
   background: #000;
 }
 [data-theme="light"] .space-scene {
-  background: radial-gradient(ellipse at 40% 30%, #12152e 0%, #070814 55%, #010108 100%);
+  background: radial-gradient(ellipse at 40% 30%, #8292a5 0%, #5a687d 55%, #3e4a5d 100%);
 }
 
 /* 固定深色面板（如 SettingsPanel）——无论主题如何都保留深色文字 */
 .panel-dark {
-  --text:             #e8edf3;
-  --text-60:          rgba(232,237,243,0.60);
-  --text-30:          rgba(232,237,243,0.30);
-  --border:           rgba(232,237,243,0.08);
-  --border-hover:     rgba(232,237,243,0.18);
+  --text:             #ffffff;
+  --text-60:          #ffffff;
+  --text-30:          #ffffff;
+  --border:           rgba(255,255,255,0.12);
+  --border-hover:     rgba(255,255,255,0.25);
 }
 
 .page-enter {

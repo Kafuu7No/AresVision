@@ -7,6 +7,8 @@ import { useSettings } from '../contexts/SettingsContext';
  */
 export default function StarField() {
   const { settings } = useSettings();
+  const isLight = settings.theme === 'light';
+
   const { dimStars, medStars, brightStars } = useMemo(() => {
     const rng = () => Math.random();
 
@@ -58,10 +60,14 @@ export default function StarField() {
     return { dimStars: dim, medStars: med, brightStars: bright };
   }, []);
 
-  if (settings.theme === 'light') return null;
-
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
+    <div style={{ 
+      position: 'fixed', 
+      inset: 0, 
+      zIndex: 0, 
+      pointerEvents: 'none',
+      filter: isLight ? 'invert(1) hue-rotate(180deg)' : 'none'
+    }}>
 
       {/* 星云：左上角极淡紫蓝晕 */}
       <div style={{
