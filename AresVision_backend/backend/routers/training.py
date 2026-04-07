@@ -29,6 +29,8 @@ async def start_training(req: TrainingStartRequest, current_user: User = Depends
         return task
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

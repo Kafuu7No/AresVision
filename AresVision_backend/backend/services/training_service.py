@@ -41,6 +41,16 @@ class TrainingService:
         if not MODELS_DIR.joinpath(model_script).exists():
             raise FileNotFoundError(f"Script {model_script} not found in {MODELS_DIR}")
 
+        # ── 唯一性校验 ──
+        if not custom_model_name or not custom_model_name.strip():
+            raise ValueError("模型命名不能为空")
+        async with async_session_maker() as session:
+            existing = await session.execute(
+                select(ModelTrainingTask).where(ModelTrainingTask.custom_model_name == custom_model_name.strip())
+            )
+            if existing.scalars().first():
+                raise ValueError(f"模型名称 '{custom_model_name}' 已被使用，请换一个名称")
+
         async with async_session_maker() as session:
             task = ModelTrainingTask(
                 user_id=user_id,

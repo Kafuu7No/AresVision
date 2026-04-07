@@ -23,6 +23,7 @@ export default function ModelTrainingPage() {
   const [learningRate, setLearningRate] = useState(0.001);
   const [stlstmLayers, setStlstmLayers] = useState(3);
   const [customModelName, setCustomModelName] = useState('');
+  const [modelNameError, setModelNameError] = useState('');
   const [hiddenDims, setHiddenDims] = useState([64, 64, 64]);
   const [window_, setWindow] = useState(3);
   const [horizon, setHorizon] = useState(3);
@@ -45,6 +46,19 @@ export default function ModelTrainingPage() {
       }
       return next;
     });
+  };
+
+  const validateModelName = (name) => {
+    if (!name || !name.trim()) return '模型命名不能为空';
+    const existingNames = tasks.map(tk => tk.custom_model_name).filter(Boolean);
+    if (existingNames.includes(name.trim())) return `名称 "${name.trim()}" 已被使用`;
+    return '';
+  };
+
+  const handleModelNameChange = (e) => {
+    const val = e.target.value;
+    setCustomModelName(val);
+    setModelNameError(validateModelName(val));
   };
 
   const handleDimChange = (index, value) => {
@@ -128,6 +142,8 @@ export default function ModelTrainingPage() {
       return;
     }
     if (!selectedScript) return;
+    const nameErr = validateModelName(customModelName);
+    if (nameErr) { setModelNameError(nameErr); return; }
     try {
       setIsProcessing(true);
       const hypers = {
@@ -226,8 +242,183 @@ export default function ModelTrainingPage() {
     opacity: 0.8,
   };
 
+  // --- SUB-COMPONENTS for cleaner UI ---
+  const TrainingTaskCard = ({ tk, onLog, onStop, onDelete, isLight, isProcessing, C }) => {
+    const [isHovered, setIsHovered] = useState(false);
+    const hypers = React.useMemo(() => {
+      try { return JSON.parse(tk.hyperparameters || '{}'); } catch { return {}; }
+    }, [tk.hyperparameters]);
+
+    const statusColor = tk.status === 'completed' ? '#4CAF50' : tk.status === 'failed' ? '#F44336' : '#FF9800';
+    const statusLabel = tk.status === 'completed' ? t('modelTraining.statusCompleted') :
+                       tk.status === 'failed' ? t('modelTraining.statusFailed') :
+                       tk.status === 'running' ? t('modelTraining.statusRunning') : t('modelTraining.statusPending');
+
+    const cardStyles = {
+      position: 'relative',
+      borderRadius: 12,
+      marginBottom: 16,
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      border: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)'}`,
+      borderLeft: `6px solid ${statusColor}`,
+      background: isLight ? 'rgba(255,255,255,0.7)' : 'rgba(30,30,45,0.4)',
+      backdropFilter: 'blur(12px)',
+      boxShadow: isHovered 
+        ? (isLight ? '0 10px 40px rgba(0,0,0,0.1)' : '0 15px 50px rgba(0,0,0,0.5)')
+        : (isLight ? '0 4px 15px rgba(0,0,0,0.03)' : '0 4px 20px rgba(0,0,0,0.2)'),
+      transform: isHovered ? 'scale(1.01) translateY(-2px)' : 'scale(1)',
+      overflow: 'hidden',
+      cursor: 'default'
+    };
+
+    const ghostButtonStyle = (color, filled) => ({
+      background: filled ? color : 'transparent',
+      border: `1.5px solid ${color}`,
+      color: filled ? '#fff' : color,
+      padding: '7px 16px',
+      borderRadius: 20,
+      fontSize: 13,
+      fontWeight: 600,
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6
+    });
+
+    const dotStyle = {
+      width: 8, height: 8, borderRadius: '50%',
+      backgroundColor: statusColor,
+      boxShadow: `0 0 10px ${statusColor}`,
+      animation: tk.status === 'running' ? 'pulse 2s infinite' : 'none'
+    };
+
+    return (
+      <div 
+        style={cardStyles}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <div style={{ padding: '20px 24px' }}>
+          {/* Header Row: ID + Info + Status */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <span style={{ 
+                fontSize: 11, fontWeight: 800, opacity: 0.3, letterSpacing: 1,
+                padding: '2px 8px', borderRadius: 6, background: 'rgba(128,128,128,0.1)'
+              }}>ID:{tk.id}</span>
+              
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: isLight ? '#1a1a1a' : '#efefef', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 13, fontWeight: 500, opacity: 0.5 }}>模型名称:</span>
+                {tk.custom_model_name || <span style={{ opacity: 0.3, fontStyle: 'italic' }}>未命名模型</span>}
+              </h3>
+              
+              {/* Metadata Cluster: Script first, then Date */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 15, fontSize: 13, opacity: 0.45, fontWeight: 600 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span>📄</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{tk.model_script}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span>📅</span>
+                  <span>{new Date(tk.start_time).toLocaleString('zh-CN', {
+                    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+                  })}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', borderRadius: 20,
+                background: statusColor + '12', border: `1px solid ${statusColor + '30'}`
+              }}>
+                <div style={dotStyle} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: statusColor, letterSpacing: 0.5 }}>{statusLabel}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Hyperparameters Grid (Always Visible) */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12,
+              padding: '16px 18px', borderRadius: 10,
+              background: isLight ? '#fafafa' : 'rgba(0,0,0,0.18)',
+              border: `1px solid ${isLight ? '#eee' : 'rgba(255,255,255,0.04)'}`
+            }}>
+              {Object.entries(hypers).map(([k, v]) => (
+                <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, opacity: 0.4, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                    {k.replace('_', ' ')}
+                  </span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: statusColor }}>
+                    {Array.isArray(v) ? `[${v.join(', ')}]` : (k === 'learning_rate' ? v.toFixed(5) : (v === 0 ? 'Disabled' : v))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Row */}
+          <div style={{ display: 'flex', gap: 10, borderTop: `1px dashed ${isLight ? '#eee' : '#333'}`, paddingTop: 16 }}>
+            <button 
+              onClick={() => onLog(tk.id)} 
+              style={ghostButtonStyle(C.blue, false)}
+              onMouseEnter={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(C.blue, true))}
+              onMouseLeave={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(C.blue, false))}
+            >
+              📊 查看日志
+            </button>
+
+            {(tk.status === 'running' || tk.status === 'pending') && (
+              <button 
+                onClick={() => onStop(tk.id)} 
+                disabled={isProcessing}
+                style={ghostButtonStyle('#F44336', false)}
+                onMouseEnter={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle('#F44336', true))}
+                onMouseLeave={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle('#F44336', false))}
+              >
+                🛑 停止训练
+              </button>
+            )}
+
+            {tk.status === 'completed' && (
+              <button 
+                style={ghostButtonStyle(C.mars, false)}
+                onMouseEnter={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(C.mars, true))}
+                onMouseLeave={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(C.mars, false))}
+              >
+                ⚡ 模型测试
+              </button>
+            )}
+
+            <button 
+              onClick={() => onDelete(tk.id)} 
+              disabled={isProcessing}
+              style={ghostButtonStyle(isLight ? '#777' : '#999', false)}
+              onMouseEnter={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(isLight ? '#777' : '#999', true))}
+              onMouseLeave={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(isLight ? '#777' : '#999', false))}
+            >
+              🗑️ 删除记录
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div style={containerStyle}>
+    <div style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto', minHeight: '100vh', background: isLight ? '#f9f9f9' : '#0a0a0f', color: isLight ? '#333' : '#eee' }}>
+      <style>{`
+        @keyframes pulse {
+          0% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.2); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        input[type="number"]::-webkit-inner-spin-button { opacity: 0.3; }
+      `}</style>
       <header>
         <h1 style={{ fontSize: 32, fontWeight: 800, margin: 0, color: isLight ? '#111' : '#fff' }}>
           {t('modelTraining.title')}
@@ -259,12 +450,25 @@ export default function ModelTrainingPage() {
             </div>
 
             <div>
-              <div style={labelStyle}>模型文件命名 (可选)</div>
+              <div style={labelStyle}>
+                模型文件命名
+                <span style={{ color: '#F44336', marginLeft: 4 }}>*</span>
+              </div>
               <input
-                type="text" style={inputStyle}
-                placeholder="例如: predrnn_v1"
-                value={customModelName} onChange={e => setCustomModelName(e.target.value)}
+                type="text" style={{
+                  ...inputStyle,
+                  borderColor: modelNameError ? '#F44336' : (customModelName.trim() ? '#4CAF50' : (isLight ? '#ccc' : '#444'))
+                }}
+                placeholder="例如: predrnn_UDT_v1"
+                value={customModelName}
+                onChange={handleModelNameChange}
               />
+              {modelNameError && (
+                <div style={{ fontSize: 11, color: '#F44336', marginTop: 4 }}>⚠ {modelNameError}</div>
+              )}
+              {!modelNameError && customModelName.trim() && (
+                <div style={{ fontSize: 11, color: '#4CAF50', marginTop: 4 }}>✓ 名称可用</div>
+              )}
             </div>
 
             <div>
@@ -348,7 +552,7 @@ export default function ModelTrainingPage() {
 
             <button
               onClick={handleStartTraining}
-              disabled={user ? !selectedScript : false}
+              disabled={user ? (!selectedScript || !!modelNameError || !customModelName.trim()) : false}
               style={{
                 marginTop: 8,
                 background: !user ? C.blue : C.mars,
@@ -422,95 +626,27 @@ export default function ModelTrainingPage() {
 
       </div>
 
-      {/* Bottom: History Table */}
-      <div style={cardStyle}>
-        <div style={titleStyle}>{t('modelTraining.historyTitle')}</div>
-        <div style={{ overflowX: 'auto', marginTop: 16 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: `2px solid ${isLight ? '#eee' : '#333'}`, color: C.mars }}>
-                <th style={{ padding: '12px 8px' }}>{t('modelTraining.tableId')}</th>
-                <th style={{ padding: '12px 8px' }}>{t('modelTraining.tableScript')}</th>
-                <th style={{ padding: '12px 8px' }}>{t('modelTraining.parameters')}</th>
-                <th style={{ padding: '12px 8px' }}>{t('modelTraining.tableTime')}</th>
-                <th style={{ padding: '12px 8px' }}>{t('modelTraining.tableStatus')}</th>
-                <th style={{ padding: '12px 8px' }}>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.length === 0 ? (
-                <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: 24, opacity: 0.5 }}>
-                    {t('modelTraining.historyEmpty')}
-                  </td>
-                </tr>
-              ) : tasks.map(tk => (
-                <tr key={tk.id} style={{ borderBottom: `1px solid ${isLight ? '#f0f0f0' : '#222'}` }}>
-                  <td style={{ padding: '12px 8px' }}>#{tk.id}</td>
-                  <td style={{ padding: '12px 8px' }}>{tk.model_script}</td>
-                  <td style={{ padding: '12px 8px', fontSize: 12, opacity: 0.8 }}>
-                    {tk.hyperparameters}
-                  </td>
-                  <td style={{ padding: '12px 8px', fontSize: 12 }}>
-                    {new Date(tk.start_time).toLocaleString()}
-                  </td>
-                  <td style={{ padding: '12px 8px' }}>
-                    <span style={{
-                      padding: '4px 8px', borderRadius: 4, fontSize: 11, fontWeight: 'bold',
-                      background: tk.status === 'completed' ? 'rgba(76,175,80,0.2)' :
-                        tk.status === 'failed' ? 'rgba(244,67,54,0.2)' : 'rgba(255,152,0,0.2)',
-                      color: tk.status === 'completed' ? '#4CAF50' :
-                        tk.status === 'failed' ? '#F44336' : '#FF9800'
-                    }}>
-                      {tk.status === 'completed' ? t('modelTraining.statusCompleted') :
-                        tk.status === 'failed' ? t('modelTraining.statusFailed') :
-                          tk.status === 'running' ? t('modelTraining.statusRunning') :
-                            t('modelTraining.statusPending')}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 8px' }}>
-                    <button
-                      onClick={() => setActiveTaskId(tk.id)}
-                      style={{
-                        marginRight: 8, background: 'none', border: `1px solid ${C.blue}`,
-                        color: C.blue, borderRadius: 4, padding: '4px 8px', cursor: 'pointer'
-                      }}>
-                      看日志
-                    </button>
-                    {(tk.status === 'running' || tk.status === 'pending') && (
-                      <button
-                        onClick={() => handleStopTask(tk.id)}
-                        disabled={isProcessing}
-                        style={{
-                          marginRight: 8, background: 'none', border: '1px solid #F44336',
-                          color: '#F44336', borderRadius: 4, padding: '4px 8px', cursor: 'pointer'
-                        }}>
-                        停止
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setConfirmDeleteId(tk.id)}
-                      disabled={isProcessing}
-                      style={{
-                        marginRight: 8, background: 'none', border: `1px solid ${isLight ? '#999' : '#555'}`,
-                        color: isLight ? '#666' : '#999', borderRadius: 4, padding: '4px 8px', cursor: 'pointer'
-                      }}>
-                      删除
-                    </button>
-                    {tk.status === 'completed' && (
-                      <button style={{
-                        background: 'none', border: `1px solid ${C.mars}`,
-                        color: C.mars, borderRadius: 4, padding: '4px 8px', cursor: 'pointer'
-                      }}>
-                        测试
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Bottom: Training History */}
+      <div style={{ ...cardStyle, background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 }}>
+        <div style={{ ...titleStyle, fontSize: 24, marginBottom: 24 }}>{t('modelTraining.historyTitle')}</div>
+
+        {tasks.length === 0 ? (
+          <div style={{ 
+            textAlign: 'center', padding: '60px 0', opacity: 0.4, fontSize: 16, 
+            background: isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px dashed rgba(128,128,128,0.2)'
+          }}>
+            📭 {t('modelTraining.historyEmpty')}
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100%, 1fr))', gap: 10 }}>
+            {tasks.map(tk => (
+              <TrainingTaskCard 
+                key={tk.id} tk={tk} isLight={isLight} isProcessing={isProcessing} C={C}
+                onLog={setActiveTaskId} onStop={handleStopTask} onDelete={setConfirmDeleteId}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {confirmDeleteId && (
