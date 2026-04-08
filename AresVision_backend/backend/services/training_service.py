@@ -143,8 +143,12 @@ class TrainingService:
                     task.status = status
                     task.end_time = datetime.now(timezone.utc)
                     if status == "completed":
-                        # Attempt to parse metrics if printed at the end or just hardcode as example
-                        task.metrics = json.dumps({"note": "completed successfully"})
+                        # Attempt to parse metrics from log
+                        parsed_metrics = self._extract_metrics_from_log(log_file)
+                        if parsed_metrics:
+                            task.metrics = json.dumps(parsed_metrics)
+                        else:
+                            task.metrics = json.dumps({"note": "completed successfully"})
                     await session.commit()
                     
         except Exception as repr_exc:
@@ -228,3 +232,36 @@ class TrainingService:
             await session.delete(task)
             await session.commit()
             return True
+
+    def _extract_metrics_from_log(self, log_file: Path) -> dict | None:
+        """从日志文件中使用正则提取训练指标"""
+        if not log_file.exists():
+            return None
+        try:
+            with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+            
+            # 使用正则匹配 Metrics 之后的内容
+            metrics = {}
+            patterns = {
+                "mse": r"MSE:\s*([\d\.]+)",
+                "rmse": r"RMSE:\s*([\d\.]+)",
+                "r2": r"R-Squared:\s*([\d\.\-]+)",
+                "mape": r"MAPE:\s*([\d\.]+)%",
+                "smape": r"SMAPE:\s*([\d\.]+)%"
+            }
+            
+            for key, pattern in patterns.items():
+                match = re.search(pattern, content)
+                if match:
+                    metrics[key] = float(match.group(1))
+            
+            return metrics if metrics else None
+        except Exception as e:
+            logger.error(f"Error extracting metrics from log: {e}")
+            return None
+
+    async def test_model(self, task_id: int):
+        """执行模型推理测试，生成散点图数据"""
+        # 这是一个占位，具体逻辑待实现
+        return {"id": task_id, "status": "testing"}

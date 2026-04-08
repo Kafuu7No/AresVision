@@ -5,6 +5,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchScripts, startTrainingTask, fetchTasks, fetchLogs, stopTrainingTask, deleteTrainingTask } from '../services/api';
 import ConfirmDialog from '../components/ConfirmDialog';
+import ModelTestModal from '../components/ModelTestModal';
 
 export default function ModelTrainingPage() {
   const t = useT();
@@ -45,14 +46,19 @@ export default function ModelTrainingPage() {
   const [horizon, setHorizon] = useState(3);
   const [earlyStoppingPatience, setEarlyStoppingPatience] = useState(0);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [testTaskId, setTestTaskId] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleLayersChange = (e) => {
-    let newLayers = parseInt(e.target.value, 10);
+    const val = e.target.value;
+    setStlstmLayers(val);
+    
+    if (val === '') return;
+    
+    let newLayers = parseInt(val, 10);
     if (isNaN(newLayers) || newLayers < 1) newLayers = 1;
     if (newLayers > 10) newLayers = 10;
 
-    setStlstmLayers(newLayers);
     setHiddenDims(prev => {
       const next = [...prev];
       if (newLayers > next.length) {
@@ -79,7 +85,7 @@ export default function ModelTrainingPage() {
 
   const handleDimChange = (index, value) => {
     const next = [...hiddenDims];
-    next[index] = Number(value);
+    next[index] = value === '' ? '' : Number(value);
     setHiddenDims(next);
   };
 
@@ -158,18 +164,28 @@ export default function ModelTrainingPage() {
       return;
     }
     if (!selectedScript) return;
+    
+    // 显式校验模型名称并弹出提示
     const nameErr = validateModelName(customModelName);
-    if (nameErr) { setModelNameError(nameErr); return; }
+    if (nameErr) {
+      if (!customModelName.trim()) {
+        alert('请先为本次训练的模型命名后再开始训练');
+      } else {
+        alert(nameErr);
+      }
+      setModelNameError(nameErr);
+      return;
+    }
     try {
       setIsProcessing(true);
       const hypers = {
-        epochs,
-        batch_size: batchSize,
-        learning_rate: learningRate,
-        stlstm_hidden_dims: hiddenDims,
-        window: window_,
-        horizon,
-        early_stopping_patience: earlyStoppingPatience,
+        epochs: Number(epochs) || 10,
+        batch_size: Number(batchSize) || 32,
+        learning_rate: Number(learningRate) || 0.001,
+        stlstm_hidden_dims: hiddenDims.map(d => Number(d) || 64),
+        window: Number(window_) || 3,
+        horizon: Number(horizon) || 3,
+        early_stopping_patience: Number(earlyStoppingPatience) || 0,
       };
       const task = await startTrainingTask(selectedScript, hypers, customModelName);
       setActiveTaskId(task.id);
@@ -259,7 +275,7 @@ export default function ModelTrainingPage() {
   };
 
   // --- SUB-COMPONENTS for cleaner UI ---
-  const TrainingTaskCard = ({ tk, onLog, onStop, onDelete, isLight, isProcessing, C }) => {
+  const TrainingTaskCard = ({ tk, onLog, onStop, onDelete, onTest, isLight, isProcessing, C }) => {
     const [isHovered, setIsHovered] = useState(false);
     const hypers = React.useMemo(() => {
       try { return JSON.parse(tk.hyperparameters || '{}'); } catch { return {}; }
@@ -408,11 +424,12 @@ export default function ModelTrainingPage() {
 
             {tk.status === 'completed' && (
               <button 
+                onClick={() => onTest(tk.id)}
                 style={ghostButtonStyle(C.mars, false)}
                 onMouseEnter={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(C.mars, true))}
                 onMouseLeave={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(C.mars, false))}
               >
-                ⚡ 模型测试
+                {t('modelTraining.actionTest')}
               </button>
             )}
 
@@ -518,7 +535,7 @@ export default function ModelTrainingPage() {
               <div style={labelStyle}>{t('modelTraining.epochs')}</div>
               <input
                 type="number" style={inputStyle}
-                value={epochs} onChange={e => setEpochs(Number(e.target.value))}
+                value={epochs} onChange={e => setEpochs(e.target.value === '' ? '' : Number(e.target.value))}
               />
             </div>
 
@@ -526,7 +543,7 @@ export default function ModelTrainingPage() {
               <div style={labelStyle}>{t('modelTraining.batchSize')}</div>
               <input
                 type="number" style={inputStyle}
-                value={batchSize} onChange={e => setBatchSize(Number(e.target.value))}
+                value={batchSize} onChange={e => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
               />
             </div>
 
@@ -534,7 +551,7 @@ export default function ModelTrainingPage() {
               <div style={labelStyle}>{t('modelTraining.learningRate')}</div>
               <input
                 type="number" step="0.0001" style={inputStyle}
-                value={learningRate} onChange={e => setLearningRate(Number(e.target.value))}
+                value={learningRate} onChange={e => setLearningRate(e.target.value === '' ? '' : Number(e.target.value))}
               />
             </div>
 
@@ -544,7 +561,7 @@ export default function ModelTrainingPage() {
                 <input
                   type="number" style={inputStyle}
                   value={window_} min="1" max="30"
-                  onChange={e => setWindow(Math.max(1, Number(e.target.value)))}
+                  onChange={e => setWindow(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
                 />
               </div>
               <div>
@@ -552,7 +569,7 @@ export default function ModelTrainingPage() {
                 <input
                   type="number" style={inputStyle}
                   value={horizon} min="1" max="30"
-                  onChange={e => setHorizon(Math.max(1, Number(e.target.value)))}
+                  onChange={e => setHorizon(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
                 />
               </div>
             </div>
@@ -562,7 +579,7 @@ export default function ModelTrainingPage() {
               <input
                 type="number" style={inputStyle}
                 value={earlyStoppingPatience} min="0" max="200"
-                onChange={e => setEarlyStoppingPatience(Math.max(0, Number(e.target.value)))}
+                onChange={e => setEarlyStoppingPatience(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
               />
               <div style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>
                 0 = 禁用早停；建议值：5–20
@@ -595,7 +612,7 @@ export default function ModelTrainingPage() {
 
             <button
               onClick={handleStartTraining}
-              disabled={user ? (!selectedScript || !!modelNameError || !customModelName.trim()) : false}
+              disabled={user ? (!selectedScript || !!modelNameError) : false}
               style={{
                 marginTop: 8,
                 background: !user ? C.blue : C.mars,
@@ -686,6 +703,7 @@ export default function ModelTrainingPage() {
               <TrainingTaskCard 
                 key={tk.id} tk={tk} isLight={isLight} isProcessing={isProcessing} C={C}
                 onLog={setActiveTaskId} onStop={handleStopTask} onDelete={setConfirmDeleteId}
+                onTest={setTestTaskId}
               />
             ))}
           </div>
@@ -701,6 +719,12 @@ export default function ModelTrainingPage() {
           onConfirm={handleDeleteTask}
           onCancel={() => setConfirmDeleteId(null)}
           confirmColor="#F44336"
+        />
+      )}
+      {testTaskId && (
+        <ModelTestModal
+          taskId={testTaskId}
+          onClose={() => setTestTaskId(null)}
         />
       )}
     </div>

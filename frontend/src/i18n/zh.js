@@ -607,8 +607,24 @@ const zh = {
     statusRunning: '训练中',
     statusCompleted: '已完成',
     statusFailed: '失败',
-    actionTest: '测试模型',
+    actionTest: '⚡ 模型测试',
     actionPredict: '部署预测',
+  },
+
+  modelTest: {
+    title: '模型性能评估',
+    subtitle: 'MODEL PERFORMANCE EVALUATION',
+    metricsTitle: '核心评价指标',
+    visualTitle: '预测值 vs 真实值 (测试集采样)',
+    scatter: {
+      xAxis: '真实臭氧 (DU)',
+      yAxis: '预测臭氧 (DU)',
+      perfectFit: '完美拟合线',
+      density: '样本点密度',
+    },
+    loading: '正在基于测试集进行推理...',
+    error: '模型评估请求失败',
+    noMetrics: '训练尚未产生指标数据'
   },
 
   about: {

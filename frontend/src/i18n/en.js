@@ -516,8 +516,24 @@ const en = {
     statusRunning: 'Running',
     statusCompleted: 'Completed',
     statusFailed: 'Failed',
-    actionTest: 'Test Model',
+    actionTest: '⚡ Test Model',
     actionPredict: 'Deploy Predict',
+  },
+
+  modelTest: {
+    title: 'Model Performance Evaluation',
+    subtitle: 'MODEL PERFORMANCE EVALUATION',
+    metricsTitle: 'Key Metrics',
+    visualTitle: 'Predicted vs. Ground Truth (Test Set Sampling)',
+    scatter: {
+      xAxis: 'Ground Truth Ozone (DU)',
+      yAxis: 'Predicted Ozone (DU)',
+      perfectFit: 'Perfect Fit Line',
+      density: 'Point Density',
+    },
+    loading: 'Running inference on test set...',
+    error: 'Model evaluation failed',
+    noMetrics: 'No metrics data available for this task'
   },
 
   about: {

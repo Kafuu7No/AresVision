@@ -4,12 +4,14 @@ from pathlib import Path
 
 from schemas.training import TrainingStartRequest, TrainingTaskResponse, LogResponse
 from services.training_service import TrainingService
+from services.inference_service import InferenceService
 from auth.dependencies import get_current_user
 from database.models import User
 
 router = APIRouter(tags=["Training"])
 
 training_service = TrainingService()
+inference_service = InferenceService()
 
 @router.get("/training/scripts", response_model=List[str])
 async def get_scripts():
@@ -89,5 +91,13 @@ async def perform_task_action(task_id: int, action: str):
     if task.status != "completed":
         raise HTTPException(status_code=400, detail="Cannot perform action on incomplete task")
         
-    # Dummy mock for future predict invocation
+        
+    if action == "test":
+        try:
+            results = await inference_service.get_test_results(task_id)
+            return {"status": "success", "data": results}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Inference failed: {str(e)}")
+            
+    # Dummy mock for other future actions
     return {"message": f"Action '{action}' executed for task {task_id}", "status": "success"}
