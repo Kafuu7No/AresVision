@@ -37,7 +37,6 @@ yarn-error.log*
 *.pth
 *.pt
 *.h5
-训练模型/
 
 # Local assets (too large for git)
 frontend/public/mars_texture.jpg
@@ -95,3 +94,9 @@ AresVision_backend/backend/.env
 *.bak
 *_backup.*
 ~*
+AresVision_backend/backend/models/训练模型/repair_all.py
+
+# Training results and progress
+AresVision_backend/backend/models/训练结果/
+AresVision_backend/backend/models/训练过程/
+

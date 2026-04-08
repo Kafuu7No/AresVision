@@ -117,3 +117,7 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")    # QQ 邮箱授权码（非登�
 SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "AresVision 智绘赤星")
 VERIFICATION_CODE_EXPIRE_MINUTES = 10             # 验证码有效期（分钟）
 VERIFICATION_CODE_COOLDOWN_SECONDS = 60           # 发送冷却时间（秒）
+
+# ─── 训练环境 ───
+import sys
+TRAINING_PYTHON_PATH = os.getenv("TRAINING_PYTHON_PATH", sys.executable)

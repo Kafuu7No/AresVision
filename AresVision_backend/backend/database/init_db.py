@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from config import DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD
 from database.engine import Base, engine, async_session_maker
-from database.models import User, Notification, Feedback  # noqa: F401 — 确保模型注册到 Base
+from database.models import User, Notification, Feedback, ModelTrainingTask  # noqa: F401 — 确保模型注册到 Base
 
 logger = logging.getLogger("aresvision.db")
 
@@ -26,6 +26,22 @@ async def init_database() -> None:
         # 建表
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            
+            # 兼容性处理：如果 ModelTrainingTask 表中没有 pid 字段，则添加它 (针对 SQLite)
+            from sqlalchemy import text
+            try:
+                # 检查字段是否存在
+                res = await conn.execute(text("PRAGMA table_info(model_training_tasks)"))
+                columns = [row[1] for row in res.fetchall()]
+                if "pid" not in columns:
+                    logger.info("正在向 model_training_tasks 动态添加 pid 字段...")
+                    await conn.execute(text("ALTER TABLE model_training_tasks ADD COLUMN pid INTEGER"))
+                if "custom_model_name" not in columns:
+                    logger.info("正在向 model_training_tasks 动态添加 custom_model_name 字段...")
+                    await conn.execute(text("ALTER TABLE model_training_tasks ADD COLUMN custom_model_name VARCHAR(255)"))
+            except Exception as e:
+                logger.warning(f"无法自动添加 pid 字段（可能已存在）: {e}")
+                
         logger.info("数据库表初始化完成")
 
         # 创建默认管理员（仅当 users 表为空时）

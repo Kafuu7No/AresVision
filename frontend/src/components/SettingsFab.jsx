@@ -337,7 +337,7 @@ export default function SettingsFab({ onOpenSettings, onOpenAdmin }) {
                         flexShrink: 0,
                       }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>
-                          {(user.username || user.email)[0].toUpperCase()}
+                          {(user?.username || user?.email || "?")[0]?.toUpperCase() || "?"}
                         </span>
                       </div>
                       <div style={{ minWidth: 0 }}>

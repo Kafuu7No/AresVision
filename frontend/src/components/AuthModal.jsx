@@ -31,7 +31,7 @@ function Input({ label, type = 'text', value, onChange, placeholder, disabled, e
     <div style={{ marginBottom: 16 }}>
       <label style={{
         display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
-        color: (isLight || L) ? '#000000' : '#ffffff',
+        color: isLight ? '#000000' : '#ffffff',
         marginBottom: 6, textTransform: 'uppercase',
       }}>
         {label}

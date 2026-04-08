@@ -25,7 +25,7 @@ function PwdInput({ label, value, onChange, placeholder, disabled, error, name, 
     <div style={{ marginBottom: 14 }}>
       <label style={{
         display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
-        color: (isLight || L) ? '#000000' : '#ffffff',
+        color: L ? '#000000' : '#ffffff',
         marginBottom: 5, textTransform: 'uppercase',
       }}>
         {label}

@@ -425,3 +425,66 @@ export async function aiChat(question, context = null) {
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
+
+// ─── 模型训练接口 ───
+
+export async function fetchScripts() {
+  const res = await authedFetch(`${BASE}/training/scripts`);
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+}
+
+export async function startTrainingTask(model_script, hyperparameters, model_name = null) {
+  const res = await authedFetch(`${BASE}/training/start`, {
+    method: 'POST',
+    body: JSON.stringify({ model_script, hyperparameters, model_name }),
+  });
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+}
+
+export async function fetchTasks() {
+  const res = await authedFetch(`${BASE}/training/tasks`);
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+}
+
+export async function fetchLogs(taskId) {
+  const res = await authedFetch(`${BASE}/training/tasks/${taskId}/logs`);
+  if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+}
+
+export async function stopTrainingTask(taskId) {
+  const res = await authedFetch(`${BASE}/training/tasks/${taskId}/stop`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteTrainingTask(taskId) {
+  const res = await authedFetch(`${BASE}/training/tasks/${taskId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function performTaskAction(taskId, action) {
+  const res = await authedFetch(`${BASE}/training/tasks/${taskId}/action?action=${encodeURIComponent(action)}`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+

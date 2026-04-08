@@ -118,10 +118,14 @@ async def register(body: RegisterRequest):
             role="user",
         )
         session.add(user)
-        await session.commit()
-        await session.refresh(user)
+        try:
+            await session.commit()
+            await session.refresh(user)
+        except Exception as e:
+            await session.rollback()
+            raise HTTPException(status_code=500, detail=f"数据库操作失败: {str(e)}")
 
-    return UserResponse(id=user.id, email=user.email, username=user.username, role=user.role)
+        return UserResponse(id=user.id, email=user.email, username=user.username, role=user.role)
 
 
 @router.post("/login")
