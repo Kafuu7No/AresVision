@@ -108,7 +108,7 @@ export default function PredictPerformance({
                   if (selectedCompareIds.length > 0 && (key === 'current' || key === 'baseline')) {
                     return false;
                   }
-                  
+
                   const config = compareConfigs.find(c => c.id === key || getShorthands(c.vars) === key);
                   if (config && hiddenCompareIds.includes(config.id)) return false;
                   return true;
@@ -118,7 +118,7 @@ export default function PredictPerformance({
                     console.warn(`Empty data for key: ${key}`);
                     return null;
                   }
-                  
+
                   const colors = [C.mars, C.blue, '#4acfac', '#9c7bea', '#ffd740'];
                   const config = compareConfigs.find(c => c.id === key || getShorthands(c.vars) === key);
                   const label = config?.label || key;
@@ -175,9 +175,9 @@ export default function PredictPerformance({
                           range: (activePerfMetric === 'r2' || activePerfMetric === 'ssim') ? [0.6, 1.0] : undefined,
                           autorange: !(activePerfMetric === 'r2' || activePerfMetric === 'ssim')
                         },
-                        legend: { 
-                          font: { size: 10, color: plotText60 }, 
-                          orientation: 'h', 
+                        legend: {
+                          font: { size: 10, color: plotText60 },
+                          orientation: 'h',
                           yanchor: 'bottom',
                           y: 1.05,
                           xanchor: 'center',

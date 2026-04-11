@@ -1,6 +1,8 @@
 import C from '../../constants/colors';
 import { useT } from '../../i18n';
 import GlowCard from '../../components/GlowCard';
+import { fmtNum } from '../../utils/fmt';
+
 
 const SHORTHAND_MAP = {
   "Temperature": "T",
@@ -10,6 +12,98 @@ const SHORTHAND_MAP = {
   "U_Wind": "U",
   "V_Wind": "V"
 };
+
+function SelectionPerformance({ isLight, currentMetrics, perfLoading, handleFetchPerformance, precision, t }) {
+  const metrics = [
+    { label: t('predict.globalR2'), val: currentMetrics?.global_r2, color: '#4acfac' },
+    { label: t('predict.globalRMSE'), val: currentMetrics?.global_rmse, color: C.mars },
+    { label: t('predict.globalMAE'), val: currentMetrics?.global_mae, color: C.mars },
+    { label: t('predict.globalSSIM'), val: currentMetrics?.global_ssim, color: '#4acfac' },
+  ];
+
+  return (
+    <GlowCard style={{ padding: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.ice, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
+          {t('predict.selectionPerfTitle', 'SELECTION PERFORMANCE')}
+        </div>
+        {!currentMetrics && !perfLoading && (
+          <button
+            onClick={handleFetchPerformance}
+            style={{
+              padding: '4px 8px', background: 'rgba(74,158,255,0.1)', border: `1px solid ${C.blue}`,
+              borderRadius: 6, color: C.blue, fontSize: 9, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif"
+            }}
+          >
+            {t('predict.generateBtn', 'GENERATE')}
+          </button>
+        )}
+      </div>
+
+      {perfLoading ? (
+        <div style={{ padding: '10px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 12, height: 12, border: '2px solid rgba(74,207,172,0.2)', borderTop: '2px solid #4acfac', borderRadius: '50%', animation: 'spin-slow 0.8s linear infinite' }} />
+          <span style={{ fontSize: 10, color: C.ice30 }}>{t('predict.generatingBtn', 'Computing...')}</span>
+        </div>
+      ) : currentMetrics ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {metrics.map((m, idx) => (
+            <div key={idx} style={{
+              padding: '10px', background: `${m.color}10`, borderRadius: 8,
+              border: `1px solid ${m.color}30`, display: 'flex', flexDirection: 'column', gap: 2
+            }}>
+              <span style={{ fontSize: 9, color: C.ice30, fontWeight: 600 }}>{m.label}</span>
+              <span style={{ fontSize: 14, color: m.color, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                {fmtNum(m.val || 0, precision)}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ fontSize: 10, color: C.ice30, fontStyle: 'italic', opacity: 0.6 }}>
+          {t('predict.perfEmptyHintSidebar', 'No global metrics for current selection. Click generate.')}
+        </div>
+      )}
+    </GlowCard>
+  );
+}
+
+function ModelHyperparams({ t }) {
+  const params = [
+    { label: 'EPOCHS', val: '30', color: C.mars },
+    { label: 'LAYERS', val: '3 (ST-LSTM)', color: C.blue },
+    { label: 'HIDDEN', val: '[64, 64, 64]', color: C.blue },
+    { label: 'FILTER', val: '3 × 3', color: '#4acfac' },
+    { label: 'WINDOW', val: '3', color: '#9c7bea' },
+    { label: 'HORIZON', val: '3', color: '#9c7bea' },
+    { label: 'LR', val: '0.001', color: '#ffd740' },
+    { label: 'BATCH', val: '32', color: C.ice60 },
+  ];
+
+  return (
+    <GlowCard style={{ padding: 20 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.ice, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
+        {t('predict.hyperTitle', 'MODEL HYPERPARAMETERS')}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        {params.map((p, idx) => (
+          <div key={idx} style={{
+            padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8,
+            border: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 2,
+            transition: 'all 0.3s'
+          }}>
+            <span style={{ fontSize: 8, color: C.ice30, fontWeight: 600, letterSpacing: 0.5 }}>{p.label}</span>
+            <span style={{ fontSize: 11, color: p.color, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+              {p.val}
+            </span>
+          </div>
+        ))}
+      </div>
+    </GlowCard>
+  );
+}
+
+
 
 export default function PredictSidebar({
   isLight,
@@ -30,11 +124,16 @@ export default function PredictSidebar({
   setSelectedCompareIds,
   setCompareConfigs,
   onShapleyClick,
+  currentMetrics,
+  perfLoading,
+  handleFetchPerformance,
+  precision
 }) {
+
   const t = useT();
 
   const handleSeed32 = () => {
-    // 强制按 5 种核心变量生成全部 32 种组合
+    // Generate all 32 combinations based on 5 core variables
     const vars = ["Temperature", "Dust_Optical_Depth", "Solar_Flux_DN", "U_Wind", "V_Wind"];
     const combinations = [];
     for (let i = 0; i < (1 << vars.length); i++) {
@@ -46,7 +145,7 @@ export default function PredictSidebar({
     }
     const newConfigs = combinations.map((combo, idx) => {
       const shorthand = combo.map(v => SHORTHAND_MAP[v] || v[0]).sort().join('') || 'Baseline';
-      // 这里的 id 必须稳定
+      // Use stable IDs for selection state
       return { id: `seed_${idx}`, label: shorthand, vars: combo };
     });
     setCompareConfigs(newConfigs);
@@ -136,7 +235,7 @@ export default function PredictSidebar({
           onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,240,255,0.15)'; e.currentTarget.style.boxShadow = '0 0 15px rgba(0,240,255,0.2)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,240,255,0.05)'; e.currentTarget.style.boxShadow = 'none'; }}
         >
-          {t('predict.shapleyBtn', '🧠 全局梯度归因 (SHAP)')}
+          {t('predict.shapleyBtn', '🧠 GLOBAL SHAP ATTRIBUTION')}
         </button>
 
       </GlowCard>
@@ -199,6 +298,18 @@ export default function PredictSidebar({
         ))}
       </GlowCard>
 
+      <SelectionPerformance
+        isLight={isLight}
+        currentMetrics={currentMetrics}
+        perfLoading={perfLoading}
+        handleFetchPerformance={handleFetchPerformance}
+        precision={precision}
+        t={t}
+      />
+
+      <ModelHyperparams t={t} />
+
+
       {/* 模型对比 - 带上下滑动条 */}
       <GlowCard style={{ padding: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -213,7 +324,7 @@ export default function PredictSidebar({
             <button
               onClick={handleSeed32}
               style={{ padding: '4px 10px', background: isLight ? 'rgba(156,123,234,0.12)' : 'rgba(156,123,234,0.15)', border: `1px solid ${isLight ? 'rgba(156,123,234,0.3)' : '#9c7bea50'}`, borderRadius: 6, color: isLight ? '#7a5bb8' : '#9c7bea', fontSize: 10, fontWeight: 800, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
-            >{t('predict.matrix.seed32', 'SEED 32')}</button>
+            >{t('predict.matrix.seed32', 'EXHAUSTIVE')}</button>
           </div>
         </div>
 
@@ -271,7 +382,7 @@ export default function PredictSidebar({
           ))}
           {compareConfigs.length === 0 && (
             <div style={{ padding: 20, textAlign: 'center', fontSize: 11, color: C.ice30, opacity: 0.5 }}>
-              {t('predict.matrix.emptyHint', 'No models in matrix. Click SEED 32 to start.')}
+              {t('predict.matrix.emptyHint', 'No models in matrix. Click SEED 32 to start or manually select variables to add.')}
             </div>
           )}
         </div>

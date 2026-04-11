@@ -13,6 +13,7 @@ import { fetchShapleyGlobal, fetchShapleyValues } from '../../services/api';
  * 展示 Mean |SHAP| 条形图与摘要蜂群图 (Summary Plot)
  */
 export default function ShapleyImportanceChart({
+  isLight,
   plotTextColor = '#A0AAB4',
   plotGridColor = 'rgba(255,255,255,0.05)',
   onClose,
@@ -118,8 +119,8 @@ export default function ShapleyImportanceChart({
           reversescale: true, // 红色代表高值，蓝色代表低值
           showscale: idx === 0, // 仅在第一个 trace 显示 colorbar
           colorbar: idx === 0 ? {
-            title: { text: t('predict.shapley.featureValue'), font: { size: 10, color: '#A0AAB4' } },
-            tickfont: { color: '#A0AAB4', size: 9 },
+            title: { text: t('predict.shapley.featureValue'), font: { size: 10, color: plotTextColor } },
+            tickfont: { color: plotTextColor, size: 9 },
             thickness: 12,
             x: 1.05
           } : undefined,
@@ -133,17 +134,17 @@ export default function ShapleyImportanceChart({
 
   if (loading) {
     return createPortal(
-      <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-2xl flex items-center justify-center p-10 select-none animate-in fade-in duration-500">
+      <div className={`fixed inset-0 z-[9999] ${isLight ? 'bg-white/60' : 'bg-black/85'} backdrop-blur-2xl flex items-center justify-center p-10 select-none animate-in fade-in duration-500`}>
         <div className="text-center">
           <div className="relative w-32 h-32 mx-auto mb-10">
-            <div className="absolute inset-0 border-4 border-[#00F0FF]/10 rounded-full"></div>
-            <div className="absolute inset-0 border-4 border-t-[#00F0FF] rounded-full animate-spin"></div>
-            <div className="absolute inset-6 border-2 border-dashed border-[#00F0FF]/30 rounded-full animate-reverse-spin"></div>
+            <div className={`absolute inset-0 border-4 ${isLight ? 'border-blue-500/10' : 'border-[#00F0FF]/10'} rounded-full`}></div>
+            <div className={`absolute inset-0 border-4 ${isLight ? 'border-t-blue-600' : 'border-t-[#00F0FF]'} rounded-full animate-spin`}></div>
+            <div className={`absolute inset-6 border-2 border-dashed ${isLight ? 'border-blue-500/30' : 'border-[#00F0FF]/30'} rounded-full animate-reverse-spin`}></div>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-[#00F0FF] text-xs font-black font-orbitron animate-pulse">SHAP</span>
+              <span className={`${isLight ? 'text-blue-600' : 'text-[#00F0FF]'} text-xs font-black font-orbitron animate-pulse`}>SHAP</span>
             </div>
           </div>
-          <h2 className="text-[#00F0FF] font-black text-2xl tracking-[0.4em] font-orbitron mb-4">
+          <h2 className={`${isLight ? 'text-blue-700' : 'text-[#00F0FF]'} font-black text-2xl tracking-[0.4em] font-orbitron mb-4`}>
             {t('predict.shapleyGeneratingBtn').toUpperCase()}
           </h2>
           <div className="flex flex-col gap-2">
@@ -167,7 +168,7 @@ export default function ShapleyImportanceChart({
 
   if (error) {
     return createPortal(
-      <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex items-center justify-center p-10">
+      <div className={`fixed inset-0 z-[9999] ${isLight ? 'bg-white/40' : 'bg-black/90'} backdrop-blur-md flex items-center justify-center p-10`}>
         <div className="max-w-md w-full p-8 border border-red-500/30 bg-red-500/5 rounded-2xl text-center">
           <div className="text-4xl mb-6">⚠️</div>
           <h3 className="text-red-400 font-bold text-lg mb-2">SHAP ANALYSIS INTERRUPTED</h3>
@@ -188,17 +189,19 @@ export default function ShapleyImportanceChart({
 
   const commonLayout = {
     paper_bgcolor: 'rgba(0,0,0,0)',
-    plot_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: isLight ? 'rgba(0,0,0,0.02)' : 'rgba(0,0,0,0)',
     font: { family: "'Orbitron', sans-serif", color: plotTextColor },
-    margin: { t: 40, b: 60, l: 160, r: 40 },
+    margin: { t: 40, b: 60, l: 200, r: 50 },
     xaxis: {
       gridcolor: plotGridColor,
-      zerolinecolor: 'rgba(255,255,255,0.1)',
+      zerolinecolor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
       tickfont: { size: 10 },
     },
     yaxis: {
       gridcolor: 'transparent',
       tickfont: { size: 12, fontWeight: 'bold' },
+      tickpad: 24,
+      automargin: true,
     },
     showlegend: false,
     hovermode: 'closest',
@@ -206,21 +209,21 @@ export default function ShapleyImportanceChart({
 
   const content = (
     <div
-      className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-2xl flex items-center justify-center p-4 md:p-8"
+      className={`fixed inset-0 z-[9999] ${isLight ? 'bg-white/40' : 'bg-black/80'} backdrop-blur-2xl flex items-center justify-center p-4 md:p-8`}
       onDoubleClick={onClose}
     >
       <GlowCard
-        className="w-full max-w-7xl max-h-[90vh] bg-[#0A0A0F]/90 border border-[#1E1E26] shadow-2xl cursor-default flex flex-col"
+        className={`w-full max-w-7xl max-h-[90vh] ${isLight ? 'bg-white/90 border-gray-200' : 'bg-[#0A0A0F]/90 border-[#1E1E26]'} border shadow-2xl cursor-default flex flex-col`}
         style={{ animation: 'scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
         onDoubleClick={e => e.stopPropagation()}
       >
         {/* Header - Fixed */}
-        <div className="flex-none flex flex-col md:flex-row justify-between items-start md:items-center p-6 border-b border-white/5 gap-4">
+        <div className={`flex-none flex flex-col md:flex-row justify-between items-start md:items-center p-6 border-b ${isLight ? 'border-gray-200' : 'border-white/5'} gap-4`}>
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-2 h-6 bg-[#00F0FF] shadow-[0_0_10px_#00F0FF]"></div>
-              <h1 className="text-xl font-black text-[#00F0FF] tracking-tighter font-orbitron uppercase">
-                {t('predict.shapley.title')} <span className="text-white/20 ml-2 font-normal text-sm">| {activeMode === 'gradient' ? t('predict.shapley.gradientSystem') : t('predict.shapley.marginalSystem')}</span>
+            <div className={`w-2 h-6 ${isLight ? 'bg-blue-600' : 'bg-[#00F0FF]'} shadow-[0_0_10px_${isLight ? '#2563eb' : '#00F0FF'}]`}></div>
+              <h1 className={`text-xl font-black ${isLight ? 'text-blue-800' : 'text-[#00F0FF]'} tracking-tighter font-orbitron uppercase`}>
+                {t('predict.shapley.title')} <span className={`${isLight ? 'text-black/30' : 'text-white/20'} ml-2 font-normal text-sm`}>| {activeMode === 'gradient' ? t('predict.shapley.gradientSystem') : t('predict.shapley.marginalSystem')}</span>
               </h1>
             </div>
 
@@ -250,14 +253,14 @@ export default function ShapleyImportanceChart({
 
           <div className="flex items-center gap-4">
             {activeMode === 'marginal' && (
-              <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 gap-1 mr-4">
+              <div className={`flex ${isLight ? 'bg-gray-100' : 'bg-black/40'} p-1 rounded-xl border ${isLight ? 'border-gray-200' : 'border-white/5'} gap-1 mr-4`}>
                 {['r2', 'rmse', 'mae', 'ssim'].map(m => (
                   <button
                     key={m}
                     onClick={() => setActiveMetric(m)}
                     className={`px-3 py-1.5 rounded-lg text-[10px] font-black font-orbitron transition-all ${activeMetric === m
-                      ? 'bg-[#9c7bea] text-white shadow-[0_0_10px_rgba(156,123,234,0.3)]'
-                      : 'text-white/30 hover:text-white/60 hover:bg-white/5'
+                      ? (isLight ? 'bg-purple-600 text-white shadow-md' : 'bg-[#9c7bea] text-white shadow-[0_0_10px_rgba(156,123,234,0.3)]')
+                      : (isLight ? 'text-gray-400 hover:text-gray-700 hover:bg-white' : 'text-white/30 hover:text-white/60 hover:bg-white/5')
                       }`}
                   >
                     {m.toUpperCase()}
@@ -271,7 +274,7 @@ export default function ShapleyImportanceChart({
                 else setMarginalDataCache(prev => ({ ...prev, [activeMetric]: null }));
                 fetchData();
               }}
-              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-[#00F0FF]/10 hover:border-[#00F0FF]/50 transition-all text-[#00F0FF]"
+              className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all ${isLight ? 'bg-gray-100 border-gray-200 text-blue-600 hover:bg-blue-50 hover:border-blue-400' : 'bg-white/5 border-white/10 text-[#00F0FF] hover:bg-[#00F0FF]/10 hover:border-[#00F0FF]/50'}`}
             >
               <span className="text-lg">🔄</span>
             </button>
@@ -299,11 +302,11 @@ export default function ShapleyImportanceChart({
           {/* Charts Grid */}
           <div className="charts-view-area">
             {activeMode === 'gradient' ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-black/20 rounded-xl border border-white/5 p-4">
+                <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8`}>
+                <div className={`${isLight ? 'bg-gray-50' : 'bg-black/20'} rounded-xl border ${isLight ? 'border-gray-200' : 'border-white/5'} p-4`}>
                   <div className="mb-4 flex items-center gap-2 px-2">
-                    <div className="w-1 h-3 bg-[#00F0FF]"></div>
-                    <h3 className="text-[10px] font-black tracking-widest text-[#00F0FF] uppercase">{t('predict.shapley.importanceTitle')}</h3>
+                    <div className={`w-1 h-3 ${isLight ? 'bg-blue-500' : 'bg-[#00F0FF]'}`}></div>
+                    <h3 className={`text-[10px] font-black tracking-widest ${isLight ? 'text-blue-800' : 'text-[#00F0FF]'} uppercase`}>{t('predict.shapley.importanceTitle')}</h3>
                   </div>
                   <Plot
                     data={[{
@@ -312,9 +315,9 @@ export default function ShapleyImportanceChart({
                       y: barPlotData?.y,
                       orientation: 'h',
                       marker: {
-                        color: '#00F0FF',
+                        color: isLight ? '#2563eb' : '#00F0FF',
                         opacity: 0.8,
-                        line: { color: '#00F0FF', width: 1 }
+                        line: { color: isLight ? '#1d4ed8' : '#00F0FF', width: 1 }
                       },
                       text: barPlotData?.text,
                       textposition: 'outside',
@@ -331,7 +334,7 @@ export default function ShapleyImportanceChart({
                 </div>
 
                 {/* Summary Swarm Plot */}
-                <div className="bg-black/20 rounded-xl border border-white/5 p-4">
+                <div className={`${isLight ? 'bg-gray-50' : 'bg-black/20'} rounded-xl border ${isLight ? 'border-gray-200' : 'border-white/5'} p-4`}>
                   <div className="mb-4 flex items-center gap-2 px-2">
                     <div className="w-1 h-3 bg-[#ED213A]"></div>
                     <h3 className="text-[10px] font-black tracking-widest text-[#ED213A] uppercase">{t('predict.shapley.swarmTitle')}</h3>
@@ -354,13 +357,13 @@ export default function ShapleyImportanceChart({
                 </div>
               </div>
             ) : (
-              <div className="bg-black/20 rounded-xl border border-white/5 p-6 min-h-[500px] flex flex-col">
+              <div className={`${isLight ? 'bg-gray-50' : 'bg-black/20'} rounded-xl border ${isLight ? 'border-gray-200' : 'border-white/5'} p-6 min-h-[500px] flex flex-col`}>
                 <div className="mb-6 flex justify-between items-center px-2">
                   <div className="flex items-center gap-2">
                     <div className="w-1 h-3 bg-[#9c7bea]"></div>
                     <h3 className="text-[10px] font-black tracking-widest text-[#9c7bea] uppercase">{t('predict.shapley.marginalAnalysisTitle')}</h3>
                   </div>
-                  <div className="text-[10px] font-mono text-white/30 tracking-widest uppercase">METRIC: GLOBAL {activeMetric}</div>
+                  <div className="text-[10px] font-mono text-gray-400 tracking-widest uppercase">METRIC: GLOBAL {activeMetric}</div>
                 </div>
 
                 <div className="flex-1">
@@ -379,7 +382,8 @@ export default function ShapleyImportanceChart({
                         line: { color: '#9c7bea', width: 0 }
                       },
                       text: marginalPlotData?.text,
-                      textposition: 'outside',
+                      textposition: marginalPlotData?.x?.map(v => v < 0 ? 'inside' : 'outside'),
+                      insidetextanchor: 'end',
                       cliponaxis: false,
                     }]}
                     layout={{
@@ -388,28 +392,28 @@ export default function ShapleyImportanceChart({
                       xaxis: {
                         ...commonLayout.xaxis,
                         title: {
-                          text: t('predict.shapley.avgContribution').replace('{metric}', activeMetric.toUpperCase()),
-                          font: { size: 10, color: '#ffffff' }
+                          text: t('predict.shapley.avgContribution', { metric: activeMetric.toUpperCase() }),
+                          font: { size: 10, color: plotTextColor }
                         }
                       },
-                      margin: { ...commonLayout.margin, l: 200 }
+                      margin: { ...commonLayout.margin, l: 240 }
                     }}
                     config={{ displayModeBar: false, responsive: true }}
                     style={{ width: '100%', height: '100%' }}
                   />
                 </div>
 
-                <div className="mt-8 p-6 bg-white/5 rounded-2xl border border-white/5">
+                <div className={`mt-8 p-6 ${isLight ? 'bg-gray-200/50' : 'bg-white/5'} rounded-2xl border ${isLight ? 'border-gray-300' : 'border-white/5'}`}>
                   <h4 className="flex items-center gap-2 text-[#9c7bea] font-black text-xs uppercase mb-3 font-orbitron">
                     <span className="w-1.5 h-1.5 bg-[#9c7bea] rounded-full shadow-[0_0_5px_#9c7bea]"></span>
                     {t('predict.shapley.mathPrinciple')}
                   </h4>
-                  <p className="text-white/40 text-[11px] leading-relaxed font-mono">
-                    {t('predict.shapley.mathDesc').replace('{metric}', activeMetric.toUpperCase())}
+                  <p className={`text-${isLight ? 'gray-600' : 'white/40'} text-[11px] leading-relaxed font-mono`}>
+                    {t('predict.shapley.mathDesc', { metric: activeMetric.toUpperCase() })}
                     <span className="text-[#9c7bea]/80 ml-2">
                       {(activeMetric === 'r2' || activeMetric === 'ssim')
-                        ? t('predict.shapley.mathDescNote.higher').replace('{metric}', activeMetric.toUpperCase())
-                        : t('predict.shapley.mathDescNote.lower').replace('{metric}', activeMetric.toUpperCase())
+                        ? t('predict.shapley.mathDescNote.higher', { metric: activeMetric.toUpperCase() })
+                        : t('predict.shapley.mathDescNote.lower', { metric: activeMetric.toUpperCase() })
                       }
                     </span>
                   </p>
@@ -420,7 +424,7 @@ export default function ShapleyImportanceChart({
         </div>
 
         {/* Footer Info - Fixed */}
-        <div className="flex-none px-8 pb-8 pt-2 flex flex-col md:flex-row justify-between text-[9px] font-mono text-gray-600 gap-4 uppercase tracking-tighter">
+        <div className={`flex-none px-8 pb-8 pt-2 flex flex-col md:flex-row justify-between text-[9px] font-mono ${isLight ? 'text-gray-500' : 'text-gray-600'} gap-4 uppercase tracking-tighter`}>
           <div className="flex gap-6">
             <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> {t('predict.shapley.lowValue')}</span>
             <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> {t('predict.shapley.highValue')}</span>

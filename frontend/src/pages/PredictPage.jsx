@@ -183,6 +183,13 @@ export default function PredictPage() {
 
   const stepLabel = (ls) => ls != null ? ` · Ls=${ls.toFixed(3)}°` : '';
 
+  // 提取当前测边栏所选变量对应的性能指标
+  const currentSelectionShorthand = getShorthands(selectedVars);
+  const currentSelectionMetrics = performanceData?.results?.[currentSelectionShorthand] 
+    || performanceData?.results?.current 
+    || performanceData?.results?.baseline 
+    || null;
+
   return (
     <div className="page-enter" style={{ padding: '100px 40px 60px', maxWidth: 1400, margin: '0 auto' }}>
       <SectionTitle title={t('predict.title')} subtitle={t('predict.subtitle')} />
@@ -207,7 +214,12 @@ export default function PredictPage() {
           setSelectedCompareIds={setSelectedCompareIds}
           setCompareConfigs={setCompareConfigs}
           onShapleyClick={(mode) => setShowShapley({ visible: true, mode })}
+          currentMetrics={currentSelectionMetrics}
+          perfLoading={perfLoading}
+          handleFetchPerformance={handleFetchPerformance}
+          precision={precision}
         />
+
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <PredictDisplay
@@ -302,6 +314,7 @@ export default function PredictPage() {
 
       {showShapley.visible && (
         <ShapleyImportanceChart
+          isLight={isLight}
           plotTextColor={plotTextColor}
           plotGridColor={plotGridColor}
           onClose={() => setShowShapley({ visible: false, mode: 'gradient' })}
