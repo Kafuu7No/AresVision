@@ -55,7 +55,7 @@ export default function PredictDisplay({
               borderRadius: 8, fontSize: 12, fontWeight: 600,
               color: activeHorizon === i ? C.blue : C.ice30, cursor: 'pointer',
             }}>
-              Step {i + 1}{results.ls_values?.[i] != null ? ` (Ls=${results.ls_values[i].toFixed(3)}°)` : ''}
+              {t('predict.display.stepLabelFunc', { step: i + 1 })}{results.ls_values?.[i] != null ? ` (Ls=${results.ls_values[i].toFixed(3)}°)` : ''}
             </button>
           ))}
         </div>
@@ -98,7 +98,7 @@ export default function PredictDisplay({
                       onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.15)' }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.06)' }}
                     >
-                      🌐 3D GLOBE VIEW
+                      {t('predict.display.view3d')}
                     </button>
                   </div>
                 ) : (
@@ -147,7 +147,7 @@ export default function PredictDisplay({
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.15)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.06)' }}
                 >
-                  🌐 VIEW IN 3D GLOBE
+                  {t('predict.display.viewFullscreen')}
                 </button>
               </div>
             ) : (

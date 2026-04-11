@@ -172,7 +172,7 @@ class PredRNNv2(nn.Module):
             preds.append(self.conv_last(h[-1]))
         return torch.stack(preds, dim=1)
 
-model = PredRNNv2(input_dim=C_feat, hidden_dims=hidden_dims, height=ST_H, width=ST_W).to(device)
+model = PredRNNv2(input_dim=C_feat, hidden_dims=hidden_dims, height=ST_H, width=ST_W, horizon=horizon).to(device)
 opt = torch.optim.Adam(model.parameters(), lr=learning_rate)
 criterion = nn.SmoothL1Loss()
 

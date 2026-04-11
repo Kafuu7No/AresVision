@@ -46,9 +46,9 @@ export default function PredictPage() {
   const TRIPTYCH_PANELS = TRIPTYCH_PANEL_DEFS.map(p => ({ ...p, title: t(`predict.panels.${p.key}`) }));
 
   // Style Tokens (for plots)
-  const plotTextColor = isLight ? '#000000' : '#ffffff';
-  const plotText60 = isLight ? '#000000' : '#ffffff';
-  const plotGridColor = isLight ? '#000000' : '#ffffff';
+  const plotTextColor = isLight ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.9)';
+  const plotText60 = isLight ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)';
+  const plotGridColor = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
 
   // --- State（从缓存恢复，切换页面后保留预测结果）---
   const _c = getPredictCache();
@@ -142,7 +142,7 @@ export default function PredictPage() {
       if (selectedCompareIds.length > 0) {
         // 模式 1: 通选模式（只要勾选了任何对比项，就不显示 "current"）
         const configs = compareConfigs
-          .filter(c => selectedCompareIds.includes(c.id) && !c.isEnsemble)
+          .filter(c => selectedCompareIds.includes(c.id))
           .map(c => c.vars);
 
         let res = { results: {} };
@@ -150,13 +150,6 @@ export default function PredictPage() {
           res = await fetchPerformanceComparison(configs);
           console.log('fetchPerformanceComparison RAW:', res);
         }
-
-        // 注入本地计算的 Ensemble 数据
-        compareConfigs.forEach(c => {
-          if (c.isEnsemble && selectedCompareIds.includes(c.id)) {
-            res.results[c.id] = c.data;
-          }
-        });
 
         setPerformanceData(res);
       } else {
@@ -179,127 +172,7 @@ export default function PredictPage() {
     }
   }, [selectedVars, predStep, lsStart, marsYear, selectedCompareIds, compareConfigs]);
 
-  const handleFuseModels = useCallback(async () => {
-    console.log('Fusion triggered. selectedCompareIds:', selectedCompareIds);
-    if (selectedCompareIds.length < 2) return;
 
-    let currentPerfData = performanceData;
-
-    // 1. 检查是否有缺失的数据 (排除 Ensemble 项)
-    const missingConfigs = compareConfigs.filter(c => {
-      if (!selectedCompareIds.includes(c.id) || c.isEnsemble) return false;
-      const sh = getShorthands(c.vars);
-      return !(currentPerfData?.results?.[c.id] || currentPerfData?.results?.[sh]);
-    });
-
-    if (missingConfigs.length > 0) {
-      console.log(`Fetching ${missingConfigs.length} missing performance configs...`);
-      setPerfLoading(true);
-      try {
-        const configsToFetch = missingConfigs.map(c => c.vars);
-        const res = await fetchPerformanceComparison(configsToFetch);
-        console.log('fetchPerformanceComparison (Fusion) RAW:', res);
-
-        // 关键：更新局部引用，供后续计算直接使用
-        const newResults = { ...(currentPerfData?.results || {}), ...res.results };
-        currentPerfData = { ...currentPerfData, results: newResults };
-
-        // 同步更新全局状态
-        setPerformanceData(currentPerfData);
-      } catch (e) {
-        console.error('Failed to fetch missing data for fusion:', e);
-        return;
-      } finally {
-        setPerfLoading(false);
-      }
-    }
-
-    // 2. 辅助函数：根据 ID 或变量缩写查找 perf 数据
-    const findPerfById = (id, data) => {
-      if (!data?.results) return null;
-      if (data.results[id]) return data.results[id];
-      const config = compareConfigs.find(c => c.id === id);
-      if (config && !config.isEnsemble) {
-        const sh = getShorthands(config.vars);
-        return data.results[sh] || null;
-      }
-      return null;
-    };
-
-    // 3. 筛选出选中的模型数据
-    const selectedPerfs = selectedCompareIds
-      .map(id => ({ id, data: findPerfById(id, currentPerfData) }))
-      .filter(item => item.data != null);
-
-    console.log(`Found ${selectedPerfs.length} valid performance sets for fusion`);
-
-    if (selectedPerfs.length < 2) return;
-
-    // 4. 获取对应的 Label
-    const selectedLabels = compareConfigs
-      .filter(c => selectedCompareIds.includes(c.id))
-      .map(c => c.label);
-
-    // 5. 简单算术平均融合
-    const firstPerf = selectedPerfs[0]?.data;
-    if (!firstPerf || !firstPerf.items) {
-      console.error('No valid items found in the first selected performance set');
-      return;
-    }
-    const itemCount = firstPerf.items.length;
-    const fusedItems = [];
-
-    for (let i = 0; i < itemCount; i++) {
-      const base = firstPerf.items[i];
-      const fusedPoint = { my: base.my, ls: base.ls };
-
-      ['r2', 'rmse', 'mae', 'ssim'].forEach(metric => {
-        let sum = 0, validCount = 0;
-        selectedPerfs.forEach(p => {
-          const val = p.data.items[i] ? p.data.items[i][metric] : null;
-          if (val != null) { sum += val; validCount++; }
-        });
-        fusedPoint[metric] = validCount > 0 ? sum / validCount : 0;
-      });
-      fusedItems.push(fusedPoint);
-    }
-
-    const fuseId = `ensemble_${Date.now()}`;
-    const fuseLabel = `Ens: ${selectedLabels.join('+')}`;
-
-    // 6. 计算全局指标均值
-    const globalMetrics = {};
-    ['global_r2', 'global_rmse', 'global_mae', 'global_ssim'].forEach(gm => {
-      let sum = 0, validCount = 0;
-      selectedPerfs.forEach(p => {
-        const val = p.data[gm];
-        if (val != null) { sum += val; validCount++; }
-      });
-      globalMetrics[gm] = validCount > 0 ? sum / validCount : 0;
-    });
-
-    const newEnsembleConfig = {
-      id: fuseId,
-      label: fuseLabel,
-      vars: [],
-      isEnsemble: true,
-      data: { items: fusedItems, ...globalMetrics }
-    };
-
-    console.log('New Ensemble created:', fuseLabel);
-
-    // 批量同步更新所有相关状态，确保图表在单次重渲染中获取完整数据
-    setCompareConfigs(prev => [...prev, newEnsembleConfig]);
-    setSelectedCompareIds(prev => [...prev, fuseId]);
-    setActiveCompareId(fuseId);
-    setPerformanceData(prev => ({
-      ...(prev || { results: {} }),
-      results: {
-        ...(prev?.results || {}),
-        [fuseId]: newEnsembleConfig.data
-      }
-    }));
-  }, [performanceData, selectedCompareIds, compareConfigs]);
 
   // --- Derived ---
   const step = results ? Math.min(activeHorizon, (results.horizon || 1) - 1) : 0;
@@ -310,12 +183,20 @@ export default function PredictPage() {
 
   const stepLabel = (ls) => ls != null ? ` · Ls=${ls.toFixed(3)}°` : '';
 
+  // 提取当前测边栏所选变量对应的性能指标
+  const currentSelectionShorthand = getShorthands(selectedVars);
+  const currentSelectionMetrics = performanceData?.results?.[currentSelectionShorthand] 
+    || performanceData?.results?.current 
+    || performanceData?.results?.baseline 
+    || null;
+
   return (
     <div className="page-enter" style={{ padding: '100px 40px 60px', maxWidth: 1400, margin: '0 auto' }}>
       <SectionTitle title={t('predict.title')} subtitle={t('predict.subtitle')} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 24 }}>
         <PredictSidebar
+          isLight={isLight}
           loading={loading}
           error={error}
           marsYear={marsYear}
@@ -332,10 +213,13 @@ export default function PredictPage() {
           selectedCompareIds={selectedCompareIds}
           setSelectedCompareIds={setSelectedCompareIds}
           setCompareConfigs={setCompareConfigs}
-          handleFuseModels={handleFuseModels}
           onShapleyClick={(mode) => setShowShapley({ visible: true, mode })}
-
+          currentMetrics={currentSelectionMetrics}
+          perfLoading={perfLoading}
+          handleFetchPerformance={handleFetchPerformance}
+          precision={precision}
         />
+
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <PredictDisplay
@@ -358,18 +242,17 @@ export default function PredictPage() {
           <PredictMetrics
             loading={loading}
             metrics={metrics}
-            results={results}
             precision={precision}
             ozoneUnit={ozoneUnit}
-            activeHorizon={activeHorizon}
-            setActiveHorizon={setActiveHorizon}
-            lsStart={lsStart}
-            marsYear={marsYear}
           />
 
           <ErrorDistributionChart
             data={errorDistData}
             loading={loading}
+            isLight={isLight}
+            plotTextColor={plotTextColor}
+            plotText60={plotText60}
+            plotGridColor={plotGridColor}
           />
 
           <PermutationImportanceChart
@@ -381,6 +264,7 @@ export default function PredictPage() {
           />
 
           <PredictBarChart
+            isLight={isLight}
             performanceData={performanceData}
             compareConfigs={compareConfigs}
             selectedCompareIds={selectedCompareIds}
@@ -397,6 +281,7 @@ export default function PredictPage() {
           />
 
           <PredictPerformance
+            isLight={isLight}
             performanceData={performanceData}
             perfLoading={perfLoading}
             activePerfMetric={activePerfMetric}
@@ -429,6 +314,7 @@ export default function PredictPage() {
 
       {showShapley.visible && (
         <ShapleyImportanceChart
+          isLight={isLight}
           plotTextColor={plotTextColor}
           plotGridColor={plotGridColor}
           onClose={() => setShowShapley({ visible: false, mode: 'gradient' })}

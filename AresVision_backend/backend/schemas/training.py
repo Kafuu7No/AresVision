@@ -18,6 +18,12 @@ class TrainingTaskResponse(BaseModel):
     output_model_path: Optional[str]
     custom_model_name: Optional[str]
     metrics: Optional[str]
+    progress: float
+    current_epoch: int
+    total_epochs: int
+    current_loss: Optional[float]
+    eta: Optional[str]
+    loss_history: Optional[str]
 
     class Config:
         from_attributes = True

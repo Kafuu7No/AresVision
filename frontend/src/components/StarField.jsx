@@ -66,7 +66,8 @@ export default function StarField() {
       inset: 0, 
       zIndex: 0, 
       pointerEvents: 'none',
-      filter: isLight ? 'invert(1) hue-rotate(180deg)' : 'none'
+      opacity: isLight ? 0 : 1,
+      transition: 'opacity 0.3s ease',
     }}>
 
       {/* 星云：左上角极淡紫蓝晕 */}

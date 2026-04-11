@@ -23,6 +23,14 @@
   --card-shadow:      none;
   --nav-shadow:       none;
   --obs-ring:         none;
+  /* HUD Variables (Dark Mode Defaults) */
+  --hud-overlay:      rgba(2, 2, 5, 0.95);
+  --hud-bg:           rgba(10, 10, 15, 0.90);
+  --hud-panel:        rgba(10, 10, 15, 0.60);
+  --hud-border:       rgba(255, 255, 255, 0.10);
+  --hud-text:         #ffffff;
+  --hud-accent:       #00f0ff;
+  --hud-stat-bg:      rgba(255, 255, 255, 0.05);
 }
 
 [data-theme="light"] {
@@ -41,6 +49,14 @@
   --card-shadow:      0 1px 4px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.10);
   --nav-shadow:       0 1px 0 rgba(0,0,0,0.10), 0 2px 12px rgba(0,0,0,0.08);
   --obs-ring:         0 0 0 2px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.15);
+  /* HUD Variables (Light Mode) */
+  --hud-overlay:      rgba(240, 242, 245, 0.95);
+  --hud-bg:           rgba(255, 255, 255, 0.90);
+  --hud-panel:        rgba(245, 246, 248, 0.70);
+  --hud-border:       rgba(0, 0, 0, 0.10);
+  --hud-text:         #1e293b;
+  --hud-accent:       #0284c7;
+  --hud-stat-bg:      rgba(0, 0, 0, 0.04);
 }
 
 * {

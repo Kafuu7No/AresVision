@@ -56,57 +56,73 @@ export default function PredictFullscreenHUD({
   const minOzone = convertOzone(fullscreen3D.fieldData.minVal, ozoneUnit);
   const maxOzone = convertOzone(fullscreen3D.fieldData.maxVal, ozoneUnit);
 
+  const isLight = settings.theme === 'light';
   const chartTheme = {
     paper_bgcolor: 'transparent',
     plot_bgcolor: 'transparent',
-    font: { family: "'Exo 2', sans-serif", color: '#ffffff', size: 9 },
+    font: { 
+      family: "'Exo 2', sans-serif", 
+      color: isLight ? '#1e293b' : '#ffffff', 
+      size: 9 
+    },
     margin: { t: 5, r: 10, l: 30, b: 20 },
   };
 
   const content = (
     <div
-      className="fixed inset-0 z-[9999] bg-[#020205]/95 flex items-center justify-center p-1 md:p-4 overflow-hidden"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-1 md:p-4 overflow-hidden"
+      style={{ backgroundColor: 'var(--hud-overlay)' }}
       onDoubleClick={() => setFullscreen3D(null)}
     >
       {/* Background Ambience Layer */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,240,255,0.05)_0%,transparent_70%)] pointer-events-none" />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: isLight ? 'none' : 'radial-gradient(circle_at_50%_50%,rgba(0,240,255,0.05)_0%,transparent_70%)' }} />
       
       <GlowCard
-        className="relative w-full max-w-[1800px] h-[96vh] bg-[#0A0A0F]/90 border border-white/5 shadow-[0_0_100px_rgba(0,0,0,0.8)] cursor-default flex flex-col overflow-hidden"
-        style={{ animation: 'scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1)', borderRadius: '32px' }}
+        className="relative w-full max-w-[1800px] h-[96vh] border shadow-[0_0_100px_rgba(0,0,0,0.4)] cursor-default flex flex-col overflow-hidden"
+        style={{ 
+          animation: 'scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1)', 
+          borderRadius: '32px',
+          backgroundColor: 'var(--hud-bg)',
+          borderColor: 'var(--hud-border)'
+        }}
         onDoubleClick={e => e.stopPropagation()}
       >
         {/* Scanline Global Effect */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20 Mix-blend-overlay">
-          <div className="w-full h-[2px] bg-white/20 absolute top-[-10px] animate-scanline" />
+        <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-10 Mix-blend-overlay">
+          <div className="w-full h-[1px] bg-white/40 absolute top-[-10px] animate-scanline" />
         </div>
 
         {/* Global Header */}
-        <div className="flex-none flex justify-between items-center px-10 py-6 border-b border-white/5 relative bg-gradient-to-r from-black/40 to-transparent">
+        <div className="flex-none flex justify-between items-center px-10 py-6 border-b relative" style={{ borderColor: 'var(--hud-border)', background: isLight ? 'rgba(0,0,0,0.02)' : 'linear-gradient(to right, rgba(0,0,0,0.4), transparent)' }}>
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-4">
-              <div className="w-2.5 h-10 bg-[#00F0FF] shadow-[0_0_25px_#00F0FF] rounded-full animate-pulse-glow"></div>
-              <h1 className="text-3xl font-black text-white tracking-widest font-orbitron uppercase flex items-center">
-                GLOBAL FIELD HUD
-                <span className="ml-5 text-[10px] bg-[#00F0FF]/10 text-[#00F0FF] border border-[#00F0FF]/30 px-3 py-1 rounded-full tracking-widest font-sans animate-flicker">
-                   LS {stepLs?.toFixed(1)}° · {titleText}
-                </span>
+              <div 
+                className="w-2.5 h-10 shadow-[0_0_25px_var(--hud-accent)] rounded-full animate-pulse-glow"
+                style={{ backgroundColor: 'var(--hud-accent)' }}
+              ></div>
+              <h1 className="text-3xl font-black tracking-tighter font-orbitron" style={{ color: 'var(--hud-accent)' }}>
+                {t('predict.hud.title')}
               </h1>
+              <div className="px-4 py-1.5 rounded-full border text-[10px] font-bold font-mono tracking-widest uppercase transition-all duration-500" 
+                   style={{ backgroundColor: 'var(--hud-overlay)', borderColor: 'var(--hud-accent)', color: 'var(--hud-accent)', boxShadow: '0 0 15px var(--hud-accent-glow)' }}>
+                {t('predict.tableHeaders.lsShort')} {stepLs?.toFixed(1)}° · {titleText}
+              </div>
             </div>
-            <div className="flex items-center gap-2 pl-6 ml-1 mt-1">
-              <span className="w-2 h-2 rounded-full bg-[#00F0FF] animate-pulse"></span>
-              <span className="text-[9px] font-mono text-[#00F0FF]/60 uppercase tracking-widest">
-                SYSTEM STATUS: NOMINAL | ANALYZING MARTIAN SPATIOTEMPORAL DISTRIBUTION...
-              </span>
+            <div className="flex items-center gap-2 mt-2">
+              <div className="w-2 h-2 rounded-full animate-pulse shadow-[0_0_8px_var(--hud-accent)]" style={{ backgroundColor: 'var(--hud-accent)' }}></div>
+              <p className="text-[10px] font-mono tracking-[0.2em] uppercase opacity-40" style={{ color: 'var(--hud-text)' }}>
+                {t('predict.hud.statusNominal')}
+              </p>
             </div>
           </div>
 
           <button
             onClick={() => setFullscreen3D(null)}
-            className="group relative w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-red-500/20 hover:border-red-500/40 transition-all duration-300"
+            className="group relative w-14 h-14 rounded-2xl border flex items-center justify-center hover:bg-red-500/20 hover:border-red-500/40 transition-all duration-300"
+            style={{ backgroundColor: 'var(--hud-stat-bg)', borderColor: 'var(--hud-border)' }}
           >
-            <span className="text-2xl text-white group-hover:scale-110 transition-transform">✕</span>
-            <div className="absolute inset-[-4px] border border-white/0 group-hover:border-white/10 rounded-[20px] transition-all" />
+            <span className="text-2xl group-hover:scale-110 transition-transform" style={{ color: 'var(--hud-text)' }}>✕</span>
+            <div className="absolute inset-[-4px] border border-transparent group-hover:border-white/10 rounded-[20px] transition-all" />
           </button>
         </div>
 
@@ -114,31 +130,33 @@ export default function PredictFullscreenHUD({
         <div className="flex-1 flex flex-row overflow-hidden relative">
           
           {/* LEFT SIDEBAR: Telemetry & Core Stats */}
-          <div className="w-[400px] flex-shrink-0 relative border-r border-white/10 flex flex-col p-10 overflow-hidden backdrop-blur-2xl bg-[#0A0A0F]/60 animate-slide-in-left">
+          <div className="w-[400px] flex-shrink-0 relative border-r flex flex-col p-10 overflow-hidden backdrop-blur-2xl animate-slide-in-left" style={{ borderColor: 'var(--hud-border)', backgroundColor: 'var(--hud-panel)' }}>
             {/* Sidebar scanline decoration */}
-            <div className="absolute right-0 top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-[#00F0FF]/30 to-transparent" />
+            <div className="absolute right-0 top-0 bottom-0 w-[1px]" style={{ background: `linear-gradient(to b, transparent, ${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(0,240,255,0.3)'}, transparent)` }} />
 
             <div className="flex-1 flex flex-col gap-14 overflow-y-auto pr-2 scrollbar-none">
               
               {/* Statistics Section */}
               <div className="relative group">
                 <div className="flex items-center gap-3 mb-8">
-                  <div className="w-1.5 h-5 bg-[#00F0FF] shadow-[0_0_10px_#00F0FF]"></div>
-                  <h3 className="text-sm font-black tracking-[0.2em] text-white/90 uppercase font-orbitron">TELEMETRY</h3>
+                  <div className="w-1.5 h-6 shadow-[0_0_10px_var(--hud-accent)]" style={{ backgroundColor: 'var(--hud-accent)' }}></div>
+                  <h2 className="text-sm font-black tracking-[0.3em] font-orbitron italic" style={{ color: 'var(--hud-text)', opacity: 0.9 }}>
+                    {t('predict.hud.telemetry')}
+                  </h2>
                 </div>
                 
                 <div className="grid grid-cols-1 gap-5">
                   {[
-                    { label: 'MAX VALUE', value: maxValStr, color: '#FF6B35' },
-                    { label: 'MIN VALUE', value: minValStr, color: '#4ACFAC' },
-                    { label: 'DATA RANGE', value: rangeStr, color: '#FFFFFF', opacity: '0.4' },
+                    { label: t('predict.hud.maxValue'), value: maxValStr, color: '#FF6B35' },
+                    { label: t('predict.hud.minValue'), value: minValStr, color: isLight ? '#059669' : '#4ACFAC' },
+                    { label: t('predict.hud.dataRange'), value: rangeStr, color: isLight ? '#64748b' : '#FFFFFF', opacity: isLight ? '1' : '0.4' },
                   ].map((stat, idx) => (
-                    <div key={idx} className="relative p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-white/20 transition-all group/stat">
+                    <div key={idx} className="relative p-6 rounded-2xl border hover:border-white/20 transition-all group/stat" style={{ backgroundColor: 'var(--hud-stat-bg)', borderColor: 'var(--hud-border)' }}>
                       <div className="absolute top-0 left-0 w-1 h-full rounded-l-2xl" style={{ backgroundColor: stat.color, opacity: stat.opacity || 1 }} />
-                      <div className="text-[10px] text-white/40 tracking-widest font-orbitron mb-2 uppercase">{stat.label}</div>
+                      <div className="text-[10px] tracking-widest font-orbitron mb-2 uppercase" style={{ color: 'var(--hud-text)', opacity: 0.4 }}>{stat.label}</div>
                       <div className="text-2xl font-black font-orbitron tabular-nums" style={{ color: stat.color, opacity: stat.opacity || 1 }}>
                         {stat.value}
-                        <span className="text-[10px] ml-2 opacity-40 font-normal">{ozoneLabel(ozoneUnit)}</span>
+                        <span className="text-[10px] ml-2 opacity-40 font-normal">{colorTitle}</span>
                       </div>
                     </div>
                   ))}
@@ -146,10 +164,12 @@ export default function PredictFullscreenHUD({
               </div>
 
               {/* Data Scale (Visual Slider) */}
-              <div className="p-8 rounded-3xl bg-gradient-to-br from-[#9c7bea]/10 to-transparent border border-[#9c7bea]/20 shadow-[inset_0_0_30px_rgba(156,123,234,0.05)]">
+              <div className="p-8 rounded-3xl border shadow-[inset_0_0_30px_rgba(156,123,234,0.05)]" style={{ background: isLight ? 'rgba(156,123,234,0.05)' : 'linear-gradient(to br, rgba(156,123,234,0.1), transparent)', borderColor: 'rgba(156,123,234,0.2)' }}>
                 <div className="flex items-center gap-3 mb-8">
                   <div className="w-1.5 h-5 bg-[#9c7bea] shadow-[0_0_10px_#9C7BEA]"></div>
-                  <h3 className="text-xs font-black tracking-widest text-white/80 uppercase font-orbitron">DATA SCALE</h3>
+                  <h3 className="text-xs font-black tracking-widest uppercase font-orbitron" style={{ color: 'var(--hud-text)', opacity: 0.8 }}>
+                    {t('predict.hud.dataScale')}
+                  </h3>
                 </div>
                 <div className="flex flex-col gap-5">
                   <div
@@ -160,58 +180,59 @@ export default function PredictFullscreenHUD({
                         : 'linear-gradient(to right, rgb(0,0,4), rgb(212,72,66), rgb(252,255,164))',
                     }}
                   >
-                    <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,s0.1)_50%,transparent_100%)] animate-shimmer" />
+                    <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.1)_50%,transparent_100%)] animate-shimmer" />
                     {fullscreen3D.colorMode === 'rdbu' && (
                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1px] h-full bg-black/40 z-10" />
                     )}
                   </div>
-                  <div className="flex justify-between items-center px-1 font-orbitron">
-                    <div className="flex flex-col">
-                      <span className="text-[8px] text-white/30 uppercase tracking-tighter mb-1">LOW</span>
-                      <span className="text-[10px] text-white/70 tracking-tighter">{botLabel}</span>
-                    </div>
-                    <span className="text-[10px] text-[#9c7bea] font-bold tracking-widest">{colorTitle}</span>
-                    <div className="flex flex-col items-end">
-                      <span className="text-[8px] text-white/30 uppercase tracking-tighter mb-1">HIGH</span>
-                      <span className="text-[10px] text-white/70 tracking-tighter">{topLabel}</span>
-                    </div>
+                  <div className="flex justify-between text-[8px] font-black tracking-widest mt-3 uppercase" style={{ color: 'var(--hud-text)', opacity: 0.4 }}>
+                    <span>{t('predict.hud.low')}</span>
+                    <span className="font-mono" style={{ color: 'var(--hud-accent)' }}>{ozoneLabel(ozoneUnit)}</span>
+                    <span>{t('predict.hud.high')}</span>
                   </div>
                 </div>
               </div>
 
             </div>
             
-            <div className="mt-8 opacity-20 font-mono text-[8px] uppercase tracking-tighter text-white">
-              CORE_OS [v6.1.25] · STATUS: MONITORING
+            {/* Sidebar Bottom Marker */}
+            <div className="mt-8 flex items-center gap-2 opacity-20 hover:opacity-40 transition-opacity">
+               <div className="w-1 h-1 rounded-full bg-white/40"></div>
+               <div className="text-[7px] font-mono tracking-[0.4em] uppercase" style={{ color: 'var(--hud-text)' }}>
+                 ARES_VISION_OS // {t('predict.hud.coreOsLabel')} V6
+               </div>
             </div>
           </div>
 
           {/* CENTRE: Expanded & Cinematic 3D Global Space */}
-          <div className="flex-1 min-w-0 bg-[#020205] relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.8)_100%)] pointer-events-none z-10" />
+          <div className="flex-1 min-w-0 relative overflow-hidden" style={{ backgroundColor: isLight ? '#f8fafc' : '#020205' }}>
+            <div className="absolute inset-0 pointer-events-none z-10" style={{ background: isLight ? 'none' : 'radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.8)_100%)' }} />
             <SphericalFieldCanvas
               fieldData={fullscreen3D.fieldData}
               colorMode={fullscreen3D.colorMode}
               h="100%"
               zoom={3.3}
+              showMars={false}
             />
             {/* HUD Vignette / Lens Depth Effect */}
-            <div className="absolute inset-0 pointer-events-none z-20 shadow-[inset_0_0_200px_rgba(0,0,0,1)] opacity-80" />
+            <div className="absolute inset-0 pointer-events-none z-20 shadow-[inset_0_0_200px_rgba(0,0,0,0.5)] opacity-40" />
           </div>
 
           {/* RIGHT SIDEBAR: Advanced Analytics */}
-          <div className="w-[400px] flex-shrink-0 relative border-l border-white/10 flex flex-col p-10 overflow-hidden backdrop-blur-2xl bg-[#0A0A0F]/60 animate-slide-in-right">
+          <div className="w-[400px] flex-shrink-0 relative border-l flex flex-col p-10 overflow-hidden backdrop-blur-2xl animate-slide-in-right" style={{ borderColor: 'var(--hud-border)', backgroundColor: 'var(--hud-panel)' }}>
             {/* Sidebar border glow */}
-            <div className="absolute left-0 top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-[#FF6B35]/30 to-transparent" />
+            <div className="absolute left-0 top-0 bottom-0 w-[1px]" style={{ background: `linear-gradient(to b, transparent, ${isLight ? 'rgba(255,107,53,0.1)' : 'rgba(255,107,53,0.3)'}, transparent)` }} />
 
             <div className="flex-1 flex flex-col gap-12 overflow-y-auto pr-2 scrollbar-none">
               {/* Planetary Scan Section */}
               <div className="relative">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-1.5 h-4 bg-[#00F0FF] shadow-[0_0_10px_#00F0FF]"></div>
-                  <h3 className="text-xs font-black tracking-widest text-white/90 uppercase font-orbitron">PLANETARY SCAN [2D]</h3>
+                  <div className="w-1.5 h-4 shadow-[0_0_10px_var(--hud-accent)]" style={{ backgroundColor: 'var(--hud-accent)' }}></div>
+                  <h3 className="text-xs font-black tracking-widest uppercase font-orbitron" style={{ color: 'var(--hud-text)', opacity: 0.9 }}>
+                    {t('predict.hud.planetaryScan')}
+                  </h3>
                 </div>
-                <div className="h-48 rounded-2xl bg-black/40 border border-white/10 overflow-hidden relative group/chart">
+                <div className="h-48 rounded-2xl border overflow-hidden relative group/chart" style={{ backgroundColor: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(0,0,0,0.4)', borderColor: 'var(--hud-border)' }}>
                   <Plot
                     data={[{
                       z: heatmapZ,
@@ -237,8 +258,8 @@ export default function PredictFullscreenHUD({
                   />
                   <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-[#00F0FF]/5 to-transparent opacity-40" />
                 </div>
-                <div className="mt-3 text-[8px] font-mono text-white/20 uppercase tracking-tighter text-right">
-                   Grid Projection: Equirectangular · Resolution: 5.0°
+                <div className="mt-3 text-[8px] font-mono uppercase tracking-tighter text-right" style={{ color: 'var(--hud-text)', opacity: 0.2 }}>
+                   {t('predict.hud.gridProjection')}
                 </div>
               </div>
 
@@ -246,9 +267,11 @@ export default function PredictFullscreenHUD({
               <div>
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-1.5 h-4 bg-[#FF6B35] shadow-[0_0_10px_#FF6B35]"></div>
-                  <h3 className="text-xs font-black tracking-widest text-white/90 uppercase font-orbitron">LATITUDINAL PROFILE</h3>
+                  <h3 className="text-xs font-black tracking-widest uppercase font-orbitron" style={{ color: 'var(--hud-text)', opacity: 0.9 }}>
+                    {t('predict.hud.latitudinalProfile')}
+                  </h3>
                 </div>
-                <div className="h-56 rounded-2xl bg-black/40 border border-white/10 overflow-hidden relative group/chart">
+                <div className="h-56 rounded-2xl border overflow-hidden relative group/chart" style={{ backgroundColor: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(0,0,0,0.4)', borderColor: 'var(--hud-border)' }}>
                   <Plot
                     data={[{
                       x: latProfile,
@@ -274,14 +297,18 @@ export default function PredictFullscreenHUD({
                      <div className="w-full h-full bg-[radial-gradient(ellipse_at_center,rgba(0,240,255,0.2)_0%,transparent_80%)]" />
                   </div>
                 </div>
-                <div className="mt-3 text-[8px] font-mono text-white/20 uppercase tracking-tighter text-right">
-                   Sampling: Zonal Mean · Domain: [-90, 90]
+                <div className="mt-3 text-[8px] font-mono uppercase tracking-tighter text-right" style={{ color: 'var(--hud-text)', opacity: 0.2 }}>
+                   {t('predict.hud.samplingZonal')}
                 </div>
               </div>
             </div>
 
-            <div className="mt-8 flex justify-end opacity-20">
-               <div className="w-8 h-8 border border-white flex items-center justify-center text-[10px] font-black font-orbitron">
+            {/* Status Bar Bottom */}
+            <div className="mt-8 flex justify-between items-center opacity-20">
+               <div className="text-[8px] font-mono tracking-widest" style={{ color: 'var(--hud-text)' }}>
+                  {t('predict.hud.coreOs')}
+               </div>
+               <div className="w-8 h-8 border flex items-center justify-center text-[10px] font-black font-orbitron" style={{ borderColor: 'var(--hud-text)', color: 'var(--hud-text)' }}>
                   A.V
                </div>
             </div>

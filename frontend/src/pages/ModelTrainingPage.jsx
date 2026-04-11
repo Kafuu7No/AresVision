@@ -6,6 +6,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { fetchScripts, startTrainingTask, fetchTasks, fetchLogs, stopTrainingTask, deleteTrainingTask } from '../services/api';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ModelTestModal from '../components/ModelTestModal';
+import TrainingProgressMonitor from '../components/TrainingProgressMonitor';
+import LossEvolutionChart from '../components/LossEvolutionChart';
+import { useTraining } from '../contexts/TrainingContext';
 
 export default function ModelTrainingPage() {
   const t = useT();
@@ -13,18 +16,31 @@ export default function ModelTrainingPage() {
   const { user, openAuthModal } = useAuth();
   const isLight = settings.theme === 'light';
 
-  // --- STATE ---
+  const {
+    tasks,
+    setTasks,
+    activeTaskId,
+    setActiveTaskId,
+    progressData,
+    logs,
+    setLogs,
+    loadTasks
+  } = useTraining();
+
   const [scripts, setScripts] = useState([]);
-  const [tasks, setTasks] = useState([]);
   
+  const logsEndRef = useRef(null);
+  const logContainerRef = useRef(null);
+  const autoScrollRef = useRef(true);
+
   // Script Selection & Channel Mapping
   const CHANNELS = React.useMemo(() => ['U', 'V', 'D', 'S', 'T'], []);
   const CHANNEL_MAP = {
-    U: { name: '纬向风 U', icon: '🌬️' },
-    V: { name: '经向风 V', icon: '💨' },
-    D: { name: '沙尘 D', icon: '🌪️' },
-    S: { name: '太阳辐射 S', icon: '☀️' },
-    T: { name: '温度 T', icon: '🌡️' }
+    U: { name: t('predict.variables.U_Wind'), icon: '🌬️' },
+    V: { name: t('predict.variables.V_Wind'), icon: '💨' },
+    D: { name: t('predict.variables.Dust_Optical_Depth'), icon: '🌪️' },
+    S: { name: t('predict.variables.Solar_Flux_DN'), icon: '☀️' },
+    T: { name: t('predict.variables.Temperature'), icon: '🌡️' }
   };
   const [selectedChannels, setSelectedChannels] = useState([]);
   const [selectedScript, setSelectedScript] = useState('demo3-.py');
@@ -52,9 +68,9 @@ export default function ModelTrainingPage() {
   const handleLayersChange = (e) => {
     const val = e.target.value;
     setStlstmLayers(val);
-    
+
     if (val === '') return;
-    
+
     let newLayers = parseInt(val, 10);
     if (isNaN(newLayers) || newLayers < 1) newLayers = 1;
     if (newLayers > 10) newLayers = 10;
@@ -71,9 +87,9 @@ export default function ModelTrainingPage() {
   };
 
   const validateModelName = (name) => {
-    if (!name || !name.trim()) return '模型命名不能为空';
+    if (!name || !name.trim()) return t('modelTraining.nameRequired');
     const existingNames = tasks.map(tk => tk.custom_model_name).filter(Boolean);
-    if (existingNames.includes(name.trim())) return `名称 "${name.trim()}" 已被使用`;
+    if (existingNames.includes(name.trim())) return t('modelTraining.nameUsed', { name: name.trim() });
     return '';
   };
 
@@ -89,14 +105,7 @@ export default function ModelTrainingPage() {
     setHiddenDims(next);
   };
 
-  // Logs & active task
-  const [activeTaskId, setActiveTaskId] = useState(null);
-  const [logs, setLogs] = useState([]);
-  const logsEndRef = useRef(null);
-  const logContainerRef = useRef(null);
-  const autoScrollRef = useRef(true);
-
-  // Load scripts and tasks on mount
+  // Load scripts on mount
   useEffect(() => {
     fetchScripts().then(data => {
       setScripts(data);
@@ -104,45 +113,6 @@ export default function ModelTrainingPage() {
     }).catch(console.error);
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      loadTasks();
-    } else {
-      setTasks([]);
-      setActiveTaskId(null);
-    }
-  }, [user]);
-
-  const loadTasks = () => {
-    if (!user) return;
-    fetchTasks().then(data => {
-      setTasks(data);
-      // Auto-set latest running task as active
-      const runningTask = data.find(tk => tk.status === 'running' || tk.status === 'pending');
-      if (runningTask) {
-        setActiveTaskId(runningTask.id);
-      }
-    }).catch(console.error);
-  };
-
-  // Poll logs for active task
-  useEffect(() => {
-    if (!activeTaskId || !user) return;
-
-    const pollLogs = () => {
-      fetchLogs(activeTaskId).then(data => {
-        setLogs(data.lines || []);
-        // 同时刷新任务列表以同步状态
-        loadTasks();
-      }).catch(err => {
-        console.error('Error fetching logs', err);
-      });
-    };
-
-    pollLogs();
-    const timer = setInterval(pollLogs, 3000); // 稍微调高间隔，3秒刷新一次状态和日志
-    return () => clearInterval(timer);
-  }, [activeTaskId]);
 
   // Scroll to bottom of logs (internal only)
   useEffect(() => {
@@ -164,12 +134,12 @@ export default function ModelTrainingPage() {
       return;
     }
     if (!selectedScript) return;
-    
+
     // 显式校验模型名称并弹出提示
     const nameErr = validateModelName(customModelName);
     if (nameErr) {
       if (!customModelName.trim()) {
-        alert('请先为本次训练的模型命名后再开始训练');
+        alert(t('modelTraining.namePrompt'));
       } else {
         alert(nameErr);
       }
@@ -188,10 +158,16 @@ export default function ModelTrainingPage() {
         early_stopping_patience: Number(earlyStoppingPatience) || 0,
       };
       const task = await startTrainingTask(selectedScript, hypers, customModelName);
+      // 先同步到本地，确保渲染能找到该任务
+      setTasks(prev => {
+        const exists = prev.find(t => t.id === task.id);
+        if (exists) return prev;
+        return [task, ...prev];
+      });
       setActiveTaskId(task.id);
       loadTasks(); // refresh list
     } catch (e) {
-      alert('Error starting training: ' + e.message);
+      alert(t('modelTraining.startError') + e.message);
     } finally {
       setIsProcessing(false);
     }
@@ -204,7 +180,7 @@ export default function ModelTrainingPage() {
       await stopTrainingTask(taskId);
       loadTasks();
     } catch (e) {
-      alert('Error stopping task: ' + e.message);
+      alert(t('modelTraining.stopError') + e.message);
     } finally {
       setIsProcessing(false);
     }
@@ -222,7 +198,7 @@ export default function ModelTrainingPage() {
       setConfirmDeleteId(null);
       loadTasks();
     } catch (e) {
-      alert('Error deleting task: ' + e.message);
+      alert(t('modelTraining.deleteError') + e.message);
     } finally {
       setIsProcessing(false);
     }
@@ -276,6 +252,8 @@ export default function ModelTrainingPage() {
 
   // --- SUB-COMPONENTS for cleaner UI ---
   const TrainingTaskCard = ({ tk, onLog, onStop, onDelete, onTest, isLight, isProcessing, C }) => {
+    const { settings } = useSettings();
+    const lang = settings.language;
     const [isHovered, setIsHovered] = useState(false);
     const hypers = React.useMemo(() => {
       try { return JSON.parse(tk.hyperparameters || '{}'); } catch { return {}; }
@@ -283,8 +261,8 @@ export default function ModelTrainingPage() {
 
     const statusColor = tk.status === 'completed' ? '#4CAF50' : tk.status === 'failed' ? '#F44336' : '#FF9800';
     const statusLabel = tk.status === 'completed' ? t('modelTraining.statusCompleted') :
-                       tk.status === 'failed' ? t('modelTraining.statusFailed') :
-                       tk.status === 'running' ? t('modelTraining.statusRunning') : t('modelTraining.statusPending');
+      tk.status === 'failed' ? t('modelTraining.statusFailed') :
+        tk.status === 'running' ? t('modelTraining.statusRunning') : t('modelTraining.statusPending');
 
     const cardStyles = {
       position: 'relative',
@@ -295,7 +273,7 @@ export default function ModelTrainingPage() {
       borderLeft: `6px solid ${statusColor}`,
       background: isLight ? 'rgba(255,255,255,0.7)' : 'rgba(30,30,45,0.4)',
       backdropFilter: 'blur(12px)',
-      boxShadow: isHovered 
+      boxShadow: isHovered
         ? (isLight ? '0 10px 40px rgba(0,0,0,0.1)' : '0 15px 50px rgba(0,0,0,0.5)')
         : (isLight ? '0 4px 15px rgba(0,0,0,0.03)' : '0 4px 20px rgba(0,0,0,0.2)'),
       transform: isHovered ? 'scale(1.01) translateY(-2px)' : 'scale(1)',
@@ -327,7 +305,7 @@ export default function ModelTrainingPage() {
     };
 
     return (
-      <div 
+      <div
         style={cardStyles}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -336,37 +314,37 @@ export default function ModelTrainingPage() {
           {/* Header Row: ID + Info + Status */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <span style={{ 
-                fontSize: 11, fontWeight: 800, opacity: 0.3, letterSpacing: 1,
+              <span style={{
+                fontSize: 11, fontWeight: 800, opacity: isLight ? 0.6 : 0.3, letterSpacing: 1,
                 padding: '2px 8px', borderRadius: 6, background: 'rgba(128,128,128,0.1)'
-              }}>ID:{tk.id}</span>
-              
+              }}>{t('modelTraining.taskId')}: {tk.id}</span>
+
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: isLight ? '#1a1a1a' : '#efefef', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span>模型名称:</span>
-                {tk.custom_model_name || <span style={{ opacity: 0.3, fontStyle: 'italic' }}>未命名模型</span>}
+                <span>{t('modelTraining.modelName')}</span>
+                {tk.custom_model_name || <span style={{ opacity: isLight ? 0.5 : 0.3, fontStyle: 'italic' }}>{t('modelTraining.unnamedModel')}</span>}
               </h3>
-              
+
               {/* Metadata Cluster: Script first, then Date */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 15, fontSize: 13, opacity: 0.45, fontWeight: 600 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 15, fontSize: 13, opacity: isLight ? 0.7 : 0.45, fontWeight: 600 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span>📄</span>
                   <span style={{ fontSize: 12, fontWeight: 700, color: isLight ? '#555' : '#ccc' }}>
                     {(() => {
                       const suffix = tk.model_script.replace('demo3-', '').replace('.py', '');
-                      if (!suffix) return 'O₃ 基线';
+                      if (!suffix) return t('modelTraining.baselineO3');
                       return suffix.split('').map(char => CHANNEL_MAP[char]?.name || char).join(', ');
                     })()}
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span>📅</span>
-                  <span>{new Date(tk.start_time).toLocaleString('zh-CN', {
+                  <span>{new Date(tk.start_time).toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US', {
                     month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
                   })}</span>
                 </div>
               </div>
             </div>
-            
+
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', borderRadius: 20,
@@ -388,11 +366,11 @@ export default function ModelTrainingPage() {
             }}>
               {Object.entries(hypers).map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, opacity: 0.4, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                    {k.replace('_', ' ')}
+                  <span style={{ fontSize: 10, fontWeight: 800, opacity: isLight ? 0.6 : 0.4, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                    {t(`modelTraining.hypers.${k}`)}
                   </span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: statusColor }}>
-                    {Array.isArray(v) ? `[${v.join(', ')}]` : (k === 'learning_rate' ? v.toFixed(5) : (v === 0 ? 'Disabled' : v))}
+                    {Array.isArray(v) ? `[${v.join(', ')}]` : (k === 'learning_rate' ? v.toFixed(5) : (v === 0 ? t('modelTraining.hypers.disabled') : v))}
                   </span>
                 </div>
               ))}
@@ -401,29 +379,29 @@ export default function ModelTrainingPage() {
 
           {/* Action Row */}
           <div style={{ display: 'flex', gap: 10, borderTop: `1px dashed ${isLight ? '#eee' : '#333'}`, paddingTop: 16 }}>
-            <button 
-              onClick={() => onLog(tk.id)} 
+            <button
+              onClick={() => onLog(tk.id)}
               style={ghostButtonStyle(C.blue, false)}
               onMouseEnter={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(C.blue, true))}
               onMouseLeave={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(C.blue, false))}
             >
-              📊 查看日志
+              {t('modelTraining.viewLogs')}
             </button>
 
             {(tk.status === 'running' || tk.status === 'pending') && (
-              <button 
-                onClick={() => onStop(tk.id)} 
+              <button
+                onClick={() => onStop(tk.id)}
                 disabled={isProcessing}
                 style={ghostButtonStyle('#F44336', false)}
                 onMouseEnter={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle('#F44336', true))}
                 onMouseLeave={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle('#F44336', false))}
               >
-                🛑 停止训练
+                {t('modelTraining.stopTraining')}
               </button>
             )}
 
             {tk.status === 'completed' && (
-              <button 
+              <button
                 onClick={() => onTest(tk.id)}
                 style={ghostButtonStyle(C.mars, false)}
                 onMouseEnter={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(C.mars, true))}
@@ -433,14 +411,14 @@ export default function ModelTrainingPage() {
               </button>
             )}
 
-            <button 
-              onClick={() => onDelete(tk.id)} 
+            <button
+              onClick={() => onDelete(tk.id)}
               disabled={isProcessing}
               style={ghostButtonStyle(isLight ? '#777' : '#999', false)}
               onMouseEnter={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(isLight ? '#777' : '#999', true))}
               onMouseLeave={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(isLight ? '#777' : '#999', false))}
             >
-              🗑️ 删除记录
+              {t('modelTraining.deleteRecord')}
             </button>
           </div>
         </div>
@@ -511,7 +489,7 @@ export default function ModelTrainingPage() {
 
             <div>
               <div style={labelStyle}>
-                模型文件命名
+                {t('modelTraining.modelNaming')}
                 <span style={{ color: '#F44336', marginLeft: 4 }}>*</span>
               </div>
               <input
@@ -519,7 +497,7 @@ export default function ModelTrainingPage() {
                   ...inputStyle,
                   borderColor: modelNameError ? '#F44336' : (customModelName.trim() ? '#4CAF50' : (isLight ? '#ccc' : '#444'))
                 }}
-                placeholder="例如: predrnn_UDT_v1"
+                placeholder={t('modelTraining.modelNamingPlaceholder')}
                 value={customModelName}
                 onChange={handleModelNameChange}
               />
@@ -527,7 +505,7 @@ export default function ModelTrainingPage() {
                 <div style={{ fontSize: 11, color: '#F44336', marginTop: 4 }}>⚠ {modelNameError}</div>
               )}
               {!modelNameError && customModelName.trim() && (
-                <div style={{ fontSize: 11, color: '#4CAF50', marginTop: 4 }}>✓ 名称可用</div>
+                <div style={{ fontSize: 11, color: '#4CAF50', marginTop: 4 }}>{t('modelTraining.nameAvailable')}</div>
               )}
             </div>
 
@@ -557,7 +535,7 @@ export default function ModelTrainingPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <div style={labelStyle}>输入窗口 (Window)</div>
+                <div style={labelStyle}>{t('modelTraining.window')}</div>
                 <input
                   type="number" style={inputStyle}
                   value={window_} min="1" max="30"
@@ -565,7 +543,7 @@ export default function ModelTrainingPage() {
                 />
               </div>
               <div>
-                <div style={labelStyle}>输出窗口 (Horizon)</div>
+                <div style={labelStyle}>{t('modelTraining.horizon')}</div>
                 <input
                   type="number" style={inputStyle}
                   value={horizon} min="1" max="30"
@@ -575,14 +553,14 @@ export default function ModelTrainingPage() {
             </div>
 
             <div>
-              <div style={labelStyle}>早停耐心值 (Early Stop Patience)</div>
+              <div style={labelStyle}>{t('modelTraining.earlyStopPatience')}</div>
               <input
                 type="number" style={inputStyle}
                 value={earlyStoppingPatience} min="0" max="200"
                 onChange={e => setEarlyStoppingPatience(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
               />
               <div style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>
-                0 = 禁用早停；建议值：5–20
+                {t('modelTraining.earlyStopNote')}
               </div>
             </div>
 
@@ -599,7 +577,7 @@ export default function ModelTrainingPage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 12, marginTop: -4 }}>
                 {hiddenDims.map((dim, i) => (
                   <div key={i}>
-                    <div style={{ ...labelStyle, fontSize: 11, opacity: 0.6 }}>Layer {i + 1} {t('modelTraining.layerDim')}</div>
+                    <div style={{ ...labelStyle, fontSize: 11, opacity: 0.6 }}>{t('modelTraining.layer')} {i + 1} {t('modelTraining.layerDim')}</div>
                     <input
                       type="number" style={{ ...inputStyle, padding: '4px 8px', fontSize: 13 }}
                       value={dim} onChange={e => handleDimChange(i, e.target.value)}
@@ -639,7 +617,7 @@ export default function ModelTrainingPage() {
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {activeTaskId && (
                 <span style={{ fontSize: 12, padding: '4px 8px', background: C.blue, color: '#fff', borderRadius: 4 }}>
-                  Task ID: {activeTaskId}
+                  {t('modelTraining.taskId')}: {activeTaskId}
                 </span>
               )}
               {activeTaskId && tasks.find(t => t.id === activeTaskId)?.status === 'running' && (
@@ -650,7 +628,7 @@ export default function ModelTrainingPage() {
                     fontSize: 11, padding: '4px 8px', background: 'rgba(244,67,54,0.15)',
                     color: '#F44336', border: '1px solid #F44336', borderRadius: 4, cursor: 'pointer'
                   }}>
-                  {isProcessing ? '...' : '停止训练'}
+                  {isProcessing ? '...' : t('modelTraining.stopTraining')}
                 </button>
               )}
             </div>
@@ -682,6 +660,23 @@ export default function ModelTrainingPage() {
             )}
             <div ref={logsEndRef} />
           </div>
+
+          {/* 实时进度监控组件 - 始终常驻显示 */}
+          <TrainingProgressMonitor
+            progress={progressData?.progress || 0}
+            currentEpoch={progressData?.current_epoch || 0}
+            totalEpochs={progressData?.total_epochs || 0}
+            loss={progressData?.current_loss}
+            eta={progressData?.eta || '--:--'}
+            isLight={isLight}
+            status={activeTaskId ? (tasks.find(t => t.id === activeTaskId)?.status || 'running') : 'idle'}
+          />
+
+          {/* 实时 Loss 演变图表 */}
+          <LossEvolutionChart 
+            lossHistory={progressData?.loss_history} 
+            isLight={isLight} 
+          />
         </div>
 
       </div>
@@ -691,8 +686,8 @@ export default function ModelTrainingPage() {
         <div style={{ ...titleStyle, fontSize: 24, marginBottom: 24 }}>{t('modelTraining.historyTitle')}</div>
 
         {tasks.length === 0 ? (
-          <div style={{ 
-            textAlign: 'center', padding: '60px 0', opacity: 0.4, fontSize: 16, 
+          <div style={{
+            textAlign: 'center', padding: '60px 0', opacity: 0.4, fontSize: 16,
             background: isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px dashed rgba(128,128,128,0.2)'
           }}>
             📭 {t('modelTraining.historyEmpty')}
@@ -700,7 +695,7 @@ export default function ModelTrainingPage() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100%, 1fr))', gap: 10 }}>
             {tasks.map(tk => (
-              <TrainingTaskCard 
+              <TrainingTaskCard
                 key={tk.id} tk={tk} isLight={isLight} isProcessing={isProcessing} C={C}
                 onLog={setActiveTaskId} onStop={handleStopTask} onDelete={setConfirmDeleteId}
                 onTest={setTestTaskId}
@@ -712,10 +707,10 @@ export default function ModelTrainingPage() {
 
       {confirmDeleteId && (
         <ConfirmDialog
-          title="确认删除"
-          message={`确认要删除训练任务 #${confirmDeleteId} 及其关联的所有日志和模型文件吗？此操作不可恢复。`}
-          confirmLabel={isProcessing ? "正在删除..." : "确认删除"}
-          cancelLabel="取消"
+          title={t('modelTraining.confirmDelete')}
+          message={t('modelTraining.confirmDeleteMsg', { id: confirmDeleteId })}
+          confirmLabel={isProcessing ? t('modelTraining.deleting') : t('modelTraining.confirmDelete')}
+          cancelLabel={t('modelTraining.cancel')}
           onConfirm={handleDeleteTask}
           onCancel={() => setConfirmDeleteId(null)}
           confirmColor="#F44336"

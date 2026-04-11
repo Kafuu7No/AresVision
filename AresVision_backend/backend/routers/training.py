@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from typing import List
 from pathlib import Path
 
@@ -12,6 +12,20 @@ router = APIRouter(tags=["Training"])
 
 training_service = TrainingService()
 inference_service = InferenceService()
+
+@router.websocket("/ws/training/{task_id}")
+async def training_ws(websocket: WebSocket, task_id: str):
+    """训练进度 WebSocket 订阅"""
+    from services.ws_manager import manager as ws_manager
+    await ws_manager.connect(websocket, task_id)
+    try:
+        while True:
+            # Keep connection alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket, task_id)
+    except Exception:
+        ws_manager.disconnect(websocket, task_id)
 
 @router.get("/training/scripts", response_model=List[str])
 async def get_scripts():
@@ -61,6 +75,8 @@ async def get_task_logs(task_id: int):
             lines = f.readlines()
             
         # Return last 500 lines to avoid massive payloads
+        if not lines:
+            return LogResponse(lines=["[正在等待日志输出...]"])
         return LogResponse(lines=lines[-500:])
     except Exception as e:
         return LogResponse(lines=[f"Error reading logs: {str(e)}"])
