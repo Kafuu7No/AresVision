@@ -609,6 +609,11 @@ const zh = {
     statusFailed: '失败',
     actionTest: '⚡ 模型测试',
     actionPredict: '部署预测',
+    statsProgress: '训练进度',
+    statsEpoch: '当前轮次',
+    statsLoss: '实时损失',
+    statsETA: '预计剩余',
+    statsLR: '学习率',
   },
 
   modelTest: {

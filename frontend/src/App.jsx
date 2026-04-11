@@ -15,6 +15,7 @@ import AIPage from './pages/AIPage';
 import AboutPage from './pages/AboutPage';
 import ModelTrainingPage from './pages/ModelTrainingPage';
 import ErrorBoundary from './components/ErrorBoundary';
+import { TrainingProvider } from './contexts/TrainingContext';
 
 const VALID_PAGES = ['home', 'overview', 'explore', 'predict', 'training', 'ai', 'about'];
 
@@ -48,7 +49,7 @@ export default function App() {
 
   // 监听浏览器前进/后退
   useEffect(() => {
-    const handlePopState = () => {
+    const handlePopstate = () => {
       const target = getPageFromHash();
       if (target !== page) {
         setTransitioning(true);
@@ -59,8 +60,8 @@ export default function App() {
         }, 200);
       }
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('popstate', handlePopstate);
+    return () => window.removeEventListener('popstate', handlePopstate);
   }, [page]);
 
   // 首次加载时确保 hash 存在
@@ -79,7 +80,7 @@ export default function App() {
   }, []);
 
   return (
-    <>
+    <TrainingProvider>
       <StarField />
       <ErrorBoundary>
         <Navbar current={page} onChange={navigate} onOpenAdmin={() => setAdminPanelOpen(true)} onOpenFeedback={() => setFeedbackPanelOpen(true)} pendingRefreshSignal={reviewSignal} />
@@ -91,26 +92,26 @@ export default function App() {
           onOpenAdmin={() => setAdminPanelOpen(true)}
         />
 
-      {/* Page content with transition */}
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 1,
-          minHeight: '100vh',
-          opacity: transitioning ? 0 : 1,
-          transform: transitioning ? 'translateY(16px)' : 'translateY(0)',
-          transition: 'opacity 0.2s, transform 0.2s',
-        }}
-      >
-        {page === 'home' && <HomePage onNavigate={navigate} />}
-        {page === 'overview' && <DataOverviewPage />}
-        {page === 'explore' && <ExplorePage />}
-        {page === 'predict' && <PredictPage />}
-        {page === 'training' && <ModelTrainingPage />}
-        {page === 'ai' && <AIPage />}
-        {page === 'about' && <AboutPage />}
-      </div>
-    </ErrorBoundary>
+        {/* Page content with transition */}
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 1,
+            minHeight: '100vh',
+            opacity: transitioning ? 0 : 1,
+            transform: transitioning ? 'translateY(16px)' : 'translateY(0)',
+            transition: 'opacity 0.2s, transform 0.2s',
+          }}
+        >
+          {page === 'home' && <HomePage onNavigate={navigate} />}
+          {page === 'overview' && <DataOverviewPage />}
+          {page === 'explore' && <ExplorePage />}
+          {page === 'predict' && <PredictPage />}
+          {page === 'training' && <ModelTrainingPage />}
+          {page === 'ai' && <AIPage />}
+          {page === 'about' && <AboutPage />}
+        </div>
+      </ErrorBoundary>
 
       {/* Footer */}
       <footer
@@ -131,6 +132,6 @@ export default function App() {
           {t('footer.powered')}
         </div>
       </footer>
-    </>
+    </TrainingProvider>
   );
 }

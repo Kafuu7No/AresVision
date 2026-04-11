@@ -132,6 +132,14 @@ class ModelTrainingTask(Base):
     custom_model_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     pid: Mapped[int | None] = mapped_column(Integer, nullable=True)
     metrics: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON stored as string
+    
+    # 实时进度追踪字段
+    progress: Mapped[float] = mapped_column(Float, default=0.0)
+    current_epoch: Mapped[int] = mapped_column(Integer, default=0)
+    total_epochs: Mapped[int] = mapped_column(Integer, default=0)
+    current_loss: Mapped[float | None] = mapped_column(Float, nullable=True)
+    eta: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    loss_history: Mapped[str | None] = mapped_column(Text, nullable=True) # JSON: {"train": [], "val": []}
 
     user: Mapped["User | None"] = relationship("User", foreign_keys=[user_id])
 

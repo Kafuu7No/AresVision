@@ -518,6 +518,11 @@ const en = {
     statusFailed: 'Failed',
     actionTest: '⚡ Test Model',
     actionPredict: 'Deploy Predict',
+    statsProgress: 'Training Progress',
+    statsEpoch: 'Current Epoch',
+    statsLoss: 'Real-time Loss',
+    statsETA: 'Est. Remaining',
+    statsLR: 'Learning Rate',
   },
 
   modelTest: {
