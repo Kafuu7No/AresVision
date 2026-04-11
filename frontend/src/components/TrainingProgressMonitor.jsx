@@ -32,11 +32,11 @@ const TrainingProgressMonitor = ({
   const statusColor = getStatusColor();
 
   const getStatusText = () => {
-    if (status === 'completed') return t('modelTraining.statusCompleted') || '已完成';
-    if (status === 'failed') return t('modelTraining.statusFailed') || '失败';
-    if (status === 'running') return t('modelTraining.statusRunning') || '训练中';
-    if (status === 'pending') return t('modelTraining.statusPending') || '等待中';
-    return '待命 (Idle)';
+    if (status === 'completed') return t('modelTraining.statusCompleted');
+    if (status === 'failed') return t('modelTraining.statusFailed');
+    if (status === 'running') return t('modelTraining.statusRunning');
+    if (status === 'pending') return t('modelTraining.statusPending');
+    return t('modelTraining.idle');
   };
 
   const containerStyle = {

@@ -41,7 +41,7 @@ function bilinearInterpolate(field, liFloat, ljFloat) {
   return row0 * (1 - di) + row1 * di;
 }
 
-const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h = 240, forceFullscreen = false, autoRotate = true, zoom = 4.5 }, ref) => {
+const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h = 240, forceFullscreen = false, autoRotate = true, zoom = 4.5, showMars = true }, ref) => {
   const { settings } = useSettings();
   const isLight = settings.theme === 'light';
   const containerRef = useRef(null);
@@ -135,10 +135,10 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
     controlsRef.current = controls;
 
     // 光照对于 Points 材质不生效，但可用于内部火星球体
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+    const ambientLight = new THREE.AmbientLight(0xffffff, isLight ? 0.8 : 0.2);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    const dirLight = new THREE.DirectionalLight(0xffffff, isLight ? 1.0 : 1.5);
     dirLight.position.set(5, 3, 5);
     scene.add(dirLight);
 
@@ -162,13 +162,14 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
     }
     starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
     const starMaterial = new THREE.PointsMaterial({
-      color: 0xffffff,
+      color: isLight ? 0x1e293b : 0xffffff,
       size: 0.02,
       transparent: true,
-      opacity: 0.6,
+      opacity: isLight ? 0 : 0.6, // 浅色模式初始就不显示
       depthWrite: false,
     });
     const stars = new THREE.Points(starGeometry, starMaterial);
+    stars.visible = !isLight; // 初始可见性
     scene.add(stars);
     starMeshRef.current = stars;
 
@@ -213,9 +214,18 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
     if (!sceneRef.current) return;
     sceneRef.current.background = null;
     if (starMeshRef.current) {
-      starMeshRef.current.visible = true;
+      starMeshRef.current.visible = !isLight; // 浅色模式下隐藏星星，保持画面纯净
       starMeshRef.current.material.color.setHex(isLight ? 0x1e293b : 0xffffff);
     }
+    // 动态调整光照
+    sceneRef.current.children.forEach(child => {
+      if (child instanceof THREE.AmbientLight) {
+        child.intensity = isLight ? 0.8 : 0.2;
+      }
+      if (child instanceof THREE.DirectionalLight) {
+        child.intensity = isLight ? 1.0 : 1.5;
+      }
+    });
   }, [isLight]);
 
   // 2. 响应数据更新，重建臭氧场网格（保持火星本身及分组姿态不变）
@@ -230,17 +240,19 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
       scene.add(globeGroup);
       sphereMeshRef.current = globeGroup;
 
-      const marsRadius = 0.86;
-      const marsGeometry = new THREE.SphereGeometry(marsRadius, 64, 64);
-      if (!cachedMarsTexture) {
-        cachedMarsTexture = new THREE.TextureLoader().load('/mars_texture.jpg');
+      if (showMars) {
+        const marsRadius = 0.86;
+        const marsGeometry = new THREE.SphereGeometry(marsRadius, 64, 64);
+        if (!cachedMarsTexture) {
+          cachedMarsTexture = new THREE.TextureLoader().load('/mars_texture.jpg');
+        }
+        const marsMaterial = new THREE.MeshPhongMaterial({
+          map: cachedMarsTexture,
+          shininess: 5,
+        });
+        const marsMesh = new THREE.Mesh(marsGeometry, marsMaterial);
+        globeGroup.add(marsMesh);
       }
-      const marsMaterial = new THREE.MeshPhongMaterial({
-        map: cachedMarsTexture,
-        shininess: 5,
-      });
-      const marsMesh = new THREE.Mesh(marsGeometry, marsMaterial);
-      globeGroup.add(marsMesh);
     }
 
     const globeGroup = sphereMeshRef.current;
@@ -372,9 +384,9 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
       vertexColors: true,
       map: cachedCircleTexture,
       transparent: true,
-      opacity: 0.9,
+      opacity: isLight ? 0.7 : 0.9, // 浅色模式下降低透明度，避免过于刺眼
       depthWrite: false,
-      blending: THREE.AdditiveBlending
+      blending: isLight ? THREE.NormalBlending : THREE.AdditiveBlending // 浅色模式下改用普通混合，防止颜色叠白消失
     });
 
     const particles = new THREE.Points(geometry, material);

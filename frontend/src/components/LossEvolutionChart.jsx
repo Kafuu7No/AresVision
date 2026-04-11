@@ -1,8 +1,10 @@
 import React from 'react';
+import { useT } from '../i18n';
 import Plot from 'react-plotly.js';
 import C from '../constants/colors';
 
 const LossEvolutionChart = ({ lossHistory, isLight }) => {
+  const t = useT();
   const trainLoss = lossHistory?.train || [];
   const valLoss = lossHistory?.val || [];
   const epochs = trainLoss.map((_, i) => i + 1);
@@ -13,7 +15,7 @@ const LossEvolutionChart = ({ lossHistory, isLight }) => {
       y: trainLoss,
       type: 'scatter',
       mode: 'lines+markers',
-      name: 'Training Loss',
+      name: t('modelTraining.charts.trainLoss'),
       line: { color: C.mars, width: 3 },
       marker: { size: 6, color: C.mars },
     },
@@ -22,7 +24,7 @@ const LossEvolutionChart = ({ lossHistory, isLight }) => {
       y: valLoss,
       type: 'scatter',
       mode: 'lines+markers',
-      name: 'Validation Loss',
+      name: t('modelTraining.charts.valLoss'),
       line: { color: C.blue, width: 3 },
       marker: { size: 6, color: C.blue },
     }
@@ -42,7 +44,7 @@ const LossEvolutionChart = ({ lossHistory, isLight }) => {
       font: { color: isLight ? '#333' : '#eee', size: 10 }
     },
     xaxis: {
-      title: 'Epoch',
+      title: t('modelTraining.charts.epoch'),
       gridcolor: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)',
       tickfont: { color: isLight ? '#666' : '#aaa' },
       titlefont: { color: isLight ? '#333' : '#eee', size: 12 },
@@ -51,7 +53,7 @@ const LossEvolutionChart = ({ lossHistory, isLight }) => {
       tickformat: ',d'
     },
     yaxis: {
-      title: 'Loss',
+      title: t('modelTraining.charts.loss'),
       gridcolor: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)',
       tickfont: { color: isLight ? '#666' : '#aaa' },
       titlefont: { color: isLight ? '#333' : '#eee', size: 12 },
@@ -87,13 +89,13 @@ const LossEvolutionChart = ({ lossHistory, isLight }) => {
 
   return (
     <div style={containerStyle}>
-      <div style={titleStyle}>Loss Evolution</div>
+      <div style={titleStyle}>{t('modelTraining.charts.lossTitle')}</div>
       {trainLoss.length === 0 ? (
         <div style={{ 
           height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
           opacity: 0.3, fontSize: 13, fontStyle: 'italic'
         }}>
-          Waiting for training metrics...
+          {t('modelTraining.charts.noMetrics')}
         </div>
       ) : (
         <Plot
