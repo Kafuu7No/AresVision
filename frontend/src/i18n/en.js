@@ -566,6 +566,18 @@ const en = {
     placeholder: 'Ask a question...',
     send: 'Send',
     errorChart: 'Real-time Prediction Error',
+    errorDistribution: {
+      trueVsPred: 'Ground Truth vs. Prediction',
+      distMatch: 'Distribution Matching',
+      errorHist: 'Error Histogram',
+      trueOzone: 'Ground Truth O₃ (DU)',
+      predOzone: 'Predicted O₃ (DU)',
+      trueLabel: 'Ground Truth',
+      predLabel: 'Prediction',
+      errorLabel: 'Prediction Error (DU)',
+      density: 'Density',
+      error: 'Error',
+    },
     quickQuestions: [
       'Which region has the largest prediction bias?',
       'How do dust storms affect ozone?',

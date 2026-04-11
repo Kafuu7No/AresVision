@@ -29,7 +29,7 @@ export default function ErrorDistributionChart({
     );
   }
 
-  // 基础暗黑宇宙图表布局配置 (极简科幻)
+  // Basic Dark/Cyborg chart layout configuration (Minimalist Science Fiction)
   const baseLayout = {
     paper_bgcolor: 'rgba(0,0,0,0)',
     plot_bgcolor: 'rgba(0,0,0,0)',
@@ -52,7 +52,7 @@ export default function ErrorDistributionChart({
 
   const getCenters = (edges) => edges.slice(0, -1).map((e, i) => (e + edges[i+1]) / 2);
 
-  // --- 卡片 1 数据：密度散点图 ---
+  // --- Card 1 Data: Density Scatter Plot ---
   const scatterTrace = {
     x: data.scatter.trues,
     y: data.scatter.preds,
@@ -65,7 +65,7 @@ export default function ErrorDistributionChart({
       opacity: 0.8,
       showscale: false
     },
-    name: 'Density'
+    name: t('ai.errorDistribution.density')
   };
 
   const minVal = Math.min(...data.scatter.trues, ...data.scatter.preds);
@@ -80,7 +80,7 @@ export default function ErrorDistributionChart({
     showlegend: false
   };
 
-  // --- 卡片 2 数据：双轨直方图覆盖 ---
+  // --- Card 2 Data: Dual-Histogram Overlay ---
   const trueHist = {
     x: getCenters(data.hist_trues.bin_edges),
     y: data.hist_trues.counts,
@@ -98,12 +98,12 @@ export default function ErrorDistributionChart({
     opacity: 0.8
   };
 
-  // --- 卡片 3 数据：误差直方图 ---
+  // --- Card 3 Data: Error Histogram ---
   const errorHist = {
     x: getCenters(data.hist_errors.bin_edges),
     y: data.hist_errors.counts,
     type: 'bar',
-    name: 'Error',
+    name: t('ai.errorDistribution.error'),
     marker: { color: 'rgba(167, 139, 250, 0.8)' }, // Violet-400
   };
   
@@ -122,7 +122,7 @@ export default function ErrorDistributionChart({
 
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
-        {/* 散点密度图 */}
+        {/* Density Scatter Plot */}
         <div className={`${cardBg} border ${cardBorder} ${cardShadow} p-4 rounded-xl flex flex-col backdrop-blur-md relative overflow-hidden group`}>
           <h3 className={`${headerColor} font-semibold text-xs mb-1 tracking-widest uppercase`}>{t('ai.errorDistribution.trueVsPred')}</h3>
         <div className="flex-1 w-full min-h-[250px] relative z-10">
@@ -141,7 +141,7 @@ export default function ErrorDistributionChart({
         </div>
       </div>
 
-      {/* 分布比对柱图 */}
+      {/* Distribution Comparison Plot */}
       <div className={`${cardBg} border ${cardBorder} ${cardShadow} p-4 rounded-xl flex flex-col backdrop-blur-md relative overflow-hidden`}>
         <h3 className={`${headerColor} font-semibold text-xs mb-1 tracking-widest uppercase`}>{t('ai.errorDistribution.distMatch')}</h3>
         <div className="flex-1 w-full min-h-[250px] relative z-10">
@@ -159,7 +159,7 @@ export default function ErrorDistributionChart({
         </div>
       </div>
 
-      {/* 误差与 RMSE 指标板 */}
+      {/* Error & RMSE Dashboard */}
       <div className={`${cardBg} border ${cardBorder} ${cardShadow} p-4 rounded-xl flex flex-col backdrop-blur-md relative overflow-hidden`}>
         <div className="flex justify-between items-start mb-1">
           <h3 className={`${headerColor} font-semibold text-xs tracking-widest uppercase`}>{t('ai.errorDistribution.errorHist')}</h3>

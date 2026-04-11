@@ -643,6 +643,8 @@ const zh = {
       trueLabel: '真实值',
       predLabel: '预测值',
       errorLabel: '预测误差 (DU)',
+      density: '密度',
+      error: '误差',
     },
 
     quickQuestions: [
