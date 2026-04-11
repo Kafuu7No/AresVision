@@ -27,13 +27,20 @@ export function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     if (!fieldData || !fieldData.field) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-
-    const CW = canvas.width;   // 720
-    const CH = canvas.height;  // h
-    const ML = 46, MR = 72, MT = 22, MB = 42;
-    const plotW = CW - ML - MR;
+    
+    // 动态计算内部绘图区，确保维持约 2:1 的物理宽高比，防止地图变形
+    const CH = canvas.height;  // h (e.g. 220 or 400)
+    const ML = 56, MR = 72, MT = 22, MB = 48; // 增加左边距和底边距，适应标轴文本
     const plotH = CH - MT - MB;
+    const plotW = plotH * 2;
+    const CW = plotW + ML + MR;
+    
+    // 将逻辑宽度的计算回馈给 canvas 元素，防止拉伸。设置 width 会清空 context，需放在获取 ctx 之前。
+    if (canvas.width !== Math.round(CW)) {
+        canvas.width = Math.round(CW);
+    }
+    
+    const ctx = canvas.getContext('2d');
 
     const isLight = theme === 'light';
     const axisTextColor  = isLight ? '#000000' : '#ffffff';
@@ -105,34 +112,34 @@ export function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     ctx.strokeStyle = axisLineColor;
     ctx.lineWidth = 1;
     ctx.fillStyle = axisTextColor;
-    ctx.font = '10px sans-serif';
+    ctx.font = '11px sans-serif';
     ctx.textAlign = 'center';
     [0, 60, 120, 180, 240, 300, 360].forEach(lonV => {
       const fx = ML + (lonV / 360) * plotW;
       ctx.beginPath(); ctx.moveTo(fx, MT + plotH); ctx.lineTo(fx, MT + plotH + 4); ctx.stroke();
-      ctx.fillText(`${lonV}°`, fx, MT + plotH + 15);
+      ctx.fillText(`${lonV}°`, fx, MT + plotH + 16);
     });
     ctx.fillStyle = axisTitleColor;
-    ctx.font = '10px sans-serif';
-    ctx.fillText(`${t('overview.controls.longitude', '经度')} (°)`, ML + plotW / 2, CH - 4);
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(`${t('overview.controls.longitude')} (°)`, ML + plotW / 2, CH - 6);
 
     // Y 轴（纬度）
     ctx.textAlign = 'right';
     ctx.fillStyle = axisTextColor;
-    ctx.font = '10px sans-serif';
+    ctx.font = '11px sans-serif';
     [-90, -60, -30, 0, 30, 60, 90].forEach(latV => {
       const fy = MT + ((90 - latV) / 180) * plotH;
       ctx.beginPath(); ctx.moveTo(ML, fy); ctx.lineTo(ML - 4, fy); ctx.stroke();
-      ctx.fillText(`${latV}°`, ML - 6, fy + 3);
+      ctx.fillText(`${latV}°`, ML - 8, fy + 3);
     });
     // Y 轴旋转标签
     ctx.save();
-    ctx.translate(10, MT + plotH / 2);
+    ctx.translate(14, MT + plotH / 2);
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = 'center';
     ctx.fillStyle = axisTitleColor;
-    ctx.font = '10px sans-serif';
-    ctx.fillText(`${t('overview.controls.latitude', '纬度')} (°)`, 0, 0);
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(`${t('overview.controls.latitude')} (°)`, 0, 0);
     ctx.restore();
 
 
@@ -183,7 +190,7 @@ export function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     <div style={isLight ? { borderRadius: 10, overflow: 'hidden', background: 'transparent' } : {}}>
       <canvas
         ref={canvasRef}
-        width={720}
+        width={400} // 这只是个初始占位值，useEffect 中会根据 h 计算精确的 2:1 宽高
         height={h}
         className="observation-window"
         style={{ width: '100%', height: h, display: 'block', background: 'transparent' }}

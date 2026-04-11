@@ -20,6 +20,7 @@ const getShorthands = (vars) => {
 };
 
 export default function PredictPerformance({
+  isLight,
   performanceData,
   perfLoading,
   activePerfMetric,
@@ -72,46 +73,7 @@ export default function PredictPerformance({
                 ))}
               </div>
 
-              <div style={{ display: 'flex', gap: 4, marginLeft: 8 }}>
-                <button
-                  onClick={() => {
-                    const originals = compareConfigs.filter(c => !c.isEnsemble).map(c => c.id);
-                    const allHidden = originals.every(id => hiddenCompareIds.includes(id));
-                    if (allHidden) {
-                      setHiddenCompareIds(prev => prev.filter(id => !originals.includes(id)));
-                    } else {
-                      setHiddenCompareIds(prev => Array.from(new Set([...prev, ...originals])));
-                    }
-                  }}
-                  style={{
-                    padding: '4px 10px', 
-                    background: compareConfigs.some(c => !c.isEnsemble && hiddenCompareIds.includes(c.id)) ? 'rgba(74,207,172,0.2)' : 'rgba(74,207,172,0.05)', 
-                    border: `1px solid ${C.border}`,
-                    borderRadius: 6, fontSize: 10, color: '#4acfac', cursor: 'pointer', fontFamily: "'Orbitron', sans-serif"
-                  }}
-                >
-                  显隐原始
-                </button>
-                <button
-                  onClick={() => {
-                    const ensembles = compareConfigs.filter(c => c.isEnsemble).map(c => c.id);
-                    const allHidden = ensembles.every(id => hiddenCompareIds.includes(id));
-                    if (allHidden) {
-                      setHiddenCompareIds(prev => prev.filter(id => !ensembles.includes(id)));
-                    } else {
-                      setHiddenCompareIds(prev => Array.from(new Set([...prev, ...ensembles])));
-                    }
-                  }}
-                  style={{
-                    padding: '4px 10px', 
-                    background: compareConfigs.some(c => c.isEnsemble && hiddenCompareIds.includes(c.id)) ? 'rgba(156,123,234,0.2)' : 'rgba(156,123,234,0.05)', 
-                    border: `1px solid ${C.border}`,
-                    borderRadius: 6, fontSize: 10, color: '#9c7bea', cursor: 'pointer', fontFamily: "'Orbitron', sans-serif"
-                  }}
-                >
-                  显隐融合
-                </button>
-              </div>
+
             </div>
           )}
         </div>
@@ -169,12 +131,12 @@ export default function PredictPerformance({
                     name: label,
                     marker: {
                       color: colors[idx % colors.length],
-                      size: config?.isEnsemble ? 4 : 5,
-                      symbol: config?.isEnsemble ? 'diamond' : 'circle'
+                      size: 5,
+                      symbol: 'circle'
                     },
                     line: {
                       color: colors[idx % colors.length],
-                      width: config?.isEnsemble ? 3.5 : (idx === 0 ? 3 : 2),
+                      width: (idx === 0 ? 3 : 2),
                       shape: 'spline',
                       dash: 'solid'
                     },
@@ -187,7 +149,7 @@ export default function PredictPerformance({
 
               return (
                 <>
-                  <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: `1px solid ${C.border}`, padding: '16px', height: 380 }}>
+                  <div style={{ background: isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.02)', borderRadius: 12, border: `1px solid ${C.border}`, padding: '16px', height: 380 }}>
                     <Plot
                       data={plotTraces}
                       layout={{
@@ -197,7 +159,7 @@ export default function PredictPerformance({
                         paper_bgcolor: 'rgba(0,0,0,0)',
                         plot_bgcolor: 'rgba(0,0,0,0)',
                         xaxis: {
-                          title: { text: 'Solar Longitude progression (MY27 → MY28)', font: { size: 11, color: plotTextColor } },
+                          title: { text: t('predict.performance.xAxisTitle'), font: { size: 11, color: plotTextColor } },
                           tickfont: { size: 10, color: plotText60 },
                           gridcolor: plotGridColor,
                           zeroline: false,
@@ -214,7 +176,7 @@ export default function PredictPerformance({
                           autorange: !(activePerfMetric === 'r2' || activePerfMetric === 'ssim')
                         },
                         legend: { 
-                          font: { size: 10, color: C.ice60 }, 
+                          font: { size: 10, color: plotText60 }, 
                           orientation: 'h', 
                           yanchor: 'bottom',
                           y: 1.05,
@@ -223,10 +185,10 @@ export default function PredictPerformance({
                         },
                         shapes: [{
                           type: 'line', x0: 360, x1: 360, y0: 0, y1: 1, yref: 'paper',
-                          line: { color: 'rgba(255,255,255,0.2)', width: 1, dash: 'dash' }
+                          line: { color: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)', width: 1, dash: 'dash' }
                         }],
                         annotations: [{
-                          x: 360, y: 1.08, xref: 'x', yref: 'paper', text: 'NEW YEAR (MY28)',
+                          x: 360, y: 1.08, xref: 'x', yref: 'paper', text: t('predict.performance.newYear'),
                           showarrow: false, font: { color: plotTextColor, size: 9 }
                         }],
                         hovermode: 'closest',
@@ -242,16 +204,15 @@ export default function PredictPerformance({
                       {Object.keys(performanceData.results || {}).map(key => {
                         const config = compareConfigs.find(c => c.id === key || getShorthands(c.vars) === key);
                         const label = config?.label || key;
-                        const isEns = config?.isEnsemble;
                         return (
                           <button key={key} onClick={() => setActiveCompareId(key)} style={{
                             padding: '4px 12px', borderRadius: 6, fontSize: 10, fontWeight: 700,
-                            background: activeCompareId === key ? (isEns ? 'rgba(156,123,234,0.15)' : 'rgba(74,207,172,0.1)') : 'rgba(255,255,255,0.03)',
-                            border: `1px solid ${activeCompareId === key ? (isEns ? '#9c7bea' : '#4acfac') : C.border}`,
-                            color: activeCompareId === key ? (isEns ? '#9c7bea' : '#4acfac') : C.ice30,
+                            background: activeCompareId === key ? (isLight ? 'rgba(74,207,172,0.15)' : 'rgba(74,207,172,0.1)') : (isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)'),
+                            border: `1px solid ${activeCompareId === key ? '#4acfac' : C.border}`,
+                            color: activeCompareId === key ? (isLight ? '#2d8c72' : '#4acfac') : plotText60,
                             cursor: 'pointer', fontFamily: "'Orbitron', sans-serif"
                           }}>
-                            {isEns ? '🧪 ' : ''}{label}
+                            {label}
                           </button>
                         );
                       })}
@@ -279,29 +240,7 @@ export default function PredictPerformance({
                               </div>
                             ))}
                           </div>
-                          <div style={{ maxHeight: 220, overflowY: 'auto', borderRadius: 8, border: `1px solid ${C.border}` }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-                              <thead style={{ position: 'sticky', top: 0, background: '#0a0a0f', zIndex: 1 }}>
-                                <tr>
-                                  {[t('predict.tableHeaders.my'), t('predict.tableHeaders.ls'), t('predict.tableHeaders.r2'), t('predict.tableHeaders.rmse'), t('predict.tableHeaders.mae'), t('predict.tableHeaders.ssim')].map(h => (
-                                    <th key={h} style={{ padding: '10px 6px', textAlign: 'center', color: C.ice30, borderBottom: `1px solid ${C.border}`, fontWeight: 600 }}>{h}</th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {(activeItem.items || []).map((it, i) => (
-                                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
-                                    <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice60 }}>MY{it.my}</td>
-                                    <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice60 }}>{(it.ls || 0).toFixed(2)}°</td>
-                                    <td style={{ padding: '8px 6px', textAlign: 'center', color: (it.r2 || 0) > 0.9 ? '#4acfac' : C.mars, fontWeight: 700 }}>{fmtNum(it.r2 || 0, precision)}</td>
-                                    <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice }}>{fmtNum(it.rmse || 0, precision)}</td>
-                                    <td style={{ padding: '8px 6px', textAlign: 'center', color: C.ice }}>{fmtNum(it.mae || 0, precision)}</td>
-                                    <td style={{ padding: '8px 6px', textAlign: 'center', color: '#4acfac' }}>{fmtNum(it.ssim || 0, precision)}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
+
                         </>
                       );
                     })()}

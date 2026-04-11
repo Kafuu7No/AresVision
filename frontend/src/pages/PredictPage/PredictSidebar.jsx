@@ -12,6 +12,7 @@ const SHORTHAND_MAP = {
 };
 
 export default function PredictSidebar({
+  isLight,
   loading,
   error,
   marsYear,
@@ -28,7 +29,6 @@ export default function PredictSidebar({
   selectedCompareIds,
   setSelectedCompareIds,
   setCompareConfigs,
-  handleFuseModels,
   onShapleyClick,
 }) {
   const t = useT();
@@ -67,14 +67,14 @@ export default function PredictSidebar({
       {/* 预测控制 */}
       <GlowCard style={{ padding: 20 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
-          PREDICTION CONTROL
+          {t('predict.sidebar.predictionControl')}
         </div>
         <div style={{ fontSize: 11, color: C.ice30, marginBottom: 10 }}>{t('predict.horizon')}</div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           {[1, 2, 3].map((s) => (
             <button key={s} onClick={() => setPredStep(s)} style={{
               flex: 1, padding: '10px 0',
-              background: predStep === s ? 'rgba(199,91,57,0.2)' : 'rgba(255,255,255,0.03)',
+              background: predStep === s ? (isLight ? 'rgba(199,91,57,0.15)' : 'rgba(199,91,57,0.2)') : (isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)'),
               border: `1px solid ${predStep === s ? C.mars : C.border}`,
               borderRadius: 8, color: predStep === s ? C.mars : C.ice60,
               fontSize: 13, fontWeight: 700, cursor: 'pointer',
@@ -144,7 +144,7 @@ export default function PredictSidebar({
       {/* 参数设置 */}
       <GlowCard style={{ padding: 20 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
-          PARAMETERS
+          {t('predict.sidebar.parameters')}
         </div>
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 11, color: C.ice30, marginBottom: 6 }}>{t('predict.marsYear')}</div>
@@ -152,7 +152,7 @@ export default function PredictSidebar({
             {[27, 28].map((y) => (
               <button key={y} onClick={() => setMarsYear(y)} style={{
                 flex: 1, padding: '8px 0',
-                background: marsYear === y ? 'rgba(199,91,57,0.2)' : 'rgba(255,255,255,0.03)',
+                background: marsYear === y ? (isLight ? 'rgba(199,91,57,0.15)' : 'rgba(199,91,57,0.2)') : (isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)'),
                 border: `1px solid ${marsYear === y ? C.mars : C.border}`,
                 borderRadius: 8, color: marsYear === y ? C.mars : C.ice60,
                 fontSize: 13, fontWeight: 700, cursor: 'pointer',
@@ -178,14 +178,14 @@ export default function PredictSidebar({
       {/* 变量勾选 */}
       <GlowCard style={{ padding: 20 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
-          INPUT VARIABLES
+          {t('predict.sidebar.inputVariables')}
         </div>
         {VARIABLES.map((v) => (
           <label key={v.id} style={{
             display: 'flex', alignItems: 'center', gap: 10,
             padding: '8px 12px', marginBottom: 4, borderRadius: 8,
-            background: selectedVars.includes(v.id) ? 'rgba(74,158,255,0.06)' : 'transparent',
-            border: `1px solid ${selectedVars.includes(v.id) ? 'rgba(74,158,255,0.15)' : 'transparent'}`,
+            background: selectedVars.includes(v.id) ? (isLight ? 'rgba(74,158,255,0.08)' : 'rgba(74,158,255,0.06)') : 'transparent',
+            border: `1px solid ${selectedVars.includes(v.id) ? (isLight ? 'rgba(74,158,255,0.2)' : 'rgba(74,158,255,0.15)') : 'transparent'}`,
             cursor: 'pointer', transition: 'all 0.2s',
           }}>
             <input
@@ -208,11 +208,11 @@ export default function PredictSidebar({
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               onClick={handleSelectAll}
-              style={{ padding: '4px 10px', background: 'rgba(74,207,172,0.15)', border: `1px solid #4acfac50`, borderRadius: 6, color: '#4acfac', fontSize: 10, fontWeight: 800, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
+              style={{ padding: '4px 10px', background: isLight ? 'rgba(74,207,172,0.12)' : 'rgba(74,207,172,0.15)', border: `1px solid ${isLight ? 'rgba(74,207,172,0.3)' : '#4acfac50'}`, borderRadius: 6, color: isLight ? '#2d8c72' : '#4acfac', fontSize: 10, fontWeight: 800, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
             >{t('predict.matrix.selectAll', 'ALL')}</button>
             <button
               onClick={handleSeed32}
-              style={{ padding: '4px 10px', background: 'rgba(156,123,234,0.15)', border: `1px solid #9c7bea50`, borderRadius: 6, color: '#9c7bea', fontSize: 10, fontWeight: 800, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
+              style={{ padding: '4px 10px', background: isLight ? 'rgba(156,123,234,0.12)' : 'rgba(156,123,234,0.15)', border: `1px solid ${isLight ? 'rgba(156,123,234,0.3)' : '#9c7bea50'}`, borderRadius: 6, color: isLight ? '#7a5bb8' : '#9c7bea', fontSize: 10, fontWeight: 800, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
             >{t('predict.matrix.seed32', 'SEED 32')}</button>
           </div>
         </div>
@@ -224,17 +224,17 @@ export default function PredictSidebar({
           overflowX: 'hidden',
           marginBottom: 12,
           paddingRight: 4,
-          background: 'rgba(0,0,0,0.1)',
+          background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(0,0,0,0.2)',
           borderRadius: 8,
-          border: `1px solid ${C.border}`
+          border: `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : C.border}`
         }}>
           {compareConfigs.map((c) => (
             <div key={c.id} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '4px 12px', borderRadius: 6,
-              background: selectedCompareIds.includes(c.id) ? 'rgba(74,207,172,0.06)' : 'transparent',
+              background: selectedCompareIds.includes(c.id) ? (isLight ? 'rgba(74,207,172,0.1)' : 'rgba(74,207,172,0.06)') : 'transparent',
               transition: 'all 0.2s',
-              borderBottom: `1px solid rgba(255,255,255,0.02)`
+              borderBottom: `1px solid ${isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.02)'}`
             }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1 }}>
                 <input
@@ -276,7 +276,7 @@ export default function PredictSidebar({
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex' }}>
           <button
             onClick={() => {
               const sortedVars = [...selectedVars].sort();
@@ -293,22 +293,15 @@ export default function PredictSidebar({
               setCompareConfigs(prev => [...prev, { id: newId, label: prefix, vars: [...selectedVars] }]);
               setSelectedCompareIds(prev => [...prev, newId]);
             }}
-            style={{ flex: 1, padding: '10px 0', background: 'rgba(255,255,255,0.03)', border: `1px dashed ${C.border}`, borderRadius: 10, color: C.ice60, fontSize: 11, fontWeight: 800, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
+            style={{ width: '100%', padding: '10px 0', background: isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.03)', border: `1px dashed ${isLight ? 'rgba(0,0,0,0.15)' : C.border}`, borderRadius: 10, color: isLight ? '#555' : C.ice60, fontSize: 11, fontWeight: 800, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
           >
             {t('predict.matrix.addBtn', '+ ADD')}
-          </button>
-          <button
-            onClick={handleFuseModels}
-            disabled={selectedCompareIds.length < 2}
-            style={{ flex: 2, padding: '10px 0', background: selectedCompareIds.length < 2 ? 'rgba(74,207,172,0.05)' : 'rgba(156,123,234,0.15)', border: `1px solid ${selectedCompareIds.length < 2 ? 'rgba(74,207,172,0.1)' : '#9c7bea'}`, borderRadius: 10, color: selectedCompareIds.length < 2 ? 'rgba(74,207,172,0.4)' : '#9c7bea', fontSize: 11, fontWeight: 800, cursor: selectedCompareIds.length < 2 ? 'not-allowed' : 'pointer', fontFamily: "'Orbitron', sans-serif" }}
-          >
-            {t('predict.matrix.fuseBtn', 'FUSE')}
           </button>
         </div>
       </GlowCard>
 
       <div style={{ padding: '0 20px', fontSize: 9, color: C.ice30, textAlign: 'center', opacity: 0.5 }}>
-        ARES_VISION_OS // SYSTEM_VERSION_3.2
+        ARES_VISION_OS // {t('predict.hud.coreOsLabel')} V3.2
       </div>
     </div>
   );

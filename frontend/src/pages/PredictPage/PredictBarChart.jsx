@@ -21,6 +21,7 @@ const getShorthands = (vars) => {
 };
 
 export default function PredictBarChart({
+  isLight,
   performanceData,
   compareConfigs,
   selectedCompareIds,
@@ -92,14 +93,12 @@ export default function PredictBarChart({
     }
     if (!perfData) return;
     const label = config?.label || id;
-    const isEnsemble = config?.isEnsemble;
     const metricKey = `global_${activeMetric}`;
     const value = perfData[metricKey] || 0;
     barData.push({
       id,
-      label: isEnsemble ? `🧪 ${label}` : label,
+      label,
       value,
-      isEnsemble,
       order: activeMetric === 'r2' || activeMetric === 'ssim' ? -value : value,
     });
   });
@@ -110,16 +109,15 @@ export default function PredictBarChart({
 
   const getMarkerColors = (data) => {
     return data.map((d, i) => {
-      if (d.isEnsemble) return '#9c7bea';
       const ratio = i / Math.max(1, data.length - 1);
       return `rgba(74, ${207 - (207 - 158) * ratio}, ${172 + (255 - 172) * ratio}, ${1 - 0.5 * ratio})`;
     });
   };
 
   return (
-    <GlowCard style={{ padding: '16px 20px', background: 'rgba(10,10,15,0.4)', backdropFilter: 'blur(10px)', border: `1px solid ${C.border}`, position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', top: 0, left: 0, width: 40, height: 40, borderTop: '2px dotted #9c7bea60', borderLeft: '2px dotted #9c7bea60', borderTopLeftRadius: 20 }}></div>
-      <div style={{ position: 'absolute', bottom: 0, right: 0, width: 40, height: 40, borderBottom: '2px dotted #9c7bea60', borderRight: '2px dotted #9c7bea60', borderBottomRightRadius: 20 }}></div>
+    <GlowCard style={{ padding: '16px 20px', background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(10,10,15,0.4)', backdropFilter: 'blur(10px)', border: `1px solid ${C.border}`, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, width: 40, height: 40, borderTop: `2px dotted ${isLight ? '#9c7bea40' : '#9c7bea60'}`, borderLeft: `2px dotted ${isLight ? '#9c7bea40' : '#9c7bea60'}`, borderTopLeftRadius: 20 }}></div>
+      <div style={{ position: 'absolute', bottom: 0, right: 0, width: 40, height: 40, borderBottom: `2px dotted ${isLight ? '#9c7bea40' : '#9c7bea60'}`, borderRight: `2px dotted ${isLight ? '#9c7bea40' : '#9c7bea60'}`, borderBottomRightRadius: 20 }}></div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, position: 'relative', zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -148,10 +146,16 @@ export default function PredictBarChart({
             onClick={() => setShowShapley({ visible: true, mode: 'marginal' })}
             style={{
               padding: '8px 16px',
-              background: showShapley.visible && showShapley.mode === 'marginal' ? 'rgba(74,207,172,0.2)' : 'rgba(0,0,0,0.4)',
-              border: `1px solid ${showShapley.visible && showShapley.mode === 'marginal' ? 'rgba(74,207,172,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              background: showShapley.visible && showShapley.mode === 'marginal' 
+                ? (isLight ? 'rgba(74,207,172,0.15)' : 'rgba(74,207,172,0.2)') 
+                : (isLight ? 'rgba(0,0,0,0.03)' : 'rgba(0,0,0,0.4)'),
+              border: `1px solid ${showShapley.visible && showShapley.mode === 'marginal' 
+                ? (isLight ? 'rgba(74,207,172,0.5)' : 'rgba(74,207,172,0.5)') 
+                : (isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.1)')}`,
               borderRadius: 12,
-              color: showShapley.visible && showShapley.mode === 'marginal' ? '#4acfac' : 'rgba(255,255,255,0.5)',
+              color: showShapley.visible && showShapley.mode === 'marginal' 
+                ? (isLight ? '#2d8c72' : '#4acfac') 
+                : (isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)'),
               fontSize: 10,
               fontWeight: 800,
               fontFamily: "'Orbitron', sans-serif",
@@ -160,18 +164,21 @@ export default function PredictBarChart({
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: showShapley.visible && showShapley.mode === 'marginal' ? '0 0 15px rgba(74,207,172,0.2)' : 'inset 0 0 10px rgba(0,0,0,0.5)',
+              boxShadow: showShapley.visible && showShapley.mode === 'marginal' 
+                ? (isLight ? '0 0 15px rgba(74,207,172,0.1)' : '0 0 15px rgba(74,207,172,0.2)') 
+                : (isLight ? 'none' : 'inset 0 0 10px rgba(0,0,0,0.5)'),
             }}
           >
             <span style={{ fontSize: 14 }}>{showShapley.visible && showShapley.mode === 'marginal' ? '👁️' : '🧬'}</span>
             {t('predict.shapleyMarginalBtn', '🧬 组合边际分析 (SEED 32)').replace('🧬 ', '')}
           </button>
 
+
           
           <div style={{
-            display: 'flex', background: 'rgba(0,0,0,0.4)',
-            borderRadius: 14, padding: 4, border: `1px solid rgba(156,123,234,0.2)`,
-            boxShadow: 'inset 0 0 15px rgba(0,0,0,0.8)'
+            display: 'flex', background: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(0,0,0,0.4)',
+            borderRadius: 14, padding: 4, border: `1px solid ${isLight ? 'rgba(156,123,234,0.15)' : 'rgba(156,123,234,0.2)'}`,
+            boxShadow: isLight ? 'none' : 'inset 0 0 15px rgba(0,0,0,0.8)'
           }}>
             {METRIC_META.map(m => (
               <button
@@ -179,17 +186,17 @@ export default function PredictBarChart({
                 onClick={() => setActiveMetric(m.key)}
                 style={{
                   padding: '6px 18px',
-                  background: activeMetric === m.key ? 'rgba(156,123,234,0.3)' : 'transparent',
+                  background: activeMetric === m.key ? (isLight ? 'rgba(156,123,234,0.15)' : 'rgba(156,123,234,0.3)') : 'transparent',
                   border: 'none',
                   borderRadius: 12,
                   fontSize: 10,
                   fontWeight: 900,
-                  color: activeMetric === m.key ? '#fff' : 'rgba(255,255,255,0.3)',
+                  color: activeMetric === m.key ? (isLight ? '#7a5bb8' : '#fff') : (isLight ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.3)'),
                   cursor: 'pointer',
                   fontFamily: "'Orbitron', sans-serif",
                   transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                  boxShadow: activeMetric === m.key ? '0 0 20px rgba(156,123,234,0.5)' : 'none',
-                  textShadow: activeMetric === m.key ? '0 0 8px rgba(255,255,255,0.8)' : 'none'
+                  boxShadow: activeMetric === m.key ? (isLight ? '0 0 10px rgba(156,123,234,0.2)' : '0 0 20px rgba(156,123,234,0.5)') : 'none',
+                  textShadow: activeMetric === m.key ? (isLight ? 'none' : '0 0 8px rgba(255,255,255,0.8)') : 'none'
                 }}
               >
                 {m.name}
@@ -202,13 +209,13 @@ export default function PredictBarChart({
             disabled={perfLoading}
             style={{
               width: 44, height: 44, borderRadius: '50%',
-              background: perfLoading ? 'rgba(0,0,0,0.5)' : 'rgba(156,123,234,0.2)',
-              border: `1px solid ${perfLoading ? 'rgba(255,255,255,0.1)' : 'rgba(156,123,234,0.5)'}`,
+              background: perfLoading ? (isLight ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.5)') : (isLight ? 'rgba(156,123,234,0.08)' : 'rgba(156,123,234,0.2)'),
+              border: `1px solid ${perfLoading ? (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)') : (isLight ? 'rgba(156,123,234,0.3)' : 'rgba(156,123,234,0.5)')}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: perfLoading ? 'not-allowed' : 'pointer',
               transition: 'all 0.5s',
-              color: '#9c7bea',
-              boxShadow: perfLoading ? 'none' : '0 0 15px rgba(156,123,234,0.3)'
+              color: isLight ? '#7a5bb8' : '#9c7bea',
+              boxShadow: perfLoading ? 'none' : (isLight ? '0 0 10px rgba(156,123,234,0.15)' : '0 0 15px rgba(156,123,234,0.3)')
             }}
           >
             <span style={{ fontSize: 18 }}>🔄</span>
@@ -224,11 +231,11 @@ export default function PredictBarChart({
       ) : (
         <div style={{
           position: 'relative',
-          background: 'rgba(0,0,0,0.3)',
+          background: isLight ? 'rgba(0,0,0,0.02)' : 'rgba(0,0,0,0.3)',
           borderRadius: 24,
           padding: '20px',
-          border: '1px solid rgba(255,255,255,0.05)',
-          boxShadow: 'inset 0 0 50px rgba(0,0,0,0.8)'
+          border: `1px solid ${isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'}`,
+          boxShadow: isLight ? 'none' : 'inset 0 0 50px rgba(0,0,0,0.8)'
         }}>
           <div style={{
             position: 'absolute',
@@ -239,11 +246,11 @@ export default function PredictBarChart({
             zIndex: 1,
             pointerEvents: 'none'
           }}>
-            <div style={{ fontSize: 10, color: '#9c7bea60', fontWeight: 900, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>{t('predict.barChart.topModel').toUpperCase()}</div>
-            <div style={{ fontSize: 24, color: '#fff', fontWeight: 800, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, margin: '4px 0' }}>
+            <div style={{ fontSize: 10, color: isLight ? '#9c7bea' : '#9c7bea60', fontWeight: 900, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>{t('predict.barChart.topModel').toUpperCase()}</div>
+            <div style={{ fontSize: 24, color: isLight ? '#000' : '#fff', fontWeight: 800, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, margin: '4px 0' }}>
               {sortedData[0]?.label.replace('🧪 ', '')}
             </div>
-            <div style={{ fontSize: 14, color: '#4acfac', fontWeight: 900, fontFamily: "'Orbitron', sans-serif" }}>
+            <div style={{ fontSize: 14, color: isLight ? '#2d8c72' : '#4acfac', fontWeight: 900, fontFamily: "'Orbitron', sans-serif" }}>
               {fmtNum(sortedData[0]?.value, precision)}
             </div>
 
@@ -281,9 +288,9 @@ export default function PredictBarChart({
                 bgcolor: 'transparent',
                 hole: 0.25,
                 angularaxis: {
-                  tickfont: { size: 9, color: '#ffffff', fontWeight: 600 },
-                  gridcolor: 'rgba(255,255,255,0.05)',
-                  linecolor: 'rgba(255,255,255,0.1)',
+                  tickfont: { size: 9, color: plotTextColor, fontWeight: 600 },
+                  gridcolor: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)',
+                  linecolor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
                   direction: 'clockwise',
                 },
                 radialaxis: {
@@ -297,10 +304,10 @@ export default function PredictBarChart({
             style={{ width: '100%', height: 600 }}
           />
 
-          <div style={{ position: 'absolute', bottom: 15, left: 15, fontSize: 8, color: 'rgba(255,255,255,0.15)', fontFamily: "'Orbitron', sans-serif" }}>
+          <div style={{ position: 'absolute', bottom: 15, left: 15, fontSize: 8, color: isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)', fontFamily: "'Orbitron', sans-serif" }}>
             {t('predict.barChart.coord').toUpperCase()}
           </div>
-          <div style={{ position: 'absolute', bottom: 15, right: 15, fontSize: 8, color: 'rgba(255,255,255,0.15)', fontFamily: "'Orbitron', sans-serif" }}>
+          <div style={{ position: 'absolute', bottom: 15, right: 15, fontSize: 8, color: isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)', fontFamily: "'Orbitron', sans-serif" }}>
             {t('predict.barChart.reliability').toUpperCase()}
           </div>
 

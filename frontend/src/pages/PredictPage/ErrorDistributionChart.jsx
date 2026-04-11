@@ -1,18 +1,28 @@
 import React from 'react';
 import Plot from 'react-plotly.js';
+import C from '../../constants/colors';
 import { useT } from '../../i18n';
 
-export default function ErrorDistributionChart({ data, loading }) {
+export default function ErrorDistributionChart({ 
+  data, 
+  loading,
+  isLight,
+  plotTextColor,
+  plotText60,
+  plotGridColor
+}) {
   const t = useT();
   if (!data && !loading) return null;
 
   if (loading || !data) {
+    const skeletonBg = isLight ? 'bg-gray-100' : 'bg-white/5';
+    const skeletonBorder = isLight ? 'border-gray-200' : 'border-gray-800';
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full h-[350px]">
         {[1, 2, 3].map((item) => (
           <div 
             key={item} 
-            className="animate-pulse bg-gray-900/50 rounded-xl border border-gray-800 backdrop-blur-sm h-full w-full min-h-[300px]" 
+            className={`animate-pulse ${skeletonBg} rounded-xl border ${skeletonBorder} backdrop-blur-sm h-full w-full min-h-[300px]`} 
           />
         ))}
       </div>
@@ -23,16 +33,18 @@ export default function ErrorDistributionChart({ data, loading }) {
   const baseLayout = {
     paper_bgcolor: 'rgba(0,0,0,0)',
     plot_bgcolor: 'rgba(0,0,0,0)',
-    font: { color: '#A0AAB4', family: 'Inter, system-ui, sans-serif' },
+    font: { color: plotTextColor, family: 'Inter, system-ui, sans-serif' },
     margin: { t: 30, r: 20, l: 45, b: 40 },
     xaxis: { 
-      gridcolor: 'rgba(255,255,255,0.05)', 
-      zerolinecolor: 'rgba(255,255,255,0.1)',
+      gridcolor: plotGridColor, 
+      zerolinecolor: plotGridColor,
+      tickfont: { size: 9, color: plotText60 },
       showline: false,
     },
     yaxis: { 
-      gridcolor: 'rgba(255,255,255,0.05)', 
-      zerolinecolor: 'rgba(255,255,255,0.1)',
+      gridcolor: plotGridColor, 
+      zerolinecolor: plotGridColor,
+      tickfont: { size: 9, color: plotText60 },
       showline: false,
     },
     autosize: true
@@ -103,11 +115,16 @@ export default function ErrorDistributionChart({ data, loading }) {
     line: { color: 'rgba(248, 113, 113, 0.8)', width: 2, dash: 'dash' }
   };
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
-      {/* 散点密度图 */}
-      <div className="bg-black/40 border border-gray-800 shadow-[0_0_20px_rgba(0,0,0,0.4)] p-4 rounded-xl flex flex-col backdrop-blur-md relative overflow-hidden group">
-        <h3 className="text-gray-400 font-semibold text-xs mb-1 tracking-widest uppercase">{t('ai.errorDistribution.trueVsPred')}</h3>
+    const cardBg = isLight ? 'bg-white/60' : 'bg-black/40';
+    const cardBorder = isLight ? 'border-gray-200' : 'border-gray-800';
+    const cardShadow = isLight ? 'shadow-sm' : 'shadow-[0_0_20px_rgba(0,0,0,0.4)]';
+    const headerColor = isLight ? 'text-gray-500' : 'text-gray-400';
+
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
+        {/* 散点密度图 */}
+        <div className={`${cardBg} border ${cardBorder} ${cardShadow} p-4 rounded-xl flex flex-col backdrop-blur-md relative overflow-hidden group`}>
+          <h3 className={`${headerColor} font-semibold text-xs mb-1 tracking-widest uppercase`}>{t('ai.errorDistribution.trueVsPred')}</h3>
         <div className="flex-1 w-full min-h-[250px] relative z-10">
           <Plot
             data={[scatterTrace, baselineTrace]}
@@ -125,8 +142,8 @@ export default function ErrorDistributionChart({ data, loading }) {
       </div>
 
       {/* 分布比对柱图 */}
-      <div className="bg-black/40 border border-gray-800 shadow-[0_0_20px_rgba(0,0,0,0.4)] p-4 rounded-xl flex flex-col backdrop-blur-md relative overflow-hidden">
-        <h3 className="text-gray-400 font-semibold text-xs mb-1 tracking-widest uppercase">{t('ai.errorDistribution.distMatch')}</h3>
+      <div className={`${cardBg} border ${cardBorder} ${cardShadow} p-4 rounded-xl flex flex-col backdrop-blur-md relative overflow-hidden`}>
+        <h3 className={`${headerColor} font-semibold text-xs mb-1 tracking-widest uppercase`}>{t('ai.errorDistribution.distMatch')}</h3>
         <div className="flex-1 w-full min-h-[250px] relative z-10">
           <Plot
             data={[trueHist, predHist]}
@@ -143,14 +160,14 @@ export default function ErrorDistributionChart({ data, loading }) {
       </div>
 
       {/* 误差与 RMSE 指标板 */}
-      <div className="bg-black/40 border border-gray-800 shadow-[0_0_20px_rgba(0,0,0,0.4)] p-4 rounded-xl flex flex-col backdrop-blur-md relative overflow-hidden">
+      <div className={`${cardBg} border ${cardBorder} ${cardShadow} p-4 rounded-xl flex flex-col backdrop-blur-md relative overflow-hidden`}>
         <div className="flex justify-between items-start mb-1">
-          <h3 className="text-gray-400 font-semibold text-xs tracking-widest uppercase">{t('ai.errorDistribution.errorHist')}</h3>
+          <h3 className={`${headerColor} font-semibold text-xs tracking-widest uppercase`}>{t('ai.errorDistribution.errorHist')}</h3>
           <div className="flex flex-col text-right">
-            <span className="text-emerald-400 font-mono text-xs font-bold bg-emerald-400/10 px-1.5 py-0.5 rounded backdrop-blur border border-emerald-400/20">
+            <span className={`${isLight ? 'text-emerald-600 bg-emerald-50' : 'text-emerald-400 bg-emerald-400/10'} font-mono text-xs font-bold px-1.5 py-0.5 rounded backdrop-blur border ${isLight ? 'border-emerald-200' : 'border-emerald-400/20'}`}>
               RMSE: {data.rmse.toFixed(3)}
             </span>
-            <span className="text-sky-400 font-mono text-xs font-bold mt-1 bg-sky-400/10 px-1.5 py-0.5 rounded backdrop-blur border border-sky-400/20">
+            <span className={`${isLight ? 'text-sky-600 bg-sky-50' : 'text-sky-400 bg-sky-400/10'} font-mono text-xs font-bold mt-1 px-1.5 py-0.5 rounded backdrop-blur border ${isLight ? 'border-sky-200' : 'border-sky-400/20'}`}>
               MAE: {data.mae.toFixed(3)}
             </span>
           </div>
