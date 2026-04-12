@@ -1,201 +1,227 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import GlowCard from '../../components/GlowCard';
 import C from '../../constants/colors';
+import { useT } from '../../i18n';
+import { useDataOverview } from '../../contexts/DataOverviewContext';
 
+// Import Chart Components
 import SeasonalChart from './OverviewCharts/SeasonalChart';
 import CorrelationMatrix from './OverviewCharts/CorrelationMatrix';
 import RealtimeMonitor from './OverviewCharts/RealtimeMonitor';
 import EnvironmentDashboard from './OverviewCharts/EnvironmentDashboard';
-import PredictionEngine from './OverviewCharts/PredictionEngine';
 import DataDistribution from './OverviewCharts/DataDistribution';
 import CouplingAnalysis from './OverviewCharts/CouplingAnalysis';
-import WaveExplorer from './OverviewCharts/WaveExplorer';
-import SolarSensitivity from './OverviewCharts/SolarSensitivity';
 import PolarDynamics from './OverviewCharts/PolarDynamics';
-import { useT } from '../../i18n';
+import PredictionEngine from './OverviewCharts/PredictionEngine';
+import SolarSensitivity from './OverviewCharts/SolarSensitivity';
+import WaveExplorer from './OverviewCharts/WaveExplorer';
+import { MODE_DEFS } from './SidebarMenu';
 
-const PANEL_COPY = {
-  globe3d: {
-    title: '三维臭氧球 3D GLOBE',
-    description: '查看当前 Ls 切片下的全球臭氧球面分布。',
-  },
-  seasonal: {
-    title: '季节臭氧场 SEASONAL OZONE FIELD',
-    description: '展示臭氧在纬度与季节上的整体结构，以及季节输运特征。',
-  },
-  correlation: {
-    title: '关系研究 RELATION LAB',
-    description: '从散点回归、共演化和时滞相关三个角度研究臭氧与环境变量的关系。',
-  },
-  realtime: {
-    title: '昼夜变化 DIURNAL PROFILE',
-    description: '按纬带查看当前火星季节下的臭氧昼夜振幅与峰值时刻。',
-  },
-  environment: {
-    title: '环境驱动 ENVIRONMENT DRIVERS',
-    description: '总览温度、沙尘、太阳辐射和风场的季节变化，以及不同纬带的主导驱动差异。',
-  },
-  prediction: {
-    title: '模型能力 MODEL SKILL TRACKER',
-    description: '比较 O3 基线模型与完整驱动模型在测试集上的整体表现。',
-  },
-  distribution: {
-    title: '空间分布 SPATIAL DISTRIBUTION',
-    description: '统计当前臭氧切片的数值分布、分位区间和纬向均值剖面。',
-  },
-  coupling: {
-    title: '沙尘冲刷 DUST WASHOUT',
-    description: '探索沙尘暴爆发对全球平均臭氧含量的直接影响。',
-  },
-  wave: {
-    title: '行星波探测 WAVE EXPLORER',
-    description: '分析火星主导地形产生的大气驻波与纬向距平。',
-  },
-  solar: {
-    title: '光化学驱动 SOLAR SENSITIVITY',
-    description: '研究紫外辐射强度与臭氧生成率的非线性关系。',
-  },
-  polar: {
-    title: '极地冬春演化 POLAR DYNAMICS',
-    description: '对比南北极在极夜前后的臭氧急剧积聚趋势。',
-  },
-};
-
-export default function DetailPanel({ selectedItem, marsYear, lsValue, ozoneData }) {
+export default function DetailPanel({ ozoneData }) {
   const t = useT();
-  const is3DMode = selectedItem?.is3D;
+  const { activeAnalysisMode, selectedCoordinate, resetView, marsYear, globalTimeLs } = useDataOverview();
+  const [isVisible, setIsVisible] = useState(false);
+  const [expandedCard, setExpandedCard] = useState('');
 
   useEffect(() => {
-    if (!selectedItem || is3DMode) return undefined;
+    const t = setTimeout(() => setIsVisible(true), 100);
+    return () => clearTimeout(t);
+  }, []);
 
-    const dispatchResize = () => window.dispatchEvent(new Event('resize'));
-    const t1 = setTimeout(dispatchResize, 80);
-    const t2 = setTimeout(dispatchResize, 220);
-    const t3 = setTimeout(dispatchResize, 500);
-    const t4 = setTimeout(dispatchResize, 860);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
-    };
-  }, [selectedItem, is3DMode]);
-
-  const renderChart = () => {
-    if (!selectedItem) {
-      return (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%',
-            color: C.ice60,
-            fontFamily: "'Exo 2', sans-serif",
-          }}
-        >
-          <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>◎</div>
-          <div style={{ fontSize: '16px', marginBottom: '8px', fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>
-            HELLO MARS
-          </div>
-          <div style={{ fontSize: '12px', opacity: 0.8 }}>SELECT AN OPTION FROM SIDEBAR</div>
-        </div>
-      );
+  // When mode or coordinate changes, reset the expanded card to the first one available
+  useEffect(() => {
+    if (selectedCoordinate) {
+      setExpandedCard('distribution');
+    } else {
+      if (activeAnalysisMode === 'global') setExpandedCard('realtime');
+      else if (activeAnalysisMode === 'anomaly') setExpandedCard('environment');
+      else if (activeAnalysisMode === 'extreme') setExpandedCard('polar');
     }
+  }, [activeAnalysisMode, selectedCoordinate]);
 
-    if (is3DMode) return null;
+  useEffect(() => {
+    // Trigger chart resize when accordion completely opens
+    const dispatchResize = () => window.dispatchEvent(new Event('resize'));
+    const t1 = setTimeout(dispatchResize, 100);
+    const t2 = setTimeout(dispatchResize, 400);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [expandedCard, activeAnalysisMode, selectedCoordinate]);
 
-    switch (selectedItem.id) {
-      case 'seasonal':
-        return <SeasonalChart marsYear={marsYear} />;
-      case 'correlation':
-        return <CorrelationMatrix marsYear={marsYear} />;
-      case 'realtime':
-        return <RealtimeMonitor marsYear={marsYear} lsValue={lsValue} />;
-      case 'environment':
-        return <EnvironmentDashboard marsYear={marsYear} />;
-      case 'prediction':
-        return <PredictionEngine />;
-      case 'distribution':
-        return <DataDistribution marsYear={marsYear} lsValue={lsValue} ozoneData={ozoneData} />;
-      case 'coupling':
-        return <CouplingAnalysis marsYear={marsYear} />;
-      case 'wave':
-        return <WaveExplorer marsYear={marsYear} />;
-      case 'solar':
-        return <SolarSensitivity marsYear={marsYear} />;
-      case 'polar':
-        return <PolarDynamics marsYear={marsYear} />;
-      default:
-        return <div>Unknown chart type</div>;
+  const realtimeComponent = useMemo(() => <RealtimeMonitor marsYear={marsYear} lsValue={globalTimeLs} />, [marsYear, globalTimeLs]);
+  const seasonalComponent = useMemo(() => <SeasonalChart marsYear={marsYear} />, [marsYear]);
+  const predictionComponent = useMemo(() => <PredictionEngine />, []);
+  const environmentComponent = useMemo(() => <EnvironmentDashboard marsYear={marsYear} />, [marsYear]);
+  const solarsensComponent = useMemo(() => <SolarSensitivity marsYear={marsYear} />, [marsYear]);
+  const waveComponent = useMemo(() => <WaveExplorer marsYear={marsYear} />, [marsYear]);
+  const polarComponent = useMemo(() => <PolarDynamics marsYear={marsYear} />, [marsYear]);
+  const couplingComponent = useMemo(() => <CouplingAnalysis marsYear={marsYear} />, [marsYear]);
+  const distributionComponent = useMemo(() => <DataDistribution marsYear={marsYear} lsValue={globalTimeLs} ozoneData={ozoneData} coordinate={selectedCoordinate} />, [marsYear, globalTimeLs, ozoneData, selectedCoordinate]);
+  const correlationComponent = useMemo(() => <CorrelationMatrix marsYear={marsYear} coordinate={selectedCoordinate} />, [marsYear, selectedCoordinate]);
+
+  const cardsMap = {
+    realtime: { title: '昼夜变化 Diurnal', component: realtimeComponent, color: C.mars },
+    seasonal: { title: '季节交替 Seasonal', component: seasonalComponent, color: C.blue },
+    prediction: { title: '模型评分 SKILL', component: predictionComponent, color: C.ice },
+    environment: { title: '多因子环境 Environment', component: environmentComponent, color: '#4acfac' },
+    solarsens: { title: '光化学辐射 Solar', component: solarsensComponent, color: '#ffd700' },
+    wave: { title: '地形驻波 Wave', component: waveComponent, color: '#d2b48c' },
+    polar: { title: '极点聚积 Polar', component: polarComponent, color: '#cbeef3' },
+    coupling: { title: '沙尘冲刷 Coupling', component: couplingComponent, color: '#ffb347' },
+    distribution: { title: '点位分布 Distribution', component: distributionComponent, color: C.mars },
+    correlation: { title: '点位相关性 Correlation', component: correlationComponent, color: C.blue }
+  };
+
+  const getActiveCards = () => {
+    if (selectedCoordinate) {
+      return ['distribution', 'correlation'];
+    }
+    switch (activeAnalysisMode) {
+      case 'global': return ['realtime', 'seasonal', 'prediction'];
+      case 'anomaly': return ['environment', 'solarsens', 'wave'];
+      case 'extreme': return ['polar', 'coupling'];
+      default: return [];
     }
   };
 
-  const panelMeta = selectedItem ? {
-    title: t(`overview.panel.${selectedItem.id}.title`) || PANEL_COPY[selectedItem.id]?.title,
-    description: t(`overview.panel.${selectedItem.id}.description`) || PANEL_COPY[selectedItem.id]?.description,
-  } : null;
+  const activeCards = getActiveCards();
+  const currentModeInfo = selectedCoordinate 
+    ? { icon: '📍', title: '微观点位分析 POINT FOCUS', color: C.mars, desc: `深入探究 LAT ${selectedCoordinate.lat.toFixed(1)}°, LNG ${selectedCoordinate.lng.toFixed(1)}° 的气候时序特性。` }
+    : MODE_DEFS.find(m => m.id === activeAnalysisMode) || MODE_DEFS[0];
 
   return (
     <div
       style={{
         position: 'fixed',
-        left: is3DMode ? '100vw' : '280px',
-        top: '70px',
-        right: is3DMode ? '-100vw' : 0,
-        height: 'calc(100vh - 70px)',
-        background: 'transparent',
-        zIndex: 500,
+        top: '40px', // under TopStatusBar
+        right: isVisible ? '0' : '-560px',
+        width: '540px',
+        height: 'calc(100vh - 40px)',
+        background: 'rgba(10, 12, 18, 0.4)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderLeft: `1px solid rgba(255,255,255,0.08)`,
+        zIndex: 1000,
         padding: '24px',
-        transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-        transform: 'translateX(0)',
-        display: 'grid',
-        gridTemplateRows: selectedItem && !is3DMode ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)',
-        gap: '20px',
-        minHeight: 0,
+        transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px',
       }}
     >
-      {selectedItem && !is3DMode && (
-        <GlowCard style={{ padding: '16px 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '28px', marginRight: '16px', filter: `drop-shadow(0 0 8px ${selectedItem.color})` }}>
-              {selectedItem.icon}
+      <GlowCard style={{ padding: '16px 20px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <span style={{ fontSize: '24px', marginRight: '16px', filter: `drop-shadow(0 0 8px ${currentModeInfo.color})` }}>
+              {currentModeInfo.icon}
             </span>
             <div>
               <h3
                 style={{
-                  color: selectedItem.color,
+                  color: currentModeInfo.color,
                   fontFamily: "'Orbitron', sans-serif",
-                  fontSize: '20px',
+                  fontSize: '14px',
                   fontWeight: 'bold',
                   margin: 0,
-                  textShadow: `0 0 10px ${selectedItem.color}`,
+                  textShadow: `0 0 10px ${currentModeInfo.color}80`,
                 }}
               >
-                {panelMeta?.title ?? selectedItem.id}
+                {currentModeInfo.title}
               </h3>
             </div>
           </div>
-          <p style={{ color: C.ice60, fontFamily: "'Exo 2', sans-serif", fontSize: '13px', margin: 0, lineHeight: 1.6 }}>
-            {panelMeta?.description ?? ''}
-          </p>
-        </GlowCard>
-      )}
+          {selectedCoordinate && (
+            <button
+              onClick={resetView}
+              style={{
+                background: 'rgba(255,255,255,0.1)', border: `1px solid rgba(255,255,255,0.2)`, color: C.ice,
+                padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontFamily: "'Exo 2', sans-serif", fontSize: '11px', transition: '0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+            >
+              ↩ 返回
+            </button>
+          )}
+        </div>
+        <p style={{ color: C.ice60, fontFamily: "'Exo 2', sans-serif", fontSize: '11px', margin: 0, lineHeight: 1.6 }}>
+          {currentModeInfo.desc}
+        </p>
+      </GlowCard>
 
-      <GlowCard
+      <div
         style={{
-          height: '100%',
-          padding: '24px',
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
           overflowX: 'hidden',
           overflowY: 'auto',
           scrollbarGutter: 'stable',
-          minHeight: 0,
+          paddingRight: '4px',
         }}
       >
-        {renderChart()}
-      </GlowCard>
+        {activeCards.map(key => {
+          const cardDef = cardsMap[key];
+          if (!cardDef) return null;
+          const isExpanded = expandedCard === key;
+
+          return (
+            <GlowCard 
+              key={key} 
+              style={{ 
+                padding: 0, 
+                overflow: 'hidden', 
+                flexShrink: isExpanded ? 0 : 0, 
+                transition: 'all 0.5s ease',
+              }}
+            >
+              {/* Header acts as accordion trigger */}
+              <div 
+                onClick={() => setExpandedCard(isExpanded ? '' : key)}
+                style={{ 
+                  padding: '14px 20px', 
+                  cursor: 'pointer', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  background: isExpanded ? `linear-gradient(90deg, ${cardDef.color}15, transparent)` : 'transparent',
+                  borderBottom: isExpanded ? `1px solid ${C.border}` : 'none'
+                }}
+              >
+                <span style={{ 
+                  color: isExpanded ? cardDef.color : C.ice60, 
+                  fontFamily: "'Orbitron', sans-serif", 
+                  fontSize: '13px', 
+                  fontWeight: isExpanded ? 'bold' : 'normal',
+                  letterSpacing: 1
+                }}>
+                  {cardDef.title}
+                </span>
+                <span style={{ 
+                  color: isExpanded ? cardDef.color : C.ice30, 
+                  fontSize: '16px', 
+                  transition: 'transform 0.3s', 
+                  transform: isExpanded ? 'rotate(45deg)' : 'rotate(0deg)' 
+                }}>
+                  +
+                </span>
+              </div>
+              
+              {/* Accordion Body */}
+              <div style={{
+                maxHeight: isExpanded ? '800px' : '0px',
+                opacity: isExpanded ? 1 : 0,
+                transition: 'all 0.5s ease',
+                overflow: 'hidden',
+              }}>
+                <div style={{ padding: '20px', height: '100%', boxSizing: 'border-box' }}>
+                  {cardDef.component}
+                </div>
+              </div>
+            </GlowCard>
+          );
+        })}
+      </div>
     </div>
   );
 }

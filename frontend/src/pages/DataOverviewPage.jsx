@@ -1,35 +1,38 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import C from '../constants/colors';
 import { useT } from '../i18n';
-import { DataOverviewProvider } from '../contexts/DataOverviewContext';
+import { DataOverviewProvider, useDataOverview } from '../contexts/DataOverviewContext';
 import { fetchGlobeData } from '../services/api';
 import useHandTracking from '../hooks/useHandTracking';
 
 // Sub-components
-import SidebarMenu, { DATA_OPTION_DEFS } from './DataOverviewPage/SidebarMenu';
-import Globe3DControls from './DataOverviewPage/Globe3DControls';
+import TopStatusBar from './DataOverviewPage/TopStatusBar';
+import SidebarMenu from './DataOverviewPage/SidebarMenu';
 import DetailPanel from './DataOverviewPage/DetailPanel';
 import Mars3DBackground from './DataOverviewPage/Mars3DBackground';
+import TimelineController from './DataOverviewPage/TimelineController';
+import AICopilotWidget from './DataOverviewPage/AICopilotWidget'; // We will create this
 
 const DataOverviewPageContent = () => {
   const t = useT();
+  const { 
+    marsYear, 
+    globalTimeLs, setGlobalTimeLs, 
+    isPlayingTimeline, setIsPlayingTimeline,
+    setSelectedCoordinate,
+    autoRotate,
+    gestureEnabled
+  } = useDataOverview();
+
   const [ozoneData, setOzoneData] = useState({ points: [], minVal: 0, maxVal: 1 });
   const [loadingGlobe, setLoadingGlobe] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(DATA_OPTION_DEFS[0]);
-  const [marsYear, setMarsYear] = useState(27);
-  const [lsValue, setLsValue] = useState(90);
-  const [playing, setPlaying] = useState(false);
-  const [autoRotate, setAutoRotate] = useState(true);
-  const [gestureEnabled, setGestureEnabled] = useState(false);
 
   const timerRef = useRef(null);
   const abortRef = useRef(null);
   const globeCanvasRef = useRef(null);
   const landmarksCanvasRef = useRef(null);
 
-  const is3DMode = selectedItem?.is3D;
-
-  const { videoRef, error: gestureError, setOnGesture, setOnLandmarks } = useHandTracking(gestureEnabled && is3DMode);
+  const { videoRef, error: gestureError, setOnGesture, setOnLandmarks } = useHandTracking(gestureEnabled);
 
   useEffect(() => {
     setOnGesture((gesture) => {
@@ -104,14 +107,14 @@ const DataOverviewPageContent = () => {
   }, []);
 
   useEffect(() => {
-    loadGlobe(lsValue, marsYear);
-  }, [lsValue, marsYear, loadGlobe]);
+    loadGlobe(globalTimeLs, marsYear);
+  }, [globalTimeLs, marsYear, loadGlobe]);
 
   useEffect(() => {
-    if (playing) {
+    if (isPlayingTimeline) {
       timerRef.current = setInterval(() => {
-        setLsValue(v => {
-          if (v >= 355) { setPlaying(false); return 0; }
+        setGlobalTimeLs(v => {
+          if (v >= 355) { setIsPlayingTimeline(false); return 0; }
           return v + 5;
         });
       }, 600);
@@ -119,20 +122,25 @@ const DataOverviewPageContent = () => {
       clearInterval(timerRef.current);
     }
     return () => clearInterval(timerRef.current);
-  }, [playing]);
+  }, [isPlayingTimeline, setGlobalTimeLs, setIsPlayingTimeline]);
 
   return (
     <div className="space-scene" style={{ width: '100vw', height: '100vh', overflow: 'hidden', position: 'relative' }}>
-      <Mars3DBackground
-        ref={globeCanvasRef}
-        ozoneData={ozoneData}
-        is3DMode={is3DMode}
-        autoRotate={autoRotate}
-      />
+      
+      {/* 绝对底层的 3D 背景 */}
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }}>
+        <Mars3DBackground
+          ref={globeCanvasRef}
+          ozoneData={ozoneData}
+          is3DMode={true}
+          autoRotate={autoRotate}
+          onGlobeClick={(coord) => setSelectedCoordinate(coord)}
+        />
+      </div>
 
-      {is3DMode && gestureEnabled && (
+      {gestureEnabled && (
         <div style={{
-          position: 'fixed', bottom: '20px', left: '310px', width: '240px', height: '180px',
+          position: 'fixed', bottom: '120px', left: '340px', width: '240px', height: '180px',
           zIndex: 2000, borderRadius: '12px', overflow: 'hidden', border: `2px solid ${C.mars}`,
           boxShadow: `0 0 20px rgba(255,107,53,0.3)`, background: '#000',
           display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -161,31 +169,30 @@ const DataOverviewPageContent = () => {
         </div>
       )}
 
-      <SidebarMenu selectedItem={selectedItem} onItemSelect={setSelectedItem} />
+      {/* HUD UI 层 */}
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 100, pointerEvents: 'none' }}>
+        
+        <div style={{ pointerEvents: 'auto' }}>
+          <TopStatusBar />
+        </div>
 
-      <DetailPanel
-        selectedItem={selectedItem}
-        marsYear={marsYear}
-        lsValue={lsValue}
-        ozoneData={ozoneData}
-      />
+        <div style={{ pointerEvents: 'auto' }}>
+          <SidebarMenu />
+        </div>
 
-      {is3DMode && (
-        <Globe3DControls
-          ozoneData={ozoneData}
-          lsValue={lsValue}
-          marsYear={marsYear}
-          playing={playing}
-          autoRotate={autoRotate}
-          gestureEnabled={gestureEnabled}
-          loadingGlobe={loadingGlobe}
-          onLsChange={setLsValue}
-          onMarsYearChange={setMarsYear}
-          onTogglePlay={() => setPlaying(p => !p)}
-          onToggleAutoRotate={() => setAutoRotate(r => !r)}
-          onToggleGesture={() => setGestureEnabled(g => !g)}
-        />
-      )}
+        <div style={{ pointerEvents: 'auto' }}>
+          <DetailPanel ozoneData={ozoneData} />
+        </div>
+
+        <div style={{ pointerEvents: 'auto' }}>
+          <TimelineController />
+        </div>
+        
+        <div style={{ pointerEvents: 'auto' }}>
+          <AICopilotWidget />
+        </div>
+      </div>
+
     </div>
   );
 };

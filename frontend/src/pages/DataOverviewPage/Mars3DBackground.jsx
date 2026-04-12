@@ -1,14 +1,25 @@
 import React, { forwardRef, useMemo } from 'react';
 import SphericalFieldCanvas from '../../components/SphericalFieldCanvas';
 
-const Mars3DBackground = forwardRef(({ ozoneData, is3DMode, autoRotate }, ref) => {
+const Mars3DBackground = forwardRef(({ ozoneData, is3DMode, autoRotate, onGlobeClick }, ref) => {
   const fieldData = useMemo(() => {
     if (!ozoneData?.points?.length) return null;
-    const lats = [...new Set(ozoneData.points.map(p => Math.round(p.lat * 10) / 10))].sort((a, b) => b - a);
-    const lngs = [...new Set(ozoneData.points.map(p => {
-      let l = Math.round(p.lng * 10) / 10;
-      return (l + 360) % 360;
-    }))].sort((a, b) => a - b);
+    const latSet = new Set();
+    const lngSet = new Set();
+    
+    ozoneData.points.forEach(p => {
+      latSet.add(Math.round(p.lat * 10) / 10);
+      lngSet.add((Math.round(p.lng * 10) / 10 + 360) % 360);
+    });
+    
+    const lats = [...latSet].sort((a, b) => b - a);
+    const lngs = [...lngSet].sort((a, b) => a - b);
+
+    const latIdxMap = new Map();
+    lats.forEach((lat, idx) => latIdxMap.set(lat, idx));
+    
+    const lngIdxMap = new Map();
+    lngs.forEach((lng, idx) => lngIdxMap.set(lng, idx));
 
     const nLat = lats.length;
     const nLon = lngs.length;
@@ -17,9 +28,9 @@ const Mars3DBackground = forwardRef(({ ozoneData, is3DMode, autoRotate }, ref) =
     ozoneData.points.forEach(p => {
       const lat = Math.round(p.lat * 10) / 10;
       const lng = ((Math.round(p.lng * 10) / 10) + 360) % 360;
-      const i = lats.indexOf(lat);
-      const j = lngs.indexOf(lng);
-      if (i >= 0 && j >= 0) {
+      const i = latIdxMap.get(lat);
+      const j = lngIdxMap.get(lng);
+      if (i !== undefined && j !== undefined) {
         field[i][j] = p.val;
       }
     });
@@ -35,7 +46,7 @@ const Mars3DBackground = forwardRef(({ ozoneData, is3DMode, autoRotate }, ref) =
 
   return (
     <div style={{
-      position: 'fixed',
+      position: 'absolute', // Modified to absolute to fit HUD container
       top: 0,
       left: 0,
       width: '100%',
@@ -52,7 +63,9 @@ const Mars3DBackground = forwardRef(({ ozoneData, is3DMode, autoRotate }, ref) =
         h="100vh"
         forceFullscreen
         autoRotate={autoRotate}
-        zoom={4.5}
+        zoom={2.5} // slightly smaller zoom to give room for side panels
+        offsetX={130} // shift object left by 130px to center it in remaining viewport space
+        onGlobeClick={onGlobeClick}
       />
     </div>
   );

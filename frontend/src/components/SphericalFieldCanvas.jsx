@@ -41,7 +41,7 @@ function bilinearInterpolate(field, liFloat, ljFloat) {
   return row0 * (1 - di) + row1 * di;
 }
 
-const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h = 240, forceFullscreen = false, autoRotate = true, zoom = 4.5, showMars = true }, ref) => {
+const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h = 240, forceFullscreen = false, autoRotate = true, zoom = 4.5, showMars = true, offsetX = 0 }, ref) => {
   const { settings } = useSettings();
   const isLight = settings.theme === 'light';
   const containerRef = useRef(null);
@@ -105,6 +105,9 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+    if (offsetX !== 0) {
+      camera.setViewOffset(width, height, offsetX, 0, width, height);
+    }
     camera.position.set(0, 0, zoom);
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
@@ -190,6 +193,11 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
       const w = containerRef.current.clientWidth;
       const h2 = containerRef.current.clientHeight;
       camera.aspect = w / h2;
+      if (offsetX !== 0) {
+        camera.setViewOffset(w, h2, offsetX, 0, w, h2);
+      } else {
+        camera.clearViewOffset();
+      }
       camera.updateProjectionMatrix();
       if (controlsRef.current) {
         controlsRef.current.handleResize();
