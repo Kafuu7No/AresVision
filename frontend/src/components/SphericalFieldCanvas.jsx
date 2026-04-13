@@ -41,7 +41,7 @@ function bilinearInterpolate(field, liFloat, ljFloat) {
   return row0 * (1 - di) + row1 * di;
 }
 
-const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h = 240, forceFullscreen = false, autoRotate = true, zoom = 4.5, showMars = true }, ref) => {
+const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h = 240, forceFullscreen = false, autoRotate = true, zoom = 4.5, showMars = true, offsetX = 0 }, ref) => {
   const { settings } = useSettings();
   const isLight = settings.theme === 'light';
   const containerRef = useRef(null);
@@ -51,6 +51,11 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
   const controlsRef = useRef(null);
   const autoRotateRef = useRef(autoRotate);
   const starMeshRef = useRef(null);
+  const offsetXRef = useRef(offsetX);
+
+  useEffect(() => {
+    offsetXRef.current = offsetX;
+  }, [offsetX]);
 
   // Expose imperative API for gesture control
   useImperativeHandle(ref, () => ({
@@ -105,6 +110,9 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+    if (offsetX !== 0) {
+      camera.setViewOffset(width, height, offsetX, 0, width, height);
+    }
     camera.position.set(0, 0, zoom);
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
@@ -190,6 +198,11 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
       const w = containerRef.current.clientWidth;
       const h2 = containerRef.current.clientHeight;
       camera.aspect = w / h2;
+      if (offsetXRef.current !== 0) {
+        camera.setViewOffset(w, h2, offsetXRef.current, 0, w, h2);
+      } else {
+        camera.clearViewOffset();
+      }
       camera.updateProjectionMatrix();
       if (controlsRef.current) {
         controlsRef.current.handleResize();
@@ -227,6 +240,19 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
       }
     });
   }, [isLight]);
+
+  // 当外部动态调整窗口边界宽度时，实时保持地球在可用中间区域的正中心
+  useEffect(() => {
+    if (!cameraRef.current || !containerRef.current) return;
+    const w = containerRef.current.clientWidth;
+    const h2 = containerRef.current.clientHeight;
+    if (offsetX !== 0) {
+      cameraRef.current.setViewOffset(w, h2, offsetX, 0, w, h2);
+    } else {
+      cameraRef.current.clearViewOffset();
+    }
+    cameraRef.current.updateProjectionMatrix();
+  }, [offsetX]);
 
   // 2. 响应数据更新，重建臭氧场网格（保持火星本身及分组姿态不变）
   useEffect(() => {

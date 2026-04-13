@@ -11,31 +11,47 @@ export const useDataOverview = () => {
 };
 
 export const DataOverviewProvider = ({ children }) => {
+  const [activeAnalysisMode, setActiveAnalysisMode] = useState('temporal');
+  const [selectedCoordinate, setSelectedCoordinate] = useState(null);
   const [marsYear, setMarsYear] = useState(27);
-  const [solarLongitude, setSolarLongitude] = useState(0);
-  const [selectedLatitude, setSelectedLatitude] = useState(0);
-  const [selectedLongitude, setSelectedLongitude] = useState(0);
+  const [globalTimeLs, setGlobalTimeLs] = useState(0); // 替换原来的 solarLongitude
+  const [isPlayingTimeline, setIsPlayingTimeline] = useState(false);
+  const [autoRotate, setAutoRotate] = useState(true);
+  const [gestureEnabled, setGestureEnabled] = useState(false);
   const [timeRange, setTimeRange] = useState({ start: 0, end: 360 });
   const [selectedVariables, setSelectedVariables] = useState([
     'o3col', 'temperature', 'pressure'
   ]);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(280);
+  const [rightPanelWidth, setRightPanelWidth] = useState(540);
+  const [expandedCard, setExpandedCard] = useState('');
 
   const contextValue = {
-    // 基础参数
+    expandedCard,
+    setExpandedCard,
+    activeAnalysisMode,
+    setActiveAnalysisMode,
+    selectedCoordinate,
+    setSelectedCoordinate,
     marsYear,
     setMarsYear,
-    solarLongitude,
-    setSolarLongitude,
-    selectedLatitude,
-    setSelectedLatitude,
-    selectedLongitude,
-    setSelectedLongitude,
+    globalTimeLs,
+    setGlobalTimeLs,
+    isPlayingTimeline,
+    setIsPlayingTimeline,
+    autoRotate,
+    setAutoRotate,
+    gestureEnabled,
+    setGestureEnabled,
     timeRange,
     setTimeRange,
     selectedVariables,
     setSelectedVariables,
+    leftPanelWidth,
+    setLeftPanelWidth,
+    rightPanelWidth,
+    setRightPanelWidth,
     
-    // 辅助方法
     getSeasonName: (ls) => {
       if (ls >= 0 && ls < 90) return 'Northern Spring';
       if (ls >= 90 && ls < 180) return 'Northern Summer';
@@ -44,9 +60,13 @@ export const DataOverviewProvider = ({ children }) => {
     },
     
     resetSelection: () => {
-      setSelectedLatitude(0);
-      setSelectedLongitude(0);
+      setSelectedCoordinate(null);
       setTimeRange({ start: 0, end: 360 });
+    },
+    
+    resetView: () => {
+      setSelectedCoordinate(null);
+      setActiveAnalysisMode('global');
     },
   };
 

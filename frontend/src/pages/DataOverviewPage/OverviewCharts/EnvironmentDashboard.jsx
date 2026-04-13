@@ -80,7 +80,7 @@ function bandSeries(heatmap, band) {
   });
 }
 
-function EnvCard({ meta, dataset, copy }) {
+function EnvCard({ meta, dataset, copy, plotText, plotGrid }) {
   const summary = useMemo(() => summarizeSeries(dataset.series), [dataset.series]);
   const convertedMean = convertValue(meta.id, dataset.mean);
   const convertedPeak = convertValue(meta.id, summary.peakValue);
@@ -127,7 +127,7 @@ function EnvCard({ meta, dataset, copy }) {
             fillcolor: `${meta.color}22`,
             hovertemplate: 'Ls %{x:.0f} deg<br>%{y:.3f} ' + label + '<extra></extra>',
           }]}
-          layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 28, r: 12, t: 8, b: 24 }, xaxis: { tickfont: { color: C.ice30, size: 9 }, gridcolor: 'rgba(255,255,255,0.05)', showline: false }, yaxis: { tickfont: { color: C.ice30, size: 9 }, gridcolor: 'rgba(255,255,255,0.05)', zeroline: false }, showlegend: false }}
+          layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 28, r: 12, t: 8, b: 24 }, xaxis: { tickfont: { color: plotText, size: 9  }, gridcolor: plotGrid, showline: false }, yaxis: { tickfont: { color: plotText, size: 9  }, gridcolor: plotGrid, zeroline: false }, showlegend: false }}
           config={{ displayModeBar: false, responsive: true }}
           useResizeHandler
           style={{ width: '100%', height: '100%' }}
@@ -140,6 +140,11 @@ function EnvCard({ meta, dataset, copy }) {
 export default function EnvironmentDashboard({ marsYear }) {
   const t = useT();
   const { settings } = useSettings();
+
+  const isLight = settings?.theme === 'light';
+  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
+  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+
   const isZh = settings.language !== 'en';
   const copy = isZh ? {
     loading: '正在加载环境驱动...',
@@ -262,14 +267,14 @@ export default function EnvironmentDashboard({ marsYear }) {
   }
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateRows: 'auto auto', gap: 18, overflowX: 'hidden', overflowY: 'auto', scrollbarGutter: 'stable', paddingRight: 4 }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 18, paddingRight: 4 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 18 }}>
         {variableMeta.map((meta) => (
-          <EnvCard key={meta.id} meta={meta} dataset={datasets[meta.id]} copy={copy} />
+          <EnvCard key={meta.id} meta={meta} dataset={datasets[meta.id]} copy={copy} plotText={plotText} plotGrid={plotGrid} />
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
         <div style={{ padding: 16, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, minHeight: 320, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
           <div style={{ color: C.ice, fontSize: 14, fontWeight: 800, marginBottom: 10, fontFamily: "'Orbitron', sans-serif" }}>{copy.influence}</div>
           <div style={{ minHeight: 0 }}>
@@ -285,11 +290,11 @@ export default function EnvironmentDashboard({ marsYear }) {
                 hovertemplate: '%{y}<br>%{x}<br>corr %{z:.3f}<extra></extra>',
                 colorbar: {
                   title: 'corr',
-                  tickfont: { color: C.ice60, size: 10 },
-                  titlefont: { color: C.ice30, size: 10 },
+                  tickfont: { color: plotText, size: 10  },
+                  titlefont: { color: plotText, size: 10  },
                 },
               }]}
-              layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 96, r: 34, t: 16, b: 56 }, xaxis: { tickfont: { color: C.ice60, size: 10 }, title: copy.driverVar, titlefont: { color: C.ice30, size: 11 }, automargin: true }, yaxis: { tickfont: { color: C.ice60, size: 10 }, automargin: true } }}
+              layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 96, r: 34, t: 16, b: 56 }, xaxis: { tickfont: { color: plotText, size: 10  }, title: copy.driverVar, titlefont: { color: plotText, size: 11  }, automargin: true }, yaxis: { tickfont: { color: plotText, size: 10  }, automargin: true } }}
               config={{ displayModeBar: false, responsive: true }}
               useResizeHandler
               style={{ width: '100%', height: '100%' }}
@@ -311,7 +316,7 @@ export default function EnvironmentDashboard({ marsYear }) {
                   textposition: 'auto',
                   hovertemplate: '%{x}<br>%{text}<br>|corr| %{y:.3f}<extra></extra>',
                 }]}
-                layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 52, r: 18, t: 16, b: 64 }, xaxis: { tickfont: { color: C.ice60, size: 9 }, automargin: true }, yaxis: { tickfont: { color: C.ice60, size: 10 }, gridcolor: 'rgba(255,255,255,0.06)', title: '|corr|', automargin: true }, showlegend: false }}
+                layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 52, r: 18, t: 16, b: 64 }, xaxis: { tickfont: { color: plotText, size: 9  }, automargin: true }, yaxis: { tickfont: { color: plotText, size: 10  }, gridcolor: plotGrid, title: '|corr|', automargin: true }, showlegend: false }}
                 config={{ displayModeBar: false, responsive: true }}
                 useResizeHandler
                 style={{ width: '100%', height: '100%' }}

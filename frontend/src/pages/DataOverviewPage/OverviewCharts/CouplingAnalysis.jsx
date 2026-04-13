@@ -8,6 +8,11 @@ import { fetchCouplingData } from '../../../services/api';
 export default function CouplingAnalysis({ marsYear }) {
   const t = useT();
   const { settings } = useSettings();
+
+  const isLight = settings?.theme === 'light';
+  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
+  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+
   const isZh = settings.language === 'zh';
   
   const copy = isZh ? {
@@ -91,14 +96,14 @@ export default function CouplingAnalysis({ marsYear }) {
             margin: { l: 50, r: 50, t: 30, b: 40 },
             xaxis: {
               title: copy.lsAxis,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
-              titlefont: { color: C.ice30, size: 11 }
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
+              titlefont: { color: plotText, size: 11  }
             },
             yaxis: {
               title: copy.ozoneAxis,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
               titlefont: { color: C.blue, size: 11 }
             },
             yaxis2: {
@@ -106,13 +111,13 @@ export default function CouplingAnalysis({ marsYear }) {
               side: 'right',
               overlaying: 'y',
               gridcolor: 'transparent',
-              tickfont: { color: C.ice60, size: 10 },
+              tickfont: { color: plotText, size: 10  },
               titlefont: { color: C.mars, size: 11 }
             },
             legend: {
               orientation: 'h',
               y: 1.1,
-              font: { color: C.ice60, size: 11 },
+              font: { color: plotText, size: 11  },
             }
           }}
           config={{ displayModeBar: false, responsive: true }}

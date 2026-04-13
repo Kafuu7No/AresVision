@@ -15,6 +15,11 @@ function percentile(sorted, ratio) {
 export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
   const t = useT();
   const { settings } = useSettings();
+
+  const isLight = settings?.theme === 'light';
+  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
+  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+
   const ozoneUnit = settings.units.ozone;
   const precision = settings.precision;
   const isZh = settings.language !== 'en';
@@ -138,16 +143,16 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
                 margin: { l: 52, r: 18, t: 16, b: 48 },
                 xaxis: {
                   title: `${copy.ozoneAxis} (${ozoneLabel(ozoneUnit)})`,
-                  gridcolor: 'rgba(255,255,255,0.06)',
-                  tickfont: { color: C.ice60, size: 10 },
-                  titlefont: { color: C.ice30, size: 11 },
+                  gridcolor: plotGrid,
+                  tickfont: { color: plotText, size: 10  },
+                  titlefont: { color: plotText, size: 11  },
                   automargin: true,
                 },
                 yaxis: {
                   title: copy.count,
-                  gridcolor: 'rgba(255,255,255,0.06)',
-                  tickfont: { color: C.ice60, size: 10 },
-                  titlefont: { color: C.ice30, size: 11 },
+                  gridcolor: plotGrid,
+                  tickfont: { color: plotText, size: 10  },
+                  titlefont: { color: plotText, size: 11  },
                   automargin: true,
                 },
                 showlegend: false,
@@ -181,18 +186,18 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
                   margin: { l: 62, r: 18, t: 16, b: 52 },
                   xaxis: {
                     title: `${copy.ozoneAxis} (${ozoneLabel(ozoneUnit)})`,
-                    gridcolor: 'rgba(255,255,255,0.06)',
-                    tickfont: { color: C.ice60, size: 10 },
-                    titlefont: { color: C.ice30, size: 11 },
+                    gridcolor: plotGrid,
+                    tickfont: { color: plotText, size: 10  },
+                    titlefont: { color: plotText, size: 11  },
                     automargin: true,
                   },
                   yaxis: {
                     title: copy.latitude,
                     range: [-90, 90],
                     tickvals: [-90, -60, -30, 0, 30, 60, 90],
-                    gridcolor: 'rgba(255,255,255,0.06)',
-                    tickfont: { color: C.ice60, size: 10 },
-                    titlefont: { color: C.ice30, size: 11 },
+                    gridcolor: plotGrid,
+                    tickfont: { color: plotText, size: 10  },
+                    titlefont: { color: plotText, size: 11  },
                     automargin: true,
                   },
                   showlegend: false,

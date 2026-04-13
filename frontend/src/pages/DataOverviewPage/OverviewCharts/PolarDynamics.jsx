@@ -8,6 +8,11 @@ import { fetchPolarDynamics } from '../../../services/api';
 export default function PolarDynamics({ marsYear }) {
   const t = useT();
   const { settings } = useSettings();
+
+  const isLight = settings?.theme === 'light';
+  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
+  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+
   const isZh = settings.language === 'zh';
   
   const copy = isZh ? {
@@ -57,13 +62,13 @@ export default function PolarDynamics({ marsYear }) {
   }
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ marginBottom: 12 }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div>
         <h3 style={{ color: C.ice, margin: '0 0 4px 0', fontSize: 16 }}>{copy.title}</h3>
         <p style={{ color: C.ice60, fontSize: 12, margin: 0 }}>{copy.desc}</p>
       </div>
 
-      <div style={{ flex: 1, minHeight: 300, display: 'grid', gridTemplateColumns: '1fr', gridTemplateRows: '1fr 1fr', gap: 10 }}>
+      <div style={{ height: '600px', display: 'grid', gridTemplateColumns: '1fr', gridTemplateRows: '1fr 1fr', gap: 10 }}>
         
         {/* Ozone vs Ls (North and South) */}
         <Plot
@@ -92,20 +97,20 @@ export default function PolarDynamics({ marsYear }) {
             margin: { l: 50, r: 20, t: 10, b: 30 },
             xaxis: {
               title: copy.lsAxis,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
-              titlefont: { color: C.ice30, size: 11 }
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
+              titlefont: { color: plotText, size: 11  }
             },
             yaxis: {
               title: copy.ozoneAxis,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
-              titlefont: { color: C.ice30, size: 11 }
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
+              titlefont: { color: plotText, size: 11  }
             },
             legend: {
               x: 0.05,
               y: 0.95,
-              font: { color: C.ice60, size: 10 },
+              font: { color: plotText, size: 10  },
               bgcolor: 'rgba(0,0,0,0.5)'
             }
           }}
@@ -141,20 +146,20 @@ export default function PolarDynamics({ marsYear }) {
             margin: { l: 50, r: 20, t: 10, b: 30 },
             xaxis: {
               title: copy.lsAxis,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
-              titlefont: { color: C.ice30, size: 11 }
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
+              titlefont: { color: plotText, size: 11  }
             },
             yaxis: {
               title: copy.tempAxis,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
-              titlefont: { color: C.ice30, size: 11 }
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
+              titlefont: { color: plotText, size: 11  }
             },
             legend: {
               x: 0.05,
               y: 0.95,
-              font: { color: C.ice60, size: 10 },
+              font: { color: plotText, size: 10  },
               bgcolor: 'rgba(0,0,0,0.5)'
             }
           }}

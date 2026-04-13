@@ -8,6 +8,11 @@ import { fetchZonalAnomaly } from '../../../services/api';
 export default function WaveExplorer({ marsYear }) {
   const t = useT();
   const { settings } = useSettings();
+
+  const isLight = settings?.theme === 'light';
+  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
+  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+
   const isZh = settings.language === 'zh';
   
   const copy = isZh ? {
@@ -58,12 +63,12 @@ export default function WaveExplorer({ marsYear }) {
   const maxAbs = Math.max(Math.abs(data.min || 0), Math.abs(data.max || 0));
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ marginBottom: 12 }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div>
         <h3 style={{ color: C.ice, margin: '0 0 4px 0', fontSize: 16 }}>{copy.title}</h3>
         <p style={{ color: C.ice60, fontSize: 12, margin: 0 }}>{copy.desc}</p>
       </div>
-      <div style={{ flex: 1, minHeight: 300 }}>
+      <div style={{ height: '360px' }}>
         <Plot
           data={[
             {
@@ -77,8 +82,8 @@ export default function WaveExplorer({ marsYear }) {
               colorbar: {
                 title: '距平 (m-atm cm)',
                 titleside: 'right',
-                titlefont: { color: C.ice30, size: 10 },
-                tickfont: { color: C.ice60, size: 10 },
+                titlefont: { color: plotText, size: 10  },
+                tickfont: { color: plotText, size: 10  },
                 outlinewidth: 0,
                 xpad: 10
               }
@@ -91,15 +96,15 @@ export default function WaveExplorer({ marsYear }) {
             margin: { l: 50, r: 20, t: 30, b: 40 },
             xaxis: {
               title: copy.lonAxis,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
-              titlefont: { color: C.ice30, size: 11 }
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
+              titlefont: { color: plotText, size: 11  }
             },
             yaxis: {
               title: copy.latAxis,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
-              titlefont: { color: C.ice30, size: 11 }
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
+              titlefont: { color: plotText, size: 11  }
             }
           }}
           config={{ displayModeBar: false, responsive: true }}

@@ -1,56 +1,52 @@
 const fs = require('fs');
 const path = require('path');
-const dir = 'd:/A-development-project/GitHubProject/OtherProject/AresVision/frontend/src';
 
-function scan(d) {
-  let results = [];
-  const list = fs.readdirSync(d);
-  list.forEach(file => {
-    file = path.join(d, file);
-    const stat = fs.statSync(file);
-    if (stat && stat.isDirectory()) {
-      results = results.concat(scan(file));
+const dir = 'd:/A-development-project/GitHubProject/OtherProject/AresVision/frontend/src/pages/DataOverviewPage/OverviewCharts';
+
+const files = fs.readdirSync(dir).filter(f => f.endsWith('.jsx'));
+
+for (const file of files) {
+  const filepath = path.join(dir, file);
+  let content = fs.readFileSync(filepath, 'utf8');
+
+  let modified = false;
+
+  const styleSetup = `
+  const isLight = settings?.theme === 'light';
+  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
+  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+`;
+
+  if (!content.includes('plotText')) {
+    if (content.includes('const { settings } = useSettings();')) {
+      content = content.replace(/(const { settings } = useSettings\(\);)/, `$1\n${styleSetup}`);
     } else {
-      if (file.endsWith('.jsx') || file.endsWith('.js')) {
-        results.push(file);
-      }
+      content = content.replace(/(const t = useT\(\);)/, `$1\n  const settings = {}; // fallback \n${styleSetup}`);
     }
-  });
-  return results;
-}
-
-const files = scan(dir);
-let count = 0;
-
-files.forEach(f => {
-  let c = fs.readFileSync(f, 'utf8');
-  let orig = c;
-
-  c = c.replace(/\{\s*'--text':\s*'#1e1e30',\s*'--text-60':\s*'rgba[^']+',\s*'--text-30':\s*'rgba[^']+'/g, 
-    "{ '--text': '#000000', '--text-60': '#000000', '--text-30': '#000000'");
-  c = c.replace(/\{\s*'--text':\s*'#e8edf3',\s*'--text-60':\s*'rgba[^']+',\s*'--text-30':\s*'rgba[^']+'/g, 
-    "{ '--text': '#ffffff', '--text-60': '#ffffff', '--text-30': '#ffffff'");
-    
-  c = c.replace(/'--text-60':\s*'rgba\(0,0,0,0.7\)'/g, "'--text-60': '#000000'");
-  c = c.replace(/'--text-30':\s*'rgba\(0,0,0,0.45\)'/g, "'--text-30': '#000000'");
-
-  c = c.replace(/\?\s*'#1e1e30'\s*:\s*'#e8edf3'/g, "? '#000000' : '#ffffff'");
-  
-  c = c.replace(/(?:Clr|Color|textColor|dimClr|labelClr|subColor|nameClr|titleClr|metaClr|inputClr)\s*(?:=|:)\s*(?:isLight|L)\s*\?\s*'rgba\([^']+\)'\s*:\s*'rgba\([^']+\)'/g, 
-    (match) => match.replace(/'rgba\([^']+\)'\s*:\s*'rgba\([^']+\)'/, "'#000000' : '#ffffff'"));
-    
-  c = c.replace(/(?:plotTextColor|plotText60|axisTextColor|axisTitleColor|cbLabelColor|cbTitleColor|tickColor|titleColor)\s*=\s*(?:isLight|L)\s*\?\s*'rgba\([^']+\)'\s*:\s*'rgba\([^']+\)'/g,
-    (match) => match.replace(/'rgba\([^']+\)'\s*:\s*'rgba\([^']+\)'/, "'#000000' : '#ffffff'"));
-    
-  c = c.replace(/color:\s*(?:isLight|L)\s*\?\s*'rgba\([^']+\)'\s*:\s*'rgba\([^']+\)'/g, "color: (isLight || L) ? '#000000' : '#ffffff'");
-  
-  // Specific catch for ShapleyImportanceChart
-  c = c.replace(/font:\s*\{\s*size:\s*10,\s*color:\s*'rgba\([^']+\)'\s*\}/g, "font: { size: 10, color: '#ffffff' }");
-
-  if (orig !== c) {
-    fs.writeFileSync(f, c, 'utf8');
-    count++;
-    console.log('Updated ' + path.basename(f));
   }
-});
-console.log('Total ' + count);
+
+  // carefully replace font colors inside plotly objects
+  // using a regex that looks for (titlefont|tickfont|font|legend): { ... color: C.iceXX ... }
+  // Since js regex is limited, we replace simply color: C.ice[36]0 when next to size or family! No, tickfont might be structured differently.
+  // Actually, we can just replace 'color: C.ice60' with 'color: plotText' globally because plotText resolves to an exact valid hex/rgba,
+  // which works for BOTH standard React divs AND Plotly charts!
+  // It completely bypasses the CSS var bug in canvas and ensures the text is bright.
+  
+  const original = content;
+  
+  // Actually let's just do it globally for C.ice60 and C.ice30 inside style representations
+  // But wait, C.ice is still var(--text). If Plotly uses C.ice it fails too! Does Plotly use C.ice?
+  content = content.replace(/color:\s*C\.ice([36]0)?\b/g, (match, p1) => {
+     // If it's a DOM element, maybe it's fine to become plotText.
+     // But we only want to target if it's near tickfont/titlefont/font:
+     return match; // skip for now we will use regex specifically
+  });
+
+  content = content.replace(/(tickfont|titlefont|font)\s*:\s*\{\s*([^}]*?)color\s*:\s*C\.ice([36]0)?(.*?)\}/g, "$1: { $2color: plotText$4 }");
+  content = content.replace(/gridcolor\s*:\s*'rgba\(255,\s*255,\s*255,\s*0\.0[56]\)'/g, "gridcolor: plotGrid");
+  
+  if (content !== original) {
+      fs.writeFileSync(filepath, content);
+      console.log(`Updated ${file}`);
+  }
+}
