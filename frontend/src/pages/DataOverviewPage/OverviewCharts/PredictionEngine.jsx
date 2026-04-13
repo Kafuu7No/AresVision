@@ -21,6 +21,11 @@ function getCompareData(results) {
 export default function PredictionEngine() {
   const t = useT();
   const { settings } = useSettings();
+
+  const isLight = settings?.theme === 'light';
+  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
+  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+
   const isZh = settings.language !== 'en';
   const copy = isZh ? {
     loading: '正在加载模型表现...',
@@ -184,22 +189,22 @@ export default function PredictionEngine() {
             margin: { l: 58, r: 24, t: 24, b: 52 },
             xaxis: {
               title: copy.xTitle,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
-              titlefont: { color: C.ice30, size: 11 },
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
+              titlefont: { color: plotText, size: 11  },
               automargin: true,
             },
             yaxis: {
               title: copy.yTitle,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
-              titlefont: { color: C.ice30, size: 11 },
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
+              titlefont: { color: plotText, size: 11  },
               automargin: true,
             },
             legend: {
               orientation: 'h',
               y: 1.08,
-              font: { color: C.ice60, size: 11 },
+              font: { color: plotText, size: 11  },
             },
             shapes: [
               {
@@ -220,7 +225,7 @@ export default function PredictionEngine() {
                 yref: 'paper',
                 text: copy.my28Begins,
                 showarrow: false,
-                font: { color: C.ice30, size: 10 },
+                font: { color: plotText, size: 10  },
               },
             ],
           }}

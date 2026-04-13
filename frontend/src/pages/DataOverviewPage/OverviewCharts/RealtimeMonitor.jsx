@@ -18,6 +18,11 @@ const LAT_BANDS = [
 export default function RealtimeMonitor({ marsYear, lsValue }) {
   const t = useT();
   const { settings } = useSettings();
+
+  const isLight = settings?.theme === 'light';
+  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
+  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+
   const isZh = settings.language !== 'en';
   const copy = isZh ? {
     loading: '正在加载昼夜变化...',
@@ -189,16 +194,16 @@ export default function RealtimeMonitor({ marsYear, lsValue }) {
             margin: { l: 58, r: 24, t: 18, b: 48 },
             xaxis: {
               title: copy.localTime,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
-              titlefont: { color: C.ice30, size: 11 },
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
+              titlefont: { color: plotText, size: 11  },
               automargin: true,
             },
             yaxis: {
               title: `${copy.ozone} (${ozoneLabel('um-atm')})`,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
-              titlefont: { color: C.ice30, size: 11 },
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
+              titlefont: { color: plotText, size: 11  },
               automargin: true,
             },
             showlegend: false,

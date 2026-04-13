@@ -89,6 +89,11 @@ function strongestCorrelation(matrix, names) {
 
 export default function CorrelationMatrix({ marsYear }) {
   const { settings } = useSettings();
+
+  const isLight = settings?.theme === 'light';
+  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
+  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+
   const ozoneUnit = settings.units.ozone;
   const precision = settings.precision;
   const isCompact = typeof window !== 'undefined' && window.innerWidth < 1500;
@@ -323,9 +328,9 @@ export default function CorrelationMatrix({ marsYear }) {
             <Plot
             data={[
               { x: derived.paired.map((item) => item.driver), y: derived.paired.map((item) => convertOzone(item.ozone, ozoneUnit)), mode: 'markers', type: 'scatter', marker: { color: selectedMeta.color, size: 8, opacity: 0.75, line: { color: '#fff', width: 0.8 } }, text: derived.paired.map((item) => item.ls), hovertemplate: `${selectedMeta.label}: %{x:.3f}<br>O3: %{y:.3f} ${ozoneLabel(ozoneUnit)}<br>Ls %{text:.0f} deg<extra></extra>`, name: copy.samples },
-              { x: derived.regressionLine.map((item) => item.x), y: derived.regressionLine.map((item) => convertOzone(item.y, ozoneUnit)), mode: 'lines', type: 'scatter', line: { color: C.ice, width: 2 }, hoverinfo: 'skip', name: copy.fit },
+              { x: derived.regressionLine.map((item) => item.x), y: derived.regressionLine.map((item) => convertOzone(item.y, ozoneUnit)), mode: 'lines', type: 'scatter', line: { color: plotText, width: 2 }, hoverinfo: 'skip', name: copy.fit },
             ]}
-            layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 52, r: 18, t: 12, b: 44 }, xaxis: { title: `${selectedMeta.label} (${selectedMeta.unit})`, gridcolor: 'rgba(255,255,255,0.06)', tickfont: { color: C.ice60, size: 10 }, titlefont: { color: C.ice30, size: 11 }, automargin: true }, yaxis: { title: `O3 (${ozoneLabel(ozoneUnit)})`, gridcolor: 'rgba(255,255,255,0.06)', tickfont: { color: C.ice60, size: 10 }, titlefont: { color: C.ice30, size: 11 }, automargin: true }, showlegend: false }}
+            layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 52, r: 18, t: 12, b: 44 }, xaxis: { title: `${selectedMeta.label} (${selectedMeta.unit})`, gridcolor: plotGrid, tickfont: { color: plotText, size: 10  }, titlefont: { color: plotText, size: 11  }, automargin: true }, yaxis: { title: `O3 (${ozoneLabel(ozoneUnit)})`, gridcolor: plotGrid, tickfont: { color: plotText, size: 10  }, titlefont: { color: plotText, size: 11  }, automargin: true }, showlegend: false }}
             config={{ displayModeBar: false, responsive: true }}
             useResizeHandler
             style={{ width: '100%', height: '100%' }}
@@ -341,7 +346,7 @@ export default function CorrelationMatrix({ marsYear }) {
               { x: ozoneHeatmap.x, y: derived.normalizedOzone, mode: 'lines', type: 'scatter', line: { color: C.mars, width: 3, shape: 'spline' }, name: 'O3' },
               { x: ozoneHeatmap.x, y: derived.normalizedDriver, mode: 'lines', type: 'scatter', line: { color: selectedMeta.color, width: 3, shape: 'spline' }, name: selectedMeta.label },
             ]}
-            layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 48, r: 18, t: 12, b: 44 }, xaxis: { title: copy.solarLs, gridcolor: 'rgba(255,255,255,0.06)', tickfont: { color: C.ice60, size: 10 }, titlefont: { color: C.ice30, size: 11 }, automargin: true }, yaxis: { title: copy.normalized, gridcolor: 'rgba(255,255,255,0.06)', tickfont: { color: C.ice60, size: 10 }, titlefont: { color: C.ice30, size: 11 }, automargin: true }, showlegend: false }}
+            layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 48, r: 18, t: 12, b: 44 }, xaxis: { title: copy.solarLs, gridcolor: plotGrid, tickfont: { color: plotText, size: 10  }, titlefont: { color: plotText, size: 11  }, automargin: true }, yaxis: { title: copy.normalized, gridcolor: plotGrid, tickfont: { color: plotText, size: 10  }, titlefont: { color: plotText, size: 11  }, automargin: true }, showlegend: false }}
             config={{ displayModeBar: false, responsive: true }}
             useResizeHandler
             style={{ width: '100%', height: '100%' }}
@@ -354,7 +359,7 @@ export default function CorrelationMatrix({ marsYear }) {
           <div style={{ minHeight: 0 }}>
             <Plot
             data={[{ x: derived.lagCurve.map((item) => item.lag), y: derived.lagCurve.map((item) => item.corr), mode: 'lines+markers', type: 'scatter', line: { color: C.blue, width: 2.5, shape: 'spline' }, marker: { size: 7, color: selectedMeta.color }, hovertemplate: 'Lag %{x:+d}<br>corr %{y:.3f}<extra></extra>' }]}
-            layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 48, r: 18, t: 12, b: 44 }, xaxis: { title: copy.lagTitle, gridcolor: 'rgba(255,255,255,0.06)', tickfont: { color: C.ice60, size: 10 }, titlefont: { color: C.ice30, size: 11 }, zeroline: false, automargin: true }, yaxis: { title: copy.corr, gridcolor: 'rgba(255,255,255,0.06)', tickfont: { color: C.ice60, size: 10 }, titlefont: { color: C.ice30, size: 11 }, range: [-1, 1], automargin: true }, shapes: [{ type: 'line', x0: 0, x1: 0, y0: -1, y1: 1, line: { color: 'rgba(255,255,255,0.14)', width: 1, dash: 'dash' } }], showlegend: false }}
+            layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 48, r: 18, t: 12, b: 44 }, xaxis: { title: copy.lagTitle, gridcolor: plotGrid, tickfont: { color: plotText, size: 10  }, titlefont: { color: plotText, size: 11  }, zeroline: false, automargin: true }, yaxis: { title: copy.corr, gridcolor: plotGrid, tickfont: { color: plotText, size: 10  }, titlefont: { color: plotText, size: 11  }, range: [-1, 1], automargin: true }, shapes: [{ type: 'line', x0: 0, x1: 0, y0: -1, y1: 1, line: { color: 'rgba(255,255,255,0.14)', width: 1, dash: 'dash' } }], showlegend: false }}
             config={{ displayModeBar: false, responsive: true }}
             useResizeHandler
             style={{ width: '100%', height: '100%' }}

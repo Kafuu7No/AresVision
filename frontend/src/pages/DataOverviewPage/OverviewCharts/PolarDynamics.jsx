@@ -8,6 +8,11 @@ import { fetchPolarDynamics } from '../../../services/api';
 export default function PolarDynamics({ marsYear }) {
   const t = useT();
   const { settings } = useSettings();
+
+  const isLight = settings?.theme === 'light';
+  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
+  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+
   const isZh = settings.language === 'zh';
   
   const copy = isZh ? {
@@ -92,20 +97,20 @@ export default function PolarDynamics({ marsYear }) {
             margin: { l: 50, r: 20, t: 10, b: 30 },
             xaxis: {
               title: copy.lsAxis,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
-              titlefont: { color: C.ice30, size: 11 }
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
+              titlefont: { color: plotText, size: 11  }
             },
             yaxis: {
               title: copy.ozoneAxis,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
-              titlefont: { color: C.ice30, size: 11 }
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
+              titlefont: { color: plotText, size: 11  }
             },
             legend: {
               x: 0.05,
               y: 0.95,
-              font: { color: C.ice60, size: 10 },
+              font: { color: plotText, size: 10  },
               bgcolor: 'rgba(0,0,0,0.5)'
             }
           }}
@@ -141,20 +146,20 @@ export default function PolarDynamics({ marsYear }) {
             margin: { l: 50, r: 20, t: 10, b: 30 },
             xaxis: {
               title: copy.lsAxis,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
-              titlefont: { color: C.ice30, size: 11 }
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
+              titlefont: { color: plotText, size: 11  }
             },
             yaxis: {
               title: copy.tempAxis,
-              gridcolor: 'rgba(255,255,255,0.06)',
-              tickfont: { color: C.ice60, size: 10 },
-              titlefont: { color: C.ice30, size: 11 }
+              gridcolor: plotGrid,
+              tickfont: { color: plotText, size: 10  },
+              titlefont: { color: plotText, size: 11  }
             },
             legend: {
               x: 0.05,
               y: 0.95,
-              font: { color: C.ice60, size: 10 },
+              font: { color: plotText, size: 10  },
               bgcolor: 'rgba(0,0,0,0.5)'
             }
           }}
