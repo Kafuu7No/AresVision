@@ -41,6 +41,137 @@ function bilinearInterpolate(field, liFloat, ljFloat) {
   return row0 * (1 - di) + row1 * di;
 }
 
+function latLonToVec3(latDeg, lonDeg, radius) {
+  const phi = (90 - latDeg) * (Math.PI / 180);
+  const theta = lonDeg * (Math.PI / 180);
+  return new THREE.Vector3(
+    radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta),
+  );
+}
+
+function createLabelSprite(text, isLight) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const fontSize = 30;
+  const padX = 16;
+  const padY = 8;
+  ctx.font = `600 ${fontSize}px "Orbitron", "Segoe UI", sans-serif`;
+  const textWidth = Math.ceil(ctx.measureText(text).width);
+
+  canvas.width = Math.max(96, textWidth + padX * 2);
+  canvas.height = fontSize + padY * 2;
+
+  ctx.font = `600 ${fontSize}px "Orbitron", "Segoe UI", sans-serif`;
+  ctx.fillStyle = isLight ? '#203042' : '#d5e8ff';
+  ctx.strokeStyle = isLight ? 'rgba(255,255,255,0.9)' : 'rgba(8,12,20,0.9)';
+  ctx.lineWidth = 5;
+  ctx.lineJoin = 'round';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.strokeText(text, canvas.width / 2, canvas.height / 2 + 1);
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 1);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  texture.minFilter = THREE.LinearFilter;
+
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: true,
+    depthWrite: false,
+  });
+
+  const sprite = new THREE.Sprite(material);
+  const aspect = canvas.width / canvas.height;
+  const baseScale = 0.095;
+  sprite.scale.set(baseScale * aspect, baseScale, 1);
+  sprite.renderOrder = 20;
+  return sprite;
+}
+
+function buildGeoOverlay(isLight) {
+  const group = new THREE.Group();
+  group.name = 'geo-overlay';
+
+  const minorColor = isLight ? 0x3b4f66 : 0x89a8c8;
+  const majorColor = isLight ? 0x1e293b : 0xc7e1ff;
+  const lineRadius = 0.902;
+  const latStep = 30;
+  const lonStep = 30;
+
+  const makeLine = (points, color, opacity) => {
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({
+      color,
+      transparent: true,
+      opacity,
+      depthWrite: false,
+    });
+    return new THREE.Line(geometry, material);
+  };
+
+  for (let lat = -90; lat <= 90; lat += latStep) {
+    if (Math.abs(lat) === 90) continue; // 极点为退化点，网线使用标签表达更清晰
+    const points = [];
+    for (let lon = 0; lon <= 360; lon += 4) {
+      points.push(latLonToVec3(lat, lon, lineRadius));
+    }
+    const isMajor = lat === 0;
+    group.add(makeLine(points, isMajor ? majorColor : minorColor, isMajor ? 0.5 : 0.23));
+  }
+
+  for (let lon = 0; lon < 360; lon += lonStep) {
+    const points = [];
+    for (let lat = -90; lat <= 90; lat += 4) {
+      points.push(latLonToVec3(lat, lon, lineRadius));
+    }
+    const isMajor = lon % 90 === 0;
+    group.add(makeLine(points, isMajor ? majorColor : minorColor, isMajor ? 0.48 : 0.2));
+  }
+
+  const latLabels = [-90, -60, -30, 0, 30, 60, 90];
+  latLabels.forEach((lat) => {
+    const text = lat === 0 ? '0°' : `${Math.abs(lat)}°${lat > 0 ? 'N' : 'S'}`;
+    const sprite = createLabelSprite(text, isLight);
+    const p = latLonToVec3(lat, 8, lat === 90 || lat === -90 ? 1.06 : 1.03);
+    sprite.position.set(p.x, p.y, p.z);
+    group.add(sprite);
+  });
+
+  const lonLabels = [0, 60, 120, 180, 240, 300];
+  lonLabels.forEach((lon) => {
+    let text = '0°';
+    if (lon === 180) text = '180°';
+    else if (lon > 0 && lon < 180) text = `${lon}°E`;
+    else if (lon > 180) text = `${360 - lon}°W`;
+    const sprite = createLabelSprite(text, isLight);
+    const p = latLonToVec3(0, lon, 1.04);
+    sprite.position.set(p.x, p.y, p.z);
+    group.add(sprite);
+  });
+
+  return group;
+}
+
+function disposeObject3D(root) {
+  if (!root) return;
+  root.traverse((node) => {
+    if (node.geometry) node.geometry.dispose();
+    if (node.material) {
+      const materials = Array.isArray(node.material) ? node.material : [node.material];
+      materials.forEach((material) => {
+        if (material?.map && material.map !== cachedMarsTexture && material.map !== cachedCircleTexture) {
+          material.map.dispose();
+        }
+        material?.dispose?.();
+      });
+    }
+  });
+}
+
 const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h = 240, forceFullscreen = false, autoRotate = true, zoom = 4.5, showMars = true, offsetX = 0 }, ref) => {
   const { settings } = useSettings();
   const isLight = settings.theme === 'light';
@@ -52,6 +183,7 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
   const autoRotateRef = useRef(autoRotate);
   const starMeshRef = useRef(null);
   const offsetXRef = useRef(offsetX);
+  const geoOverlayRef = useRef(null);
 
   useEffect(() => {
     offsetXRef.current = offsetX;
@@ -239,6 +371,17 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
         child.intensity = isLight ? 1.0 : 1.5;
       }
     });
+
+    if (sphereMeshRef.current) {
+      if (geoOverlayRef.current) {
+        sphereMeshRef.current.remove(geoOverlayRef.current);
+        disposeObject3D(geoOverlayRef.current);
+        geoOverlayRef.current = null;
+      }
+      const overlay = buildGeoOverlay(isLight);
+      sphereMeshRef.current.add(overlay);
+      geoOverlayRef.current = overlay;
+    }
   }, [isLight]);
 
   // 当外部动态调整窗口边界宽度时，实时保持地球在可用中间区域的正中心
@@ -279,6 +422,10 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
         const marsMesh = new THREE.Mesh(marsGeometry, marsMaterial);
         globeGroup.add(marsMesh);
       }
+
+      const overlay = buildGeoOverlay(isLight);
+      globeGroup.add(overlay);
+      geoOverlayRef.current = overlay;
     }
 
     const globeGroup = sphereMeshRef.current;
@@ -429,17 +576,10 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
     return () => {
       if (sphereMeshRef.current && sceneRef.current) {
         sceneRef.current.remove(sphereMeshRef.current);
-        sphereMeshRef.current.children.forEach(child => {
-          if (child.geometry) child.geometry.dispose();
-          if (child.material) {
-            child.material.dispose();
-            if (child.material.map && child.material.map !== cachedMarsTexture) {
-              child.material.map.dispose();
-            }
-          }
-        });
+        disposeObject3D(sphereMeshRef.current);
         sphereMeshRef.current = null;
         particlesMeshRef.current = null;
+        geoOverlayRef.current = null;
       }
     };
   }, []);
