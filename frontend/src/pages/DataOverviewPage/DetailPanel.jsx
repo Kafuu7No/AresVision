@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useLayoutEffect } from 'react';
 import GlowCard from '../../components/GlowCard';
 import C from '../../constants/colors';
 import { useT } from '../../i18n';
@@ -34,6 +34,7 @@ export default function DetailPanel({ ozoneData }) {
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
+      window.dispatchEvent(new Event('resize'));
     };
 
     document.addEventListener('mousemove', onMouseMove);
@@ -45,6 +46,13 @@ export default function DetailPanel({ ozoneData }) {
     const t = setTimeout(() => setIsVisible(true), 100);
     return () => clearTimeout(t);
   }, []);
+
+  useLayoutEffect(() => {
+    const rafId = window.requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+    return () => window.cancelAnimationFrame(rafId);
+  }, [rightPanelWidth]);
 
   // When mode or coordinate changes, reset the expanded card to the first one available
   useEffect(() => {

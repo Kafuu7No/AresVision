@@ -94,8 +94,6 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
   const meanConverted = convertOzone(derived.mean, ozoneUnit);
   const p10Converted = convertOzone(derived.p10, ozoneUnit);
   const p90Converted = convertOzone(derived.p90, ozoneUnit);
-  const isCompact = typeof window !== 'undefined' && window.innerWidth < 1500;
-
   return (
     <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gap: 16, overflowX: 'hidden', overflowY: 'auto', scrollbarGutter: 'stable', paddingRight: 4 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
@@ -121,7 +119,7 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isCompact ? '1fr' : 'minmax(0, 1.15fr) minmax(0, 0.85fr)', gap: 18, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18, minHeight: 0 }}>
         <div style={{ padding: 16, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, minHeight: 320, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
           <div style={{ color: C.ice, fontSize: 14, fontWeight: 800, marginBottom: 8, fontFamily: "'Orbitron', sans-serif" }}>{copy.histogram}</div>
           <div style={{ minHeight: 0 }}>
