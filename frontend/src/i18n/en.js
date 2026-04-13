@@ -531,7 +531,7 @@ const en = {
       reliability: 'RELIABILITY: 1σ CONFIDENCE COVERAGE',
     },
     shapley: {
-      title: 'SHAP GLOBAL ATTRIBUTION',
+      title: 'Ablation Analysis based on Shapley Values',
       gradientSystem: 'GRADIENT SYSTEM',
       marginalSystem: 'MARGINAL SYSTEM',
       gradientTab: 'GRADIENT',

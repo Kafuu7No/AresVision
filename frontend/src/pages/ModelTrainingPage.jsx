@@ -205,17 +205,6 @@ export default function ModelTrainingPage() {
   };
 
   // --- STYLES ---
-  const containerStyle = {
-    padding: '120px 48px 48px 48px',
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 32,
-    color: isLight ? '#222' : '#eee',
-    maxWidth: 1400,
-    margin: '0 auto',
-  };
-
   const cardStyle = {
     background: isLight ? 'rgba(255,255,255,0.8)' : 'rgba(15,20,35,0.7)',
     backdropFilter: 'blur(10px)',
@@ -427,7 +416,7 @@ export default function ModelTrainingPage() {
   };
 
   return (
-    <div style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto', minHeight: '100vh', background: isLight ? '#f9f9f9' : '#0a0a0f', color: isLight ? '#333' : '#eee' }}>
+    <div style={{ padding: '110px 48px 48px 48px', maxWidth: 1400, margin: '0 auto', minHeight: '100vh', background: isLight ? '#f9f9f9' : '#0a0a0f', color: isLight ? '#333' : '#eee' }}>
       <style>{`
         @keyframes pulse {
           0% { opacity: 1; transform: scale(1); }
