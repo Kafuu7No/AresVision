@@ -599,7 +599,7 @@ const zh = {
       reliability: '数据可靠性：1σ 置信区间覆盖',
     },
     shapley: {
-      title: 'SHAP 全局特征归因',
+      title: '基于Shapley值的消融分析',
       gradientSystem: '梯度归因系统',
       marginalSystem: '组合边际系统',
       gradientTab: '梯度归因',
