@@ -262,14 +262,14 @@ export default function EnvironmentDashboard({ marsYear }) {
   }
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateRows: 'auto auto', gap: 18, overflowX: 'hidden', overflowY: 'auto', scrollbarGutter: 'stable', paddingRight: 4 }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 18, paddingRight: 4 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 18 }}>
         {variableMeta.map((meta) => (
           <EnvCard key={meta.id} meta={meta} dataset={datasets[meta.id]} copy={copy} />
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
         <div style={{ padding: 16, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, minHeight: 320, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
           <div style={{ color: C.ice, fontSize: 14, fontWeight: 800, marginBottom: 10, fontFamily: "'Orbitron', sans-serif" }}>{copy.influence}</div>
           <div style={{ minHeight: 0 }}>

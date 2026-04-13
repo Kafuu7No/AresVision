@@ -11,7 +11,8 @@ import SidebarMenu from './DataOverviewPage/SidebarMenu';
 import DetailPanel from './DataOverviewPage/DetailPanel';
 import Mars3DBackground from './DataOverviewPage/Mars3DBackground';
 import TimelineController from './DataOverviewPage/TimelineController';
-import AICopilotWidget from './DataOverviewPage/AICopilotWidget'; // We will create this
+import AICopilotWidget from './DataOverviewPage/AICopilotWidget'; 
+import GlobeLegend from './DataOverviewPage/GlobeLegend';
 
 const DataOverviewPageContent = () => {
   const t = useT();
@@ -190,6 +191,10 @@ const DataOverviewPageContent = () => {
         
         <div style={{ pointerEvents: 'auto' }}>
           <AICopilotWidget />
+        </div>
+
+        <div style={{ pointerEvents: 'auto' }}>
+          <GlobeLegend ozoneData={ozoneData} />
         </div>
       </div>
 

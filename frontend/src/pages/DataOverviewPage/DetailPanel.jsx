@@ -73,11 +73,11 @@ export default function DetailPanel({ ozoneData }) {
 
   const getActiveCards = () => {
     if (selectedCoordinate) {
-      return ['distribution', 'correlation'];
+      return ['distribution'];
     }
     switch (activeAnalysisMode) {
       case 'global': return ['realtime', 'seasonal', 'prediction'];
-      case 'anomaly': return ['environment', 'solarsens', 'wave'];
+      case 'anomaly': return ['correlation', 'environment', 'solarsens', 'wave'];
       case 'extreme': return ['polar', 'coupling'];
       default: return [];
     }
@@ -209,13 +209,15 @@ export default function DetailPanel({ ozoneData }) {
               
               {/* Accordion Body */}
               <div style={{
-                maxHeight: isExpanded ? '800px' : '0px',
+                display: 'grid',
+                gridTemplateRows: isExpanded ? '1fr' : '0fr',
                 opacity: isExpanded ? 1 : 0,
                 transition: 'all 0.5s ease',
-                overflow: 'hidden',
               }}>
-                <div style={{ padding: '20px', height: '100%', boxSizing: 'border-box' }}>
-                  {cardDef.component}
+                <div style={{ overflow: 'hidden' }}>
+                  <div style={{ padding: '20px', boxSizing: 'border-box' }}>
+                    {cardDef.component}
+                  </div>
                 </div>
               </div>
             </GlowCard>

@@ -70,7 +70,7 @@ export default function SolarSensitivity({ marsYear }) {
   }, [marsYear, activeBand]);
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h3 style={{ color: C.ice, margin: '0 0 4px 0', fontSize: 16 }}>{copy.title}</h3>
@@ -95,7 +95,7 @@ export default function SolarSensitivity({ marsYear }) {
         </select>
       </div>
 
-      <div style={{ flex: 1, minHeight: 300, position: 'relative' }}>
+      <div style={{ height: '360px', position: 'relative' }}>
         {loading && (
            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', zIndex: 10 }}>
               <span style={{ color: C.ice }}>{copy.loading}</span>

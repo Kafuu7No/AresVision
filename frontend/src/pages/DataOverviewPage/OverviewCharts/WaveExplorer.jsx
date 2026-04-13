@@ -58,12 +58,12 @@ export default function WaveExplorer({ marsYear }) {
   const maxAbs = Math.max(Math.abs(data.min || 0), Math.abs(data.max || 0));
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ marginBottom: 12 }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div>
         <h3 style={{ color: C.ice, margin: '0 0 4px 0', fontSize: 16 }}>{copy.title}</h3>
         <p style={{ color: C.ice60, fontSize: 12, margin: 0 }}>{copy.desc}</p>
       </div>
-      <div style={{ flex: 1, minHeight: 300 }}>
+      <div style={{ height: '360px' }}>
         <Plot
           data={[
             {
