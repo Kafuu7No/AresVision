@@ -51,6 +51,11 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
   const controlsRef = useRef(null);
   const autoRotateRef = useRef(autoRotate);
   const starMeshRef = useRef(null);
+  const offsetXRef = useRef(offsetX);
+
+  useEffect(() => {
+    offsetXRef.current = offsetX;
+  }, [offsetX]);
 
   // Expose imperative API for gesture control
   useImperativeHandle(ref, () => ({
@@ -193,8 +198,8 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
       const w = containerRef.current.clientWidth;
       const h2 = containerRef.current.clientHeight;
       camera.aspect = w / h2;
-      if (offsetX !== 0) {
-        camera.setViewOffset(w, h2, offsetX, 0, w, h2);
+      if (offsetXRef.current !== 0) {
+        camera.setViewOffset(w, h2, offsetXRef.current, 0, w, h2);
       } else {
         camera.clearViewOffset();
       }
@@ -235,6 +240,19 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
       }
     });
   }, [isLight]);
+
+  // 当外部动态调整窗口边界宽度时，实时保持地球在可用中间区域的正中心
+  useEffect(() => {
+    if (!cameraRef.current || !containerRef.current) return;
+    const w = containerRef.current.clientWidth;
+    const h2 = containerRef.current.clientHeight;
+    if (offsetX !== 0) {
+      cameraRef.current.setViewOffset(w, h2, offsetX, 0, w, h2);
+    } else {
+      cameraRef.current.clearViewOffset();
+    }
+    cameraRef.current.updateProjectionMatrix();
+  }, [offsetX]);
 
   // 2. 响应数据更新，重建臭氧场网格（保持火星本身及分组姿态不变）
   useEffect(() => {

@@ -3,7 +3,7 @@ import C from '../../constants/colors';
 import { useDataOverview } from '../../contexts/DataOverviewContext';
 
 export default function AICopilotWidget() {
-  const { globalTimeLs, setActiveAnalysisMode, activeAnalysisMode } = useDataOverview();
+  const { globalTimeLs, setActiveAnalysisMode, activeAnalysisMode, rightPanelWidth } = useDataOverview();
   const [showBubble, setShowBubble] = useState(false);
   const [hasTriggered, setHasTriggered] = useState(false);
   const [pulse, setPulse] = useState(false);
@@ -34,7 +34,7 @@ export default function AICopilotWidget() {
       style={{
         position: 'fixed',
         bottom: '100px', // above TimelineController
-        right: '580px',  // left of widened DetailPanel
+        right: `${rightPanelWidth + 40}px`,  // left of widened DetailPanel
         zIndex: 2500,
         display: 'flex',
         alignItems: 'flex-end',

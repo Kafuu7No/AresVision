@@ -19,7 +19,26 @@ import { MODE_DEFS } from './SidebarMenu';
 
 export default function DetailPanel({ ozoneData }) {
   const t = useT();
-  const { activeAnalysisMode, selectedCoordinate, resetView, marsYear, globalTimeLs } = useDataOverview();
+  const { activeAnalysisMode, selectedCoordinate, resetView, marsYear, globalTimeLs, rightPanelWidth, setRightPanelWidth } = useDataOverview();
+
+  const handleMouseDown = React.useCallback((e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = rightPanelWidth;
+
+    const onMouseMove = (moveEvent) => {
+      const newWidth = startWidth - (moveEvent.clientX - startX);
+      setRightPanelWidth(Math.max(400, Math.min(newWidth, 900)));
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [rightPanelWidth, setRightPanelWidth]);
   const [isVisible, setIsVisible] = useState(false);
   const [expandedCard, setExpandedCard] = useState('');
 
@@ -95,8 +114,8 @@ export default function DetailPanel({ ozoneData }) {
       style={{
         position: 'fixed',
         top: '40px', // under TopStatusBar
-        right: isVisible ? '0' : '-560px',
-        width: '540px',
+        right: isVisible ? '0' : `-${rightPanelWidth + 20}px`,
+        width: rightPanelWidth,
         height: 'calc(100vh - 40px)',
         background: 'rgba(10, 12, 18, 0.4)',
         backdropFilter: 'blur(20px)',
@@ -104,7 +123,7 @@ export default function DetailPanel({ ozoneData }) {
         borderLeft: `1px solid rgba(255,255,255,0.08)`,
         zIndex: 1000,
         padding: '24px',
-        transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'right 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
         display: 'flex',
         flexDirection: 'column',
         gap: '16px',
@@ -226,6 +245,20 @@ export default function DetailPanel({ ozoneData }) {
           );
         })}
       </div>
+
+      <div 
+        onMouseDown={handleMouseDown}
+        style={{
+          position: 'absolute',
+          left: '-3px',
+          top: 0,
+          bottom: 0,
+          width: '6px',
+          cursor: 'col-resize',
+          zIndex: 10,
+          background: 'transparent',
+        }}
+      />
     </div>
   );
 }

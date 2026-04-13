@@ -5,9 +5,10 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { convertOzone, ozoneLabel } from '../../utils/units';
 import { makeGradient } from '../../utils/colormaps';
 import { useT } from '../../i18n';
-
+import { useDataOverview } from '../../contexts/DataOverviewContext';
 export default function GlobeLegend({ ozoneData }) {
   const { settings } = useSettings();
+  const { leftPanelWidth } = useDataOverview();
   const t = useT();
   const ozoneUnit = settings.units.ozone;
 
@@ -22,7 +23,7 @@ export default function GlobeLegend({ ozoneData }) {
     <div style={{
       position: 'fixed',
       bottom: '100px', // above TimelineController
-      left: '300px',   // right of SidebarMenu
+      left: `${leftPanelWidth + 20}px`,   // right of SidebarMenu
       width: '240px',
       zIndex: 1000,
       pointerEvents: 'none',

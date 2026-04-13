@@ -22,7 +22,9 @@ const DataOverviewPageContent = () => {
     isPlayingTimeline, setIsPlayingTimeline,
     setSelectedCoordinate,
     autoRotate,
-    gestureEnabled
+    gestureEnabled,
+    leftPanelWidth,
+    rightPanelWidth
   } = useDataOverview();
 
   const [ozoneData, setOzoneData] = useState({ points: [], minVal: 0, maxVal: 1 });
@@ -135,13 +137,15 @@ const DataOverviewPageContent = () => {
           ozoneData={ozoneData}
           is3DMode={true}
           autoRotate={autoRotate}
+          leftPanelWidth={leftPanelWidth}
+          rightPanelWidth={rightPanelWidth}
           onGlobeClick={(coord) => setSelectedCoordinate(coord)}
         />
       </div>
 
       {gestureEnabled && (
         <div style={{
-          position: 'fixed', bottom: '120px', left: '340px', width: '240px', height: '180px',
+          position: 'fixed', bottom: '120px', left: `${leftPanelWidth + 60}px`, width: '240px', height: '180px',
           zIndex: 2000, borderRadius: '12px', overflow: 'hidden', border: `2px solid ${C.mars}`,
           boxShadow: `0 0 20px rgba(255,107,53,0.3)`, background: '#000',
           display: 'flex', alignItems: 'center', justifyContent: 'center'

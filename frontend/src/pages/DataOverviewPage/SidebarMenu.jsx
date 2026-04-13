@@ -16,8 +16,28 @@ export default function SidebarMenu() {
     activeAnalysisMode, setActiveAnalysisMode,
     marsYear, setMarsYear,
     autoRotate, setAutoRotate,
-    gestureEnabled, setGestureEnabled
+    gestureEnabled, setGestureEnabled,
+    leftPanelWidth, setLeftPanelWidth
   } = useDataOverview();
+
+  const handleMouseDown = React.useCallback((e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = leftPanelWidth;
+
+    const onMouseMove = (moveEvent) => {
+      const newWidth = startWidth + (moveEvent.clientX - startX);
+      setLeftPanelWidth(Math.max(240, Math.min(newWidth, 450)));
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [leftPanelWidth, setLeftPanelWidth]);
 
   return (
     <div
@@ -25,7 +45,7 @@ export default function SidebarMenu() {
         position: 'fixed',
         left: 0,
         top: '40px', // Below TopStatusBar
-        width: '280px',
+        width: leftPanelWidth,
         height: 'calc(100vh - 40px)',
         background: 'rgba(10, 12, 18, 0.4)',
         backdropFilter: 'blur(20px)',
@@ -176,6 +196,21 @@ export default function SidebarMenu() {
           </label>
         </div>
       </div>
+      
+      {/* Resizer Handle */}
+      <div 
+        onMouseDown={handleMouseDown}
+        style={{
+          position: 'absolute',
+          right: '-3px',
+          top: 0,
+          bottom: 0,
+          width: '6px',
+          cursor: 'col-resize',
+          zIndex: 10,
+          background: 'transparent',
+        }}
+      />
     </div>
   );
 }

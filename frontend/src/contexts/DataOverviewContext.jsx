@@ -22,6 +22,8 @@ export const DataOverviewProvider = ({ children }) => {
   const [selectedVariables, setSelectedVariables] = useState([
     'o3col', 'temperature', 'pressure'
   ]);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(280);
+  const [rightPanelWidth, setRightPanelWidth] = useState(540);
 
   const contextValue = {
     activeAnalysisMode,
@@ -42,6 +44,10 @@ export const DataOverviewProvider = ({ children }) => {
     setTimeRange,
     selectedVariables,
     setSelectedVariables,
+    leftPanelWidth,
+    setLeftPanelWidth,
+    rightPanelWidth,
+    setRightPanelWidth,
     
     getSeasonName: (ls) => {
       if (ls >= 0 && ls < 90) return 'Northern Spring';
