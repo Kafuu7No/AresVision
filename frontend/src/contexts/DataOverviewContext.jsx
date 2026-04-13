@@ -24,8 +24,11 @@ export const DataOverviewProvider = ({ children }) => {
   ]);
   const [leftPanelWidth, setLeftPanelWidth] = useState(280);
   const [rightPanelWidth, setRightPanelWidth] = useState(540);
+  const [expandedCard, setExpandedCard] = useState('');
 
   const contextValue = {
+    expandedCard,
+    setExpandedCard,
     activeAnalysisMode,
     setActiveAnalysisMode,
     selectedCoordinate,

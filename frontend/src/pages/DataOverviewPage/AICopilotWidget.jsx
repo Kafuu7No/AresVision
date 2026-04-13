@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import C from '../../constants/colors';
 import { useDataOverview } from '../../contexts/DataOverviewContext';
-import { aiChat } from '../../services/api';
+import { aiChat, fetchCorrelation, fetchSeasonalBands, fetchPolarDynamics, fetchDiurnal, fetchSolarPhotochemical, fetchCouplingData } from '../../services/api';
 
 export default function AICopilotWidget() {
-  const { globalTimeLs, setActiveAnalysisMode, activeAnalysisMode, rightPanelWidth, marsYear, selectedCoordinate } = useDataOverview();
+  const { globalTimeLs, setActiveAnalysisMode, activeAnalysisMode, rightPanelWidth, marsYear, selectedCoordinate, expandedCard } = useDataOverview();
   const [showBubble, setShowBubble] = useState(false);
   const [hasTriggered, setHasTriggered] = useState(false);
   const [pulse, setPulse] = useState(false);
@@ -30,14 +30,72 @@ export default function AICopilotWidget() {
     setIsAnalyzing(true);
     setAiResponse('');
     try {
+      let enrichedKnowledge = "";
+      const lsIndex = Math.min(72, Math.floor((globalTimeLs / 360) * 73)); 
+      
+      // 数据嗅探截取协议：基于此时真正在屏幕上“展开”的独立卡片
+      try {
+        if (expandedCard === 'correlation') {
+           const corrData = await fetchCorrelation(marsYear);
+           if (corrData && corrData.matrix && corrData.variable_names) {
+              enrichedKnowledge = `正在查看 [点位相关性]。因变量与主要指标的关系为:\n变量列表: ${corrData.variable_names.join(', ')}\n数值矩阵:\n${JSON.stringify(corrData.matrix)}`;
+           }
+        } else if (expandedCard === 'seasonal') {
+           const bandData = await fetchSeasonalBands(marsYear);
+           enrichedKnowledge = `正在查看 [季节带时序演变]。截面时刻点 Ls=${globalTimeLs}° 时测得各纬度带 O3 平均值如下: \n`;
+           if (bandData && bandData.bands) {
+               bandData.bands.forEach(b => {
+                   enrichedKnowledge += `- ${b.name}: ${Number(b.values[lsIndex]).toFixed(3)}\n`;
+               });
+           }
+        } else if (expandedCard === 'polar') {
+           const polar = await fetchPolarDynamics(marsYear);
+           enrichedKnowledge = `正在查看 [极地聚积特征]。截面 (Ls=${globalTimeLs}°) 的极区测绘对比如下:\n- 北极区域 (风速: ${Number(polar.north.wind[lsIndex]).toFixed(2)} m/s, 温度: ${Number(polar.north.temp[lsIndex]).toFixed(2)} K, 臭氧柱: ${Number(polar.north.ozone[lsIndex]).toFixed(3)})\n- 南极区域 (风速: ${Number(polar.south.wind[lsIndex]).toFixed(2)} m/s, 温度: ${Number(polar.south.temp[lsIndex]).toFixed(2)} K, 臭氧柱: ${Number(polar.south.ozone[lsIndex]).toFixed(3)})`;
+        } else if (expandedCard === 'realtime') {
+           const diurnal = await fetchDiurnal(marsYear, globalTimeLs, 'Equatorial (30S-30N)');
+           if (diurnal?.ozone_values) {
+              enrichedKnowledge = `正查看 [昼夜变化Diurnal]。当前季节 Ls=${globalTimeLs}，赤道区域24小时昼夜O3平均值为: ${diurnal.ozone_values.map(v => Number(v).toFixed(3)).join(', ')}`;
+           }
+        } else if (expandedCard === 'environment') {
+           enrichedKnowledge = `正查看 [多因子环境机制]。此图追踪极地风速或沙尘暴如何驱动局部环流变化，推断气候耦合机制。您可推断出这可能对臭氧循环带来的影响。`;
+        } else if (expandedCard === 'solarsens') {
+           const photo = await fetchSolarPhotochemical(marsYear, 'Equatorial (30S-30N)');
+           if (photo?.ozone) {
+              const p_ls = Math.min(photo.ozone.length - 1, Math.floor((globalTimeLs / 360) * photo.ozone.length));
+              enrichedKnowledge = `正查看 [光化学辐射感应]。由于太阳高度角不同，在 Ls=${globalTimeLs} 处，赤道观测站太阳下行辐射值为 ${Number(photo.solar[p_ls]).toFixed(2)}，当时臭氧柱浓度为 ${Number(photo.ozone[p_ls]).toFixed(3)}`;
+           }
+        } else if (expandedCard === 'coupling') {
+           const coupling = await fetchCouplingData(marsYear, 'o3col', 'Dust_Optical_Depth');
+           if (coupling?.var1) {
+              const c_ls = Math.min(coupling.var1.length - 1, Math.floor((globalTimeLs / 360) * coupling.var1.length));
+              enrichedKnowledge = `正查看 [沙尘冲刷极值]。全局在 Ls=${globalTimeLs} 处截面监控显示，臭氧柱浓度均值为 ${Number(coupling.var1[c_ls]).toFixed(3)}，沙尘光学厚度均值为 ${Number(coupling.var2[c_ls]).toFixed(3)}。`;
+           }
+        } else if (expandedCard === 'wave') {
+           enrichedKnowledge = `正查看 [地形驻波变异]。用于研究臭氧分布的经度异常及海陆双波（Wave-1, Wave-2等）随经度的扭积现象。`;
+        } else {
+           enrichedKnowledge = `右侧正在展示宏大气候系统视野，当前火星年 MY${marsYear}，节气 Ls=${globalTimeLs}。请根据常识推导。`;
+        }
+      } catch (err) {
+        console.warn("上下文数据摘取存在缺失，降级至无背景环境提交", err);
+      }
+
+      console.log('Sending dynamic metrics:', enrichedKnowledge);
+
       const context = {
         mars_year: marsYear,
         ls_range: [globalTimeLs, globalTimeLs],
-        selected_variables: ['o3col'], // 默认主要关注臭氧场
+        selected_variables: ['o3col'],
         active_mode: activeAnalysisMode,
-        coordinate: selectedCoordinate
+        expanded_card: expandedCard,
+        coordinate: selectedCoordinate,
+        dynamic_metrics: enrichedKnowledge // 真实截获数值
       };
-      const question = "请根据我当前右侧显示的火星面板信息（当前所在季节、所在经纬等分析模式），提供一段基于科学气象数据的图表内容概览深度解读。";
+
+      const question = `请根据我当前右侧展开的专属火星气象图卡（卡片名称为：${expandedCard}）以及以下为您摘录的本时刻系统测绘最新数值结果，扮演科学家进行专业级解读。
+请务必严苛遵循：
+1. **你的结论极其依赖上方提供的真实拦截数据指标**（如果有数字，你一定要列举出这些数值变化进行论述），严禁长篇大论不谈数据。
+2. 解释此刻测得的这组气象数字处于什么样的常规状态或是何种典型的火星异常（比如沙尘遮光、极夜现象等）。`;
+
       const res = await aiChat(question, context);
       setAiResponse(res.answer);
     } catch (e) {
@@ -51,14 +109,11 @@ export default function AICopilotWidget() {
     e.stopPropagation();
     setShowBubble(false);
     setPulse(false);
-    // 可选设置：关闭面板时是否重置上下文。这里重置以便下次再问时重新读取。
     setTimeout(() => setAiResponse(''), 500); 
   };
 
-  // 因为引入的是简单的文本字符串可能带有换行，用这个工具函数防止换行被吞掉
   const formatText = (text) => {
     return text.split('\n').map((line, i) => {
-      // 简单的高亮加粗Markdown语法解析兜底支持
       const formattedLine = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       return (
         <span key={i}>

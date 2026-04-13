@@ -111,6 +111,8 @@ class AIService:
                 f"模型指标: RMSE={m.get('rmse', 'N/A')}, "
                 f"SSIM={m.get('ssim', 'N/A')}, R²={m.get('r2', 'N/A')}"
             )
+        if "dynamic_metrics" in context and context["dynamic_metrics"]:
+            parts.append(f"前台探测到的图表真实气象数值:\n{context['dynamic_metrics']}")
         return "\n".join(parts)
 
     def _builtin_reply(self, question: str, context: dict | None) -> str:

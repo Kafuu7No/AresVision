@@ -19,7 +19,7 @@ import { MODE_DEFS } from './SidebarMenu';
 
 export default function DetailPanel({ ozoneData }) {
   const t = useT();
-  const { activeAnalysisMode, selectedCoordinate, resetView, marsYear, globalTimeLs, rightPanelWidth, setRightPanelWidth } = useDataOverview();
+  const { activeAnalysisMode, selectedCoordinate, resetView, marsYear, globalTimeLs, rightPanelWidth, setRightPanelWidth, expandedCard, setExpandedCard } = useDataOverview();
 
   const handleMouseDown = React.useCallback((e) => {
     e.preventDefault();
@@ -40,7 +40,6 @@ export default function DetailPanel({ ozoneData }) {
     document.addEventListener('mouseup', onMouseUp);
   }, [rightPanelWidth, setRightPanelWidth]);
   const [isVisible, setIsVisible] = useState(false);
-  const [expandedCard, setExpandedCard] = useState('');
 
   useEffect(() => {
     const t = setTimeout(() => setIsVisible(true), 100);
