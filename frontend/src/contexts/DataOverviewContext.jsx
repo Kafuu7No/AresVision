@@ -11,7 +11,7 @@ export const useDataOverview = () => {
 };
 
 export const DataOverviewProvider = ({ children }) => {
-  const [activeAnalysisMode, setActiveAnalysisMode] = useState('global');
+  const [activeAnalysisMode, setActiveAnalysisMode] = useState('temporal');
   const [selectedCoordinate, setSelectedCoordinate] = useState(null);
   const [marsYear, setMarsYear] = useState(27);
   const [globalTimeLs, setGlobalTimeLs] = useState(0); // 替换原来的 solarLongitude

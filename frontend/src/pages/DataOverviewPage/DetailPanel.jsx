@@ -33,9 +33,10 @@ export default function DetailPanel({ ozoneData }) {
     if (selectedCoordinate) {
       setExpandedCard('distribution');
     } else {
-      if (activeAnalysisMode === 'global') setExpandedCard('realtime');
-      else if (activeAnalysisMode === 'anomaly') setExpandedCard('environment');
-      else if (activeAnalysisMode === 'extreme') setExpandedCard('polar');
+      if (activeAnalysisMode === 'temporal') setExpandedCard('realtime');
+      else if (activeAnalysisMode === 'drivers') setExpandedCard('correlation');
+      else if (activeAnalysisMode === 'dynamics') setExpandedCard('coupling');
+      else if (activeAnalysisMode === 'system') setExpandedCard('prediction');
     }
   }, [activeAnalysisMode, selectedCoordinate]);
 
@@ -76,9 +77,10 @@ export default function DetailPanel({ ozoneData }) {
       return ['distribution'];
     }
     switch (activeAnalysisMode) {
-      case 'global': return ['realtime', 'seasonal', 'prediction'];
-      case 'anomaly': return ['correlation', 'environment', 'solarsens', 'wave'];
-      case 'extreme': return ['polar', 'coupling'];
+      case 'temporal': return ['realtime', 'seasonal'];
+      case 'drivers': return ['correlation', 'environment', 'solarsens'];
+      case 'dynamics': return ['coupling', 'polar', 'wave'];
+      case 'system': return ['prediction'];
       default: return [];
     }
   };
