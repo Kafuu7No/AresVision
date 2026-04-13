@@ -1,76 +1,175 @@
-import { useState, useEffect } from 'react'; // Re-triggering vite cache
+import { useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
-import { useT } from '../../../i18n';
 import { useSettings } from '../../../contexts/SettingsContext';
-import { fetchSeasonalHeatmap } from '../../../services/api';
+import { fetchEnvHeatmap, fetchSeasonalHeatmap } from '../../../services/api';
 import { PLOTLY_SCALE } from '../../../utils/colormaps';
-import { convertOzone, ozoneLabel } from '../../../utils/units';
+import {
+  convertOzone,
+  ozoneLabel,
+  convertTemp,
+  tempLabel,
+  convertWind,
+  windLabel,
+} from '../../../utils/units';
+
+const VARIABLE_OPTIONS = [
+  { id: 'o3col', zh: '臭氧柱浓度', en: 'Ozone Column' },
+  { id: 'Temperature', zh: '温度', en: 'Temperature' },
+  { id: 'Dust_Optical_Depth', zh: '沙尘光学厚度', en: 'Dust Optical Depth' },
+  { id: 'Solar_Flux_DN', zh: '太阳下行辐射', en: 'Solar Downwelling Flux' },
+  { id: 'U_Wind', zh: '纬向风 U', en: 'U Wind' },
+  { id: 'V_Wind', zh: '经向风 V', en: 'V Wind' },
+];
+
+function convertByVariable(value, variable, units) {
+  if (!Number.isFinite(value)) return value;
+  if (variable === 'o3col') return convertOzone(value, units.ozone);
+  if (variable === 'Temperature') return convertTemp(value, units.temperature);
+  if (variable === 'U_Wind' || variable === 'V_Wind') return convertWind(value, units.wind);
+  return value;
+}
+
+function unitByVariable(variable, units) {
+  if (variable === 'o3col') return ozoneLabel(units.ozone);
+  if (variable === 'Temperature') return tempLabel(units.temperature);
+  if (variable === 'U_Wind' || variable === 'V_Wind') return windLabel(units.wind);
+  if (variable === 'Dust_Optical_Depth') return 'tau';
+  if (variable === 'Solar_Flux_DN') return 'W/m²';
+  return '';
+}
 
 export default function SeasonalChart({ marsYear }) {
-  const t = useT();
   const { settings } = useSettings();
-
+  const isZh = settings?.language !== 'en';
   const isLight = settings?.theme === 'light';
   const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
   const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+  const colormapName = settings?.colormap;
+  const units = settings?.units || { ozone: 'um-atm', temperature: 'K', wind: 'm/s' };
 
-  const colormapName = settings.colormap;
-  const ozoneUnit = settings.units.ozone;
+  const [variable, setVariable] = useState('o3col');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const copy = isZh
+    ? {
+      loading: '正在加载热力图...',
+      noData: '暂无数据',
+      currentVar: '当前变量',
+      xAxisTitle: '横轴: 太阳黄经 Ls (°)',
+      yAxisTitle: '纵轴: 纬度 (°)',
+    }
+    : {
+      loading: 'Loading heatmap...',
+      noData: 'No data',
+      currentVar: 'Current Variable',
+      xAxisTitle: 'X: Solar Longitude Ls (°)',
+      yAxisTitle: 'Y: Latitude (°)',
+    };
+
+  const variableOptions = useMemo(
+    () => VARIABLE_OPTIONS.map((item) => ({ ...item, label: isZh ? item.zh : item.en })),
+    [isZh],
+  );
+
+  const variableLabelMap = useMemo(
+    () => Object.fromEntries(variableOptions.map((item) => [item.id, item.label])),
+    [variableOptions],
+  );
+
+  const currentVariableLabel = variableLabelMap[variable] || variable;
+  const currentUnitLabel = unitByVariable(variable, units);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetchSeasonalHeatmap(marsYear).then(res => {
-      if (active) {
-        setData(res);
-        setLoading(false);
-      }
-    }).catch(err => {
-      console.error(err);
-      if (active) setLoading(false);
-    });
-    return () => { active = false; };
-  }, [marsYear]);
+    const fetcher = variable === 'o3col'
+      ? fetchSeasonalHeatmap(marsYear)
+      : fetchEnvHeatmap(marsYear, variable);
 
-  // Handle Plotly resizing issues during 0.8s slide transition
+    Promise.resolve(fetcher)
+      .then((res) => {
+        if (active) setData(res || null);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (active) setData(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [marsYear, variable]);
+
   useEffect(() => {
     if (data && !loading) {
       const dispatchResize = () => window.dispatchEvent(new Event('resize'));
       const t1 = setTimeout(dispatchResize, 100);
-      const t2 = setTimeout(dispatchResize, 400);
-      const t3 = setTimeout(dispatchResize, 850);
-      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+      const t2 = setTimeout(dispatchResize, 350);
+      const t3 = setTimeout(dispatchResize, 800);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
     }
+    return undefined;
   }, [data, loading]);
 
   if (loading) {
     return (
       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: C.ice, fontFamily: "'Orbitron', sans-serif", display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: '16px', height: '16px', border: `2px solid rgba(0,240,255,0.2)`,
-            borderTop: `2px solid ${C.ice}`, borderRadius: '50%', animation: 'spin-slow 1s linear infinite'
-          }} />
-          LOADING HEATMAP...
+          <div
+            style={{
+              width: 16,
+              height: 16,
+              border: '2px solid rgba(0,240,255,0.2)',
+              borderTop: `2px solid ${C.ice}`,
+              borderRadius: '50%',
+              animation: 'spin-slow 1s linear infinite',
+            }}
+          />
+          {copy.loading}
         </div>
       </div>
     );
   }
 
-  if (!data) return <div style={{ color: C.mars, padding: 20 }}>{t('overview.charts.noData')}</div>;
+  if (!data?.x?.length || !data?.y?.length || !data?.z?.length) {
+    return <div style={{ color: C.mars, padding: 20 }}>{copy.noData}</div>;
+  }
+
+  const convertedZ = data.z.map((row) => row.map((value) => convertByVariable(value, variable, units)));
+  const zMinRaw = convertByVariable(data.min, variable, units);
+  const zMaxRaw = convertByVariable(data.max, variable, units);
+  const zMin = Number.isFinite(zMinRaw) ? zMinRaw : undefined;
+  const zMax = Number.isFinite(zMaxRaw) ? (zMaxRaw === zMinRaw ? zMaxRaw + 1e-6 : zMaxRaw) : undefined;
+
+  const titleText = isZh
+    ? `${currentVariableLabel} 热力图（纵轴: 纬度 - 横轴: Ls）`
+    : `${currentVariableLabel} Heatmap (Y: Latitude - X: Ls)`;
+
+  const colorbarTitle = currentUnitLabel
+    ? `${currentVariableLabel} (${currentUnitLabel})`
+    : currentVariableLabel;
+
+  const hoverTemplate = isZh
+    ? `Ls: %{x:.1f}°<br>纬度: %{y:.1f}°<br>${currentVariableLabel}: %{z:.3f} ${currentUnitLabel}<extra></extra>`
+    : `Ls: %{x:.1f}°<br>Lat: %{y:.1f}°<br>${currentVariableLabel}: %{z:.3f} ${currentUnitLabel}<extra></extra>`;
 
   return (
-    <div className="seasonal-chart-container" style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div className="seasonal-chart-container" style={{ width: '100%', height: '100%', position: 'relative', display: 'grid', gap: 10 }}>
       <style>{`
         .seasonal-chart-container .modebar {
           top: auto !important;
           bottom: 0px !important;
           right: 20px !important;
           left: auto !important;
-          background: 'var(--bg-card) !important',
           border: 1px solid rgba(0, 240, 255, 0.2);
           border-radius: 8px;
           padding: 2px 4px;
@@ -88,42 +187,91 @@ export default function SeasonalChart({ marsYear }) {
           fill: #ff6b35 !important;
         }
       `}</style>
-      <Plot
-        data={[
-          {
-            z: data.z.map(row => row.map(v => convertOzone(v, ozoneUnit))),
-            x: data.x,
-            y: data.y,
-            type: 'heatmap',
-            zsmooth: 'best',
-            colorscale: PLOTLY_SCALE[colormapName] ?? 'Jet',
-            zmin: convertOzone(data.min, ozoneUnit),
-            zmax: convertOzone(data.max * 0.6, ozoneUnit), 
-            hovertemplate: `Ls: %{x:.1f}°<br>Lat: %{y:.1f}°<br>O₃: %{z:.2f} ${ozoneLabel(ozoneUnit)}<extra></extra>`,
-            colorbar: {
-              title: { text: `O₃ (${ozoneLabel(ozoneUnit)})`, font: { color: plotText, family: "'Orbitron', sans-serif", size: 10  }, side: 'top' },
-              orientation: 'h',
-              y: -0.25,
-              yanchor: 'top',
-              len: 0.8,
-              thickness: 10,
-              tickfont: { color: plotText, family: "'Exo 2', sans-serif"  }
-            }
-          }
-        ]}
-        layout={{
-          title: { text: t('overview.charts.heatmapTitle', { year: marsYear }), font: { color: plotText, family: "'Orbitron', sans-serif", size: 14  } },
-          xaxis: { title: 'Solar Longitude Ls (°)', color: 'rgba(232,237,243,0.6)', gridcolor: 'rgba(232,237,243,0.08)', titlefont: { family: "'Exo 2', sans-serif" }, showgrid: false },
-          yaxis: { title: 'Latitude (°)', color: 'rgba(232,237,243,0.6)', gridcolor: 'rgba(232,237,243,0.08)', titlefont: { family: "'Exo 2', sans-serif" }, showgrid: false },
-          paper_bgcolor: 'transparent',
-          plot_bgcolor: 'transparent',
-          margin: { t: 40, r: 20, l: 50, b: 120 },
-          autosize: true
-        }}
-        useResizeHandler={true}
-        style={{ width: '100%', height: '100%' }}
-        config={{ displayModeBar: true, scrollZoom: true, responsive: true, displaylogo: false }}
-      />
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {variableOptions.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setVariable(item.id)}
+            style={{
+              border: `1px solid ${variable === item.id ? C.blue : C.border}`,
+              background: variable === item.id ? 'rgba(74,158,255,0.16)' : 'rgba(255,255,255,0.03)',
+              color: variable === item.id ? C.blue : C.ice60,
+              borderRadius: 999,
+              padding: '6px 10px',
+              fontSize: 11,
+              cursor: 'pointer',
+              fontFamily: "'Orbitron', sans-serif",
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ color: C.ice60, fontSize: 11 }}>
+        {copy.currentVar}: <span style={{ color: C.blue, fontWeight: 700 }}>{currentVariableLabel}</span>
+      </div>
+
+      <div style={{ minHeight: 360 }}>
+        <Plot
+          data={[
+            {
+              z: convertedZ,
+              x: data.x,
+              y: data.y,
+              type: 'heatmap',
+              zsmooth: 'best',
+              colorscale: PLOTLY_SCALE[colormapName] ?? 'Jet',
+              zmin: zMin,
+              zmax: zMax,
+              hovertemplate: hoverTemplate,
+              colorbar: {
+                title: {
+                  text: colorbarTitle,
+                  font: { color: plotText, family: "'Orbitron', sans-serif", size: 10 },
+                  side: 'top',
+                },
+                orientation: 'h',
+                y: -0.25,
+                yanchor: 'top',
+                len: 0.8,
+                thickness: 10,
+                tickfont: { color: plotText, family: "'Exo 2', sans-serif" },
+              },
+            },
+          ]}
+          layout={{
+            title: {
+              text: titleText,
+              font: { color: plotText, family: "'Orbitron', sans-serif", size: 13 },
+            },
+            xaxis: {
+              title: copy.xAxisTitle,
+              tickfont: { color: plotText, size: 10 },
+              titlefont: { color: plotText, size: 11 },
+              gridcolor: plotGrid,
+              showgrid: false,
+              automargin: true,
+            },
+            yaxis: {
+              title: copy.yAxisTitle,
+              tickfont: { color: plotText, size: 10 },
+              titlefont: { color: plotText, size: 11 },
+              gridcolor: plotGrid,
+              showgrid: false,
+              automargin: true,
+            },
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            margin: { t: 48, r: 20, l: 56, b: 120 },
+            autosize: true,
+          }}
+          useResizeHandler
+          style={{ width: '100%', height: '100%' }}
+          config={{ displayModeBar: true, scrollZoom: true, responsive: true, displaylogo: false }}
+        />
+      </div>
     </div>
   );
 }

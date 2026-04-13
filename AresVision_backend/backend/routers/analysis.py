@@ -163,3 +163,34 @@ async def get_polar_dynamics(
         return vs.get_polar_dynamics(my)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/research-suite")
+async def get_research_suite(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+):
+    """综合研究数据包：热力图/柱图/折线图所需聚合指标"""
+    try:
+        vs = _get_analysis_service(request)
+        return vs.get_research_suite(my)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/phase-space")
+async def get_phase_space(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    driver: str = Query("Dust_Optical_Depth", description="驱动变量", enum=MCD_VARIABLES),
+):
+    """臭氧-驱动变量相空间散点数据"""
+    try:
+        vs = _get_analysis_service(request)
+        return vs.get_phase_space(my, driver)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

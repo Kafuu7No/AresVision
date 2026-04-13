@@ -157,6 +157,18 @@ export async function fetchPolarDynamics(marsYear = 27) {
   return res.json();
 }
 
+export async function fetchResearchSuite(marsYear = 27) {
+  const res = await fetch(`${BASE}/explore/research-suite?my=${marsYear}`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchPhaseSpace(marsYear = 27, driver = 'Dust_Optical_Depth') {
+  const res = await fetch(`${BASE}/explore/phase-space?my=${marsYear}&driver=${encodeURIComponent(driver)}`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 export async function runPrediction(body) {
   const res = await fetch(`${BASE}/predict/run`, {
     method: 'POST',
