@@ -1,10 +1,12 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { useT } from '../../../i18n';
 import { convertOzone, ozoneLabel } from '../../../utils/units';
 import { fmtNum } from '../../../utils/fmt';
+import useAiInsightRegistration from './useAiInsightRegistration';
+import { roundValue, sampleSeries } from './aiInsight';
 
 function percentile(sorted, ratio) {
   if (!sorted.length) return 0;
@@ -87,6 +89,29 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
     return { values, mean, p10, p90, latProfile };
   }, [ozoneData]);
 
+  const aiInsightProvider = useCallback(() => ({
+    card: 'distribution',
+    marsYear,
+    ls: roundValue(lsValue, 2),
+    status: derived ? 'ready' : 'empty',
+    distribution: derived
+      ? {
+        pointCount: derived.values.length,
+        mean: roundValue(derived.mean),
+        p10: roundValue(derived.p10),
+        p90: roundValue(derived.p90),
+      }
+      : null,
+    histogramSample: sampleSeries(derived?.values || [], null, 10),
+    latitudinalSample: sampleSeries(
+      derived?.latProfile?.map((item) => item.mean) || [],
+      derived?.latProfile?.map((item) => item.lat) || [],
+      10,
+    ),
+  }), [derived, lsValue, marsYear]);
+
+  useAiInsightRegistration('distribution', aiInsightProvider);
+
   if (!derived) {
     return <div style={{ color: C.mars, padding: 20 }}>{t('overview.charts.noData')}</div>;
   }
@@ -94,8 +119,6 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
   const meanConverted = convertOzone(derived.mean, ozoneUnit);
   const p10Converted = convertOzone(derived.p10, ozoneUnit);
   const p90Converted = convertOzone(derived.p90, ozoneUnit);
-  const isCompact = typeof window !== 'undefined' && window.innerWidth < 1500;
-
   return (
     <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gap: 16, overflowX: 'hidden', overflowY: 'auto', scrollbarGutter: 'stable', paddingRight: 4 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
@@ -121,7 +144,7 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isCompact ? '1fr' : 'minmax(0, 1.15fr) minmax(0, 0.85fr)', gap: 18, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18, minHeight: 0 }}>
         <div style={{ padding: 16, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, minHeight: 320, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
           <div style={{ color: C.ice, fontSize: 14, fontWeight: 800, marginBottom: 8, fontFamily: "'Orbitron', sans-serif" }}>{copy.histogram}</div>
           <div style={{ minHeight: 0 }}>

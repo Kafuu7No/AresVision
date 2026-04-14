@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useCallback, useRef, useState } from 'react';
 
 const DataOverviewContext = createContext();
 
@@ -18,6 +18,7 @@ export const DataOverviewProvider = ({ children }) => {
   const [isPlayingTimeline, setIsPlayingTimeline] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
   const [gestureEnabled, setGestureEnabled] = useState(false);
+  const [globeVariable, setGlobeVariable] = useState('o3col');
   const [timeRange, setTimeRange] = useState({ start: 0, end: 360 });
   const [selectedVariables, setSelectedVariables] = useState([
     'o3col', 'temperature', 'pressure'
@@ -25,6 +26,32 @@ export const DataOverviewProvider = ({ children }) => {
   const [leftPanelWidth, setLeftPanelWidth] = useState(280);
   const [rightPanelWidth, setRightPanelWidth] = useState(540);
   const [expandedCard, setExpandedCard] = useState('');
+  const aiInsightProvidersRef = useRef(new Map());
+
+  const registerAiInsightProvider = useCallback((cardKey, provider) => {
+    if (!cardKey || typeof provider !== 'function') return;
+    aiInsightProvidersRef.current.set(cardKey, provider);
+  }, []);
+
+  const unregisterAiInsightProvider = useCallback((cardKey, provider) => {
+    if (!cardKey) return;
+    const current = aiInsightProvidersRef.current.get(cardKey);
+    if (!provider || current === provider) {
+      aiInsightProvidersRef.current.delete(cardKey);
+    }
+  }, []);
+
+  const getAiInsight = useCallback((cardKey) => {
+    if (!cardKey) return null;
+    const provider = aiInsightProvidersRef.current.get(cardKey);
+    if (typeof provider !== 'function') return null;
+    try {
+      return provider() ?? null;
+    } catch (error) {
+      console.warn('Failed to collect AI insight snapshot:', cardKey, error);
+      return null;
+    }
+  }, []);
 
   const contextValue = {
     expandedCard,
@@ -43,6 +70,8 @@ export const DataOverviewProvider = ({ children }) => {
     setAutoRotate,
     gestureEnabled,
     setGestureEnabled,
+    globeVariable,
+    setGlobeVariable,
     timeRange,
     setTimeRange,
     selectedVariables,
@@ -51,6 +80,9 @@ export const DataOverviewProvider = ({ children }) => {
     setLeftPanelWidth,
     rightPanelWidth,
     setRightPanelWidth,
+    registerAiInsightProvider,
+    unregisterAiInsightProvider,
+    getAiInsight,
     
     getSeasonName: (ls) => {
       if (ls >= 0 && ls < 90) return 'Northern Spring';

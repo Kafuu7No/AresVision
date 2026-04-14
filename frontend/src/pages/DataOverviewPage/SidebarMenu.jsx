@@ -2,6 +2,8 @@ import React from 'react';
 import C from '../../constants/colors';
 import { useT } from '../../i18n';
 import { useDataOverview } from '../../contexts/DataOverviewContext';
+import { useSettings } from '../../contexts/SettingsContext';
+import { GLOBE_VARIABLE_OPTIONS } from '../../constants/globeVariables';
 
 export const MODE_DEFS = [
   { id: 'temporal', icon: '⏱️', color: C.mars, title: '时序气候演变', label: 'TEMPORAL', desc: '专注分析随时间维度（小时、季节）的自然演化。' },
@@ -12,13 +14,21 @@ export const MODE_DEFS = [
 
 export default function SidebarMenu() {
   const t = useT();
+  const { settings } = useSettings();
+  const isZh = settings?.language !== 'en';
   const { 
     activeAnalysisMode, setActiveAnalysisMode,
     marsYear, setMarsYear,
     autoRotate, setAutoRotate,
     gestureEnabled, setGestureEnabled,
+    globeVariable, setGlobeVariable,
     leftPanelWidth, setLeftPanelWidth
   } = useDataOverview();
+
+  const globeVariableOptions = GLOBE_VARIABLE_OPTIONS.map((option) => ({
+    ...option,
+    label: isZh ? option.zh : option.en,
+  }));
 
   const handleMouseDown = React.useCallback((e) => {
     e.preventDefault();
@@ -137,6 +147,38 @@ export default function SidebarMenu() {
                 transition: 'all 0.2s'
               }}>MY{y}</button>
             ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 10, color: C.ice30, marginBottom: 8, fontFamily: "'Exo 2', sans-serif" }}>
+            {isZh ? '3D球变量' : '3D GLOBE VARIABLE'}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+            {globeVariableOptions.map((option) => {
+              const isActive = globeVariable === option.id;
+              return (
+                <button
+                  key={option.id}
+                  onClick={() => setGlobeVariable(option.id)}
+                  style={{
+                    padding: '7px 8px',
+                    background: isActive ? 'rgba(74,158,255,0.2)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${isActive ? C.blue : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: 8,
+                    color: isActive ? C.blue : C.ice60,
+                    fontSize: 10,
+                    fontWeight: isActive ? 700 : 500,
+                    cursor: 'pointer',
+                    fontFamily: "'Exo 2', sans-serif",
+                    lineHeight: 1.25,
+                  }}
+                  title={option.label}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 

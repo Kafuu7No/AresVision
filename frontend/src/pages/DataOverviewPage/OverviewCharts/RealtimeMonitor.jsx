@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useT } from '../../../i18n';
@@ -6,6 +6,8 @@ import { useSettings } from '../../../contexts/SettingsContext';
 import { fetchDiurnal } from '../../../services/api';
 import { convertOzone, ozoneLabel } from '../../../utils/units';
 import { fmtNum } from '../../../utils/fmt';
+import useAiInsightRegistration from './useAiInsightRegistration';
+import { roundValue, sampleSeries } from './aiInsight';
 
 const LAT_BANDS = [
   'Polar North (60N-90N)',
@@ -67,20 +69,30 @@ export default function RealtimeMonitor({ marsYear, lsValue }) {
   const [latBand, setLatBand] = useState(LAT_BANDS[2]);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const hasDataRef = useRef(false);
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
+    const hasRenderableData = hasDataRef.current;
+    if (hasRenderableData) setRefreshing(true);
+    else setLoading(true);
+
     fetchDiurnal(marsYear, lsValue, latBand)
       .then((res) => {
         if (active) {
           setData(res);
+          hasDataRef.current = !!res?.ozone_values?.length;
           setLoading(false);
+          setRefreshing(false);
         }
       })
       .catch((err) => {
         console.error(err);
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       });
     return () => {
       active = false;
@@ -97,7 +109,28 @@ export default function RealtimeMonitor({ marsYear, lsValue }) {
     return { max, min, mean, peakHour, amplitude: max - min };
   }, [data]);
 
-  if (loading) {
+  const aiInsightProvider = useCallback(() => ({
+    card: 'realtime',
+    marsYear,
+    ls: roundValue(lsValue, 2),
+    latBand,
+    latBandLabel: shortLabels[latBand] || latBand,
+    status: loading && !data?.ozone_values?.length ? 'loading' : (data?.ozone_values?.length ? 'ready' : 'empty'),
+    metrics: stats
+      ? {
+        mean: roundValue(stats.mean),
+        max: roundValue(stats.max),
+        min: roundValue(stats.min),
+        amplitude: roundValue(stats.amplitude),
+        peakHour: roundValue(stats.peakHour, 2),
+      }
+      : null,
+    samples: sampleSeries(data?.ozone_values || [], data?.hours || [], 12),
+  }), [data, latBand, loading, lsValue, marsYear, shortLabels, stats]);
+
+  useAiInsightRegistration('realtime', aiInsightProvider);
+
+  if (loading && !data?.ozone_values?.length) {
     return (
       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: C.ice, fontFamily: "'Orbitron', sans-serif", display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -168,7 +201,14 @@ export default function RealtimeMonitor({ marsYear, lsValue }) {
           <div style={{ color: C.ice30, fontSize: 11 }}>{copy.ampDesc}</div>
         </div>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}` }}>
-          <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.selection}</div>
+          <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif", display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            <span>{copy.selection}</span>
+            {refreshing && (
+              <span style={{ color: C.ice60, fontSize: 9, letterSpacing: 0.6 }}>
+                {isZh ? '更新中...' : 'Updating...'}
+              </span>
+            )}
+          </div>
           <div style={{ marginTop: 6, color: C.ice, fontSize: 13, fontWeight: 700 }}>{shortLabels[latBand]}</div>
           <div style={{ color: C.ice30, fontSize: 11 }}>MY{marsYear} · Ls {fmtNum(lsValue, 0)}°</div>
         </div>

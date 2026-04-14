@@ -96,9 +96,11 @@ export async function apiChangePassword(oldPassword, newPassword) {
   return res.json();
 }
 
-export async function fetchGlobeData(marsYear = 27, ls = 10, signal = null) {
+export async function fetchGlobeData(marsYear = 27, ls = 10, variableOrSignal = 'o3col', maybeSignal = null) {
+  const variable = typeof variableOrSignal === 'string' ? variableOrSignal : 'o3col';
+  const signal = typeof variableOrSignal === 'string' ? maybeSignal : variableOrSignal;
   const opts = signal ? { signal } : {};
-  const res = await fetch(`${BASE}/explore/globe?my=${marsYear}&ls=${ls}`, opts);
+  const res = await fetch(`${BASE}/explore/globe?my=${marsYear}&ls=${ls}&variable=${encodeURIComponent(variable)}`, opts);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
@@ -153,6 +155,18 @@ export async function fetchSolarPhotochemical(marsYear = 27, latBand = 'Equatori
 
 export async function fetchPolarDynamics(marsYear = 27) {
   const res = await fetch(`${BASE}/explore/polar-dynamics?my=${marsYear}`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchResearchSuite(marsYear = 27) {
+  const res = await fetch(`${BASE}/explore/research-suite?my=${marsYear}`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchPhaseSpace(marsYear = 27, driver = 'Dust_Optical_Depth') {
+  const res = await fetch(`${BASE}/explore/phase-space?my=${marsYear}&driver=${encodeURIComponent(driver)}`);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }

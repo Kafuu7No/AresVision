@@ -5,6 +5,7 @@ AI 解读服务层
 
 import logging
 import httpx
+from typing import Any
 
 from config import AI_API_URL, AI_MODEL_NAME, AI_API_KEY, VARIABLE_NAMES_CN
 
@@ -25,7 +26,7 @@ SYSTEM_PROMPT = """你是 AresVision（智绘赤星）系统的 AI 科学顾问�
 - 结合火星大气科学知识解读数据
 - 给出的数值要有单位（如 μm-atm）
 - 如果被问到模型局限性，诚实回答
-- 回答简洁，控制在 200 字以内
+- 回答保持清晰完整，默认 300-500 字；若用户明确要求简短再压缩
 """
 #MCP skill 火星气象预报站
 
@@ -82,19 +83,70 @@ class AIService:
                 json={
                     "model": self.model,
                     "messages": messages,
-                    "max_tokens": 500,
+                    "max_tokens": 900,
                     "temperature": 0.7,
                 },
             )
             response.raise_for_status()
             data = response.json()
-            return data["choices"][0]["message"]["content"]
+            answer = self._extract_answer_text(data)
+            finish_reason = self._extract_finish_reason(data)
+            expect_detailed = bool(context and (context.get("expanded_card") or context.get("dynamic_metrics")))
+            if answer and (not expect_detailed or len(answer) >= 40):
+                if self._needs_continuation(answer, finish_reason):
+                    answer = await self._continue_answer(messages, answer)
+                return answer
+            logger.warning("AI API returned empty/too-short content; retrying with stricter final-answer instruction")
+            retry_messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        f"{SYSTEM_PROMPT}\n"
+                        "你必须输出“最终回答正文”到 content 字段；"
+                        "不要只返回思考过程，不要返回空字符串。"
+                    ),
+                }
+            ]
+            if context:
+                retry_messages.append({
+                    "role": "system",
+                    "content": f"当前分析上下文（简化版）:\n{self._format_context(context, max_chars=2600)}",
+                })
+            retry_messages.append({
+                "role": "user",
+                "content": f"{question}\n请直接输出最终回答正文，不要输出思考过程。",
+            })
+
+            retry_response = await self.client.post(
+                self.api_url,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": self.model,
+                    "messages": retry_messages,
+                    "max_tokens": 700,
+                    "temperature": 0.2,
+                },
+            )
+            retry_response.raise_for_status()
+            retry_data = retry_response.json()
+            retry_answer = self._extract_answer_text(retry_data)
+            retry_finish_reason = self._extract_finish_reason(retry_data)
+            if retry_answer and (not expect_detailed or len(retry_answer) >= 40):
+                if self._needs_continuation(retry_answer, retry_finish_reason):
+                    retry_answer = await self._continue_answer(retry_messages, retry_answer)
+                return retry_answer
+
+            logger.warning("AI API retry still returned empty/too-short content; fallback to builtin reply")
+            return self._builtin_reply(question, context)
 
         except Exception as e:
             logger.error(f"AI API 调用失败: {e}")
             return self._builtin_reply(question, context)
 
-    def _format_context(self, context: dict) -> str:
+    def _format_context(self, context: dict, max_chars: int = 5200) -> str:
         """将上下文字典格式化为文本"""
         parts = []
         if "mars_year" in context:
@@ -112,8 +164,128 @@ class AIService:
                 f"SSIM={m.get('ssim', 'N/A')}, R²={m.get('r2', 'N/A')}"
             )
         if "dynamic_metrics" in context and context["dynamic_metrics"]:
-            parts.append(f"前台探测到的图表真实气象数值:\n{context['dynamic_metrics']}")
-        return "\n".join(parts)
+            metrics = str(context["dynamic_metrics"])
+            if len(metrics) > max_chars:
+                metrics = metrics[:max_chars] + "\n...[TRUNCATED]"
+            parts.append(f"前台探测到的图表真实气象数值:\n{metrics}")
+        text = "\n".join(parts)
+        if len(text) > max_chars:
+            return text[:max_chars] + "\n...[TRUNCATED]"
+        return text
+
+    def _extract_answer_text(self, data: dict[str, Any]) -> str:
+        """兼容不同 OpenAI-compatible 返回结构，仅提取最终回答正文。"""
+        if not isinstance(data, dict):
+            return ""
+
+        choices = data.get("choices")
+        if isinstance(choices, list):
+            for choice in choices:
+                if not isinstance(choice, dict):
+                    continue
+                message = choice.get("message")
+                if isinstance(message, dict):
+                    text = self._extract_text_from_content(message.get("content"))
+                    if text:
+                        return text
+                text = self._extract_text_from_content(choice.get("text"))
+                if text:
+                    return text
+
+        output_text = self._extract_text_from_content(data.get("output_text"))
+        if output_text:
+            return output_text
+
+        candidates = data.get("candidates")
+        if isinstance(candidates, list):
+            for candidate in candidates:
+                if not isinstance(candidate, dict):
+                    continue
+                content = candidate.get("content")
+                if isinstance(content, dict):
+                    parts = content.get("parts")
+                    if isinstance(parts, list):
+                        merged = []
+                        for part in parts:
+                            if isinstance(part, dict):
+                                text = self._extract_text_from_content(part.get("text"))
+                                if text:
+                                    merged.append(text)
+                        if merged:
+                            return "\n".join(merged).strip()
+        return ""
+
+    def _extract_text_from_content(self, content: Any) -> str:
+        if isinstance(content, str):
+            return content.strip()
+        if isinstance(content, list):
+            chunks = []
+            for item in content:
+                if isinstance(item, str):
+                    text = item.strip()
+                    if text:
+                        chunks.append(text)
+                    continue
+                if isinstance(item, dict):
+                    text = item.get("text")
+                    if isinstance(text, str) and text.strip():
+                        chunks.append(text.strip())
+            return "\n".join(chunks).strip()
+        return ""
+
+    def _extract_finish_reason(self, data: dict[str, Any]) -> str:
+        if not isinstance(data, dict):
+            return ""
+        choices = data.get("choices")
+        if isinstance(choices, list) and choices:
+            first = choices[0]
+            if isinstance(first, dict):
+                value = first.get("finish_reason")
+                return value if isinstance(value, str) else ""
+        return ""
+
+    def _needs_continuation(self, answer: str, finish_reason: str) -> bool:
+        if not answer:
+            return False
+        if finish_reason in {"length", "max_tokens"}:
+            return True
+        tail = answer.rstrip()[-1:] if answer.strip() else ""
+        if len(answer) >= 120 and tail and tail not in "。！？.!?）】」』”\"":
+            return True
+        return False
+
+    async def _continue_answer(self, messages: list[dict[str, str]], partial_answer: str) -> str:
+        continuation_messages = list(messages)
+        continuation_messages.append({"role": "assistant", "content": partial_answer})
+        continuation_messages.append({
+            "role": "user",
+            "content": "请从刚才中断的位置继续往下写，不要重复前文，不要输出 Markdown 符号。",
+        })
+        try:
+            response = await self.client.post(
+                self.api_url,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": self.model,
+                    "messages": continuation_messages,
+                    "max_tokens": 600,
+                    "temperature": 0.2,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            extra = self._extract_answer_text(data)
+            if not extra:
+                return partial_answer
+
+            merged = f"{partial_answer.rstrip()}\n{extra.lstrip()}".strip()
+            return merged
+        except Exception as e:
+            logger.warning(f"AI continuation failed: {e}")
+            return partial_answer
 
     def _builtin_reply(self, question: str, context: dict | None) -> str:
         """

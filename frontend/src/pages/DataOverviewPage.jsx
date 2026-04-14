@@ -23,11 +23,12 @@ const DataOverviewPageContent = () => {
     setSelectedCoordinate,
     autoRotate,
     gestureEnabled,
+    globeVariable,
     leftPanelWidth,
     rightPanelWidth
   } = useDataOverview();
 
-  const [ozoneData, setOzoneData] = useState({ points: [], minVal: 0, maxVal: 1 });
+  const [ozoneData, setOzoneData] = useState({ points: [], minVal: 0, maxVal: 1, variable: 'o3col' });
   const [loadingGlobe, setLoadingGlobe] = useState(false);
 
   const timerRef = useRef(null);
@@ -36,6 +37,10 @@ const DataOverviewPageContent = () => {
   const landmarksCanvasRef = useRef(null);
 
   const { videoRef, error: gestureError, setOnGesture, setOnLandmarks } = useHandTracking(gestureEnabled);
+
+  // Keep gesture capture window compact to reduce scene occlusion.
+  const GESTURE_WINDOW_WIDTH = 190;
+  const GESTURE_WINDOW_HEIGHT = 142;
 
   useEffect(() => {
     setOnGesture((gesture) => {
@@ -86,18 +91,19 @@ const DataOverviewPageContent = () => {
     });
   }, [setOnLandmarks]);
 
-  const loadGlobe = useCallback(async (ls, year) => {
+  const loadGlobe = useCallback(async (ls, year, variable) => {
     if (abortRef.current) abortRef.current.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     setLoadingGlobe(true);
     try {
-      const d = await fetchGlobeData(year, ls, ctrl.signal);
+      const d = await fetchGlobeData(year, ls, variable, ctrl.signal);
       if (!ctrl.signal.aborted) {
         setOzoneData({
           points: d.points || [],
           minVal: d.minVal ?? 0,
           maxVal: d.maxVal ?? 1,
+          variable: d.variable || variable || 'o3col',
         });
         setLoadingGlobe(false);
       }
@@ -110,8 +116,8 @@ const DataOverviewPageContent = () => {
   }, []);
 
   useEffect(() => {
-    loadGlobe(globalTimeLs, marsYear);
-  }, [globalTimeLs, marsYear, loadGlobe]);
+    loadGlobe(globalTimeLs, marsYear, globeVariable);
+  }, [globalTimeLs, marsYear, globeVariable, loadGlobe]);
 
   useEffect(() => {
     if (isPlayingTimeline) {
@@ -145,8 +151,15 @@ const DataOverviewPageContent = () => {
 
       {gestureEnabled && (
         <div style={{
-          position: 'fixed', bottom: '120px', left: `${leftPanelWidth + 60}px`, width: '240px', height: '180px',
-          zIndex: 2000, borderRadius: '12px', overflow: 'hidden', border: `2px solid ${C.mars}`,
+          position: 'fixed',
+          bottom: '116px',
+          left: `${leftPanelWidth + 46}px`,
+          width: `${GESTURE_WINDOW_WIDTH}px`,
+          height: `${GESTURE_WINDOW_HEIGHT}px`,
+          zIndex: 2000,
+          borderRadius: '10px',
+          overflow: 'hidden',
+          border: `2px solid ${C.mars}`,
           boxShadow: `0 0 20px rgba(255,107,53,0.3)`, background: '#000',
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
@@ -160,13 +173,13 @@ const DataOverviewPageContent = () => {
           </div>
           <canvas
             ref={landmarksCanvasRef}
-            width={240}
-            height={180}
+            width={GESTURE_WINDOW_WIDTH}
+            height={GESTURE_WINDOW_HEIGHT}
             style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 2, transform: 'scaleX(-1)' }}
           />
           <div style={{
             position: 'absolute', top: '8px', left: '8px', background: 'rgba(0,0,0,0.6)',
-            padding: '2px 8px', borderRadius: '4px', color: C.mars, fontSize: '10px',
+            padding: '2px 7px', borderRadius: '4px', color: C.mars, fontSize: '9px',
             fontFamily: 'Orbitron', zIndex: 3, border: `1px solid ${C.mars}`
           }}>
             {t('overview.controls.cameraTracking')}

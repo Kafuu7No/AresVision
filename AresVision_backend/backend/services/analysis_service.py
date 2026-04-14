@@ -3,6 +3,7 @@
 聚焦于数据空间降阶、降采样、抽稀聚合成图表格式。
 """
 import logging
+import warnings
 import numpy as np
 
 from config import MAX_LS_POINTS, LATITUDE_BANDS, MCD_VARIABLES
@@ -16,10 +17,16 @@ class AnalysisService:
         self.data_service = data_service
         self._cache: dict[str, dict] = {}
 
-    def get_globe_data(self, mars_year: int, ls: float) -> dict:
+    def get_globe_data(self, mars_year: int, ls: float, variable: str = "o3col") -> dict:
         om = self.data_service.get_openmars_data(mars_year)
         idx = self.data_service.get_nearest_ls_index(om["ls"], ls)
-        field = om["o3col"][idx]
+        if variable == "o3col":
+            field = om["o3col"][idx]
+        else:
+            am = self.data_service.get_aligned_mcd_data(mars_year)
+            if variable not in am:
+                raise ValueError(f"变量 {variable} 不可用")
+            field = am[variable][idx]
 
         points = []
         for i, lat in enumerate(om["lat"]):
@@ -39,6 +46,7 @@ class AnalysisService:
             "maxVal": float(np.nanmax(valid_vals)) if len(valid_vals) > 0 else 1,
             "ls": float(om["ls"][idx]),
             "mars_year": mars_year,
+            "variable": variable,
         }
 
     def get_seasonal_heatmap(self, mars_year: int, variable: str = "o3col") -> dict:
@@ -369,3 +377,199 @@ class AnalysisService:
         }
         self._cache[cache_key] = result
         return result
+
+    def get_research_suite(self, mars_year: int) -> dict:
+        cache_key = f"research_suite_{mars_year}"
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+
+        om = self.data_service.get_openmars_data(mars_year)
+        am = self.data_service.get_aligned_mcd_data(mars_year)
+
+        ls_arr = np.array(om["ls"])
+        lat_arr = np.array(om["lat"])
+        o3 = np.array(om["o3col"])
+
+        heat_y = []
+        heat_z = []
+        band_amp = []
+        band_peak_ls = []
+
+        for band_def in LATITUDE_BANDS:
+            mask = (lat_arr >= band_def["lat_min"]) & (lat_arr <= band_def["lat_max"])
+            o3_band = self._nanmean_no_warn(o3[:, mask, :], axis=(1, 2))
+
+            row = []
+            for var in MCD_VARIABLES:
+                if var not in am:
+                    row.append(float("nan"))
+                    continue
+                var_band = self._nanmean_no_warn(am[var][:, mask, :], axis=(1, 2))
+                row.append(float(self._safe_corr(o3_band, var_band)))
+
+            valid_o3 = o3_band[np.isfinite(o3_band)]
+            if valid_o3.size == 0:
+                amp = float("nan")
+                peak_ls = float("nan")
+            else:
+                amp = float(np.nanmax(valid_o3) - np.nanmin(valid_o3))
+                peak_idx = int(np.nanargmax(o3_band))
+                peak_ls = float(ls_arr[peak_idx]) if peak_idx < len(ls_arr) else float("nan")
+
+            heat_y.append(band_def["name"])
+            heat_z.append(row)
+            band_amp.append(amp)
+            band_peak_ls.append(peak_ls)
+
+        global_o3 = self._nanmean_no_warn(o3, axis=(1, 2))
+        global_dust = self._nanmean_no_warn(am["Dust_Optical_Depth"], axis=(1, 2)) if "Dust_Optical_Depth" in am else np.full_like(global_o3, np.nan)
+        global_temp = self._nanmean_no_warn(am["Temperature"], axis=(1, 2)) if "Temperature" in am else np.full_like(global_o3, np.nan)
+        global_solar = self._nanmean_no_warn(am["Solar_Flux_DN"], axis=(1, 2)) if "Solar_Flux_DN" in am else np.full_like(global_o3, np.nan)
+
+        if "U_Wind" in am and "V_Wind" in am:
+            wind_speed = np.sqrt(am["U_Wind"] ** 2 + am["V_Wind"] ** 2)
+            global_wind = self._nanmean_no_warn(wind_speed, axis=(1, 2))
+        else:
+            global_wind = np.full_like(global_o3, np.nan)
+
+        step = max(1, len(ls_arr) // MAX_LS_POINTS)
+        ls_ds = ls_arr[::step]
+
+        trend_series = {
+            "o3": self._zscore(global_o3[::step]),
+            "dust": self._zscore(global_dust[::step]),
+            "temp": self._zscore(global_temp[::step]),
+            "solar": self._zscore(global_solar[::step]),
+            "wind": self._zscore(global_wind[::step]),
+        }
+
+        time_mean = self._nanmean_no_warn(o3, axis=0)
+        zonal_mean = self._nanmean_no_warn(time_mean, axis=1, keepdims=True)
+        anomaly = time_mean - zonal_mean
+
+        wave_bands = []
+        wave_rms = []
+        wave_span = []
+        for band_def in LATITUDE_BANDS:
+            mask = (lat_arr >= band_def["lat_min"]) & (lat_arr <= band_def["lat_max"])
+            vals = anomaly[mask, :].reshape(-1)
+            vals = vals[np.isfinite(vals)]
+            if vals.size == 0:
+                rms = float("nan")
+                span = float("nan")
+            else:
+                rms = float(np.sqrt(np.mean(vals ** 2)))
+                span = float(np.max(vals) - np.min(vals))
+            wave_bands.append(band_def["name"])
+            wave_rms.append(rms)
+            wave_span.append(span)
+
+        result = {
+            "driver_band_heatmap": {
+                "x": MCD_VARIABLES,
+                "y": heat_y,
+                "z": self._to_nested_list(np.array(heat_z, dtype=float)),
+                "min": -1.0,
+                "max": 1.0,
+            },
+            "seasonal_extremes": {
+                "bands": heat_y,
+                "amplitude": [float(v) if np.isfinite(v) else float("nan") for v in band_amp],
+                "peak_ls": [float(v) if np.isfinite(v) else float("nan") for v in band_peak_ls],
+            },
+            "trend_lines": {
+                "ls": [float(v) for v in ls_ds],
+                "series": trend_series,
+            },
+            "wave_bands": {
+                "bands": wave_bands,
+                "rms": wave_rms,
+                "peak_to_peak": wave_span,
+            },
+        }
+        self._cache[cache_key] = result
+        return result
+
+    def get_phase_space(self, mars_year: int, driver: str = "Dust_Optical_Depth") -> dict:
+        cache_key = f"phase_space_{mars_year}_{driver}"
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+
+        if driver not in MCD_VARIABLES:
+            raise ValueError(f"变量 {driver} 不可用")
+
+        om = self.data_service.get_openmars_data(mars_year)
+        am = self.data_service.get_aligned_mcd_data(mars_year)
+        if driver not in am:
+            raise ValueError(f"变量 {driver} 不可用")
+
+        ls_arr = np.array(om["ls"])
+        o3_global = self._nanmean_no_warn(om["o3col"], axis=(1, 2))
+        d_global = self._nanmean_no_warn(am[driver], axis=(1, 2))
+
+        step = max(1, len(ls_arr) // MAX_LS_POINTS)
+        ls_ds = ls_arr[::step]
+        x_ds = d_global[::step]
+        y_ds = o3_global[::step]
+
+        valid_mask = np.isfinite(x_ds) & np.isfinite(y_ds) & np.isfinite(ls_ds)
+        x_valid = x_ds[valid_mask]
+        y_valid = y_ds[valid_mask]
+        ls_valid = ls_ds[valid_mask]
+
+        if x_valid.size >= 2:
+            slope, intercept = np.polyfit(x_valid, y_valid, 1)
+            corr_val = self._safe_corr(x_valid, y_valid)
+        else:
+            slope, intercept, corr_val = float("nan"), float("nan"), float("nan")
+
+        result = {
+            "driver": driver,
+            "x": [float(v) for v in x_valid],
+            "y": [float(v) for v in y_valid],
+            "ls": [float(v) for v in ls_valid],
+            "corr": float(corr_val) if np.isfinite(corr_val) else float("nan"),
+            "trend": {
+                "slope": float(slope) if np.isfinite(slope) else float("nan"),
+                "intercept": float(intercept) if np.isfinite(intercept) else float("nan"),
+            },
+        }
+        self._cache[cache_key] = result
+        return result
+
+    @staticmethod
+    def _safe_corr(a: np.ndarray, b: np.ndarray) -> float:
+        if a is None or b is None:
+            return float("nan")
+        n = min(len(a), len(b))
+        if n < 3:
+            return float("nan")
+        x = np.asarray(a[:n], dtype=float)
+        y = np.asarray(b[:n], dtype=float)
+        valid = np.isfinite(x) & np.isfinite(y)
+        if np.sum(valid) < 3:
+            return float("nan")
+        xv = x[valid]
+        yv = y[valid]
+        if np.std(xv) == 0 or np.std(yv) == 0:
+            return float("nan")
+        return float(np.corrcoef(xv, yv)[0, 1])
+
+    @staticmethod
+    def _zscore(arr: np.ndarray) -> list[float]:
+        values = np.asarray(arr, dtype=float)
+        valid = values[np.isfinite(values)]
+        if valid.size == 0:
+            return [float("nan")] * len(values)
+        mean_v = float(np.mean(valid))
+        std_v = float(np.std(valid))
+        if std_v == 0:
+            return [0.0 if np.isfinite(v) else float("nan") for v in values]
+        out = (values - mean_v) / std_v
+        return [float(v) if np.isfinite(v) else float("nan") for v in out]
+
+    @staticmethod
+    def _nanmean_no_warn(arr: np.ndarray, axis=None, keepdims=False):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            return np.nanmean(arr, axis=axis, keepdims=keepdims)
