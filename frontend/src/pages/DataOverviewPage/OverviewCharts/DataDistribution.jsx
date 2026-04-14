@@ -1,10 +1,12 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { useT } from '../../../i18n';
 import { convertOzone, ozoneLabel } from '../../../utils/units';
 import { fmtNum } from '../../../utils/fmt';
+import useAiInsightRegistration from './useAiInsightRegistration';
+import { roundValue, sampleSeries } from './aiInsight';
 
 function percentile(sorted, ratio) {
   if (!sorted.length) return 0;
@@ -86,6 +88,29 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
 
     return { values, mean, p10, p90, latProfile };
   }, [ozoneData]);
+
+  const aiInsightProvider = useCallback(() => ({
+    card: 'distribution',
+    marsYear,
+    ls: roundValue(lsValue, 2),
+    status: derived ? 'ready' : 'empty',
+    distribution: derived
+      ? {
+        pointCount: derived.values.length,
+        mean: roundValue(derived.mean),
+        p10: roundValue(derived.p10),
+        p90: roundValue(derived.p90),
+      }
+      : null,
+    histogramSample: sampleSeries(derived?.values || [], null, 10),
+    latitudinalSample: sampleSeries(
+      derived?.latProfile?.map((item) => item.mean) || [],
+      derived?.latProfile?.map((item) => item.lat) || [],
+      10,
+    ),
+  }), [derived, lsValue, marsYear]);
+
+  useAiInsightRegistration('distribution', aiInsightProvider);
 
   if (!derived) {
     return <div style={{ color: C.mars, padding: 20 }}>{t('overview.charts.noData')}</div>;

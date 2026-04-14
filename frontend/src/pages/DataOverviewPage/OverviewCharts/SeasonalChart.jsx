@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useSettings } from '../../../contexts/SettingsContext';
@@ -12,6 +12,8 @@ import {
   convertWind,
   windLabel,
 } from '../../../utils/units';
+import useAiInsightRegistration from './useAiInsightRegistration';
+import { roundValue, sampleSeries, summarizeSeries } from './aiInsight';
 
 const VARIABLE_OPTIONS = [
   { id: 'o3col', zh: '臭氧柱浓度', en: 'Ozone Column' },
@@ -20,6 +22,14 @@ const VARIABLE_OPTIONS = [
   { id: 'Solar_Flux_DN', zh: '太阳下行辐射', en: 'Solar Downwelling Flux' },
   { id: 'U_Wind', zh: '纬向风 U', en: 'U Wind' },
   { id: 'V_Wind', zh: '经向风 V', en: 'V Wind' },
+];
+
+const AI_LATITUDE_BANDS = [
+  { id: 'pn', min: 60, max: 90, zh: '北极区(60N-90N)', en: 'Polar North (60N-90N)' },
+  { id: 'mn', min: 30, max: 60, zh: '北中纬(30N-60N)', en: 'Mid-Lat North (30N-60N)' },
+  { id: 'eq', min: -30, max: 30, zh: '赤道区(30S-30N)', en: 'Equatorial (30S-30N)' },
+  { id: 'ms', min: -60, max: -30, zh: '南中纬(30S-60S)', en: 'Mid-Lat South (30S-60S)' },
+  { id: 'ps', min: -90, max: -60, zh: '南极区(60S-90S)', en: 'Polar South (60S-90S)' },
 ];
 
 function convertByVariable(value, variable, units) {
@@ -37,6 +47,66 @@ function unitByVariable(variable, units) {
   if (variable === 'Dust_Optical_Depth') return 'tau';
   if (variable === 'Solar_Flux_DN') return 'W/m²';
   return '';
+}
+
+function buildLatitudeBandSummary({ latAxis, matrix, lsAxis, variable, units, isZh }) {
+  if (!latAxis.length || !matrix.length || !lsAxis.length) return [];
+  return AI_LATITUDE_BANDS.map((band) => {
+    const rowIndexes = latAxis
+      .map((lat, index) => ({ lat, index }))
+      .filter(({ lat }) => Number.isFinite(lat) && lat >= band.min && lat <= band.max)
+      .map(({ index }) => index);
+
+    if (!rowIndexes.length) {
+      return {
+        id: band.id,
+        band: isZh ? band.zh : band.en,
+        sampleCount: 0,
+        stats: null,
+        peakLs: null,
+        troughLs: null,
+        sample: [],
+      };
+    }
+
+    const series = lsAxis.map((_, lsIndex) => {
+      const values = rowIndexes
+        .map((rowIndex) => matrix[rowIndex]?.[lsIndex])
+        .filter((value) => Number.isFinite(value));
+      if (!values.length) return NaN;
+      const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+      return convertByVariable(mean, variable, units);
+    });
+
+    let peakIdx = -1;
+    let troughIdx = -1;
+    let peakValue = Number.NEGATIVE_INFINITY;
+    let troughValue = Number.POSITIVE_INFINITY;
+    series.forEach((value, idx) => {
+      if (!Number.isFinite(value)) return;
+      if (value > peakValue) {
+        peakValue = value;
+        peakIdx = idx;
+      }
+      if (value < troughValue) {
+        troughValue = value;
+        troughIdx = idx;
+      }
+    });
+
+    return {
+      id: band.id,
+      band: isZh ? band.zh : band.en,
+      sampleCount: rowIndexes.length,
+      stats: summarizeSeries(series),
+      peakLs: peakIdx >= 0 ? roundValue(lsAxis[peakIdx], 2) : null,
+      troughLs: troughIdx >= 0 ? roundValue(lsAxis[troughIdx], 2) : null,
+      amplitude: Number.isFinite(peakValue) && Number.isFinite(troughValue)
+        ? roundValue(peakValue - troughValue)
+        : null,
+      sample: sampleSeries(series, lsAxis, 6),
+    };
+  });
 }
 
 export default function SeasonalChart({ marsYear }) {
@@ -80,6 +150,59 @@ export default function SeasonalChart({ marsYear }) {
 
   const currentVariableLabel = variableLabelMap[variable] || variable;
   const currentUnitLabel = unitByVariable(variable, units);
+
+  const aiInsightProvider = useCallback(() => {
+    const lsAxis = data?.x || [];
+    const latAxis = data?.y || [];
+    const matrix = data?.z || [];
+    let midLatitudeSeries = [];
+    if (latAxis.length && matrix.length) {
+      let bestIndex = 0;
+      let bestAbs = Number.POSITIVE_INFINITY;
+      latAxis.forEach((lat, index) => {
+        if (!Number.isFinite(lat)) return;
+        const abs = Math.abs(lat);
+        if (abs < bestAbs) {
+          bestAbs = abs;
+          bestIndex = index;
+        }
+      });
+      midLatitudeSeries = (matrix[bestIndex] || []).map((value) => convertByVariable(value, variable, units));
+    }
+    const allValues = matrix
+      .flat()
+      .map((value) => convertByVariable(value, variable, units))
+      .filter((value) => Number.isFinite(value));
+    const latitudeBandSummary = buildLatitudeBandSummary({
+      latAxis,
+      matrix,
+      lsAxis,
+      variable,
+      units,
+      isZh,
+    });
+    return {
+      card: 'seasonal',
+      marsYear,
+      variable,
+      variableLabel: currentVariableLabel,
+      unit: currentUnitLabel,
+      status: loading ? 'loading' : (data?.z?.length ? 'ready' : 'empty'),
+      dimensions: {
+        lsCount: lsAxis.length,
+        latCount: latAxis.length,
+      },
+      valueRange: {
+        min: roundValue(convertByVariable(data?.min, variable, units)),
+        max: roundValue(convertByVariable(data?.max, variable, units)),
+      },
+      globalStats: summarizeSeries(allValues),
+      latitudeBandSummary,
+      equatorialSeriesSample: sampleSeries(midLatitudeSeries, lsAxis, 12),
+    };
+  }, [currentUnitLabel, currentVariableLabel, data, isZh, loading, marsYear, units, variable]);
+
+  useAiInsightRegistration('seasonal', aiInsightProvider);
 
   useEffect(() => {
     let active = true;

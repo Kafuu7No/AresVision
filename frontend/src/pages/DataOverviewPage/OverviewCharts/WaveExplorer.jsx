@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useT } from '../../../i18n';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { fetchZonalAnomaly } from '../../../services/api';
+import useAiInsightRegistration from './useAiInsightRegistration';
+import { roundValue, sampleSeries } from './aiInsight';
 
 export default function WaveExplorer({ marsYear }) {
   const t = useT();
@@ -50,6 +52,35 @@ export default function WaveExplorer({ marsYear }) {
       });
     return () => { active = false; };
   }, [marsYear]);
+
+  const diagnostics = useMemo(() => {
+    if (!data?.x?.length || !data?.y?.length || !data?.z?.length) return null;
+    const rowIndex = Math.floor(data.y.length / 2);
+    const equatorSeries = Array.isArray(data.z[rowIndex]) ? data.z[rowIndex] : [];
+    return {
+      valueRange: {
+        min: roundValue(data.min),
+        max: roundValue(data.max),
+        maxAbs: roundValue(Math.max(Math.abs(data.min || 0), Math.abs(data.max || 0))),
+      },
+      equatorSamples: sampleSeries(equatorSeries, data.x, 12),
+    };
+  }, [data]);
+
+  const aiInsightProvider = useCallback(() => ({
+    card: 'wave',
+    marsYear,
+    variable: 'o3col',
+    status: loading ? 'loading' : (data?.z?.length ? 'ready' : 'empty'),
+    dimensions: {
+      lonCount: data?.x?.length || 0,
+      latCount: data?.y?.length || 0,
+    },
+    valueRange: diagnostics?.valueRange || null,
+    equatorialAnomalySamples: diagnostics?.equatorSamples || [],
+  }), [data, diagnostics, loading, marsYear]);
+
+  useAiInsightRegistration('wave', aiInsightProvider);
 
   if (loading) {
     return <div style={{ color: C.ice, padding: 20 }}>{copy.loading}</div>;

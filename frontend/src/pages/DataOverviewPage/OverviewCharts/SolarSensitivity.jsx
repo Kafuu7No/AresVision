@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useT } from '../../../i18n';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { fetchSolarPhotochemical } from '../../../services/api';
+import useAiInsightRegistration from './useAiInsightRegistration';
+import { correlation, sampleSeries, summarizeSeries } from './aiInsight';
 
 const BANDS = [
   'Equatorial (30S-30N)',
@@ -73,6 +75,35 @@ export default function SolarSensitivity({ marsYear }) {
       });
     return () => { active = false; };
   }, [marsYear, activeBand]);
+
+  const diagnostics = useMemo(() => {
+    if (!data?.solar?.length || !data?.ozone?.length) return null;
+    return {
+      correlation: correlation(data.solar, data.ozone),
+      solarStats: summarizeSeries(data.solar),
+      ozoneStats: summarizeSeries(data.ozone),
+      samplePairs: sampleSeries(data.ozone, data.ls || [], 10).map((item) => {
+        const idx = item.index;
+        return {
+          ls: item.x,
+          ozone: item.y,
+          solar: Number.isFinite(data.solar[idx]) ? data.solar[idx] : null,
+        };
+      }),
+    };
+  }, [data]);
+
+  const aiInsightProvider = useCallback(() => ({
+    card: 'solarsens',
+    marsYear,
+    activeBand,
+    activeBandLabel: copy.bands[activeBand] || activeBand,
+    status: loading ? 'loading' : (data?.ozone?.length ? 'ready' : 'empty'),
+    sampleCount: data?.ozone?.length || 0,
+    diagnostics,
+  }), [activeBand, copy.bands, data, diagnostics, loading, marsYear]);
+
+  useAiInsightRegistration('solarsens', aiInsightProvider);
 
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>

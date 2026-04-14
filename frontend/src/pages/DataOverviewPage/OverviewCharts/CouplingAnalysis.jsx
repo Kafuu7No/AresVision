@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useT } from '../../../i18n';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { fetchCouplingData } from '../../../services/api';
+import useAiInsightRegistration from './useAiInsightRegistration';
+import { correlation, roundValue, sampleSeries, summarizeSeries } from './aiInsight';
 
 export default function CouplingAnalysis({ marsYear }) {
   const t = useT();
@@ -52,6 +54,43 @@ export default function CouplingAnalysis({ marsYear }) {
       });
     return () => { active = false; };
   }, [marsYear]);
+
+  const diagnostics = useMemo(() => {
+    if (!data?.var1?.length || !data?.var2?.length) return null;
+    return {
+      corr: correlation(data.var1, data.var2),
+      ozoneStats: summarizeSeries(data.var1),
+      dustStats: summarizeSeries(data.var2),
+      ozoneSamples: sampleSeries(data.var1, data.ls || [], 10),
+      dustSamples: sampleSeries(data.var2, data.ls || [], 10),
+    };
+  }, [data]);
+
+  const aiInsightProvider = useCallback(() => ({
+    card: 'coupling',
+    marsYear,
+    status: loading ? 'loading' : (data?.ls?.length ? 'ready' : 'empty'),
+    lsCount: data?.ls?.length || 0,
+    correlation: diagnostics?.corr ?? null,
+    ozone: diagnostics
+      ? {
+        stats: diagnostics.ozoneStats,
+        samples: diagnostics.ozoneSamples,
+      }
+      : null,
+    dust: diagnostics
+      ? {
+        stats: diagnostics.dustStats,
+        samples: diagnostics.dustSamples,
+      }
+      : null,
+    lsRange: {
+      min: roundValue(data?.ls?.[0]),
+      max: roundValue(data?.ls?.[data?.ls?.length - 1]),
+    },
+  }), [data, diagnostics, loading, marsYear]);
+
+  useAiInsightRegistration('coupling', aiInsightProvider);
 
   if (loading) {
     return <div style={{ color: C.ice, padding: 20 }}>{copy.loading}</div>;

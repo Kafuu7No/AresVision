@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { fetchZonalAnomaly } from '../../../services/api';
+import useAiInsightRegistration from './useAiInsightRegistration';
+import { roundValue, sampleSeries } from './aiInsight';
 
 const VARIABLE_OPTIONS = [
   { id: 'o3col', zh: '臭氧柱浓度', en: 'Ozone Column' },
@@ -153,6 +155,37 @@ export default function WaveBandDiagnosticsChart({ marsYear }) {
       span: bands.map((item) => item.span),
     };
   }, [isZh, rawData]);
+
+  const aiInsightProvider = useCallback(() => {
+    const rms = diagnostics?.rms || [];
+    const span = diagnostics?.span || [];
+    const bands = diagnostics?.bands || [];
+    let strongestRms = null;
+    let strongestSpan = null;
+    bands.forEach((band, index) => {
+      const rmsValue = rms[index];
+      const spanValue = span[index];
+      if (Number.isFinite(rmsValue) && (!strongestRms || rmsValue > strongestRms.value)) {
+        strongestRms = { band, value: rmsValue };
+      }
+      if (Number.isFinite(spanValue) && (!strongestSpan || spanValue > strongestSpan.value)) {
+        strongestSpan = { band, value: spanValue };
+      }
+    });
+    return {
+      card: 'waveDiag',
+      marsYear,
+      variable,
+      variableLabel: currentVariableLabel,
+      status: loading ? 'loading' : (bands.length ? 'ready' : 'empty'),
+      strongestRms: strongestRms ? { band: strongestRms.band, value: roundValue(strongestRms.value) } : null,
+      strongestSpan: strongestSpan ? { band: strongestSpan.band, value: roundValue(strongestSpan.value) } : null,
+      rmsSample: sampleSeries(rms, bands, 8),
+      spanSample: sampleSeries(span, bands, 8),
+    };
+  }, [currentVariableLabel, diagnostics, loading, marsYear, variable]);
+
+  useAiInsightRegistration('waveDiag', aiInsightProvider);
 
   if (loading) return <div style={{ color: C.ice60, fontSize: 12 }}>{copy.loading}</div>;
   if (!diagnostics?.bands?.length) return <div style={{ color: C.mars, fontSize: 12 }}>{copy.noData}</div>;

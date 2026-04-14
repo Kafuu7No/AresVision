@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useSettings } from '../../../contexts/SettingsContext';
@@ -11,6 +11,8 @@ import {
   convertWind,
   windLabel,
 } from '../../../utils/units';
+import useAiInsightRegistration from './useAiInsightRegistration';
+import { roundValue, sampleSeries } from './aiInsight';
 
 const VARIABLE_OPTIONS = [
   { id: 'o3col', zh: '臭氧柱浓度', en: 'Ozone Column' },
@@ -178,6 +180,41 @@ export default function SeasonalExtremesChart({ marsYear }) {
     () => buildExtremesFromHeatmap(heatmapData, latBands, variable, units),
     [heatmapData, latBands, variable, units],
   );
+
+  const aiInsightProvider = useCallback(() => {
+    const amplitudes = data?.amplitude || [];
+    const peaks = data?.peak_ls || [];
+    let strongestBand = null;
+    amplitudes.forEach((value, index) => {
+      if (!Number.isFinite(value)) return;
+      if (!strongestBand || value > strongestBand.amplitude) {
+        strongestBand = {
+          band: data.bands[index],
+          amplitude: value,
+          peakLs: peaks[index],
+        };
+      }
+    });
+    return {
+      card: 'seasonalExtremes',
+      marsYear,
+      variable,
+      variableLabel: currentVariableLabel,
+      unit: currentUnitLabel,
+      status: loading ? 'loading' : (data?.bands?.length ? 'ready' : 'empty'),
+      strongestBand: strongestBand
+        ? {
+          band: strongestBand.band,
+          amplitude: roundValue(strongestBand.amplitude),
+          peakLs: roundValue(strongestBand.peakLs, 2),
+        }
+        : null,
+      amplitudeSample: sampleSeries(amplitudes, data?.bands || [], 10),
+      peakLsSample: sampleSeries(peaks, data?.bands || [], 10),
+    };
+  }, [currentUnitLabel, currentVariableLabel, data, loading, marsYear, variable]);
+
+  useAiInsightRegistration('seasonalExtremes', aiInsightProvider);
 
   if (loading) return <div style={{ color: C.ice60, fontSize: 12 }}>{copy.loading}</div>;
   if (!data?.bands?.length) return <div style={{ color: C.mars, fontSize: 12 }}>{copy.noData}</div>;

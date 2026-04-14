@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { loadResearchSuiteCached } from './ResearchDataClient';
+import useAiInsightRegistration from './useAiInsightRegistration';
+import { roundValue, sampleSeries, summarizeSeries } from './aiInsight';
 
 const LABELS = {
   o3: { zh: '臭氧', en: 'O3' },
@@ -84,6 +86,32 @@ export default function GlobalTrendLinesChart({ marsYear }) {
       };
     });
   }, [data, isZh]);
+
+  const aiInsightProvider = useCallback(() => {
+    const lsAxis = data?.ls || [];
+    const series = data?.series || {};
+    const seriesSummary = Object.entries(series).map(([key, values]) => {
+      const first = values.find((value) => Number.isFinite(value));
+      const reversed = [...values].reverse();
+      const last = reversed.find((value) => Number.isFinite(value));
+      return {
+        variable: key,
+        label: LABELS[key] ? (isZh ? LABELS[key].zh : LABELS[key].en) : key,
+        stats: summarizeSeries(values),
+        delta: Number.isFinite(first) && Number.isFinite(last) ? roundValue(last - first) : null,
+        sample: sampleSeries(values, lsAxis, 8),
+      };
+    });
+    return {
+      card: 'globalTrend',
+      marsYear,
+      status: loading ? 'loading' : (seriesSummary.length ? 'ready' : 'empty'),
+      lsCount: lsAxis.length,
+      series: seriesSummary,
+    };
+  }, [data, isZh, loading, marsYear]);
+
+  useAiInsightRegistration('globalTrend', aiInsightProvider);
 
   if (loading) return <div style={{ color: C.ice60, fontSize: 12 }}>{copy.loading}</div>;
   if (!traces.length) return <div style={{ color: C.mars, fontSize: 12 }}>{copy.noData}</div>;

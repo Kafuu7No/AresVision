@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useT } from '../../../i18n';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { fetchPerformanceComparison } from '../../../services/api';
 import { fmtNum } from '../../../utils/fmt';
+import useAiInsightRegistration from './useAiInsightRegistration';
+import { roundValue, sampleSeries } from './aiInsight';
 
 const FULL_VARS = ['U_Wind', 'V_Wind', 'Temperature', 'Dust_Optical_Depth', 'Solar_Flux_DN'];
 
@@ -92,6 +94,44 @@ export default function PredictionEngine() {
       ssim: data.full.global_ssim - data.baseline.global_ssim,
     };
   }, [data]);
+
+  const aiInsightProvider = useCallback(() => ({
+    card: 'prediction',
+    status: loading ? 'loading' : (data?.baseline && data?.full ? 'ready' : 'empty'),
+    baseline: data?.baseline
+      ? {
+        globalR2: roundValue(data.baseline.global_r2),
+        globalRmse: roundValue(data.baseline.global_rmse),
+        globalSsim: roundValue(data.baseline.global_ssim),
+        r2CurveSample: sampleSeries(
+          data.baseline.items?.map((item) => item.r2) || [],
+          data.baseline.items?.map((item) => `MY${item.my}-Ls${roundValue(item.ls, 0)}`) || [],
+          10,
+        ),
+      }
+      : null,
+    full: data?.full
+      ? {
+        globalR2: roundValue(data.full.global_r2),
+        globalRmse: roundValue(data.full.global_rmse),
+        globalSsim: roundValue(data.full.global_ssim),
+        r2CurveSample: sampleSeries(
+          data.full.items?.map((item) => item.r2) || [],
+          data.full.items?.map((item) => `MY${item.my}-Ls${roundValue(item.ls, 0)}`) || [],
+          10,
+        ),
+      }
+      : null,
+    improvement: improvement
+      ? {
+        r2: roundValue(improvement.r2),
+        rmse: roundValue(improvement.rmse),
+        ssim: roundValue(improvement.ssim),
+      }
+      : null,
+  }), [data, improvement, loading]);
+
+  useAiInsightRegistration('prediction', aiInsightProvider);
 
   if (loading) {
     return (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useT } from '../../../i18n';
@@ -6,6 +6,8 @@ import { useSettings } from '../../../contexts/SettingsContext';
 import { fetchDiurnal } from '../../../services/api';
 import { convertOzone, ozoneLabel } from '../../../utils/units';
 import { fmtNum } from '../../../utils/fmt';
+import useAiInsightRegistration from './useAiInsightRegistration';
+import { roundValue, sampleSeries } from './aiInsight';
 
 const LAT_BANDS = [
   'Polar North (60N-90N)',
@@ -96,6 +98,27 @@ export default function RealtimeMonitor({ marsYear, lsValue }) {
     const peakHour = data.hours[values.indexOf(max)];
     return { max, min, mean, peakHour, amplitude: max - min };
   }, [data]);
+
+  const aiInsightProvider = useCallback(() => ({
+    card: 'realtime',
+    marsYear,
+    ls: roundValue(lsValue, 2),
+    latBand,
+    latBandLabel: shortLabels[latBand] || latBand,
+    status: loading ? 'loading' : (data?.ozone_values?.length ? 'ready' : 'empty'),
+    metrics: stats
+      ? {
+        mean: roundValue(stats.mean),
+        max: roundValue(stats.max),
+        min: roundValue(stats.min),
+        amplitude: roundValue(stats.amplitude),
+        peakHour: roundValue(stats.peakHour, 2),
+      }
+      : null,
+    samples: sampleSeries(data?.ozone_values || [], data?.hours || [], 12),
+  }), [data, latBand, loading, lsValue, marsYear, shortLabels, stats]);
+
+  useAiInsightRegistration('realtime', aiInsightProvider);
 
   if (loading) {
     return (

@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useT } from '../../../i18n';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { fetchPolarDynamics } from '../../../services/api';
+import useAiInsightRegistration from './useAiInsightRegistration';
+import { roundValue, sampleSeries, summarizeSeries } from './aiInsight';
 
 export default function PolarDynamics({ marsYear }) {
   const t = useT();
@@ -52,6 +54,65 @@ export default function PolarDynamics({ marsYear }) {
       });
     return () => { active = false; };
   }, [marsYear]);
+
+  const diagnostics = useMemo(() => {
+    if (!data?.ls?.length) return null;
+    const northOzone = data?.north?.ozone || [];
+    const southOzone = data?.south?.ozone || [];
+    const northTemp = data?.north?.temp || [];
+    const southTemp = data?.south?.temp || [];
+
+    const findPeak = (series) => {
+      if (!series.length) return { value: null, ls: null };
+      let bestIndex = -1;
+      let bestValue = Number.NEGATIVE_INFINITY;
+      series.forEach((value, index) => {
+        if (!Number.isFinite(value)) return;
+        if (value > bestValue) {
+          bestValue = value;
+          bestIndex = index;
+        }
+      });
+      if (bestIndex < 0) return { value: null, ls: null };
+      return { value: roundValue(series[bestIndex]), ls: roundValue(data.ls[bestIndex]) };
+    };
+
+    return {
+      northOzoneStats: summarizeSeries(northOzone),
+      southOzoneStats: summarizeSeries(southOzone),
+      northTempStats: summarizeSeries(northTemp),
+      southTempStats: summarizeSeries(southTemp),
+      northOzonePeak: findPeak(northOzone),
+      southOzonePeak: findPeak(southOzone),
+      northOzoneSamples: sampleSeries(northOzone, data.ls, 8),
+      southOzoneSamples: sampleSeries(southOzone, data.ls, 8),
+    };
+  }, [data]);
+
+  const aiInsightProvider = useCallback(() => ({
+    card: 'polar',
+    marsYear,
+    status: loading ? 'loading' : (data?.ls?.length ? 'ready' : 'empty'),
+    lsCount: data?.ls?.length || 0,
+    north: diagnostics
+      ? {
+        ozoneStats: diagnostics.northOzoneStats,
+        tempStats: diagnostics.northTempStats,
+        ozonePeak: diagnostics.northOzonePeak,
+        ozoneSamples: diagnostics.northOzoneSamples,
+      }
+      : null,
+    south: diagnostics
+      ? {
+        ozoneStats: diagnostics.southOzoneStats,
+        tempStats: diagnostics.southTempStats,
+        ozonePeak: diagnostics.southOzonePeak,
+        ozoneSamples: diagnostics.southOzoneSamples,
+      }
+      : null,
+  }), [data, diagnostics, loading, marsYear]);
+
+  useAiInsightRegistration('polar', aiInsightProvider);
 
   if (loading) {
     return <div style={{ color: C.ice, padding: 20 }}>{copy.loading}</div>;

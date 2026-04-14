@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { fetchEnvHeatmap, fetchSeasonalHeatmap } from '../../../services/api';
@@ -6,6 +6,8 @@ import { useT } from '../../../i18n';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { convertTemp, tempLabel, convertWind, windLabel } from '../../../utils/units';
 import { fmtNum } from '../../../utils/fmt';
+import useAiInsightRegistration from './useAiInsightRegistration';
+import { roundValue, sampleSeries, summarizeSeries } from './aiInsight';
 
 const VARIABLE_META_BASE = [
   { id: 'Temperature', color: C.mars, unit: 'K' },
@@ -22,7 +24,7 @@ const LAT_BANDS_BASE = [
   { id: 'polar_south', min: -90, max: -60 },
 ];
 
-function summarizeSeries(values) {
+function summarizeSeriesWithPeak(values) {
   const valid = values.filter((value) => Number.isFinite(value));
   if (!valid.length) return { peakValue: NaN, troughValue: NaN, peakIndex: 0 };
   const peakValue = Math.max(...valid);
@@ -81,7 +83,7 @@ function bandSeries(heatmap, band) {
 }
 
 function EnvCard({ meta, dataset, copy, plotText, plotGrid }) {
-  const summary = useMemo(() => summarizeSeries(dataset.series), [dataset.series]);
+  const summary = useMemo(() => summarizeSeriesWithPeak(dataset.series), [dataset.series]);
   const convertedMean = convertValue(meta.id, dataset.mean);
   const convertedPeak = convertValue(meta.id, summary.peakValue);
   const convertedSpread = Number.isFinite(summary.peakValue) && Number.isFinite(summary.troughValue)
@@ -250,6 +252,32 @@ export default function EnvironmentDashboard({ marsYear }) {
       return best;
     }).filter(Boolean);
   }, [bandInfluence, latBands, variableMeta]);
+
+  const aiInsightProvider = useCallback(() => {
+    const variableSummary = variableMeta.map((meta) => {
+      const dataset = datasets[meta.id];
+      return {
+        variable: meta.id,
+        label: meta.label,
+        mean: roundValue(dataset?.mean),
+        seriesStats: summarizeSeries(dataset?.series || []),
+        seriesSample: sampleSeries(dataset?.series || [], dataset?.ls || [], 8),
+      };
+    });
+    return {
+      card: 'environment',
+      marsYear,
+      status: loading ? 'loading' : (variableSummary.length ? 'ready' : 'empty'),
+      dominantDrivers: dominantDrivers.map((item) => ({
+        band: item.band,
+        variable: item.variable,
+        corr: roundValue(item.value),
+      })),
+      variableSummary,
+    };
+  }, [datasets, dominantDrivers, loading, marsYear, variableMeta]);
+
+  useAiInsightRegistration('environment', aiInsightProvider);
 
   if (loading) {
     return (

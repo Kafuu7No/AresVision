@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { fetchCorrelation, fetchEnvHeatmap, fetchSeasonalHeatmap } from '../../../services/api';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { ozoneLabel, convertOzone } from '../../../utils/units';
 import { fmtNum } from '../../../utils/fmt';
+import useAiInsightRegistration from './useAiInsightRegistration';
+import { roundValue, sampleSeries } from './aiInsight';
 
 const VARIABLE_META_BASE = [
   { id: 'U_Wind', color: C.blue, unit: 'm/s' },
@@ -259,6 +261,47 @@ export default function CorrelationMatrix({ marsYear }) {
   const strongestLag = derived?.lagCurve?.reduce((best, item) => (
     !best || Math.abs(item.corr) > Math.abs(best.corr) ? item : best
   ), null);
+
+  const aiInsightProvider = useCallback(() => ({
+    card: 'correlation',
+    marsYear,
+    selectedVariable,
+    selectedVariableLabel: selectedMeta?.label || selectedVariable,
+    status: loading ? 'loading' : (derived ? 'ready' : 'empty'),
+    strongestPair: strongest
+      ? {
+        a: corrLabels[strongest.a] || strongest.a,
+        b: corrLabels[strongest.b] || strongest.b,
+        corr: roundValue(strongest.value),
+      }
+      : null,
+    scatter: derived
+      ? {
+        r2: roundValue(derived.regression.r2),
+        slope: roundValue(derived.regression.slope),
+        intercept: roundValue(derived.regression.intercept),
+      }
+      : null,
+    lag: strongestLag
+      ? {
+        lag: strongestLag.lag,
+        corr: roundValue(strongestLag.corr),
+      }
+      : null,
+    ozoneRange: derived?.ozoneSeries?.length
+      ? {
+        min: roundValue(Math.min(...derived.ozoneSeries.filter(Number.isFinite))),
+        max: roundValue(Math.max(...derived.ozoneSeries.filter(Number.isFinite))),
+      }
+      : null,
+    lagCurveSample: sampleSeries(
+      derived?.lagCurve?.map((item) => item.corr) || [],
+      derived?.lagCurve?.map((item) => item.lag) || [],
+      10,
+    ),
+  }), [corrLabels, derived, loading, marsYear, selectedMeta?.label, selectedVariable, strongest, strongestLag]);
+
+  useAiInsightRegistration('correlation', aiInsightProvider);
 
   if (loading) {
     return (
