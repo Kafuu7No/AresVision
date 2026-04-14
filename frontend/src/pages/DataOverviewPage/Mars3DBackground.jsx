@@ -63,7 +63,7 @@ const Mars3DBackground = forwardRef(({ ozoneData, is3DMode, autoRotate, leftPane
         h="100vh"
         forceFullscreen
         autoRotate={autoRotate}
-        zoom={2.5} // slightly smaller zoom to give room for side panels
+        zoom={3.75} // reduce initial globe size by ~1/3 (visual size becomes ~2/3)
         offsetX={(rightPanelWidth - leftPanelWidth) / 2} // shift object to center it in remaining viewport space
         onGlobeClick={onGlobeClick}
       />

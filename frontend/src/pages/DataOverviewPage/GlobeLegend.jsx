@@ -3,7 +3,7 @@ import GlowCard from '../../components/GlowCard';
 import C from '../../constants/colors';
 import { useSettings } from '../../contexts/SettingsContext';
 import { convertOzone, ozoneLabel, convertTemp, tempLabel, convertWind, windLabel } from '../../utils/units';
-import { makeGradient } from '../../utils/colormaps';
+import { getRgb } from '../../utils/colormaps';
 import { useDataOverview } from '../../contexts/DataOverviewContext';
 import { getGlobeVariableMeta } from '../../constants/globeVariables';
 
@@ -34,14 +34,23 @@ export default function GlobeLegend({ ozoneData }) {
 
   if (!ozoneData || typeof ozoneData.maxVal === 'undefined') return null;
 
-  // Keep this panel compact and avoid overlap with the gesture capture window.
-  const panelWidth = gestureEnabled ? 190 : 215;
-  const panelBottom = gestureEnabled ? 278 : 100;
+  // Compact legend and lift it above the bottom timeline area.
+  const panelWidth = gestureEnabled ? 172 : 186;
+  const panelBottom = gestureEnabled ? 278 : 120;
 
   const pointsCount = ozoneData.points?.length || 0;
   const maxVal = convertByVariable(ozoneData.maxVal || 0, variable, settings.units).toFixed(3);
   const midVal = convertByVariable(((ozoneData.maxVal || 0) + (ozoneData.minVal || 0)) / 2, variable, settings.units).toFixed(3);
   const minVal = convertByVariable(ozoneData.minVal || 0, variable, settings.units).toFixed(3);
+  const horizontalGradient = (() => {
+    const n = 10;
+    const pts = Array.from({ length: n }, (_, i) => {
+      const t = i / (n - 1); // low -> high (left -> right)
+      const [r, g, b] = getRgb(settings.colormap, t);
+      return `rgb(${r},${g},${b}) ${(i / (n - 1) * 100).toFixed(0)}%`;
+    });
+    return `linear-gradient(90deg, ${pts.join(', ')})`;
+  })();
 
   return (
     <div
@@ -55,15 +64,15 @@ export default function GlobeLegend({ ozoneData }) {
         transition: 'bottom 0.2s ease, width 0.2s ease',
       }}
     >
-      <GlowCard style={{ padding: '12px', background: 'rgba(10, 14, 23, 0.5)' }}>
+      <GlowCard style={{ padding: '10px', background: 'rgba(10, 14, 23, 0.5)' }}>
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '10px',
+            marginBottom: '8px',
             borderBottom: '1px solid rgba(255,255,255,0.05)',
-            paddingBottom: '6px',
+            paddingBottom: '5px',
           }}
         >
           <span style={{ color: C.ice60, fontSize: '9px', fontFamily: "'Exo 2', sans-serif", letterSpacing: 1 }}>
@@ -80,36 +89,36 @@ export default function GlobeLegend({ ozoneData }) {
             fontSize: '8px',
             fontFamily: "'Orbitron', sans-serif",
             letterSpacing: 1,
-            marginBottom: '6px',
+            marginBottom: '7px',
           }}
         >
           {varLabel} ({unitLabel})
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'stretch', gap: '10px', height: '64px' }}>
+        <div>
           <div
             style={{
-              width: '10px',
-              flexShrink: 0,
-              borderRadius: '5px',
+              height: '10px',
+              borderRadius: '999px',
               border: `1px solid ${C.border}`,
-              background: makeGradient(settings.colormap),
+              background: horizontalGradient,
+              marginBottom: '6px',
             }}
           />
           <div
             style={{
               display: 'flex',
-              flexDirection: 'column',
               justifyContent: 'space-between',
-              fontSize: '10px',
+              alignItems: 'center',
+              fontSize: '9px',
               color: C.ice,
               fontFamily: "'Exo 2', sans-serif",
               fontWeight: 'bold',
             }}
           >
-            <span>{maxVal}</span>
-            <span style={{ color: C.ice60 }}>{midVal}</span>
             <span>{minVal}</span>
+            <span style={{ color: C.ice60 }}>{midVal}</span>
+            <span>{maxVal}</span>
           </div>
         </div>
       </GlowCard>
