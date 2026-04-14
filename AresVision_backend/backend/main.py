@@ -159,6 +159,8 @@ app.add_middleware(
         "http://localhost:3000",    # 备用端口
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
+        "http://ares-vision.xyz",   # 允许你的穿透域名
+        "https://ares-vision.xyz",  # 如果开启了 HTTPS 也要加上
     ],
     allow_credentials=True,
     allow_methods=["*"],
