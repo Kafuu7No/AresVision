@@ -23,11 +23,12 @@ const DataOverviewPageContent = () => {
     setSelectedCoordinate,
     autoRotate,
     gestureEnabled,
+    globeVariable,
     leftPanelWidth,
     rightPanelWidth
   } = useDataOverview();
 
-  const [ozoneData, setOzoneData] = useState({ points: [], minVal: 0, maxVal: 1 });
+  const [ozoneData, setOzoneData] = useState({ points: [], minVal: 0, maxVal: 1, variable: 'o3col' });
   const [loadingGlobe, setLoadingGlobe] = useState(false);
 
   const timerRef = useRef(null);
@@ -90,18 +91,19 @@ const DataOverviewPageContent = () => {
     });
   }, [setOnLandmarks]);
 
-  const loadGlobe = useCallback(async (ls, year) => {
+  const loadGlobe = useCallback(async (ls, year, variable) => {
     if (abortRef.current) abortRef.current.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     setLoadingGlobe(true);
     try {
-      const d = await fetchGlobeData(year, ls, ctrl.signal);
+      const d = await fetchGlobeData(year, ls, variable, ctrl.signal);
       if (!ctrl.signal.aborted) {
         setOzoneData({
           points: d.points || [],
           minVal: d.minVal ?? 0,
           maxVal: d.maxVal ?? 1,
+          variable: d.variable || variable || 'o3col',
         });
         setLoadingGlobe(false);
       }
@@ -114,8 +116,8 @@ const DataOverviewPageContent = () => {
   }, []);
 
   useEffect(() => {
-    loadGlobe(globalTimeLs, marsYear);
-  }, [globalTimeLs, marsYear, loadGlobe]);
+    loadGlobe(globalTimeLs, marsYear, globeVariable);
+  }, [globalTimeLs, marsYear, globeVariable, loadGlobe]);
 
   useEffect(() => {
     if (isPlayingTimeline) {

@@ -18,6 +18,7 @@ export const DataOverviewProvider = ({ children }) => {
   const [isPlayingTimeline, setIsPlayingTimeline] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
   const [gestureEnabled, setGestureEnabled] = useState(false);
+  const [globeVariable, setGlobeVariable] = useState('o3col');
   const [timeRange, setTimeRange] = useState({ start: 0, end: 360 });
   const [selectedVariables, setSelectedVariables] = useState([
     'o3col', 'temperature', 'pressure'
@@ -43,6 +44,8 @@ export const DataOverviewProvider = ({ children }) => {
     setAutoRotate,
     gestureEnabled,
     setGestureEnabled,
+    globeVariable,
+    setGlobeVariable,
     timeRange,
     setTimeRange,
     selectedVariables,

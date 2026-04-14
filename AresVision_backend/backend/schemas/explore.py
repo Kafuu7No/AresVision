@@ -16,6 +16,7 @@ class GlobeDataResponse(BaseModel):
     maxVal: float
     ls: float
     mars_year: int
+    variable: str = "o3col"
 
 
 class HeatmapResponse(BaseModel):

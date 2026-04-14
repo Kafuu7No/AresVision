@@ -17,10 +17,16 @@ class AnalysisService:
         self.data_service = data_service
         self._cache: dict[str, dict] = {}
 
-    def get_globe_data(self, mars_year: int, ls: float) -> dict:
+    def get_globe_data(self, mars_year: int, ls: float, variable: str = "o3col") -> dict:
         om = self.data_service.get_openmars_data(mars_year)
         idx = self.data_service.get_nearest_ls_index(om["ls"], ls)
-        field = om["o3col"][idx]
+        if variable == "o3col":
+            field = om["o3col"][idx]
+        else:
+            am = self.data_service.get_aligned_mcd_data(mars_year)
+            if variable not in am:
+                raise ValueError(f"变量 {variable} 不可用")
+            field = am[variable][idx]
 
         points = []
         for i, lat in enumerate(om["lat"]):
@@ -40,6 +46,7 @@ class AnalysisService:
             "maxVal": float(np.nanmax(valid_vals)) if len(valid_vals) > 0 else 1,
             "ls": float(om["ls"][idx]),
             "mars_year": mars_year,
+            "variable": variable,
         }
 
     def get_seasonal_heatmap(self, mars_year: int, variable: str = "o3col") -> dict:

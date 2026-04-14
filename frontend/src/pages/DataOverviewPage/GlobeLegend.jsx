@@ -2,14 +2,35 @@ import React from 'react';
 import GlowCard from '../../components/GlowCard';
 import C from '../../constants/colors';
 import { useSettings } from '../../contexts/SettingsContext';
-import { convertOzone, ozoneLabel } from '../../utils/units';
+import { convertOzone, ozoneLabel, convertTemp, tempLabel, convertWind, windLabel } from '../../utils/units';
 import { makeGradient } from '../../utils/colormaps';
 import { useDataOverview } from '../../contexts/DataOverviewContext';
+import { getGlobeVariableMeta } from '../../constants/globeVariables';
+
+function convertByVariable(value, variable, units) {
+  if (!Number.isFinite(value)) return value;
+  if (variable === 'o3col') return convertOzone(value, units.ozone);
+  if (variable === 'Temperature') return convertTemp(value, units.temperature);
+  if (variable === 'U_Wind' || variable === 'V_Wind') return convertWind(value, units.wind);
+  return value;
+}
+
+function unitLabelByVariable(variable, units) {
+  if (variable === 'o3col') return ozoneLabel(units.ozone);
+  if (variable === 'Temperature') return tempLabel(units.temperature);
+  if (variable === 'U_Wind' || variable === 'V_Wind') return windLabel(units.wind);
+  if (variable === 'Dust_Optical_Depth') return 'tau';
+  if (variable === 'Solar_Flux_DN') return 'W/m²';
+  return '';
+}
 
 export default function GlobeLegend({ ozoneData }) {
   const { settings } = useSettings();
   const { leftPanelWidth, gestureEnabled } = useDataOverview();
-  const ozoneUnit = settings.units.ozone;
+  const variable = ozoneData?.variable || 'o3col';
+  const varMeta = getGlobeVariableMeta(variable);
+  const varLabel = settings?.language === 'en' ? varMeta.en : varMeta.zh;
+  const unitLabel = unitLabelByVariable(variable, settings.units);
 
   if (!ozoneData || typeof ozoneData.maxVal === 'undefined') return null;
 
@@ -18,9 +39,9 @@ export default function GlobeLegend({ ozoneData }) {
   const panelBottom = gestureEnabled ? 278 : 100;
 
   const pointsCount = ozoneData.points?.length || 0;
-  const maxVal = convertOzone(ozoneData.maxVal || 0, ozoneUnit).toFixed(3);
-  const midVal = convertOzone(((ozoneData.maxVal || 0) + (ozoneData.minVal || 0)) / 2, ozoneUnit).toFixed(3);
-  const minVal = convertOzone(ozoneData.minVal || 0, ozoneUnit).toFixed(3);
+  const maxVal = convertByVariable(ozoneData.maxVal || 0, variable, settings.units).toFixed(3);
+  const midVal = convertByVariable(((ozoneData.maxVal || 0) + (ozoneData.minVal || 0)) / 2, variable, settings.units).toFixed(3);
+  const minVal = convertByVariable(ozoneData.minVal || 0, variable, settings.units).toFixed(3);
 
   return (
     <div
@@ -62,7 +83,7 @@ export default function GlobeLegend({ ozoneData }) {
             marginBottom: '6px',
           }}
         >
-          O3 CONCENTRATION ({ozoneLabel(ozoneUnit)})
+          {varLabel} ({unitLabel})
         </div>
 
         <div style={{ display: 'flex', alignItems: 'stretch', gap: '10px', height: '64px' }}>

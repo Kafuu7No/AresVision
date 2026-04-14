@@ -25,11 +25,12 @@ async def get_globe_data(
     request: Request,
     my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
     ls: float = Query(10.0, ge=0, le=360, description="太阳黄经 Ls"),
+    variable: str = Query("o3col", description="显示变量", enum=["o3col"] + MCD_VARIABLES),
 ):
-    """获取指定 Ls 时刻的全球臭氧 3D 点云数据"""
+    """获取指定 Ls 时刻的全球变量 3D 点云数据"""
     try:
         vs = _get_analysis_service(request)
-        return vs.get_globe_data(my, ls)
+        return vs.get_globe_data(my, ls, variable=variable)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
