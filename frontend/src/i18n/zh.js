@@ -240,11 +240,28 @@ const zh = {
   },
 
   explore: {
-    title: '数据探索',
-    subtitle: 'DATA EXPLORATION',
-    pageDesc: '浏览默认数据集或上传您自己的火星观测数据',
+    title: '数据管理',
+    subtitle: 'DATA MANAGEMENT',
+    pageDesc: '聚焦默认数据集说明与展示，或管理您自己的火星观测数据上传记录',
     tabDefault: '默认数据集',
     tabMy: '我的数据',
+    defaultDataset: {
+      header: '默认数据集总览',
+      headerDesc: '本页面聚焦官方默认数据集的来源说明与结构化展示。',
+      sourceTitle: '数据源说明',
+      openmarsSubtitle: 'OpenMARS 再分析数据（臭氧核心）',
+      openmarsBody: '提供臭氧柱浓度核心变量 o3col。数据统一到 5° x 5° 全球网格，并按火星年与 Ls 组织，适用于模型训练与基线分析。',
+      mcdSubtitle: 'MCD 6.1 模拟数据（环境驱动）',
+      mcdBody: '提供温度、气压、沙尘光学厚度、太阳辐射与水平风场等环境驱动变量，用于臭氧变化分析与预测模型输入。',
+      listTitle: '官方数据集清单',
+      yearCount: ({ n }) => `共 ${n} 个火星年`,
+      labelOfficial: '官方',
+      metaLsRange: 'Ls 范围',
+      metaGrid: '网格分辨率',
+      metaCoverage: '数据覆盖',
+      variableTitle: '变量覆盖',
+      variableDesc: '以上变量构成系统默认特征集合，统一用于数据管理、预测分析与模型训练等模块。',
+    },
 
     upload: {
       loginPrompt: '请先登录以管理您的火星数据',
