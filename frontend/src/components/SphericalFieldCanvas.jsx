@@ -141,7 +141,7 @@ function buildGeoOverlay(isLight) {
     group.add(sprite);
   });
 
-  const lonLabels = [0, 60, 120, 180, 240, 300];
+  const lonLabels = Array.from({ length: 12 }, (_, index) => index * 30);
   lonLabels.forEach((lon) => {
     let text = '0°';
     if (lon === 180) text = '180°';
