@@ -6,25 +6,46 @@ const TrainingContext = createContext();
 
 export const useTraining = () => useContext(TrainingContext);
 
-export const TrainingProvider = ({ children }) => {
+export const TrainingProvider = ({ children, enabled = true }) => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [activeTaskId, setActiveTaskId] = useState(null);
   const [progressData, setProgressData] = useState(null);
   const [logs, setLogs] = useState([]);
+
   const wsRef = useRef(null);
   const pollingRef = useRef(null);
   const logPollingRef = useRef(null);
 
+  const clearTaskPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
+
+  const clearLogPolling = useCallback(() => {
+    if (logPollingRef.current) {
+      clearInterval(logPollingRef.current);
+      logPollingRef.current = null;
+    }
+  }, []);
+
+  const closeWs = useCallback(() => {
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+  }, []);
+
   const loadTasks = useCallback(async () => {
-    if (!user) return;
+    if (!enabled || !user) return;
     try {
       const data = await fetchTasks();
       setTasks(data);
-      
-      // 如果当前没有活跃任务，自动选择最新的正在运行的任务
+
       if (!activeTaskId) {
-        const runningTask = data.find(tk => tk.status === 'running' || tk.status === 'pending');
+        const runningTask = data.find((tk) => tk.status === 'running' || tk.status === 'pending');
         if (runningTask) {
           setActiveTaskId(runningTask.id);
         }
@@ -32,30 +53,31 @@ export const TrainingProvider = ({ children }) => {
     } catch (err) {
       console.error('Failed to load tasks', err);
     }
-  }, [user, activeTaskId]);
+  }, [enabled, user, activeTaskId]);
 
-  // 定时同步任务列表
+  // Poll training task list only when provider is enabled.
   useEffect(() => {
-    if (user) {
+    clearTaskPolling();
+
+    if (enabled && user) {
       loadTasks();
       pollingRef.current = setInterval(loadTasks, 5000);
-    } else {
+    } else if (!user) {
       setTasks([]);
       setActiveTaskId(null);
       setProgressData(null);
       setLogs([]);
-      if (pollingRef.current) clearInterval(pollingRef.current);
     }
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-    };
-  }, [user, loadTasks]);
 
-  // 定时同步活跃任务日志
+    return () => clearTaskPolling();
+  }, [enabled, user, loadTasks, clearTaskPolling]);
+
+  // Poll logs only when enabled and task is selected.
   useEffect(() => {
-    if (!activeTaskId || !user) {
+    clearLogPolling();
+
+    if (!enabled || !activeTaskId || !user) {
       setLogs([]);
-      if (logPollingRef.current) clearInterval(logPollingRef.current);
       return;
     }
 
@@ -71,55 +93,50 @@ export const TrainingProvider = ({ children }) => {
     pollLogs();
     logPollingRef.current = setInterval(pollLogs, 3000);
 
-    return () => {
-      if (logPollingRef.current) clearInterval(logPollingRef.current);
-    };
-  }, [activeTaskId, user]);
+    return () => clearLogPolling();
+  }, [enabled, activeTaskId, user, clearLogPolling]);
 
-  // 当 activeTaskId 变化或任务列表更新时，同步 progressData
+  // Sync progressData from active task row.
   useEffect(() => {
-    const task = tasks.find(t => t.id === activeTaskId);
-    if (task) {
-      let historyBuffer = { train: [], val: [] };
-      if (task.loss_history) {
-        try {
-          historyBuffer = JSON.parse(task.loss_history);
-        } catch(e) { console.error('History parse error', e); }
-      }
+    const task = tasks.find((t) => t.id === activeTaskId);
+    if (!task) return;
 
-      setProgressData({
-        progress: task.progress || 0,
-        current_epoch: task.current_epoch || 0,
-        total_epochs: task.total_epochs || 0,
-        current_loss: task.current_loss,
-        eta: task.eta || '--:--',
-        loss_history: historyBuffer
-      });
+    let historyBuffer = { train: [], val: [] };
+    if (task.loss_history) {
+      try {
+        historyBuffer = JSON.parse(task.loss_history);
+      } catch (e) {
+        console.error('History parse error', e);
+      }
     }
+
+    setProgressData({
+      progress: task.progress || 0,
+      current_epoch: task.current_epoch || 0,
+      total_epochs: task.total_epochs || 0,
+      current_loss: task.current_loss,
+      eta: task.eta || '--:--',
+      loss_history: historyBuffer,
+    });
   }, [activeTaskId, tasks]);
 
-  // WebSocket 实时进度订阅
+  // WebSocket live updates only when enabled and task is running.
   useEffect(() => {
-    if (!activeTaskId || !user) {
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
+    if (!enabled || !activeTaskId || !user) {
+      closeWs();
       return;
     }
 
-    const task = tasks.find(t => t.id === activeTaskId);
+    const task = tasks.find((t) => t.id === activeTaskId);
     if (!task || (task.status !== 'running' && task.status !== 'pending')) {
-      if (wsRef.current) wsRef.current.close();
+      closeWs();
       return;
     }
 
-    // 清理旧连接
-    if (wsRef.current) wsRef.current.close();
+    closeWs();
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.hostname}:8000/api/ws/training/${activeTaskId}`;
-    
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
@@ -127,11 +144,10 @@ export const TrainingProvider = ({ children }) => {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === 'training_update') {
-          // 如果后端传回了 loss_history，解析它
           if (msg.data && msg.data.loss_history) {
-             setProgressData(msg.data);
+            setProgressData(msg.data);
           } else {
-             setProgressData(prev => ({...prev, ...msg.data}));
+            setProgressData((prev) => ({ ...prev, ...msg.data }));
           }
         } else if (msg.type === 'status_update') {
           loadTasks();
@@ -141,15 +157,9 @@ export const TrainingProvider = ({ children }) => {
       }
     };
 
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-    };
-  }, [activeTaskId, user, tasks, loadTasks]);
+    return () => closeWs();
+  }, [enabled, activeTaskId, user, tasks, loadTasks, closeWs]);
 
-  // 暴露给外部的值
   const value = {
     tasks,
     setTasks,
@@ -159,12 +169,8 @@ export const TrainingProvider = ({ children }) => {
     setProgressData,
     logs,
     setLogs,
-    loadTasks
+    loadTasks,
   };
 
-  return (
-    <TrainingContext.Provider value={value}>
-      {children}
-    </TrainingContext.Provider>
-  );
+  return <TrainingContext.Provider value={value}>{children}</TrainingContext.Provider>;
 };

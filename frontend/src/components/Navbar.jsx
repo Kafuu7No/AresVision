@@ -9,7 +9,7 @@ import ChangePasswordModal from './ChangePasswordModal';
 import NotificationPanel from './NotificationPanel';
 import { getPendingReviews, getUnreadCount } from '../services/api';
 
-const NAV_IDS = ['home', 'overview', 'explore', 'predict', 'training', 'ai', 'about'];
+const NAV_IDS = ['home', 'overview', 'predict', 'training', 'explore', 'ai', 'about'];
 
 function MarsLogoIcon() {
   return (
@@ -388,7 +388,9 @@ export default function Navbar({ current, onChange, onOpenAdmin, onOpenFeedback,
             style={navBtnStyle(current === id)}
           >
             <span style={navLabelStyle(current === id)}>
-              {t(`nav.${id}`)}
+              {id === 'explore'
+                ? (settings.language === 'zh' ? '数据管理' : 'Data Management')
+                : t(`nav.${id}`)}
             </span>
           </button>
         ))}
