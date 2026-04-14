@@ -55,18 +55,20 @@ function createLabelSprite(text, isLight) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   const fontSize = 30;
-  const padX = 16;
+  const padX = 20;
   const padY = 8;
-  ctx.font = `600 ${fontSize}px "Orbitron", "Segoe UI", sans-serif`;
+  const strokeWidth = 4;
+  const labelFontFamily = '"Segoe UI Symbol", "Segoe UI", "Arial Unicode MS", "Noto Sans", sans-serif';
+  ctx.font = `600 ${fontSize}px ${labelFontFamily}`;
   const textWidth = Math.ceil(ctx.measureText(text).width);
 
-  canvas.width = Math.max(96, textWidth + padX * 2);
-  canvas.height = fontSize + padY * 2;
+  canvas.width = Math.max(110, textWidth + padX * 2 + strokeWidth * 2 + 6);
+  canvas.height = fontSize + padY * 2 + strokeWidth;
 
-  ctx.font = `600 ${fontSize}px "Orbitron", "Segoe UI", sans-serif`;
+  ctx.font = `600 ${fontSize}px ${labelFontFamily}`;
   ctx.fillStyle = isLight ? '#203042' : '#d5e8ff';
   ctx.strokeStyle = isLight ? 'rgba(255,255,255,0.9)' : 'rgba(8,12,20,0.9)';
-  ctx.lineWidth = 5;
+  ctx.lineWidth = strokeWidth;
   ctx.lineJoin = 'round';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -133,22 +135,35 @@ function buildGeoOverlay(isLight) {
   }
 
   const latLabels = [-90, -60, -30, 0, 30, 60, 90];
+  const degree = '\u00B0';
+  const formatLatLabel = (lat) => (lat === 0 ? `0${degree}` : `${Math.abs(lat)}${degree}${lat > 0 ? 'N' : 'S'}`);
   latLabels.forEach((lat) => {
-    const text = lat === 0 ? '0°' : `${Math.abs(lat)}°${lat > 0 ? 'N' : 'S'}`;
-    const sprite = createLabelSprite(text, isLight);
+    const sprite = createLabelSprite(formatLatLabel(lat), isLight);
     const p = latLonToVec3(lat, 8, lat === 90 || lat === -90 ? 1.06 : 1.03);
+    sprite.position.set(p.x, p.y, p.z);
+    group.add(sprite);
+  });
+  // Mirror latitude labels on the opposite hemisphere so labels remain visible when rotating.
+  latLabels.forEach((lat) => {
+    if (lat === 90 || lat === -90 || lat === 0) return; // Avoid duplicated poles and equator label overlap.
+    const sprite = createLabelSprite(formatLatLabel(lat), isLight);
+    const p = latLonToVec3(lat, 188, 1.03);
     sprite.position.set(p.x, p.y, p.z);
     group.add(sprite);
   });
 
   const lonLabels = Array.from({ length: 12 }, (_, index) => index * 30);
+  const lonLabelLat = 0;
+  const formatLonLabel = (lon) => {
+    if (lon === 0) return `0${degree}`;
+    if (lon === 180) return `180${degree}`;
+    if (lon > 0 && lon < 180) return `${lon}${degree}E`;
+    return `${360 - lon}${degree}W`;
+  };
   lonLabels.forEach((lon) => {
-    let text = '0°';
-    if (lon === 180) text = '180°';
-    else if (lon > 0 && lon < 180) text = `${lon}°E`;
-    else if (lon > 180) text = `${360 - lon}°W`;
+    const text = formatLonLabel(lon);
     const sprite = createLabelSprite(text, isLight);
-    const p = latLonToVec3(0, lon, 1.04);
+    const p = latLonToVec3(lonLabelLat, lon, 1.06);
     sprite.position.set(p.x, p.y, p.z);
     group.add(sprite);
   });
