@@ -148,7 +148,7 @@ export default function HomePage({ onNavigate }) {
           transform: showButtons ? 'translateY(0)' : 'translateY(20px)',
           transition: 'all 0.8s cubic-bezier(0.22,1,0.36,1)',
         }}>
-          <button onClick={() => onNavigate('explore')} style={{
+          <button onClick={() => onNavigate('overview')} style={{
             background: `linear-gradient(135deg, ${C.mars}, ${C.marsLight})`,
             border: 'none', borderRadius: 12,
             padding: '14px 36px', color: '#fff',

@@ -1,50 +1,58 @@
 """
-数据库初始化：建表 + 创建默认管理员账号
+Database bootstrap:
+1. create tables if missing
+2. patch legacy SQLite schema for model_training_tasks
+3. create default admin if users table is empty
 """
 
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from config import DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD
 from database.engine import Base, engine, async_session_maker
-from database.models import User, Notification, Feedback, ModelTrainingTask  # noqa: F401 — 确保模型注册到 Base
+from database.models import User, Notification, Feedback, ModelTrainingTask  # noqa: F401
 
 logger = logging.getLogger("aresvision.db")
 
 
+async def _patch_training_table_columns(conn) -> None:
+    """Add missing columns for legacy SQLite databases."""
+    result = await conn.execute(text("PRAGMA table_info(model_training_tasks)"))
+    existing_columns = {row[1] for row in result.fetchall()}
+
+    columns_to_add = [
+        ("pid", "INTEGER"),
+        ("custom_model_name", "VARCHAR(255)"),
+        ("progress", "FLOAT DEFAULT 0.0"),
+        ("current_epoch", "INTEGER DEFAULT 0"),
+        ("total_epochs", "INTEGER DEFAULT 0"),
+        ("current_loss", "FLOAT"),
+        ("eta", "VARCHAR(50)"),
+        ("loss_history", "TEXT"),
+    ]
+
+    for col_name, col_def in columns_to_add:
+        if col_name not in existing_columns:
+            logger.info("Adding missing column model_training_tasks.%s", col_name)
+            await conn.execute(
+                text(f"ALTER TABLE model_training_tasks ADD COLUMN {col_name} {col_def}")
+            )
+
+
 async def init_database() -> None:
-    """
-    在应用启动时调用：
-    1. 创建所有表（若不存在）
-    2. 如果 User 表为空，创建默认管理员账号
-    """
-    # 延迟导入避免循环依赖
     from auth.security import hash_password
 
     try:
-        # 建表
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-            
-            # 兼容性处理：如果 ModelTrainingTask 表中没有 pid 字段，则添加它 (针对 SQLite)
-            from sqlalchemy import text
             try:
-                # 检查字段是否存在
-                res = await conn.execute(text("PRAGMA table_info(model_training_tasks)"))
-                columns = [row[1] for row in res.fetchall()]
-                if "pid" not in columns:
-                    logger.info("正在向 model_training_tasks 动态添加 pid 字段...")
-                    await conn.execute(text("ALTER TABLE model_training_tasks ADD COLUMN pid INTEGER"))
-                if "custom_model_name" not in columns:
-                    logger.info("正在向 model_training_tasks 动态添加 custom_model_name 字段...")
-                    await conn.execute(text("ALTER TABLE model_training_tasks ADD COLUMN custom_model_name VARCHAR(255)"))
-            except Exception as e:
-                logger.warning(f"无法自动添加 pid 字段（可能已存在）: {e}")
-                
-        logger.info("数据库表初始化完成")
+                await _patch_training_table_columns(conn)
+            except Exception as exc:
+                logger.warning("Could not auto-patch model_training_tasks schema: %s", exc)
 
-        # 创建默认管理员（仅当 users 表为空时）
+        logger.info("Database schema initialization complete")
+
         async with async_session_maker() as session:
             result = await session.execute(select(User).limit(1))
             if result.scalar_one_or_none() is None:
@@ -56,9 +64,9 @@ async def init_database() -> None:
                 )
                 session.add(admin)
                 await session.commit()
-                logger.info(f"默认管理员账号已创建: {DEFAULT_ADMIN_EMAIL}")
+                logger.info("Default admin created: %s", DEFAULT_ADMIN_EMAIL)
             else:
-                logger.info("数据库已有用户数据，跳过默认账号创建")
+                logger.info("Users already exist; skip default admin creation")
 
     except Exception as exc:
-        logger.warning(f"数据库初始化失败（服务仍将继续启动）: {exc}")
+        logger.warning("Database initialization failed (startup continues): %s", exc)

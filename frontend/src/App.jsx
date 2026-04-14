@@ -80,7 +80,7 @@ export default function App() {
   }, []);
 
   return (
-    <TrainingProvider>
+    <TrainingProvider enabled={page === 'training'}>
       <StarField />
       <ErrorBoundary>
         <Navbar current={page} onChange={navigate} onOpenAdmin={() => setAdminPanelOpen(true)} onOpenFeedback={() => setFeedbackPanelOpen(true)} pendingRefreshSignal={reviewSignal} />
