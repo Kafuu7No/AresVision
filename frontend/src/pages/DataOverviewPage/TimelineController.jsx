@@ -7,6 +7,7 @@ import { useDataOverview } from '../../contexts/DataOverviewContext';
 export default function TimelineController() {
   const t = useT();
   const { globalTimeLs, setGlobalTimeLs, isPlayingTimeline, setIsPlayingTimeline, leftPanelWidth, rightPanelWidth } = useDataOverview();
+  const playerWidth = `clamp(460px, calc(100vw - ${leftPanelWidth + rightPanelWidth + 140}px), 760px)`;
 
   const seasonName =
     globalTimeLs < 90  ? t('common.season.spring') :
@@ -21,9 +22,9 @@ export default function TimelineController() {
       bottom: '30px',
       left: `calc(50% + ${(leftPanelWidth - rightPanelWidth) / 2}px)`,
       transform: 'translateX(-50%)',
-      width: '600px',
+      width: playerWidth,
       zIndex: 1500,
-      transition: 'left 0.1s ease', // Add a slight transition so it doesn't jitter
+      transition: 'none',
     }}>
       <GlowCard style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -104,6 +104,7 @@ export default function AICopilotWidget() {
     globalTimeLs,
     setActiveAnalysisMode,
     activeAnalysisMode,
+    leftPanelWidth,
     rightPanelWidth,
     marsYear,
     selectedCoordinate,
@@ -112,6 +113,7 @@ export default function AICopilotWidget() {
     globeVariable,
     getAiInsight,
   } = useDataOverview();
+  const bubbleWidth = `clamp(300px, calc(100vw - ${leftPanelWidth + rightPanelWidth + 220}px), 420px)`;
 
   const [showBubble, setShowBubble] = useState(false);
   const [hasTriggered, setHasTriggered] = useState(false);
@@ -214,13 +216,13 @@ export default function AICopilotWidget() {
         display: 'flex',
         alignItems: 'flex-end',
         gap: '16px',
-        transition: 'right 0.1s ease',
+        transition: 'none',
       }}
     >
       {showBubble && (
         <div
           style={{
-            width: '360px',
+            width: bubbleWidth,
             background: 'rgba(10, 14, 23, 0.85)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
