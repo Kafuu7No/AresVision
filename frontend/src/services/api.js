@@ -430,11 +430,15 @@ export async function fetchUserBands(uploadId) {
   return res.json();
 }
 
-export async function aiChat(question, context = null) {
+export async function aiChat(question, context = null, history = null) {
+  const payload = { question, context };
+  if (Array.isArray(history) && history.length > 0) {
+    payload.history = history;
+  }
   const res = await fetch(`${BASE}/ai/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, context }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
