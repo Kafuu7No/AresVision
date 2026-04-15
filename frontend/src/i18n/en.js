@@ -236,11 +236,28 @@ const en = {
   },
 
   explore: {
-    title: 'Data Exploration',
-    subtitle: 'DATA EXPLORATION',
-    pageDesc: 'Browse default datasets or upload your own Mars observation data',
+    title: 'Data Management',
+    subtitle: 'DATA MANAGEMENT',
+    pageDesc: 'Focus on default dataset documentation or manage your own uploaded Mars observation data',
     tabDefault: 'Default Dataset',
     tabMy: 'My Data',
+    defaultDataset: {
+      header: 'DEFAULT DATASET OVERVIEW',
+      headerDesc: 'This page focuses on official dataset documentation and structured metadata display. Visualization charts are intentionally removed to keep the management workflow concise and readable.',
+      sourceTitle: 'DATA SOURCE DESCRIPTION',
+      openmarsSubtitle: 'OpenMARS Reanalysis (Ozone Core)',
+      openmarsBody: 'Provides the ozone column field (o3col) as the core target variable. Data are aligned to a 5° x 5° global grid and indexed by Mars year and Ls, making them suitable for both model training and baseline diagnostics.',
+      mcdSubtitle: 'MCD 6.1 Simulation (Environmental Drivers)',
+      mcdBody: 'Provides environmental driver variables including temperature, pressure, dust optical depth, solar flux, and horizontal wind components. These variables are used as forcing channels and analysis context for ozone dynamics.',
+      listTitle: 'OFFICIAL DATASET LIST',
+      yearCount: ({ n }) => `${n} Mars year${n !== 1 ? 's' : ''}`,
+      labelOfficial: 'Official',
+      metaLsRange: 'Ls range',
+      metaGrid: 'Grid',
+      metaCoverage: 'Coverage',
+      variableTitle: 'VARIABLE COVERAGE',
+      variableDesc: 'Variables above are available as the standard feature set used across data management, prediction analysis, and model training workflows.',
+    },
 
     upload: {
       loginPrompt: 'Please log in to manage your Mars data',
