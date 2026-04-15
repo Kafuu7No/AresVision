@@ -27,12 +27,13 @@ from services.analysis_service import AnalysisService
 from services.predict_data_service import PredictDataService
 from services.predict_service import PredictOrchestratorService
 from services.ai_service import AIService
+from services.copilot_service import CopilotService
 from services.upload_service import UploadService
 from services.user_data_service import UserDataService
 from core.analysis_transforms import AnalysisTransforms
 from core.predict_transforms import PredictTransforms
 from core.predict_inference import PredictInference
-from routers import analysis, predict, ai
+from routers import analysis, predict, ai, copilot
 from routers import auth
 from routers import upload as upload_router_module
 from routers import notification as notification_router_module
@@ -116,9 +117,11 @@ async def lifespan(app: FastAPI):
     app.state.predict_service = predict_orchestrator
 
     # 4. 初始化 AI 服务
-    logger.info("[4/5] 初始化 AI 解读服务...")
+    logger.info("[4/5] 初始化 AI 解读与 Copilot 服务...")
     ai_service = AIService()
     app.state.ai_service = ai_service
+    copilot_service = CopilotService()
+    app.state.copilot_service = copilot_service
 
     # 5. 后台预生成性能分析缓存 (不阻塞启动)
     logger.info("[5/5] 启动后台性能缓存预生成检查...")
@@ -138,6 +141,7 @@ async def lifespan(app: FastAPI):
     # 关闭时清理
     logger.info("正在关闭服务...")
     await ai_service.close()
+    await copilot_service.close()
 
 
 # ─── 创建 FastAPI 应用 ───
@@ -172,6 +176,7 @@ app.add_middleware(
 app.include_router(analysis.router,                  prefix=API_PREFIX)
 app.include_router(predict.router,                   prefix=API_PREFIX)
 app.include_router(ai.router,                        prefix=API_PREFIX)
+app.include_router(copilot.router,                   prefix=API_PREFIX)
 app.include_router(auth.router,                      prefix=API_PREFIX)
 app.include_router(upload_router_module.router,        prefix=API_PREFIX)
 app.include_router(notification_router_module.router,  prefix=API_PREFIX)

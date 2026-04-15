@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import C from '../../constants/colors';
 import { useDataOverview } from '../../contexts/DataOverviewContext';
-import { aiChat } from '../../services/api';
+import { copilotChat } from '../../services/api';
 
 const CARD_TITLES = {
   realtime: '昼夜变化',
@@ -170,7 +170,7 @@ export default function AICopilotWidget() {
 4. 如果 status=loading 或 empty，只需一句提示“数据未就绪”并给1条操作建议。
 5. 不要使用 Markdown 标题符号（如 ###）与分隔线（如 ---）。`;
 
-      const res = await aiChat(question, context);
+      const res = await copilotChat(question, context);
       const rawAnswer = typeof res?.answer === 'string' ? res.answer : String(res?.answer ?? '');
       let normalizedAnswer = normalizeAiText(rawAnswer);
       if (!normalizedAnswer && rawAnswer.trim()) {
@@ -179,7 +179,7 @@ export default function AICopilotWidget() {
 
       if (normalizedAnswer.length > 0 && normalizedAnswer.length < 40) {
         const retryQuestion = `${question}\n请按“短摘要模式”重写：2-3句，80-160字。`;
-        const retryRes = await aiChat(retryQuestion, context);
+        const retryRes = await copilotChat(retryQuestion, context);
         const retryNormalized = normalizeAiText(retryRes?.answer);
         if (retryNormalized.length > normalizedAnswer.length) {
           normalizedAnswer = retryNormalized;
