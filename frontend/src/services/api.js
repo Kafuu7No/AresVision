@@ -446,6 +446,20 @@ export async function aiChat(question, context = null, history = null) {
 
 // ─── 模型训练接口 ───
 
+export async function copilotChat(question, context = null, history = null) {
+  const payload = { question, context };
+  if (Array.isArray(history) && history.length > 0) {
+    payload.history = history;
+  }
+  const res = await fetch(`${BASE}/copilot/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 export async function fetchScripts() {
   const res = await authedFetch(`${BASE}/training/scripts`);
   if (!res.ok) throw new Error(`${res.status}`);
