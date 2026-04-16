@@ -2,10 +2,13 @@ import React from 'react';
 import GlowCard from '../../components/GlowCard';
 import C from '../../constants/colors';
 import { useT } from '../../i18n';
+import { useSettings } from '../../contexts/SettingsContext';
 import { useDataOverview } from '../../contexts/DataOverviewContext';
 
 export default function TimelineController() {
   const t = useT();
+  const { settings } = useSettings();
+  const isZh = settings?.language !== 'en';
   const {
     globalTimeLs,
     setGlobalTimeLs,
@@ -15,13 +18,13 @@ export default function TimelineController() {
     rightPanelWidth,
   } = useDataOverview();
 
-  // Compact player to reduce overlap risk with the lower-left legend panel.
   const playerWidth = `clamp(360px, calc(100vw - ${leftPanelWidth + rightPanelWidth + 180}px), 620px)`;
 
   const seasonName =
     globalTimeLs < 90 ? t('common.season.spring') :
     globalTimeLs < 180 ? t('common.season.summer') :
-    globalTimeLs < 270 ? t('common.season.autumn') : t('common.season.winter');
+    globalTimeLs < 270 ? t('common.season.autumn') :
+    t('common.season.winter');
 
   const onTogglePlay = () => setIsPlayingTimeline((p) => !p);
 
@@ -29,7 +32,7 @@ export default function TimelineController() {
     <div
       style={{
         position: 'fixed',
-        bottom: '20px',
+        bottom: 20,
         left: `calc(50% + ${(leftPanelWidth - rightPanelWidth) / 2}px)`,
         transform: 'translateX(-50%)',
         width: playerWidth,
@@ -38,20 +41,18 @@ export default function TimelineController() {
       }}
     >
       <GlowCard style={{ padding: '10px 14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
             onClick={onTogglePlay}
             title={isPlayingTimeline ? t('common.pause') : t('common.play')}
             style={{
-              width: '34px',
-              height: '34px',
+              width: 34,
+              height: 34,
               borderRadius: '50%',
-              background: isPlayingTimeline
-                ? 'rgba(199,91,57,0.2)'
-                : `linear-gradient(135deg, ${C.mars}, #ff8e53)`,
+              background: isPlayingTimeline ? 'rgba(199,91,57,0.2)' : `linear-gradient(135deg, ${C.mars}, #ff8e53)`,
               border: isPlayingTimeline ? `1px solid ${C.mars}` : 'none',
               color: isPlayingTimeline ? C.mars : '#fff',
-              fontSize: '13px',
+              fontSize: 13,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -65,27 +66,12 @@ export default function TimelineController() {
           </button>
 
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-              <div
-                style={{
-                  fontSize: '10px',
-                  color: C.ice30,
-                  fontFamily: "'Orbitron', sans-serif",
-                  letterSpacing: 1,
-                }}
-              >
-                SOLAR LONGITUDE
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <div style={{ fontSize: 10, color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>
+                {isZh ? '太阳黄经' : 'SOLAR LONGITUDE'}
               </div>
-              <div
-                style={{
-                  fontSize: '12px',
-                  color: C.mars,
-                  fontWeight: 'bold',
-                  fontFamily: "'Orbitron', sans-serif",
-                }}
-              >
-                {globalTimeLs}
-                {'\u00B0'}
+              <div style={{ fontSize: 12, color: C.mars, fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif" }}>
+                {globalTimeLs}°
               </div>
             </div>
             <input
@@ -101,15 +87,15 @@ export default function TimelineController() {
 
           <button
             onClick={() => setGlobalTimeLs(0)}
-            title="Reset Ls"
+            title={isZh ? '重置 Ls' : 'Reset Ls'}
             style={{
               background: 'rgba(255,255,255,0.05)',
               border: `1px solid ${C.border}`,
               borderRadius: '50%',
-              width: '28px',
-              height: '28px',
+              width: 28,
+              height: 28,
               color: C.ice60,
-              fontSize: '12px',
+              fontSize: 12,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -126,7 +112,7 @@ export default function TimelineController() {
               borderRadius: '999px',
               border: `1px solid ${C.border}`,
               color: C.ice60,
-              fontSize: '10px',
+              fontSize: 10,
               fontFamily: "'Exo 2', sans-serif",
               whiteSpace: 'nowrap',
               flexShrink: 0,

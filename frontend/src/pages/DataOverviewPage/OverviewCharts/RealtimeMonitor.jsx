@@ -34,9 +34,11 @@ export default function RealtimeMonitor({ marsYear, lsValue }) {
     selection: '当前选择',
     at: '出现在',
     ampDesc: '最大值 - 最小值',
-    localTime: '地方时 (hour)',
+    localTime: '地方时（小时）',
     ozone: '臭氧',
     hoverHour: '地方时',
+    marsYear: '火星年',
+    solarLongitude: '太阳黄经',
     polarNorth: '北极区',
     midNorth: '北中纬',
     equatorial: '赤道区',
@@ -53,6 +55,8 @@ export default function RealtimeMonitor({ marsYear, lsValue }) {
     localTime: 'Local time (hour)',
     ozone: 'Ozone',
     hoverHour: 'Local hour',
+    marsYear: 'MY',
+    solarLongitude: 'Ls',
     polarNorth: 'Polar North',
     midNorth: 'Mid-Lat North',
     equatorial: 'Equatorial',
@@ -210,7 +214,7 @@ export default function RealtimeMonitor({ marsYear, lsValue }) {
             )}
           </div>
           <div style={{ marginTop: 6, color: C.ice, fontSize: 13, fontWeight: 700 }}>{shortLabels[latBand]}</div>
-          <div style={{ color: C.ice30, fontSize: 11 }}>MY{marsYear} · Ls {fmtNum(lsValue, 0)}°</div>
+          <div style={{ color: C.ice30, fontSize: 11 }}>{copy.marsYear}{marsYear} · {copy.solarLongitude} {fmtNum(lsValue, 0)}°</div>
         </div>
       </div>
 

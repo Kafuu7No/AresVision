@@ -117,7 +117,7 @@ export default function CorrelationMatrix({ marsYear }) {
     strongest: '最强相关对',
     scatterR2: '散点 R²',
     lagPeak: '最强时滞',
-    lagStep: '5 deg Ls 步长',
+    lagStep: '5° Ls 步长',
     ozoneRange: 'O3 范围',
     scatter: '散点回归',
     evolution: '季节共演化',
@@ -129,11 +129,16 @@ export default function CorrelationMatrix({ marsYear }) {
     currentFocus: '当前关注',
     strongestLag: '最强时滞相关',
     normalized: '标准化异常',
-    lagTitle: '时滞 (5 deg Ls 步长)',
+    lagTitle: '时滞 (5° Ls 步长)',
     corr: '相关系数',
-    solarLs: '太阳黄经 Ls (deg)',
+    solarLs: '太阳黄经 Ls (°)',
     samples: '样本点',
     fit: '拟合线',
+    ozoneVs: 'O3 对',
+    lsHover: '太阳黄经',
+    lagHover: '时滞',
+    corrHover: '相关系数',
+    ozoneLegend: '臭氧',
   } : {
     loading: 'LOADING RELATION LAB...',
     noData: 'No relationship data available.',
@@ -168,6 +173,11 @@ export default function CorrelationMatrix({ marsYear }) {
     solarLs: 'Solar Longitude Ls (deg)',
     samples: 'Samples',
     fit: 'Fit',
+    ozoneVs: 'O3 vs',
+    lsHover: 'Ls',
+    lagHover: 'Lag',
+    corrHover: 'corr',
+    ozoneLegend: 'O3',
   };
 
   const variableMeta = useMemo(() => VARIABLE_META_BASE.map((meta) => ({
@@ -346,7 +356,7 @@ export default function CorrelationMatrix({ marsYear }) {
         <div style={{ padding: '14px 16px', borderRadius: 12, background: `${selectedMeta.color}14`, border: `1px solid ${selectedMeta.color}55` }}>
           <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.scatterR2}</div>
           <div style={{ marginTop: 6, color: selectedMeta.color, fontSize: 20, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>{fmtNum(derived.regression.r2, 4)}</div>
-          <div style={{ color: C.ice30, fontSize: 11 }}>O3 vs {selectedMeta.label}</div>
+          <div style={{ color: C.ice30, fontSize: 11 }}>{copy.ozoneVs} {selectedMeta.label}</div>
         </div>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}` }}>
           <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.lagPeak}</div>
@@ -370,7 +380,7 @@ export default function CorrelationMatrix({ marsYear }) {
           <div style={{ minHeight: 0 }}>
             <Plot
             data={[
-              { x: derived.paired.map((item) => item.driver), y: derived.paired.map((item) => convertOzone(item.ozone, ozoneUnit)), mode: 'markers', type: 'scatter', marker: { color: selectedMeta.color, size: 8, opacity: 0.75, line: { color: '#fff', width: 0.8 } }, text: derived.paired.map((item) => item.ls), hovertemplate: `${selectedMeta.label}: %{x:.3f}<br>O3: %{y:.3f} ${ozoneLabel(ozoneUnit)}<br>Ls %{text:.0f} deg<extra></extra>`, name: copy.samples },
+              { x: derived.paired.map((item) => item.driver), y: derived.paired.map((item) => convertOzone(item.ozone, ozoneUnit)), mode: 'markers', type: 'scatter', marker: { color: selectedMeta.color, size: 8, opacity: 0.75, line: { color: '#fff', width: 0.8 } }, text: derived.paired.map((item) => item.ls), hovertemplate: `${selectedMeta.label}: %{x:.3f}<br>${copy.ozoneLegend}: %{y:.3f} ${ozoneLabel(ozoneUnit)}<br>${copy.lsHover} %{text:.0f}°<extra></extra>`, name: copy.samples },
               { x: derived.regressionLine.map((item) => item.x), y: derived.regressionLine.map((item) => convertOzone(item.y, ozoneUnit)), mode: 'lines', type: 'scatter', line: { color: plotText, width: 2 }, hoverinfo: 'skip', name: copy.fit },
             ]}
             layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 52, r: 18, t: 12, b: 44 }, xaxis: { title: `${selectedMeta.label} (${selectedMeta.unit})`, gridcolor: plotGrid, tickfont: { color: plotText, size: 10  }, titlefont: { color: plotText, size: 11  }, automargin: true }, yaxis: { title: `O3 (${ozoneLabel(ozoneUnit)})`, gridcolor: plotGrid, tickfont: { color: plotText, size: 10  }, titlefont: { color: plotText, size: 11  }, automargin: true }, showlegend: false }}
@@ -386,7 +396,7 @@ export default function CorrelationMatrix({ marsYear }) {
           <div style={{ minHeight: 0 }}>
             <Plot
             data={[
-              { x: ozoneHeatmap.x, y: derived.normalizedOzone, mode: 'lines', type: 'scatter', line: { color: C.mars, width: 3, shape: 'spline' }, name: 'O3' },
+              { x: ozoneHeatmap.x, y: derived.normalizedOzone, mode: 'lines', type: 'scatter', line: { color: C.mars, width: 3, shape: 'spline' }, name: copy.ozoneLegend },
               { x: ozoneHeatmap.x, y: derived.normalizedDriver, mode: 'lines', type: 'scatter', line: { color: selectedMeta.color, width: 3, shape: 'spline' }, name: selectedMeta.label },
             ]}
             layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 48, r: 18, t: 12, b: 44 }, xaxis: { title: copy.solarLs, gridcolor: plotGrid, tickfont: { color: plotText, size: 10  }, titlefont: { color: plotText, size: 11  }, automargin: true }, yaxis: { title: copy.normalized, gridcolor: plotGrid, tickfont: { color: plotText, size: 10  }, titlefont: { color: plotText, size: 11  }, automargin: true }, showlegend: false }}
@@ -401,7 +411,7 @@ export default function CorrelationMatrix({ marsYear }) {
           <div style={{ color: C.ice, fontSize: 13, fontWeight: 800, marginBottom: 8, fontFamily: "'Orbitron', sans-serif" }}>{copy.lagCorr}</div>
           <div style={{ minHeight: 0 }}>
             <Plot
-            data={[{ x: derived.lagCurve.map((item) => item.lag), y: derived.lagCurve.map((item) => item.corr), mode: 'lines+markers', type: 'scatter', line: { color: C.blue, width: 2.5, shape: 'spline' }, marker: { size: 7, color: selectedMeta.color }, hovertemplate: 'Lag %{x:+d}<br>corr %{y:.3f}<extra></extra>' }]}
+            data={[{ x: derived.lagCurve.map((item) => item.lag), y: derived.lagCurve.map((item) => item.corr), mode: 'lines+markers', type: 'scatter', line: { color: C.blue, width: 2.5, shape: 'spline' }, marker: { size: 7, color: selectedMeta.color }, hovertemplate: `${copy.lagHover} %{x:+d}<br>${copy.corrHover} %{y:.3f}<extra></extra>` }]}
             layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 48, r: 18, t: 12, b: 44 }, xaxis: { title: copy.lagTitle, gridcolor: plotGrid, tickfont: { color: plotText, size: 10  }, titlefont: { color: plotText, size: 11  }, zeroline: false, automargin: true }, yaxis: { title: copy.corr, gridcolor: plotGrid, tickfont: { color: plotText, size: 10  }, titlefont: { color: plotText, size: 11  }, range: [-1, 1], automargin: true }, shapes: [{ type: 'line', x0: 0, x1: 0, y0: -1, y1: 1, line: { color: 'rgba(255,255,255,0.14)', width: 1, dash: 'dash' } }], showlegend: false }}
             config={{ displayModeBar: false, responsive: true }}
             useResizeHandler

@@ -27,6 +27,8 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
   const isZh = settings.language !== 'en';
   const copy = isZh ? {
     myLs: '火星年 / Ls',
+    marsYear: '火星年',
+    solarLongitude: '太阳黄经',
     globalMean: '全球均值',
     p10: 'P10',
     p10Desc: '低值尾部',
@@ -36,12 +38,15 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
     latProfile: '纬向均值剖面',
     ozoneAxis: '臭氧',
     count: '频数',
-    latitude: '纬度 (deg)',
+    latitude: '纬度 (°)',
     note: '当前分布图展示的是所选 MY/Ls 切片的全球臭氧统计。直方图用于看整体离散程度，纬向剖面用于看高值更偏向极区还是赤道。',
     hoverCount: '频数',
     hoverLat: '纬度',
+    degree: '°',
   } : {
     myLs: 'MY / LS',
+    marsYear: 'MY',
+    solarLongitude: 'Ls',
     globalMean: 'GLOBAL MEAN',
     p10: 'P10',
     p10Desc: 'lower tail',
@@ -55,6 +60,7 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
     note: 'This panel summarizes the global ozone slice at the selected MY/Ls. The histogram shows overall spread, while the latitudinal profile highlights whether high values cluster toward the poles or the equator.',
     hoverCount: 'count',
     hoverLat: 'Lat',
+    degree: 'deg',
   };
 
   const derived = useMemo(() => {
@@ -124,8 +130,8 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(74,158,255,0.08)', border: '1px solid rgba(74,158,255,0.18)' }}>
           <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.myLs}</div>
-          <div style={{ marginTop: 6, color: C.blue, fontSize: 16, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>MY{marsYear}</div>
-          <div style={{ color: C.ice30, fontSize: 11 }}>Ls {fmtNum(lsValue, 0)} deg</div>
+          <div style={{ marginTop: 6, color: C.blue, fontSize: 16, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>{copy.marsYear}{marsYear}</div>
+          <div style={{ color: C.ice30, fontSize: 11 }}>{copy.solarLongitude} {fmtNum(lsValue, 0)} {copy.degree}</div>
         </div>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(199,91,57,0.08)', border: '1px solid rgba(199,91,57,0.18)' }}>
           <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.globalMean}</div>
@@ -200,7 +206,7 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
                   line: { color: C.blue, width: 3, shape: 'spline' },
                   fill: 'tozerox',
                   fillcolor: 'rgba(74,158,255,0.14)',
-                  hovertemplate: `${copy.hoverLat} %{y:.1f} deg<br>%{x:.3f} ${ozoneLabel(ozoneUnit)}<extra></extra>`,
+                  hovertemplate: `${copy.hoverLat} %{y:.1f}${isZh ? '°' : ' deg'}<br>%{x:.3f} ${ozoneLabel(ozoneUnit)}<extra></extra>`,
                 }]}
                 layout={{
                   autosize: true,

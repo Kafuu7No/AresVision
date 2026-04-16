@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useLayoutEffect, useCallback, useRef, useSta
 import GlowCard from '../../components/GlowCard';
 import C from '../../constants/colors';
 import { useDataOverview } from '../../contexts/DataOverviewContext';
+import { useSettings } from '../../contexts/SettingsContext';
 import SeasonalChart from './OverviewCharts/SeasonalChart';
 import CorrelationMatrix from './OverviewCharts/CorrelationMatrix';
 import RealtimeMonitor from './OverviewCharts/RealtimeMonitor';
@@ -9,7 +10,6 @@ import EnvironmentDashboard from './OverviewCharts/EnvironmentDashboard';
 import DataDistribution from './OverviewCharts/DataDistribution';
 import CouplingAnalysis from './OverviewCharts/CouplingAnalysis';
 import PolarDynamics from './OverviewCharts/PolarDynamics';
-import PredictionEngine from './OverviewCharts/PredictionEngine';
 import SolarSensitivity from './OverviewCharts/SolarSensitivity';
 import WaveExplorer from './OverviewCharts/WaveExplorer';
 import SeasonalExtremesChart from './OverviewCharts/SeasonalExtremesChart';
@@ -17,14 +17,32 @@ import GlobalTrendLinesChart from './OverviewCharts/GlobalTrendLinesChart';
 import WaveBandDiagnosticsChart from './OverviewCharts/WaveBandDiagnosticsChart';
 import { MODE_DEFS } from './SidebarMenu';
 
+const NAVBAR_HEIGHT = 70;
+
 const MODE_CARD_KEYS = {
   temporal: ['realtime', 'seasonal', 'seasonalExtremes', 'globalTrend'],
   drivers: ['correlation', 'environment', 'solarsens'],
   dynamics: ['coupling', 'polar', 'wave', 'waveDiag'],
-  system: ['prediction'],
+};
+
+const CARD_TITLES = {
+  realtime: { zh: '昼夜变化', en: 'Diurnal' },
+  seasonal: { zh: '季节交替', en: 'Seasonal' },
+  seasonalExtremes: { zh: '季节极值', en: 'Seasonal Extremes' },
+  globalTrend: { zh: '全局趋势', en: 'Global Trends' },
+  environment: { zh: '多因子环境', en: 'Environment' },
+  solarsens: { zh: '光化学辐射', en: 'Solar Sensitivity' },
+  wave: { zh: '地形驻波', en: 'Wave Explorer' },
+  waveDiag: { zh: '波动诊断', en: 'Wave Diagnostics' },
+  polar: { zh: '极点聚集', en: 'Polar Dynamics' },
+  coupling: { zh: '沙尘冲刷', en: 'Dust Coupling' },
+  distribution: { zh: '点位分布', en: 'Distribution' },
+  correlation: { zh: '点位相关性', en: 'Correlation' },
 };
 
 export default function DetailPanel({ ozoneData }) {
+  const { settings } = useSettings();
+  const isZh = settings?.language !== 'en';
   const {
     activeAnalysisMode,
     selectedCoordinate,
@@ -108,7 +126,6 @@ export default function DetailPanel({ ozoneData }) {
   const seasonalComponent = useMemo(() => <SeasonalChart marsYear={marsYear} />, [marsYear]);
   const seasonalExtremesComponent = useMemo(() => <SeasonalExtremesChart marsYear={marsYear} />, [marsYear]);
   const globalTrendComponent = useMemo(() => <GlobalTrendLinesChart marsYear={marsYear} />, [marsYear]);
-  const predictionComponent = useMemo(() => <PredictionEngine />, []);
   const environmentComponent = useMemo(() => <EnvironmentDashboard marsYear={marsYear} />, [marsYear]);
   const solarsensComponent = useMemo(() => <SolarSensitivity marsYear={marsYear} />, [marsYear]);
   const waveComponent = useMemo(() => <WaveExplorer marsYear={marsYear} />, [marsYear]);
@@ -132,39 +149,48 @@ export default function DetailPanel({ ozoneData }) {
   );
 
   const cardsMap = {
-    realtime: { title: '昼夜变化 Diurnal', component: realtimeComponent, color: C.mars },
-    seasonal: { title: '季节交替 Seasonal', component: seasonalComponent, color: C.blue },
-    seasonalExtremes: { title: '季节极值 Seasonal Extremes', component: seasonalExtremesComponent, color: '#f09c4a' },
-    globalTrend: { title: '全局趋势 Global Trends', component: globalTrendComponent, color: '#4acfac' },
-    prediction: { title: '模型评分 Evaluation', component: predictionComponent, color: C.ice },
-    environment: { title: '多因子环境 Environment', component: environmentComponent, color: '#4acfac' },
-    solarsens: { title: '光化学辐射 Solar', component: solarsensComponent, color: '#ffd700' },
-    wave: { title: '地形驻波 Wave', component: waveComponent, color: '#d2b48c' },
-    waveDiag: { title: '波动诊断 Wave Diagnostics', component: waveDiagComponent, color: '#6aa9ff' },
-    polar: { title: '极点聚集 Polar', component: polarComponent, color: '#cbeef3' },
-    coupling: { title: '沙尘冲刷 Coupling', component: couplingComponent, color: '#ffb347' },
-    distribution: { title: '点位分布 Distribution', component: distributionComponent, color: C.mars },
-    correlation: { title: '点位相关性 Correlation', component: correlationComponent, color: C.blue },
+    realtime: { title: isZh ? CARD_TITLES.realtime.zh : CARD_TITLES.realtime.en, component: realtimeComponent, color: C.mars },
+    seasonal: { title: isZh ? CARD_TITLES.seasonal.zh : CARD_TITLES.seasonal.en, component: seasonalComponent, color: C.blue },
+    seasonalExtremes: { title: isZh ? CARD_TITLES.seasonalExtremes.zh : CARD_TITLES.seasonalExtremes.en, component: seasonalExtremesComponent, color: '#f09c4a' },
+    globalTrend: { title: isZh ? CARD_TITLES.globalTrend.zh : CARD_TITLES.globalTrend.en, component: globalTrendComponent, color: '#4acfac' },
+    environment: { title: isZh ? CARD_TITLES.environment.zh : CARD_TITLES.environment.en, component: environmentComponent, color: '#4acfac' },
+    solarsens: { title: isZh ? CARD_TITLES.solarsens.zh : CARD_TITLES.solarsens.en, component: solarsensComponent, color: '#ffd700' },
+    wave: { title: isZh ? CARD_TITLES.wave.zh : CARD_TITLES.wave.en, component: waveComponent, color: '#d2b48c' },
+    waveDiag: { title: isZh ? CARD_TITLES.waveDiag.zh : CARD_TITLES.waveDiag.en, component: waveDiagComponent, color: '#6aa9ff' },
+    polar: { title: isZh ? CARD_TITLES.polar.zh : CARD_TITLES.polar.en, component: polarComponent, color: '#cbeef3' },
+    coupling: { title: isZh ? CARD_TITLES.coupling.zh : CARD_TITLES.coupling.en, component: couplingComponent, color: '#ffb347' },
+    distribution: { title: isZh ? CARD_TITLES.distribution.zh : CARD_TITLES.distribution.en, component: distributionComponent, color: C.mars },
+    correlation: { title: isZh ? CARD_TITLES.correlation.zh : CARD_TITLES.correlation.en, component: correlationComponent, color: C.blue },
   };
 
   const activeCards = getActiveCards();
   const currentModeInfo = selectedCoordinate
     ? {
       icon: '📍',
-      title: '微观点位分析 POINT FOCUS',
+      title: isZh ? '微观点位分析' : 'Point Focus',
       color: C.mars,
-      desc: `深入探索 LAT ${selectedCoordinate.lat.toFixed(1)}°, LNG ${selectedCoordinate.lng.toFixed(1)}° 的局地时空特征`,
+      desc: isZh
+        ? `深入探索 LAT ${selectedCoordinate.lat.toFixed(1)}°, LNG ${selectedCoordinate.lng.toFixed(1)}° 的局地时空特征`
+        : `Focus on local spatiotemporal features at LAT ${selectedCoordinate.lat.toFixed(1)}°, LNG ${selectedCoordinate.lng.toFixed(1)}°`,
     }
-    : MODE_DEFS.find((mode) => mode.id === activeAnalysisMode) || MODE_DEFS[0];
+    : (() => {
+      const mode = MODE_DEFS.find((item) => item.id === activeAnalysisMode) || MODE_DEFS[0];
+      return {
+        icon: mode.icon,
+        title: isZh ? mode.title.zh : mode.title.en,
+        desc: isZh ? mode.desc.zh : mode.desc.en,
+        color: mode.color,
+      };
+    })();
 
   return (
     <div
       style={{
         position: 'fixed',
-        top: '40px',
+        top: `${NAVBAR_HEIGHT}px`,
         right: isVisible ? '0' : `-${rightPanelWidth + 20}px`,
         width: rightPanelWidth,
-        height: 'calc(100vh - 40px)',
+        height: `calc(100vh - ${NAVBAR_HEIGHT}px)`,
         background: 'rgba(10, 12, 18, 0.4)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
@@ -178,9 +204,9 @@ export default function DetailPanel({ ozoneData }) {
       }}
     >
       <GlowCard style={{ padding: '16px 20px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <span style={{ fontSize: '24px', marginRight: '16px', filter: `drop-shadow(0 0 8px ${currentModeInfo.color})` }}>
+            <span style={{ fontSize: 24, marginRight: 16, filter: `drop-shadow(0 0 8px ${currentModeInfo.color})` }}>
               {currentModeInfo.icon}
             </span>
             <div>
@@ -188,7 +214,7 @@ export default function DetailPanel({ ozoneData }) {
                 style={{
                   color: currentModeInfo.color,
                   fontFamily: "'Orbitron', sans-serif",
-                  fontSize: '14px',
+                  fontSize: 14,
                   fontWeight: 'bold',
                   margin: 0,
                   textShadow: `0 0 10px ${currentModeInfo.color}80`,
@@ -206,20 +232,20 @@ export default function DetailPanel({ ozoneData }) {
                 border: '1px solid rgba(255,255,255,0.2)',
                 color: C.ice,
                 padding: '4px 10px',
-                borderRadius: '6px',
+                borderRadius: 6,
                 cursor: 'pointer',
                 fontFamily: "'Exo 2', sans-serif",
-                fontSize: '11px',
+                fontSize: 11,
                 transition: '0.2s',
               }}
               onMouseEnter={(event) => { event.currentTarget.style.background = 'rgba(255,255,255,0.2)'; }}
               onMouseLeave={(event) => { event.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
             >
-              ↩ 返回
+              {isZh ? '返回' : 'Back'}
             </button>
           )}
         </div>
-        <p style={{ color: C.ice60, fontFamily: "'Exo 2', sans-serif", fontSize: '11px', margin: 0, lineHeight: 1.6 }}>
+        <p style={{ color: C.ice60, fontFamily: "'Exo 2', sans-serif", fontSize: 11, margin: 0, lineHeight: 1.6 }}>
           {currentModeInfo.desc}
         </p>
       </GlowCard>
@@ -229,11 +255,11 @@ export default function DetailPanel({ ozoneData }) {
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          gap: '12px',
+          gap: 12,
           overflowX: 'hidden',
           overflowY: 'auto',
           scrollbarGutter: 'stable',
-          paddingRight: '4px',
+          paddingRight: 4,
         }}
       >
         {activeCards.map((key) => {
@@ -267,7 +293,7 @@ export default function DetailPanel({ ozoneData }) {
                   style={{
                     color: isExpanded ? cardDef.color : C.ice60,
                     fontFamily: "'Orbitron', sans-serif",
-                    fontSize: '13px',
+                    fontSize: 13,
                     fontWeight: isExpanded ? 'bold' : 'normal',
                     letterSpacing: 1,
                   }}
@@ -277,7 +303,7 @@ export default function DetailPanel({ ozoneData }) {
                 <span
                   style={{
                     color: isExpanded ? cardDef.color : C.ice30,
-                    fontSize: '16px',
+                    fontSize: 16,
                     transition: 'transform 0.3s',
                     transform: isExpanded ? 'rotate(45deg)' : 'rotate(0deg)',
                   }}
@@ -295,7 +321,7 @@ export default function DetailPanel({ ozoneData }) {
                 }}
               >
                 <div style={{ overflow: 'hidden' }}>
-                  <div style={{ padding: '20px', boxSizing: 'border-box' }}>
+                  <div style={{ padding: 20, boxSizing: 'border-box' }}>
                     {cardDef.component}
                   </div>
                 </div>
@@ -309,10 +335,10 @@ export default function DetailPanel({ ozoneData }) {
         onMouseDown={handleMouseDown}
         style={{
           position: 'absolute',
-          left: '-3px',
+          left: -3,
           top: 0,
           bottom: 0,
-          width: '6px',
+          width: 6,
           cursor: 'col-resize',
           zIndex: 10,
           background: 'transparent',

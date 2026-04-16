@@ -23,6 +23,9 @@ const DataOverviewPageContent = () => {
     setSelectedCoordinate,
     autoRotate,
     gestureEnabled,
+    showConcentration3D,
+    showGeoAnnotations,
+    showMarsTexture,
     globeVariable,
     leftPanelWidth,
     rightPanelWidth
@@ -143,6 +146,9 @@ const DataOverviewPageContent = () => {
           ozoneData={ozoneData}
           is3DMode={true}
           autoRotate={autoRotate}
+          showConcentration3D={showConcentration3D}
+          showGeoAnnotations={showGeoAnnotations}
+          showMarsTexture={showMarsTexture}
           leftPanelWidth={leftPanelWidth}
           rightPanelWidth={rightPanelWidth}
           onGlobeClick={(coord) => setSelectedCoordinate(coord)}

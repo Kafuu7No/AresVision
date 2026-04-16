@@ -1,14 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
-import { useT } from '../../../i18n';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { fetchCouplingData } from '../../../services/api';
 import useAiInsightRegistration from './useAiInsightRegistration';
 import { correlation, roundValue, sampleSeries, summarizeSeries } from './aiInsight';
 
 export default function CouplingAnalysis({ marsYear }) {
-  const t = useT();
   const { settings } = useSettings();
 
   const isLight = settings?.theme === 'light';
@@ -24,15 +22,19 @@ export default function CouplingAnalysis({ marsYear }) {
     noData: '暂无数据',
     ozoneAxis: '全球平均臭氧 (m-atm cm)',
     dustAxis: '全球平均沙尘厚度 (DOD)',
-    lsAxis: '太阳黄经 Ls'
+    lsAxis: '太阳黄经 Ls',
+    ozoneSeries: '臭氧',
+    dustSeries: '沙尘',
   } : {
     title: 'Dust-Ozone Coupling Analysis',
     desc: 'Observe the "washout" effect of global DOD surges on mean ozone column.',
     loading: 'Loading...',
-    noData: 'No Data',
+    noData: 'No data',
     ozoneAxis: 'Global Mean O3 (m-atm cm)',
     dustAxis: 'Global Mean DOD',
-    lsAxis: 'Solar Longitude Ls'
+    lsAxis: 'Solar Longitude Ls',
+    ozoneSeries: 'Ozone',
+    dustSeries: 'Dust',
   };
 
   const [data, setData] = useState(null);
@@ -114,7 +116,7 @@ export default function CouplingAnalysis({ marsYear }) {
               y: data.var1,
               type: 'scatter',
               mode: 'lines',
-              name: 'Ozone',
+              name: copy.ozoneSeries,
               line: { color: C.blue, width: 3 },
               yaxis: 'y1'
             },
@@ -123,7 +125,7 @@ export default function CouplingAnalysis({ marsYear }) {
               y: data.var2,
               type: 'scatter',
               mode: 'lines',
-              name: 'Dust',
+              name: copy.dustSeries,
               line: { color: C.mars, width: 3, dash: 'dot' },
               yaxis: 'y2'
             }

@@ -18,6 +18,9 @@ export const DataOverviewProvider = ({ children }) => {
   const [isPlayingTimeline, setIsPlayingTimeline] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
   const [gestureEnabled, setGestureEnabled] = useState(false);
+  const [showConcentration3D, setShowConcentration3D] = useState(true);
+  const [showGeoAnnotations, setShowGeoAnnotations] = useState(true);
+  const [showMarsTexture, setShowMarsTexture] = useState(true);
   const [globeVariable, setGlobeVariable] = useState('o3col');
   const [timeRange, setTimeRange] = useState({ start: 0, end: 360 });
   const [selectedVariables, setSelectedVariables] = useState([
@@ -70,6 +73,12 @@ export const DataOverviewProvider = ({ children }) => {
     setAutoRotate,
     gestureEnabled,
     setGestureEnabled,
+    showConcentration3D,
+    setShowConcentration3D,
+    showGeoAnnotations,
+    setShowGeoAnnotations,
+    showMarsTexture,
+    setShowMarsTexture,
     globeVariable,
     setGlobeVariable,
     timeRange,

@@ -127,7 +127,7 @@ function EnvCard({ meta, dataset, copy, plotText, plotGrid }) {
             line: { color: meta.color, width: 2.5, shape: 'spline' },
             fill: 'tozeroy',
             fillcolor: `${meta.color}22`,
-            hovertemplate: 'Ls %{x:.0f} deg<br>%{y:.3f} ' + label + '<extra></extra>',
+            hovertemplate: `${copy.lsLabel} %{x:.0f}°<br>%{y:.3f} ${label}<extra></extra>`,
           }]}
           layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 28, r: 12, t: 8, b: 24 }, xaxis: { tickfont: { color: plotText, size: 9  }, gridcolor: plotGrid, showline: false }, yaxis: { tickfont: { color: plotText, size: 9  }, gridcolor: plotGrid, zeroline: false }, showlegend: false }}
           config={{ displayModeBar: false, responsive: true }}
@@ -157,6 +157,9 @@ export default function EnvironmentDashboard({ marsYear }) {
     influence: '纬带影响矩阵',
     dominant: '各纬带主导驱动',
     driverVar: '驱动变量',
+    lsLabel: '太阳黄经',
+    corr: '相关系数',
+    absCorr: '|相关系数|',
     note: '这组图适合做分区研究。左侧热图回答不同纬带里谁和 O3 关系最强，右侧柱图则把每个纬带的主导驱动因子直接提炼出来。',
     labels: {
       Temperature: '温度',
@@ -178,6 +181,9 @@ export default function EnvironmentDashboard({ marsYear }) {
     influence: 'Latitude-Band Influence Matrix',
     dominant: 'Dominant Driver by Latitude',
     driverVar: 'Driver variable',
+    lsLabel: 'Ls',
+    corr: 'correlation',
+    absCorr: '|corr|',
     note: 'This pair of charts is suited to regional analysis. The heatmap shows which driver is most strongly linked to O3 in each latitude band, while the bar chart summarizes the dominant driver band by band.',
     labels: {
       Temperature: 'Temperature',
@@ -315,9 +321,9 @@ export default function EnvironmentDashboard({ marsYear }) {
                 colorscale: 'RdBu',
                 zmin: -1,
                 zmax: 1,
-                hovertemplate: '%{y}<br>%{x}<br>corr %{z:.3f}<extra></extra>',
+                hovertemplate: `%{y}<br>%{x}<br>${copy.corr} %{z:.3f}<extra></extra>`,
                 colorbar: {
-                  title: 'corr',
+                  title: copy.corr,
                   tickfont: { color: plotText, size: 10  },
                   titlefont: { color: plotText, size: 10  },
                 },
@@ -342,9 +348,9 @@ export default function EnvironmentDashboard({ marsYear }) {
                   marker: { color: dominantDrivers.map((item) => variableMeta.find((meta) => meta.label === item.variable)?.color || C.blue) },
                   text: dominantDrivers.map((item) => item.variable),
                   textposition: 'auto',
-                  hovertemplate: '%{x}<br>%{text}<br>|corr| %{y:.3f}<extra></extra>',
+                  hovertemplate: `%{x}<br>%{text}<br>${copy.absCorr} %{y:.3f}<extra></extra>`,
                 }]}
-                layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 52, r: 18, t: 16, b: 64 }, xaxis: { tickfont: { color: plotText, size: 9  }, automargin: true }, yaxis: { tickfont: { color: plotText, size: 10  }, gridcolor: plotGrid, title: '|corr|', automargin: true }, showlegend: false }}
+                layout={{ autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', margin: { l: 52, r: 18, t: 16, b: 64 }, xaxis: { tickfont: { color: plotText, size: 9  }, automargin: true }, yaxis: { tickfont: { color: plotText, size: 10  }, gridcolor: plotGrid, title: copy.absCorr, automargin: true }, showlegend: false }}
                 config={{ displayModeBar: false, responsive: true }}
                 useResizeHandler
                 style={{ width: '100%', height: '100%' }}

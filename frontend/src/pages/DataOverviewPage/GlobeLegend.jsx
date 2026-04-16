@@ -26,6 +26,7 @@ function unitLabelByVariable(variable, units) {
 
 export default function GlobeLegend({ ozoneData }) {
   const { settings } = useSettings();
+  const isZh = settings?.language !== 'en';
   const { leftPanelWidth, gestureEnabled } = useDataOverview();
   const variable = ozoneData?.variable || 'o3col';
   const varMeta = getGlobeVariableMeta(variable);
@@ -76,7 +77,7 @@ export default function GlobeLegend({ ozoneData }) {
           }}
         >
           <span style={{ color: C.ice60, fontSize: '9px', fontFamily: "'Exo 2', sans-serif", letterSpacing: 1 }}>
-            DATA POINTS
+            {isZh ? '数据点' : 'DATA POINTS'}
           </span>
           <span style={{ color: C.mars, fontSize: '12px', fontFamily: "'Orbitron', sans-serif", fontWeight: 'bold' }}>
             {pointsCount}

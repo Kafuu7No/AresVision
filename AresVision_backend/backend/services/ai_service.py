@@ -5,6 +5,7 @@ AI 解读服务层
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from typing import Any, Iterable
@@ -25,7 +26,6 @@ SYSTEM_PROMPT = """你是 AresVision（智绘赤星）系统的 AI 科学顾问�
 5. 默认回答控制在 120-260 字；用户要求详细时再展开。
 """
 
-
 PLAIN_TEXT_PROMPT = (
     "Reply in plain text only. Do not use Markdown markers such as #, *, `, >, -, or list bullets."
 )
@@ -41,7 +41,7 @@ class AIService:
         self.client = httpx.AsyncClient(timeout=60.0)
 
         if not self.api_key:
-            logger.warning("AI_API_KEY 未配置，将使用内置兜底回复。")
+            logger.warning("AI_API_KEY 未配置，将使用内置兜底回答。")
 
     async def chat(
         self,
@@ -52,7 +52,7 @@ class AIService:
         """处理用户问题，返回 AI 回答。"""
         question = (question or "").strip()
         if not question:
-            return "请先输入一个具体问题，例如“本次预测误差最大的区域在哪里？”"
+            return "请先输入一个具体问题，例如“本次预测偏差最大的区域在哪里？”"
 
         if not self.api_key:
             return self._normalize_plain_text(self._builtin_reply(question, context))
@@ -100,8 +100,8 @@ class AIService:
 
             logger.warning("AI API returned empty content, fallback to builtin reply")
             return self._normalize_plain_text(self._builtin_reply(question, context))
-        except Exception as e:
-            logger.error("AI API 调用失败: %s", e)
+        except Exception as exc:
+            logger.error("AI API 调用失败: %s", exc)
             return self._normalize_plain_text(self._builtin_reply(question, context))
 
     def _sanitize_history(
@@ -117,9 +117,7 @@ class AIService:
                 continue
             role = str(item.get("role", "")).strip()
             content = str(item.get("content", "")).strip()
-            if role not in {"user", "assistant"}:
-                continue
-            if not content:
+            if role not in {"user", "assistant"} or not content:
                 continue
             cleaned.append({"role": role, "content": content[:2000]})
 
@@ -145,7 +143,11 @@ class AIService:
                 f"SSIM={m.get('ssim', 'N/A')}"
             )
         if "dynamic_metrics" in context and context["dynamic_metrics"]:
-            metrics = str(context["dynamic_metrics"])
+            dynamic_metrics = context["dynamic_metrics"]
+            if isinstance(dynamic_metrics, (dict, list)):
+                metrics = json.dumps(dynamic_metrics, ensure_ascii=False, indent=2)
+            else:
+                metrics = str(dynamic_metrics)
             if len(metrics) > 2800:
                 metrics = metrics[:2800] + "\n...[TRUNCATED]"
             parts.append(f"动态指标快照:\n{metrics}")
@@ -214,15 +216,59 @@ class AIService:
         normalized = re.sub(r"\n{3,}", "\n\n", normalized)
         return normalized.strip()
 
+    @staticmethod
+    def _safe_float(value: Any) -> float | None:
+        try:
+            number = float(value)
+            if number != number:  # NaN
+                return None
+            return number
+        except (TypeError, ValueError):
+            return None
+
     def _builtin_reply(self, question: str, context: dict | None) -> str:
-        """无 API Key 或外部调用失败时的兜底回复。"""
+        """无 API Key 或外部调用失败时的兜底回答。"""
         q = question.lower()
 
-        if "偏差" in q or "误差" in q:
+        spatial_summary = None
+        if context and isinstance(context.get("dynamic_metrics"), dict):
+            spatial_summary = context["dynamic_metrics"].get("spatial_error_summary")
+
+        if ("偏差" in question or "误差" in question or "bias" in q or "error" in q) and isinstance(spatial_summary, dict):
+            top_points = spatial_summary.get("top_bias_points")
+            worst_band = spatial_summary.get("worst_latitude_band")
+            if isinstance(top_points, list) and top_points:
+                top = top_points[0] if isinstance(top_points[0], dict) else {}
+                lat = self._safe_float(top.get("lat"))
+                lng = self._safe_float(top.get("lng"))
+                abs_error = self._safe_float(top.get("abs_error"))
+                ls_val = self._safe_float(top.get("ls"))
+
+                location_parts: list[str] = []
+                if lat is not None and lng is not None:
+                    location_parts.append(f"纬度 {lat:.1f}°、经度 {lng:.1f}°")
+                if ls_val is not None:
+                    location_parts.append(f"Ls≈{ls_val:.1f}°")
+                if abs_error is not None:
+                    location_parts.append(f"|偏差|≈{abs_error:.3f} DU")
+
+                answer_parts = []
+                if location_parts:
+                    answer_parts.append(f"从当前空间误差快照看，偏差峰值出现在{'，'.join(location_parts)}。")
+                else:
+                    answer_parts.append("从当前空间误差快照看，已经识别到偏差峰值区域。")
+
+                if isinstance(worst_band, dict) and worst_band.get("label"):
+                    answer_parts.append(f"按纬度带统计，{worst_band.get('label')} 的平均绝对偏差最高。")
+
+                answer_parts.append("建议在预测页切换到差值视图并定位该区域，继续核查周边网格。")
+                return "".join(answer_parts)
+
+        if "偏差" in question or "误差" in question:
             return "从模型评估经验看，极区与强沙尘活动区通常更容易出现偏差。建议优先对比该区域的 RMSE 与 MAE，并结合 Ls 阶段判断是否存在季节性误差放大。"
-        if "沙尘" in q or "dust" in q:
+        if "沙尘" in question or "dust" in q:
             return "沙尘会通过辐射加热与光化学链路共同影响臭氧分布，常见现象是局地臭氧浓度下降且空间梯度增大。建议结合 Dust Optical Depth 与温度场联动查看。"
-        if "极地" in q or "季节" in q:
+        if "极地" in question or "季节" in question:
             return "极地臭氧季节峰值通常与极夜后太阳辐射恢复、环流输送重组有关。建议对比 Ls 关键节点（约 0/90/180/270°）的纬向剖面变化。"
 
         if context and context.get("metrics"):
