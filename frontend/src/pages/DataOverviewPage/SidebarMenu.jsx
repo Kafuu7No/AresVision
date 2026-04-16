@@ -45,6 +45,7 @@ export default function SidebarMenu() {
     leftPanelWidth,
     setLeftPanelWidth,
   } = useDataOverview();
+  const isCompact = leftPanelWidth <= 300;
 
   const globeVariableOptions = GLOBE_VARIABLE_OPTIONS.map((option) => ({
     ...option,
@@ -83,32 +84,32 @@ export default function SidebarMenu() {
         WebkitBackdropFilter: 'blur(20px)',
         borderRight: '1px solid rgba(255,255,255,0.08)',
         zIndex: 1000,
-        padding: '32px 20px',
+        padding: isCompact ? '22px 12px' : '32px 20px',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
-      <div style={{ paddingBottom: 24, marginBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+      <div style={{ paddingBottom: isCompact ? 16 : 24, marginBottom: isCompact ? 16 : 24, borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
         <h2
           style={{
             color: C.ice,
             fontFamily: "'Orbitron', sans-serif",
-            fontSize: 16,
+            fontSize: isCompact ? 14 : 16,
             fontWeight: 'bold',
             margin: '0 0 8px 0',
-            letterSpacing: 3,
+            letterSpacing: isCompact ? 1.4 : 3,
             textAlign: 'center',
             textShadow: '0 2px 10px rgba(0,0,0,0.5)',
           }}
         >
           {isZh ? '分析模式' : 'EXPLORATION MODE'}
         </h2>
-        <div style={{ color: C.ice60, fontSize: 10, textAlign: 'center', fontFamily: "'Exo 2', sans-serif" }}>
+        <div style={{ color: C.ice60, fontSize: isCompact ? 9 : 10, textAlign: 'center', fontFamily: "'Exo 2', sans-serif" }}>
           {isZh ? '选择下钻分析视界' : 'Select analysis perspective'}
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, overflowY: 'auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: isCompact ? 8 : 12, flex: 1, overflowY: 'auto' }}>
         {MODE_DEFS.map((mode) => {
           const isSelected = activeAnalysisMode === mode.id;
           return (
@@ -117,9 +118,9 @@ export default function SidebarMenu() {
               onClick={() => setActiveAnalysisMode(mode.id)}
               style={{
                 display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-                padding: 16,
+                alignItems: isCompact ? 'flex-start' : 'center',
+                gap: isCompact ? 10 : 16,
+                padding: isCompact ? 12 : 16,
                 borderRadius: 12,
                 background: isSelected ? 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01))' : 'transparent',
                 border: `1px solid ${isSelected ? `${mode.color}40` : 'rgba(255,255,255,0.02)'}`,
@@ -136,15 +137,27 @@ export default function SidebarMenu() {
                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: mode.color, boxShadow: `0 0 10px ${mode.color}` }} />
               )}
 
-              <div style={{ fontSize: 24, filter: isSelected ? `drop-shadow(0 0 10px ${mode.color})` : 'grayscale(60%) opacity(60%)', pointerEvents: 'none' }}>
+              <div style={{ fontSize: isCompact ? 20 : 24, filter: isSelected ? `drop-shadow(0 0 10px ${mode.color})` : 'grayscale(60%) opacity(60%)', pointerEvents: 'none', lineHeight: 1 }}>
                 {mode.icon}
               </div>
 
-              <div style={{ flex: 1, pointerEvents: 'none' }}>
-                <div style={{ color: isSelected ? mode.color : C.ice, fontSize: 13, fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif", marginBottom: 6, letterSpacing: 1 }}>
+              <div style={{ flex: 1, minWidth: 0, pointerEvents: 'none' }}>
+                <div style={{ color: isSelected ? mode.color : C.ice, fontSize: isCompact ? 12 : 13, fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif", marginBottom: 6, letterSpacing: isCompact ? 0.4 : 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={isZh ? mode.title.zh : mode.title.en}>
                   {isZh ? mode.title.zh : mode.title.en}
                 </div>
-                <div style={{ color: isSelected ? C.ice80 : C.ice40, fontSize: 11, fontFamily: "'Exo 2', sans-serif", lineHeight: 1.5 }}>
+                <div
+                  style={{
+                    color: isSelected ? C.ice80 : C.ice40,
+                    fontSize: isCompact ? 10 : 11,
+                    fontFamily: "'Exo 2', sans-serif",
+                    lineHeight: 1.45,
+                    display: '-webkit-box',
+                    WebkitLineClamp: isCompact ? 1 : 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}
+                  title={isZh ? mode.desc.zh : mode.desc.en}
+                >
                   {isZh ? mode.desc.zh : mode.desc.en}
                 </div>
               </div>
@@ -153,13 +166,13 @@ export default function SidebarMenu() {
         })}
       </div>
 
-      <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+      <div style={{ marginTop: isCompact ? 16 : 24, paddingTop: isCompact ? 16 : 24, borderTop: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
         <div style={{ color: C.ice60, fontSize: 10, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, marginBottom: 16 }}>
           {isZh ? '系统控制' : 'SYSTEM CONTROLS'}
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 10, color: C.ice30, marginBottom: 8, fontFamily: "'Exo 2', sans-serif" }}>
+          <div style={{ fontSize: 10, color: C.ice30, marginBottom: 8, fontFamily: "'Exo 2', sans-serif", lineHeight: 1.3 }}>
             {isZh ? '火星年（数据集）' : 'MARS YEAR (Dataset)'}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -188,10 +201,10 @@ export default function SidebarMenu() {
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 10, color: C.ice30, marginBottom: 8, fontFamily: "'Exo 2', sans-serif" }}>
+          <div style={{ fontSize: 10, color: C.ice30, marginBottom: 8, fontFamily: "'Exo 2', sans-serif", lineHeight: 1.3 }}>
             {isZh ? '3D球变量' : '3D GLOBE VARIABLE'}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isCompact ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
             {globeVariableOptions.map((option) => {
               const isActive = globeVariable === option.id;
               return (
@@ -209,6 +222,11 @@ export default function SidebarMenu() {
                     cursor: 'pointer',
                     fontFamily: "'Exo 2', sans-serif",
                     lineHeight: 1.25,
+                    minWidth: 0,
+                    width: '100%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
                   }}
                   title={option.label}
                 >
@@ -231,9 +249,9 @@ export default function SidebarMenu() {
             border: '1px solid rgba(255,255,255,0.05)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
             <span style={{ fontSize: 14 }}>🔁</span>
-            <span style={{ color: C.ice, fontSize: 11, fontFamily: "'Exo 2', sans-serif" }}>
+            <span style={{ color: C.ice, fontSize: 11, fontFamily: "'Exo 2', sans-serif", minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={isZh ? '球体自动旋转' : 'GLOBE AUTO-ROTATE'}>
               {isZh ? '球体自动旋转' : 'GLOBE AUTO-ROTATE'}
             </span>
           </div>
@@ -280,9 +298,9 @@ export default function SidebarMenu() {
             border: '1px solid rgba(255,255,255,0.05)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
             <span style={{ fontSize: 14 }}>✋</span>
-            <span style={{ color: C.mars, fontSize: 11, fontFamily: "'Exo 2', sans-serif", fontWeight: 'bold' }}>
+            <span style={{ color: C.mars, fontSize: 11, fontFamily: "'Exo 2', sans-serif", fontWeight: 'bold', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={isZh ? '手势控制' : 'GESTURE CONTROL'}>
               {isZh ? '手势控制' : 'GESTURE CONTROL'}
             </span>
           </div>
