@@ -5,6 +5,7 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { GLOBE_VARIABLE_OPTIONS } from '../../constants/globeVariables';
 
 const NAVBAR_HEIGHT = 70;
+const MARS_YEAR_OPTIONS = [27, 28];
 
 export const MODE_DEFS = [
   {
@@ -54,6 +55,15 @@ export default function SidebarMenu() {
     setLeftPanelWidth,
   } = useDataOverview();
   const isCompact = leftPanelWidth <= 300;
+  const VISIBLE_GLOBE_OPTION_COUNT = 4;
+  const globeOptionColumns = leftPanelWidth >= 340 ? 2 : 1;
+  const globeOptionRowsInView = Math.ceil(VISIBLE_GLOBE_OPTION_COUNT / globeOptionColumns);
+  const globeOptionGap = 6;
+  const globeOptionHeight = isCompact ? 34 : (globeOptionColumns === 2 ? 52 : 36);
+  const globeOptionWindowHeight =
+    globeOptionRowsInView * globeOptionHeight +
+    (globeOptionRowsInView - 1) * globeOptionGap +
+    4;
 
   const globeVariableOptions = GLOBE_VARIABLE_OPTIONS.map((option) => ({
     ...option,
@@ -150,7 +160,21 @@ export default function SidebarMenu() {
               </div>
 
               <div style={{ flex: 1, minWidth: 0, pointerEvents: 'none' }}>
-                <div style={{ color: isSelected ? mode.color : C.ice, fontSize: isCompact ? 12 : 13, fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif", marginBottom: 6, letterSpacing: isCompact ? 0.4 : 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={isZh ? mode.title.zh : mode.title.en}>
+                <div
+                  style={{
+                    color: isSelected ? mode.color : C.ice,
+                    fontSize: isCompact ? 12 : 13,
+                    fontWeight: 'bold',
+                    fontFamily: "'Orbitron', sans-serif",
+                    marginBottom: 6,
+                    letterSpacing: isCompact ? 0.4 : 1,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}
+                  title={isZh ? mode.title.zh : mode.title.en}
+                >
                   {isZh ? mode.title.zh : mode.title.en}
                 </div>
                 <div
@@ -160,7 +184,7 @@ export default function SidebarMenu() {
                     fontFamily: "'Exo 2', sans-serif",
                     lineHeight: 1.45,
                     display: '-webkit-box',
-                    WebkitLineClamp: isCompact ? 1 : 2,
+                    WebkitLineClamp: 2,
                     WebkitBoxOrient: 'vertical',
                     overflow: 'hidden',
                   }}
@@ -183,13 +207,25 @@ export default function SidebarMenu() {
           <div style={{ fontSize: 10, color: C.ice30, marginBottom: 8, fontFamily: "'Exo 2', sans-serif", lineHeight: 1.3 }}>
             {isZh ? '火星年（数据集）' : 'MARS YEAR (Dataset)'}
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {[27, 28].map((y) => (
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              paddingBottom: 4,
+              scrollSnapType: 'x proximity',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'thin',
+            }}
+          >
+            {MARS_YEAR_OPTIONS.map((y) => (
               <button
                 key={y}
                 onClick={() => setMarsYear(y)}
                 style={{
-                  flex: 1,
+                  flex: '0 0 auto',
+                  minWidth: isCompact ? 64 : 72,
                   padding: '8px 0',
                   background: marsYear === y ? 'rgba(199,91,57,0.2)' : 'rgba(255,255,255,0.03)',
                   border: `1px solid ${marsYear === y ? C.mars : 'rgba(255,255,255,0.1)'}`,
@@ -200,6 +236,7 @@ export default function SidebarMenu() {
                   cursor: 'pointer',
                   fontFamily: "'Orbitron', sans-serif",
                   transition: 'all 0.2s',
+                  scrollSnapAlign: 'start',
                 }}
               >
                 MY{y}
@@ -212,7 +249,19 @@ export default function SidebarMenu() {
           <div style={{ fontSize: 10, color: C.ice30, marginBottom: 8, fontFamily: "'Exo 2', sans-serif", lineHeight: 1.3 }}>
             {isZh ? '3D球变量' : '3D GLOBE VARIABLE'}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: isCompact ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${globeOptionColumns}, minmax(0, 1fr))`,
+              gap: globeOptionGap,
+              maxHeight: globeOptionWindowHeight,
+              alignContent: 'start',
+              overflowY: globeVariableOptions.length > VISIBLE_GLOBE_OPTION_COUNT ? 'auto' : 'hidden',
+              overflowX: 'hidden',
+              paddingRight: globeVariableOptions.length > VISIBLE_GLOBE_OPTION_COUNT ? 4 : 0,
+              scrollbarGutter: 'stable',
+            }}
+          >
             {globeVariableOptions.map((option) => {
               const isActive = globeVariable === option.id;
               return (
@@ -220,7 +269,8 @@ export default function SidebarMenu() {
                   key={option.id}
                   onClick={() => setGlobeVariable(option.id)}
                   style={{
-                    padding: '7px 8px',
+                    padding: '8px 10px',
+                    minHeight: globeOptionHeight,
                     background: isActive ? 'rgba(74,158,255,0.2)' : 'rgba(255,255,255,0.03)',
                     border: `1px solid ${isActive ? C.blue : 'rgba(255,255,255,0.1)'}`,
                     borderRadius: 8,
@@ -229,12 +279,14 @@ export default function SidebarMenu() {
                     fontWeight: isActive ? 700 : 500,
                     cursor: 'pointer',
                     fontFamily: "'Exo 2', sans-serif",
-                    lineHeight: 1.25,
+                    lineHeight: 1.35,
                     minWidth: 0,
                     width: '100%',
+                    textAlign: 'left',
+                    display: '-webkit-box',
+                    WebkitLineClamp: globeOptionColumns === 2 ? 2 : 1,
+                    WebkitBoxOrient: 'vertical',
                     overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
                   }}
                   title={option.label}
                 >
