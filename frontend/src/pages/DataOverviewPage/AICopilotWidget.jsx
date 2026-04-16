@@ -1,21 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import C from '../../constants/colors';
+import { useSettings } from '../../contexts/SettingsContext';
 import { useDataOverview } from '../../contexts/DataOverviewContext';
 import { copilotChat } from '../../services/api';
 
 const CARD_TITLES = {
-  realtime: '昼夜变化',
-  seasonal: '季节交替',
-  seasonalExtremes: '季节极值',
-  globalTrend: '全局趋势',
-  correlation: '点位相关性',
-  environment: '多因子环境',
-  solarsens: '光化学辐射',
-  coupling: '沙尘冲刷',
-  polar: '极点聚集',
-  wave: '行星波异常',
-  waveDiag: '波动诊断',
-  distribution: '点位分布',
+  realtime: { zh: '昼夜变化', en: 'Diurnal' },
+  seasonal: { zh: '季节交替', en: 'Seasonal' },
+  seasonalExtremes: { zh: '季节极值', en: 'Seasonal Extremes' },
+  globalTrend: { zh: '全局趋势', en: 'Global Trends' },
+  correlation: { zh: '点位相关性', en: 'Correlation' },
+  environment: { zh: '多因子环境', en: 'Environment' },
+  solarsens: { zh: '光化学辐射', en: 'Solar Sensitivity' },
+  coupling: { zh: '沙尘冲刷', en: 'Dust Coupling' },
+  polar: { zh: '极点聚集', en: 'Polar Dynamics' },
+  wave: { zh: '行星波异常', en: 'Wave Explorer' },
+  waveDiag: { zh: '波动诊断', en: 'Wave Diagnostics' },
+  distribution: { zh: '点位分布', en: 'Distribution' },
 };
 
 function briefValue(value) {
@@ -37,9 +38,9 @@ function briefValue(value) {
 function flattenSnapshot(snapshot) {
   if (!snapshot || typeof snapshot !== 'object') return '';
   const lines = [];
-  const MAX_LINES = 100;
+  const maxLines = 100;
   const walk = (node, path = '') => {
-    if (lines.length >= MAX_LINES) return;
+    if (lines.length >= maxLines) return;
     if (node === null || node === undefined || typeof node !== 'object' || Array.isArray(node)) {
       lines.push(`${path}: ${briefValue(node)}`);
       return;
@@ -50,7 +51,7 @@ function flattenSnapshot(snapshot) {
       return;
     }
     entries.forEach(([key, value]) => {
-      if (lines.length >= MAX_LINES) return;
+      if (lines.length >= maxLines) return;
       walk(value, path ? `${path}.${key}` : key);
     });
   };
@@ -63,13 +64,14 @@ function normalizeAiText(text) {
   return text
     .replace(/\r\n/g, '\n')
     .replace(/^\s*最终回答正文[:：]\s*/gm, '')
+    .replace(/^\s*final answer[:：]\s*/gim, '')
     .replace(/^\s*#{1,6}\s*/gm, '')
     .replace(/^\s*---+\s*$/gm, '')
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/__(.*?)__/g, '$1')
     .replace(/`{1,3}/g, '')
     .replace(/^\s*>\s?/gm, '')
-    .replace(/^\s*[-*]\s+/gm, '• ')
+    .replace(/^\s*[-*]\s+/gm, '- ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
@@ -99,6 +101,52 @@ function compactAnswer(text, maxChars = 220) {
 }
 
 export default function AICopilotWidget() {
+  const { settings } = useSettings();
+  const isZh = settings?.language !== 'en';
+  const copy = isZh ? {
+    title: 'Ares Copilot',
+    done: '已完成解读',
+    target: '当前目标图表：',
+    intro: '我会读取这张图表当前控件状态与数据快照，再给出简明解读。',
+    analyzing: '正在基于当前图表数据进行推理...',
+    askBtn: 'AI 解读当前图表',
+    jumpBtn: '调取极端环境耦合分析',
+    unnamed: '未命名图表',
+    noSnapshot: '当前图表尚未返回可解读数据，可能仍在加载。',
+    invalidReply: '本次解读未返回有效文本，请重试一次。',
+    reqFailed: 'AI 解读请求失败：',
+    question: (name, card) => `请基于“当前右侧展开图表”的实时数据快照进行解读。
+图表名称：${name}（card=${card || 'none'}）
+要求：
+1. 目标是帮助用户快速看懂图表，不写长报告。
+2. 只输出 2-3 句中文，总长度 80-160 字。
+3. 至少包含图表用途和一个关键变量关系（有数值就带数值）。
+4. 若数据未就绪，仅提示“数据未就绪”并给一条操作建议。
+5. 不要使用 Markdown 标记。`,
+    retry: '请按短摘要模式重写：2-3句，80-160字。',
+  } : {
+    title: 'Ares Copilot',
+    done: 'Insight Ready',
+    target: 'Current target chart:',
+    intro: 'I will read the current chart state and snapshot, then provide a concise interpretation.',
+    analyzing: 'Reasoning over current chart snapshot...',
+    askBtn: 'Interpret Current Chart',
+    jumpBtn: 'Open Extreme Coupling Analysis',
+    unnamed: 'Unnamed Chart',
+    noSnapshot: 'No readable snapshot from the current chart yet. It may still be loading.',
+    invalidReply: 'No valid response returned this time. Please retry.',
+    reqFailed: 'AI request failed: ',
+    question: (name, card) => `Interpret the real-time snapshot of the expanded chart on the right.
+Chart name: ${name} (card=${card || 'none'})
+Requirements:
+1. Help users quickly understand the chart, do not write a long report.
+2. Output only 2-3 sentences, 60-140 words in English.
+3. Include chart purpose and at least one key variable relationship (with numbers if available).
+4. If data is not ready, explicitly say so and provide one actionable suggestion.
+5. Do not use Markdown markers.`,
+    retry: 'Rewrite in short-summary mode: 2-3 sentences, concise and specific.',
+  };
+
   const {
     globalTimeLs,
     setActiveAnalysisMode,
@@ -112,6 +160,7 @@ export default function AICopilotWidget() {
     globeVariable,
     getAiInsight,
   } = useDataOverview();
+
   const bubbleWidth = `clamp(300px, calc(100vw - ${leftPanelWidth + rightPanelWidth + 220}px), 420px)`;
 
   const [showBubble, setShowBubble] = useState(false);
@@ -129,10 +178,11 @@ export default function AICopilotWidget() {
     }
   }, [globalTimeLs, hasTriggered]);
 
-  const selectedCardTitle = useMemo(
-    () => CARD_TITLES[expandedCard] || expandedCard || '未命名图表',
-    [expandedCard],
-  );
+  const selectedCardTitle = useMemo(() => {
+    const card = CARD_TITLES[expandedCard];
+    if (!card) return expandedCard || copy.unnamed;
+    return isZh ? card.zh : card.en;
+  }, [copy.unnamed, expandedCard, isZh]);
 
   const handleAction = () => {
     setActiveAnalysisMode('dynamics');
@@ -147,7 +197,8 @@ export default function AICopilotWidget() {
     try {
       const snapshot = expandedCard ? getAiInsight(expandedCard) : null;
       const snapshotText = flattenSnapshot(snapshot);
-      const dynamicMetrics = snapshotText || '当前图表尚未返回可解读数据，可能仍在加载。';
+      const dynamicMetrics = snapshotText || copy.noSnapshot;
+
       const context = {
         mars_year: marsYear,
         ls_range: [globalTimeLs, globalTimeLs],
@@ -160,15 +211,7 @@ export default function AICopilotWidget() {
         dynamic_metrics: dynamicMetrics,
       };
 
-      const question = `请基于“当前右侧展开图表”的实时数据快照进行解读。
-图表名称：${selectedCardTitle}（card=${expandedCard || 'none'}）
-要求：
-1. 你的目标是帮助用户“快速看懂这张图表在干什么”，不是写长报告。
-2. 只输出 2-3 句中文，总长度控制在 80-160 字。
-3. 至少包含：图表用途 + 1个关键变量关系或现象（有数值就带数值）。
-4. 如果 status=loading 或 empty，只需一句提示“数据未就绪”并给1条操作建议。
-5. 不要使用 Markdown 标题符号（如 ###）与分隔线（如 ---）。`;
-
+      const question = copy.question(selectedCardTitle, expandedCard);
       const res = await copilotChat(question, context);
       const rawAnswer = typeof res?.answer === 'string' ? res.answer : String(res?.answer ?? '');
       let normalizedAnswer = normalizeAiText(rawAnswer);
@@ -177,18 +220,17 @@ export default function AICopilotWidget() {
       }
 
       if (normalizedAnswer.length > 0 && normalizedAnswer.length < 40) {
-        const retryQuestion = `${question}\n请按“短摘要模式”重写：2-3句，80-160字。`;
-        const retryRes = await copilotChat(retryQuestion, context);
+        const retryRes = await copilotChat(`${question}\n${copy.retry}`, context);
         const retryNormalized = normalizeAiText(retryRes?.answer);
         if (retryNormalized.length > normalizedAnswer.length) {
           normalizedAnswer = retryNormalized;
         }
       }
 
-      setAiResponse(compactAnswer(normalizedAnswer || '本次解读未返回有效文本，请重试一次。'));
+      setAiResponse(compactAnswer(normalizedAnswer || copy.invalidReply));
       setHasResult(true);
     } catch (error) {
-      setAiResponse(`AI 解读请求失败：${error.message}`);
+      setAiResponse(`${copy.reqFailed}${error?.message || ''}`);
       setHasResult(true);
     } finally {
       setIsAnalyzing(false);
@@ -226,8 +268,8 @@ export default function AICopilotWidget() {
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
             border: `1px solid ${C.blue}`,
-            borderRadius: '12px',
-            padding: '20px',
+            borderRadius: 12,
+            padding: 20,
             boxShadow: '0 8px 32px rgba(74, 158, 255, 0.2), inset 0 0 10px rgba(74, 158, 255, 0.1)',
             position: 'relative',
             animation: 'fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -237,18 +279,18 @@ export default function AICopilotWidget() {
         >
           <div
             onClick={handleClose}
-            style={{ position: 'absolute', top: '10px', right: '14px', color: C.ice30, cursor: 'pointer', fontSize: '14px', padding: '4px' }}
+            style={{ position: 'absolute', top: 10, right: 14, color: C.ice30, cursor: 'pointer', fontSize: 14, padding: 4 }}
           >
             ✕
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-            <span style={{ fontSize: '20px' }}>🧠</span>
-            <span style={{ color: C.blue, fontFamily: "'Orbitron', sans-serif", fontSize: '14px', fontWeight: 'bold' }}>
-              Ares Copilot
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <span style={{ fontSize: 20 }}>🧠</span>
+            <span style={{ color: C.blue, fontFamily: "'Orbitron', sans-serif", fontSize: 14, fontWeight: 'bold' }}>
+              {copy.title}
             </span>
             {hasResult && !isAnalyzing && (
-              <span style={{ color: C.ice, fontSize: '10px', background: 'rgba(255, 255, 255, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
-                已完成解读
+              <span style={{ color: C.ice, fontSize: 10, background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4 }}>
+                {copy.done}
               </span>
             )}
           </div>
@@ -256,50 +298,51 @@ export default function AICopilotWidget() {
           <div
             style={{
               color: C.ice80,
-              fontSize: '12px',
+              fontSize: 12,
               fontFamily: "'Exo 2', sans-serif",
               lineHeight: 1.6,
-              marginBottom: '16px',
-              maxHeight: '300px',
+              marginBottom: 16,
+              maxHeight: 300,
               overflowY: 'auto',
-              paddingRight: '8px',
+              paddingRight: 8,
             }}
           >
-            {!hasResult && !isAnalyzing ? (
+            {!hasResult && !isAnalyzing && (
               <div style={{ marginBottom: 12 }}>
-                当前目标图表：<span style={{ color: C.blue }}>{selectedCardTitle}</span>
+                {copy.target}
+                <span style={{ color: C.blue }}> {selectedCardTitle}</span>
                 <br />
-                我会读取这张图表当前控件状态与数据快照，再给出面向科研分析的中文解读。
+                {copy.intro}
               </div>
-            ) : null}
+            )}
 
-            {isAnalyzing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: C.blue, height: '40px' }}>
-                <span className="copilot-dot-pulse">正在基于当前图表数据进行推理...</span>
+            {isAnalyzing && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: C.blue, height: 40 }}>
+                <span className="copilot-dot-pulse">{copy.analyzing}</span>
               </div>
-            ) : null}
+            )}
 
-            {hasResult && !isAnalyzing ? (
-              <div style={{ color: C.ice, background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', borderLeft: `3px solid ${C.blue}` }}>
+            {hasResult && !isAnalyzing && (
+              <div style={{ color: C.ice, background: 'rgba(255,255,255,0.02)', padding: 12, borderRadius: 8, borderLeft: `3px solid ${C.blue}` }}>
                 <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                   {aiResponse}
                 </div>
               </div>
-            ) : null}
+            )}
           </div>
 
           {!hasResult && !isAnalyzing && (
-            <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', gap: 10, flexDirection: 'column' }}>
               <button
                 onClick={handleAIChat}
                 style={{
-                  padding: '10px',
+                  padding: 10,
                   background: 'transparent',
                   border: `1px solid ${C.blue}`,
-                  borderRadius: '6px',
+                  borderRadius: 6,
                   color: C.blue,
                   fontFamily: "'Orbitron', sans-serif",
-                  fontSize: '12px',
+                  fontSize: 12,
                   fontWeight: 'bold',
                   cursor: 'pointer',
                   transition: '0.3s',
@@ -307,25 +350,25 @@ export default function AICopilotWidget() {
                 onMouseEnter={(event) => { event.currentTarget.style.background = 'rgba(74, 158, 255, 0.1)'; }}
                 onMouseLeave={(event) => { event.currentTarget.style.background = 'transparent'; }}
               >
-                AI 解读当前图表
+                {copy.askBtn}
               </button>
 
               <button
                 onClick={handleAction}
                 style={{
-                  padding: '10px',
+                  padding: 10,
                   background: `linear-gradient(135deg, ${C.mars}, #ff8e53)`,
                   border: 'none',
-                  borderRadius: '6px',
+                  borderRadius: 6,
                   color: '#000',
                   fontFamily: "'Orbitron', sans-serif",
-                  fontSize: '12px',
+                  fontSize: 12,
                   fontWeight: 'bold',
                   cursor: 'pointer',
                   boxShadow: '0 0 12px rgba(199,91,57,0.4)',
                 }}
               >
-                调取极端环境耦合分析
+                {copy.jumpBtn}
               </button>
             </div>
           )}
@@ -335,8 +378,8 @@ export default function AICopilotWidget() {
       <div
         onClick={() => { setShowBubble((value) => !value); setPulse(false); }}
         style={{
-          width: '52px',
-          height: '52px',
+          width: 52,
+          height: 52,
           borderRadius: '50%',
           background: 'rgba(10, 14, 23, 0.8)',
           border: `2px solid ${C.blue}`,
@@ -347,7 +390,7 @@ export default function AICopilotWidget() {
           boxShadow: pulse ? '0 0 0 0 rgba(74, 158, 255, 0.7)' : '0 4px 12px rgba(0,0,0,0.5)',
           animation: pulse ? 'pulseBlue 2s infinite' : 'none',
           backdropFilter: 'blur(10px)',
-          fontSize: '24px',
+          fontSize: 24,
         }}
       >
         <style

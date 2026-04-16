@@ -1,14 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
-import { useT } from '../../../i18n';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { fetchZonalAnomaly } from '../../../services/api';
 import useAiInsightRegistration from './useAiInsightRegistration';
 import { roundValue, sampleSeries } from './aiInsight';
 
 export default function WaveExplorer({ marsYear }) {
-  const t = useT();
   const { settings } = useSettings();
 
   const isLight = settings?.theme === 'light';
@@ -18,19 +16,21 @@ export default function WaveExplorer({ marsYear }) {
   const isZh = settings.language === 'zh';
   
   const copy = isZh ? {
-    title: '行星波与纬向距平 (Zonal Anomaly)',
+    title: '行星波与纬向距平',
     desc: '展示受塔尔西斯等地形影响产生的臭氧驻波结构。',
     loading: '加载距平数据...',
     noData: '暂无数据',
     lonAxis: '经度 (°E)',
-    latAxis: '纬度 (°N)'
+    latAxis: '纬度 (°N)',
+    colorbarTitle: '距平 (m-atm cm)',
   } : {
     title: 'Planetary Wave Explorer',
     desc: 'Reveal stationary wave patterns induced by Martian topography.',
-    loading: 'Loading anomaly map...',
-    noData: 'No Data',
+    loading: 'Loading zonal anomaly map...',
+    noData: 'No data',
     lonAxis: 'Longitude (°E)',
-    latAxis: 'Latitude (°N)'
+    latAxis: 'Latitude (°N)',
+    colorbarTitle: 'Anomaly (m-atm cm)',
   };
 
   const [data, setData] = useState(null);
@@ -111,7 +111,7 @@ export default function WaveExplorer({ marsYear }) {
               zmin: -maxAbs,
               zmax: maxAbs,
               colorbar: {
-                title: '距平 (m-atm cm)',
+                title: copy.colorbarTitle,
                 titleside: 'right',
                 titlefont: { color: plotText, size: 10  },
                 tickfont: { color: plotText, size: 10  },

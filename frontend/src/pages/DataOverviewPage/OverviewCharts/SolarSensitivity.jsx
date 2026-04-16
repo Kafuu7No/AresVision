@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
-import { useT } from '../../../i18n';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { fetchSolarPhotochemical } from '../../../services/api';
 import useAiInsightRegistration from './useAiInsightRegistration';
@@ -16,7 +15,6 @@ const BANDS = [
 ];
 
 export default function SolarSensitivity({ marsYear }) {
-  const t = useT();
   const { settings } = useSettings();
 
   const isLight = settings?.theme === 'light';
@@ -29,9 +27,13 @@ export default function SolarSensitivity({ marsYear }) {
     title: '太阳-光化学敏感性',
     desc: '分析紫外线辐射对不同纬度带臭氧产生效率的影响。',
     loading: '加载光化学数据...',
-    noData: '暂无数据或缺少 Solar_Flux_DN 变量',
+    noData: '暂无数据或缺少太阳下行辐射变量',
     solarAxis: '太阳辐射 (W/m²)',
     ozoneAxis: '平均臭氧含量 (m-atm cm)',
+    lsColor: '太阳黄经 (°)',
+    lsText: '太阳黄经',
+    fluxHover: '辐射',
+    ozoneHover: '臭氧',
     bands: {
       'Equatorial (30S-30N)': '赤道带 (30°S-30°N)',
       'Mid-Lat North (30N-60N)': '北半球中纬度 (30°N-60°N)',
@@ -46,6 +48,10 @@ export default function SolarSensitivity({ marsYear }) {
     noData: 'No Data or Solar_Flux_DN missing',
     solarAxis: 'Solar Flux (W/m²)',
     ozoneAxis: 'Mean Ozone (m-atm cm)',
+    lsColor: 'Solar Longitude (°)',
+    lsText: 'Ls',
+    fluxHover: 'Flux',
+    ozoneHover: 'O3',
     bands: {
       'Equatorial (30S-30N)': 'Equatorial (30°S-30°N)',
       'Mid-Lat North (30N-60N)': 'Northern Mid-Lat (30°N-60°N)',
@@ -155,7 +161,7 @@ export default function SolarSensitivity({ marsYear }) {
                   opacity: 0.7,
                   showscale: true,
                   colorbar: {
-                    title: 'Ls (°)',
+                    title: copy.lsColor,
                     titleside: 'right',
                     titlefont: { color: plotText, size: 10  },
                     tickfont: { color: plotText, size: 10  },
@@ -163,8 +169,8 @@ export default function SolarSensitivity({ marsYear }) {
                     xpad: 10
                   }
                 },
-                text: data?.ls ? data.ls.map(v => `Ls: ${v.toFixed(1)}°`) : [],
-                hovertemplate: 'Flux: %{x:.1f}<br>O3: %{y:.4f}<br>%{text}<extra></extra>'
+                text: data?.ls ? data.ls.map(v => `${copy.lsText}: ${v.toFixed(1)}°`) : [],
+                hovertemplate: `${copy.fluxHover}: %{x:.1f}<br>${copy.ozoneHover}: %{y:.4f}<br>%{text}<extra></extra>`
               }
             ]}
             layout={{

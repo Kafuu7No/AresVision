@@ -1,14 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
-import { useT } from '../../../i18n';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { fetchPolarDynamics } from '../../../services/api';
 import useAiInsightRegistration from './useAiInsightRegistration';
 import { roundValue, sampleSeries, summarizeSeries } from './aiInsight';
 
 export default function PolarDynamics({ marsYear }) {
-  const t = useT();
   const { settings } = useSettings();
 
   const isLight = settings?.theme === 'light';
@@ -18,21 +16,29 @@ export default function PolarDynamics({ marsYear }) {
   const isZh = settings.language === 'zh';
   
   const copy = isZh ? {
-    title: '极地涡旋与动力输送 (Polar Dynamics)',
+    title: '极地涡旋与动力输送',
     desc: '对比南北极极夜前后的臭氧急剧积聚趋势及其与温度的关系。',
     loading: '加载极地数据...',
-    noData: '无数据',
+    noData: '暂无数据',
     ozoneAxis: '极地平均 O3 (m-atm cm)',
     tempAxis: '极地平均空气温度 (K)',
-    lsAxis: '太阳黄经 Ls (°)'
+    lsAxis: '太阳黄经 Ls (°)',
+    northOzone: '北半球 O3 (>60N)',
+    southOzone: '南半球 O3 (<60S)',
+    northTemp: '北半球温度 (>60N)',
+    southTemp: '南半球温度 (<60S)',
   } : {
     title: 'Polar Dynamics & Vortex Tracker',
     desc: 'Compare rapid polar ozone buildup before and after polar night.',
     loading: 'Loading polar data...',
-    noData: 'No Data',
+    noData: 'No data',
     ozoneAxis: 'Polar Mean O3 (m-atm cm)',
     tempAxis: 'Polar Mean Air Temp (K)',
-    lsAxis: 'Solar Longitude Ls (°)'
+    lsAxis: 'Solar Longitude Ls (°)',
+    northOzone: 'North O3 (>60N)',
+    southOzone: 'South O3 (<60S)',
+    northTemp: 'North Temp (>60N)',
+    southTemp: 'South Temp (<60S)',
   };
 
   const [data, setData] = useState(null);
@@ -139,7 +145,7 @@ export default function PolarDynamics({ marsYear }) {
               y: data.north.ozone,
               type: 'scatter',
               mode: 'lines',
-              name: 'North O3 (>60N)',
+              name: copy.northOzone,
               line: { color: C.blue, width: 2.5 }
             },
             {
@@ -147,7 +153,7 @@ export default function PolarDynamics({ marsYear }) {
               y: data.south.ozone,
               type: 'scatter',
               mode: 'lines',
-              name: 'South O3 (<60S)',
+              name: copy.southOzone,
               line: { color: C.mars, width: 2.5, dash: 'dot' }
             }
           ]}
@@ -188,7 +194,7 @@ export default function PolarDynamics({ marsYear }) {
               y: data.north.temp,
               type: 'scatter',
               mode: 'lines',
-              name: 'North Temp (>60N)',
+              name: copy.northTemp,
               line: { color: '#00d2ff', width: 1.5 }
             },
             {
@@ -196,7 +202,7 @@ export default function PolarDynamics({ marsYear }) {
               y: data.south.temp,
               type: 'scatter',
               mode: 'lines',
-              name: 'South Temp (<60S)',
+              name: copy.southTemp,
               line: { color: '#ff7b00', width: 1.5, dash: 'dot' }
             }
           ]}
