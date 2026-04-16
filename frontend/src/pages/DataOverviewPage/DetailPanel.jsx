@@ -17,6 +17,8 @@ import GlobalTrendLinesChart from './OverviewCharts/GlobalTrendLinesChart';
 import WaveBandDiagnosticsChart from './OverviewCharts/WaveBandDiagnosticsChart';
 import { MODE_DEFS } from './SidebarMenu';
 
+const NAVBAR_HEIGHT = 70;
+
 const MODE_CARD_KEYS = {
   temporal: ['realtime', 'seasonal', 'seasonalExtremes', 'globalTrend'],
   drivers: ['correlation', 'environment', 'solarsens'],
@@ -185,10 +187,10 @@ export default function DetailPanel({ ozoneData }) {
     <div
       style={{
         position: 'fixed',
-        top: '40px',
+        top: `${NAVBAR_HEIGHT}px`,
         right: isVisible ? '0' : `-${rightPanelWidth + 20}px`,
         width: rightPanelWidth,
-        height: 'calc(100vh - 40px)',
+        height: `calc(100vh - ${NAVBAR_HEIGHT}px)`,
         background: 'rgba(10, 12, 18, 0.4)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',

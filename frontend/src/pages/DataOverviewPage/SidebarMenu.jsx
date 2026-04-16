@@ -4,6 +4,8 @@ import { useDataOverview } from '../../contexts/DataOverviewContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import { GLOBE_VARIABLE_OPTIONS } from '../../constants/globeVariables';
 
+const NAVBAR_HEIGHT = 70;
+
 export const MODE_DEFS = [
   {
     id: 'temporal',
@@ -40,6 +42,12 @@ export default function SidebarMenu() {
     setAutoRotate,
     gestureEnabled,
     setGestureEnabled,
+    showConcentration3D,
+    setShowConcentration3D,
+    showGeoAnnotations,
+    setShowGeoAnnotations,
+    showMarsTexture,
+    setShowMarsTexture,
     globeVariable,
     setGlobeVariable,
     leftPanelWidth,
@@ -76,9 +84,9 @@ export default function SidebarMenu() {
       style={{
         position: 'fixed',
         left: 0,
-        top: '40px',
+        top: `${NAVBAR_HEIGHT}px`,
         width: leftPanelWidth,
-        height: 'calc(100vh - 40px)',
+        height: `calc(100vh - ${NAVBAR_HEIGHT}px)`,
         background: 'rgba(10, 12, 18, 0.4)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
@@ -234,6 +242,56 @@ export default function SidebarMenu() {
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 10, color: C.ice30, marginBottom: 8, fontFamily: "'Exo 2', sans-serif", lineHeight: 1.3 }}>
+            {isZh ? '3D显示项' : '3D DISPLAY OPTIONS'}
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gap: 8,
+              padding: '10px 12px',
+              background: 'rgba(255,255,255,0.02)',
+              borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.05)',
+            }}
+          >
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, cursor: 'pointer' }} title={isZh ? '3D数据浓度展示开关' : '3D Concentration Display'}>
+              <input
+                type="checkbox"
+                checked={showConcentration3D}
+                onChange={() => setShowConcentration3D((v) => !v)}
+                style={{ accentColor: C.blue, cursor: 'pointer', flexShrink: 0 }}
+              />
+              <span style={{ color: C.ice, fontSize: 11, fontFamily: "'Exo 2', sans-serif", minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {isZh ? '3D数据浓度展示' : '3D Concentration Display'}
+              </span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, cursor: 'pointer' }} title={isZh ? '经纬度标注开关' : 'Latitude/Longitude Labels'}>
+              <input
+                type="checkbox"
+                checked={showGeoAnnotations}
+                onChange={() => setShowGeoAnnotations((v) => !v)}
+                style={{ accentColor: C.blue, cursor: 'pointer', flexShrink: 0 }}
+              />
+              <span style={{ color: C.ice, fontSize: 11, fontFamily: "'Exo 2', sans-serif", minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {isZh ? '经纬度标注' : 'Lat/Lon Labels'}
+              </span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, cursor: 'pointer' }} title={isZh ? '火星贴图显示开关' : 'Mars Texture'}>
+              <input
+                type="checkbox"
+                checked={showMarsTexture}
+                onChange={() => setShowMarsTexture((v) => !v)}
+                style={{ accentColor: C.blue, cursor: 'pointer', flexShrink: 0 }}
+              />
+              <span style={{ color: C.ice, fontSize: 11, fontFamily: "'Exo 2', sans-serif", minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {isZh ? '火星贴图' : 'Mars Texture'}
+              </span>
+            </label>
           </div>
         </div>
 

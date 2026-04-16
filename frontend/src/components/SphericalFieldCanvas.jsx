@@ -187,7 +187,18 @@ function disposeObject3D(root) {
   });
 }
 
-const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h = 240, forceFullscreen = false, autoRotate = true, zoom = 4.5, showMars = true, offsetX = 0 }, ref) => {
+const SphericalFieldCanvas = forwardRef(({
+  fieldData,
+  colorMode = 'inferno',
+  h = 240,
+  forceFullscreen = false,
+  autoRotate = true,
+  zoom = 4.5,
+  showMars = true,
+  showConcentration = true,
+  showGeoAnnotations = true,
+  offsetX = 0,
+}, ref) => {
   const { settings } = useSettings();
   const isLight = settings.theme === 'light';
   const containerRef = useRef(null);
@@ -199,6 +210,38 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
   const starMeshRef = useRef(null);
   const offsetXRef = useRef(offsetX);
   const geoOverlayRef = useRef(null);
+  const marsMeshRef = useRef(null);
+
+  const addMarsMesh = (globeGroup) => {
+    if (!globeGroup || marsMeshRef.current) return;
+    const marsRadius = 0.86;
+    const marsGeometry = new THREE.SphereGeometry(marsRadius, 64, 64);
+    if (!cachedMarsTexture) {
+      cachedMarsTexture = new THREE.TextureLoader().load('/mars_texture.jpg');
+    }
+    const marsMaterial = new THREE.MeshPhongMaterial({
+      map: cachedMarsTexture,
+      shininess: 5,
+    });
+    const marsMesh = new THREE.Mesh(marsGeometry, marsMaterial);
+    globeGroup.add(marsMesh);
+    marsMeshRef.current = marsMesh;
+  };
+
+  const removeMarsMesh = (globeGroup) => {
+    if (!globeGroup || !marsMeshRef.current) return;
+    const marsMesh = marsMeshRef.current;
+    globeGroup.remove(marsMesh);
+    if (marsMesh.geometry) marsMesh.geometry.dispose();
+    const materials = Array.isArray(marsMesh.material) ? marsMesh.material : [marsMesh.material];
+    materials.forEach((material) => {
+      if (material?.map && material.map !== cachedMarsTexture) {
+        material.map.dispose();
+      }
+      material?.dispose?.();
+    });
+    marsMeshRef.current = null;
+  };
 
   useEffect(() => {
     offsetXRef.current = offsetX;
@@ -394,10 +437,23 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
         geoOverlayRef.current = null;
       }
       const overlay = buildGeoOverlay(isLight);
+      overlay.visible = showGeoAnnotations;
       sphereMeshRef.current.add(overlay);
       geoOverlayRef.current = overlay;
     }
-  }, [isLight]);
+  }, [isLight, showGeoAnnotations]);
+
+  useEffect(() => {
+    if (geoOverlayRef.current) {
+      geoOverlayRef.current.visible = showGeoAnnotations;
+    }
+  }, [showGeoAnnotations]);
+
+  useEffect(() => {
+    if (particlesMeshRef.current) {
+      particlesMeshRef.current.visible = showConcentration;
+    }
+  }, [showConcentration]);
 
   // 当外部动态调整窗口边界宽度时，实时保持地球在可用中间区域的正中心
   useEffect(() => {
@@ -417,33 +473,22 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
     if (!fieldData?.field || !sceneRef.current) return;
     const scene = sceneRef.current;
 
-    // 第一次时，创建球体组和内部火星
+    // 第一次时，创建球体组
     if (!sphereMeshRef.current) {
       const globeGroup = new THREE.Group();
       globeGroup.rotation.y = -Math.PI / 2;
       scene.add(globeGroup);
       sphereMeshRef.current = globeGroup;
 
-      if (showMars) {
-        const marsRadius = 0.86;
-        const marsGeometry = new THREE.SphereGeometry(marsRadius, 64, 64);
-        if (!cachedMarsTexture) {
-          cachedMarsTexture = new THREE.TextureLoader().load('/mars_texture.jpg');
-        }
-        const marsMaterial = new THREE.MeshPhongMaterial({
-          map: cachedMarsTexture,
-          shininess: 5,
-        });
-        const marsMesh = new THREE.Mesh(marsGeometry, marsMaterial);
-        globeGroup.add(marsMesh);
-      }
-
       const overlay = buildGeoOverlay(isLight);
+      overlay.visible = showGeoAnnotations;
       globeGroup.add(overlay);
       geoOverlayRef.current = overlay;
     }
 
     const globeGroup = sphereMeshRef.current;
+    if (showMars) addMarsMesh(globeGroup);
+    else removeMarsMesh(globeGroup);
 
     // 清理旧的粒子网格
     if (particlesMeshRef.current) {
@@ -452,6 +497,8 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
       if (particlesMeshRef.current.material) particlesMeshRef.current.material.dispose();
       particlesMeshRef.current = null;
     }
+
+    if (!showConcentration) return;
 
     const { field, minVal, maxVal } = fieldData;
     const nLat = field.length;
@@ -578,13 +625,14 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
     });
 
     const particles = new THREE.Points(geometry, material);
+    particles.visible = showConcentration;
 
     // 将粒子加到地球组中
     globeGroup.add(particles);
     particlesMeshRef.current = particles;
 
     // 注意：只销毁数据相关的粒子即可，mars 的析构可以留给整个组件销毁时（见下方独立清理 Effect）
-  }, [fieldData, colorMode, settings.colormap]);
+  }, [fieldData, colorMode, settings.colormap, showConcentration, showMars, isLight]);
 
   // 组件完全卸载时，清空 sphereMeshRef / 材质资源
   useEffect(() => {
@@ -595,6 +643,7 @@ const SphericalFieldCanvas = forwardRef(({ fieldData, colorMode = 'inferno', h =
         sphereMeshRef.current = null;
         particlesMeshRef.current = null;
         geoOverlayRef.current = null;
+        marsMeshRef.current = null;
       }
     };
   }, []);

@@ -1,7 +1,17 @@
 import React, { forwardRef, useMemo } from 'react';
 import SphericalFieldCanvas from '../../components/SphericalFieldCanvas';
 
-const Mars3DBackground = forwardRef(({ ozoneData, is3DMode, autoRotate, leftPanelWidth, rightPanelWidth, onGlobeClick }, ref) => {
+const Mars3DBackground = forwardRef(({
+  ozoneData,
+  is3DMode,
+  autoRotate,
+  showConcentration3D,
+  showGeoAnnotations,
+  showMarsTexture,
+  leftPanelWidth,
+  rightPanelWidth,
+  onGlobeClick,
+}, ref) => {
   const fieldData = useMemo(() => {
     if (!ozoneData?.points?.length) return null;
     const latSet = new Set();
@@ -63,6 +73,9 @@ const Mars3DBackground = forwardRef(({ ozoneData, is3DMode, autoRotate, leftPane
         h="100vh"
         forceFullscreen
         autoRotate={autoRotate}
+        showConcentration={showConcentration3D}
+        showGeoAnnotations={showGeoAnnotations}
+        showMars={showMarsTexture}
         zoom={3.75} // reduce initial globe size by ~1/3 (visual size becomes ~2/3)
         offsetX={(rightPanelWidth - leftPanelWidth) / 2} // shift object to center it in remaining viewport space
         onGlobeClick={onGlobeClick}
