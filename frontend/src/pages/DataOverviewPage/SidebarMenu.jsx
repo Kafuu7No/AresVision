@@ -9,7 +9,6 @@ export const MODE_DEFS = [
   { id: 'temporal', icon: '⏱️', color: C.mars, title: '时序气候演变', label: 'TEMPORAL', desc: '专注分析随时间维度（小时、季节）的自然演化。' },
   { id: 'drivers', icon: '🧬', color: '#4acfac', title: '环境归因与驱动', label: 'DRIVERS', desc: '多变量散点回归与纬度归因，发掘引爆主导因子。' },
   { id: 'dynamics', icon: '🌪️', color: '#ffd700', title: '动力与区域变异', label: 'DYNAMICS', desc: '特殊地形阻挡或巨型沙尘暴等物理强迫带来的异常。' },
-  { id: 'system', icon: '🧠', color: C.ice, title: '模型智能评分', label: 'EVALUATION', desc: '对高维拟合智能体在预测数据上的置信度复盘。' }
 ];
 
 export default function SidebarMenu() {

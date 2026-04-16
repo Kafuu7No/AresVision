@@ -15,7 +15,6 @@ const CARD_TITLES = {
   polar: '极点聚集',
   wave: '行星波异常',
   waveDiag: '波动诊断',
-  prediction: '模型评分',
   distribution: '点位分布',
 };
 

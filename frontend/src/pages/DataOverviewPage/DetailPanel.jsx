@@ -9,7 +9,6 @@ import EnvironmentDashboard from './OverviewCharts/EnvironmentDashboard';
 import DataDistribution from './OverviewCharts/DataDistribution';
 import CouplingAnalysis from './OverviewCharts/CouplingAnalysis';
 import PolarDynamics from './OverviewCharts/PolarDynamics';
-import PredictionEngine from './OverviewCharts/PredictionEngine';
 import SolarSensitivity from './OverviewCharts/SolarSensitivity';
 import WaveExplorer from './OverviewCharts/WaveExplorer';
 import SeasonalExtremesChart from './OverviewCharts/SeasonalExtremesChart';
@@ -21,7 +20,6 @@ const MODE_CARD_KEYS = {
   temporal: ['realtime', 'seasonal', 'seasonalExtremes', 'globalTrend'],
   drivers: ['correlation', 'environment', 'solarsens'],
   dynamics: ['coupling', 'polar', 'wave', 'waveDiag'],
-  system: ['prediction'],
 };
 
 export default function DetailPanel({ ozoneData }) {
@@ -86,7 +84,7 @@ export default function DetailPanel({ ozoneData }) {
 
   const getActiveCards = useCallback(() => {
     if (selectedCoordinate) return ['distribution'];
-    return MODE_CARD_KEYS[activeAnalysisMode] || [];
+    return (MODE_CARD_KEYS[activeAnalysisMode] || []).filter((key) => key !== 'prediction');
   }, [activeAnalysisMode, selectedCoordinate]);
 
   useEffect(() => {
@@ -108,7 +106,6 @@ export default function DetailPanel({ ozoneData }) {
   const seasonalComponent = useMemo(() => <SeasonalChart marsYear={marsYear} />, [marsYear]);
   const seasonalExtremesComponent = useMemo(() => <SeasonalExtremesChart marsYear={marsYear} />, [marsYear]);
   const globalTrendComponent = useMemo(() => <GlobalTrendLinesChart marsYear={marsYear} />, [marsYear]);
-  const predictionComponent = useMemo(() => <PredictionEngine />, []);
   const environmentComponent = useMemo(() => <EnvironmentDashboard marsYear={marsYear} />, [marsYear]);
   const solarsensComponent = useMemo(() => <SolarSensitivity marsYear={marsYear} />, [marsYear]);
   const waveComponent = useMemo(() => <WaveExplorer marsYear={marsYear} />, [marsYear]);
@@ -136,7 +133,6 @@ export default function DetailPanel({ ozoneData }) {
     seasonal: { title: '季节交替 Seasonal', component: seasonalComponent, color: C.blue },
     seasonalExtremes: { title: '季节极值 Seasonal Extremes', component: seasonalExtremesComponent, color: '#f09c4a' },
     globalTrend: { title: '全局趋势 Global Trends', component: globalTrendComponent, color: '#4acfac' },
-    prediction: { title: '模型评分 Evaluation', component: predictionComponent, color: C.ice },
     environment: { title: '多因子环境 Environment', component: environmentComponent, color: '#4acfac' },
     solarsens: { title: '光化学辐射 Solar', component: solarsensComponent, color: '#ffd700' },
     wave: { title: '地形驻波 Wave', component: waveComponent, color: '#d2b48c' },
