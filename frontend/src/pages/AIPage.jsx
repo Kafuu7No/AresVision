@@ -7,6 +7,171 @@ import { aiChat } from '../services/api';
 import { getPredictCache } from '../stores/predictCache';
 import { ChatMessage, SidebarContext, QuickQuestions, ErrorSummary } from './AIPage/AIComponents';
 
+const LATITUDE_BANDS_FOR_SUMMARY = [
+  { id: 'north_polar', label: '60N~90N', min: 60, max: 90 },
+  { id: 'north_mid', label: '30N~60N', min: 30, max: 60 },
+  { id: 'equatorial', label: '30S~30N', min: -30, max: 30 },
+  { id: 'south_mid', label: '60S~30S', min: -60, max: -30 },
+  { id: 'south_polar', label: '90S~60S', min: -90, max: -60 },
+];
+
+function toFiniteNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function roundTo(value, digits = 4) {
+  if (!Number.isFinite(value)) return null;
+  return Number(value.toFixed(digits));
+}
+
+function normalizeLongitude(lng) {
+  if (!Number.isFinite(lng)) return null;
+  if (lng > 180) return lng - 360;
+  if (lng < -180) return lng + 360;
+  return lng;
+}
+
+function pickLatitudeBand(lat) {
+  return LATITUDE_BANDS_FOR_SUMMARY.find((band) => lat >= band.min && lat <= band.max) || null;
+}
+
+function buildSpatialErrorSummary(snapshot, options = {}) {
+  const { topK = 6, gridSizeDeg = 20 } = options;
+  const residualSteps = snapshot?.results?.residual;
+  const lsValues = Array.isArray(snapshot?.results?.ls_values) ? snapshot.results.ls_values : [];
+
+  if (!Array.isArray(residualSteps) || residualSteps.length === 0) return null;
+
+  const topCandidates = [];
+  const stepAgg = new Map();
+  const latBandAgg = new Map();
+  const cellAgg = new Map();
+  let totalPoints = 0;
+
+  residualSteps.forEach((stepData, stepIndex) => {
+    const points = stepData?.points;
+    if (!Array.isArray(points) || points.length === 0) return;
+
+    points.forEach((point) => {
+      const lat = toFiniteNumber(point?.lat);
+      const lngRaw = toFiniteNumber(point?.lng);
+      const err = toFiniteNumber(point?.val);
+      if (lat === null || lngRaw === null || err === null) return;
+
+      const lng = normalizeLongitude(lngRaw);
+      if (lng === null) return;
+
+      const absErr = Math.abs(err);
+      totalPoints += 1;
+
+      topCandidates.push({
+        step: stepIndex,
+        ls: toFiniteNumber(lsValues[stepIndex]),
+        lat,
+        lng,
+        error: err,
+        abs_error: absErr,
+      });
+
+      const stepKey = String(stepIndex);
+      const stepItem = stepAgg.get(stepKey) || { step: stepIndex, ls: toFiniteNumber(lsValues[stepIndex]), sumAbs: 0, count: 0, maxAbs: 0 };
+      stepItem.sumAbs += absErr;
+      stepItem.count += 1;
+      stepItem.maxAbs = Math.max(stepItem.maxAbs, absErr);
+      stepAgg.set(stepKey, stepItem);
+
+      const band = pickLatitudeBand(lat);
+      if (band) {
+        const bandItem = latBandAgg.get(band.id) || {
+          id: band.id,
+          label: band.label,
+          sumAbs: 0,
+          count: 0,
+          maxAbs: 0,
+        };
+        bandItem.sumAbs += absErr;
+        bandItem.count += 1;
+        bandItem.maxAbs = Math.max(bandItem.maxAbs, absErr);
+        latBandAgg.set(band.id, bandItem);
+      }
+
+      const latStart = Math.floor((lat + 90) / gridSizeDeg) * gridSizeDeg - 90;
+      const latEnd = Math.min(90, latStart + gridSizeDeg);
+      const lonStart = Math.floor((lng + 180) / gridSizeDeg) * gridSizeDeg - 180;
+      const lonEnd = Math.min(180, lonStart + gridSizeDeg);
+      const cellKey = `${latStart}_${lonStart}`;
+      const cellItem = cellAgg.get(cellKey) || {
+        lat_range: [latStart, latEnd],
+        lon_range: [lonStart, lonEnd],
+        sumAbs: 0,
+        count: 0,
+        maxAbs: 0,
+      };
+      cellItem.sumAbs += absErr;
+      cellItem.count += 1;
+      cellItem.maxAbs = Math.max(cellItem.maxAbs, absErr);
+      cellAgg.set(cellKey, cellItem);
+    });
+  });
+
+  if (!topCandidates.length) return null;
+
+  const topBiasPoints = topCandidates
+    .sort((a, b) => b.abs_error - a.abs_error)
+    .slice(0, topK)
+    .map((item) => ({
+      step: item.step + 1,
+      ls: roundTo(item.ls, 2),
+      lat: roundTo(item.lat, 2),
+      lng: roundTo(item.lng, 2),
+      error: roundTo(item.error, 6),
+      abs_error: roundTo(item.abs_error, 6),
+    }));
+
+  const latitudeBandSummary = Array.from(latBandAgg.values())
+    .filter((item) => item.count > 0)
+    .map((item) => ({
+      label: item.label,
+      mean_abs_error: roundTo(item.sumAbs / item.count, 6),
+      max_abs_error: roundTo(item.maxAbs, 6),
+      sample_count: item.count,
+    }))
+    .sort((a, b) => (b.mean_abs_error || 0) - (a.mean_abs_error || 0));
+
+  const topBiasCells = Array.from(cellAgg.values())
+    .filter((item) => item.count > 0)
+    .map((item) => ({
+      lat_range: item.lat_range,
+      lon_range: item.lon_range,
+      mean_abs_error: roundTo(item.sumAbs / item.count, 6),
+      max_abs_error: roundTo(item.maxAbs, 6),
+      sample_count: item.count,
+    }))
+    .sort((a, b) => (b.mean_abs_error || 0) - (a.mean_abs_error || 0))
+    .slice(0, topK);
+
+  const worstStep = Array.from(stepAgg.values())
+    .filter((item) => item.count > 0)
+    .map((item) => ({
+      step: item.step + 1,
+      ls: roundTo(item.ls, 2),
+      mean_abs_error: roundTo(item.sumAbs / item.count, 6),
+      max_abs_error: roundTo(item.maxAbs, 6),
+    }))
+    .sort((a, b) => (b.mean_abs_error || 0) - (a.mean_abs_error || 0))[0] || null;
+
+  return {
+    source: 'prediction_residual_snapshot',
+    point_count: totalPoints,
+    top_bias_points: topBiasPoints,
+    top_bias_cells: topBiasCells,
+    latitude_band_summary: latitudeBandSummary,
+    worst_latitude_band: latitudeBandSummary[0] || null,
+    worst_step: worstStep,
+  };
+}
+
 function formatLsRange(snapshot) {
   const lsValues = snapshot?.results?.ls_values;
   if (Array.isArray(lsValues) && lsValues.length > 0) {
@@ -69,9 +234,25 @@ function buildContextPayload(snapshot) {
   const metrics = snapshot?.metrics?.overall || null;
   const selectedVars = params.selectedVars || snapshot?.results?.selected_variables || [];
   const errorDist = snapshot?.errorDistData || null;
+  const spatialErrorSummary = buildSpatialErrorSummary(snapshot);
   const pfiTop3 = Array.isArray(snapshot?.pfiData?.items)
     ? snapshot.pfiData.items.slice(0, 3).map((it) => `${it.name}:${it.importance}`)
     : [];
+
+  const dynamicMetrics = {
+    error_distribution: errorDist
+      ? {
+          mae: errorDist.mae,
+          rmse: errorDist.rmse,
+          samples: Array.isArray(errorDist.scatter?.trues) ? errorDist.scatter.trues.length : 0,
+        }
+      : null,
+    permutation_importance_top3: pfiTop3,
+  };
+
+  if (spatialErrorSummary) {
+    dynamicMetrics.spatial_error_summary = spatialErrorSummary;
+  }
 
   return {
     mars_year: params.marsYear ?? null,
@@ -80,16 +261,7 @@ function buildContextPayload(snapshot) {
     metrics,
     model_name: snapshot?.results?.model_info?.model_name || 'PredRNNv2',
     horizon: params.predStep ?? snapshot?.results?.horizon ?? null,
-    dynamic_metrics: {
-      error_distribution: errorDist
-        ? {
-            mae: errorDist.mae,
-            rmse: errorDist.rmse,
-            samples: Array.isArray(errorDist.scatter?.trues) ? errorDist.scatter.trues.length : 0,
-          }
-        : null,
-      permutation_importance_top3: pfiTop3,
-    },
+    dynamic_metrics: dynamicMetrics,
   };
 }
 
