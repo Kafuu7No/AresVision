@@ -10,6 +10,7 @@ import os
 import time
 import sys
 import asyncio
+from pathlib import Path
 from contextlib import asynccontextmanager
 
 # Windows 下异步子进程必须使用 ProactorEventLoop
@@ -18,7 +19,7 @@ if sys.platform == 'win32':
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import ORJSONResponse, FileResponse
 
 from config import API_PREFIX, USER_UPLOADS_DIR, PENDING_REVIEW_DIR
 from database.init_db import init_database
@@ -50,6 +51,39 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 logger = logging.getLogger("aresvision")
+
+
+def _resolve_frontend_dist_dir() -> Path | None:
+    """
+    Resolve frontend dist directory for single-process deployment.
+    Priority:
+    1) ARESVISION_FRONTEND_DIST env
+    2) <backend>/frontend_dist           (portable package layout)
+    3) <repo>/frontend/dist              (local dev/release build)
+    """
+    candidates: list[Path] = []
+    env_dir = os.getenv("ARESVISION_FRONTEND_DIST", "").strip()
+    if env_dir:
+        candidates.append(Path(env_dir))
+
+    backend_dir = Path(__file__).resolve().parent
+    repo_root = backend_dir.parent.parent
+    candidates.append(backend_dir / "frontend_dist")
+    candidates.append(repo_root / "frontend" / "dist")
+
+    for candidate in candidates:
+        try:
+            resolved = candidate.expanduser().resolve()
+        except OSError:
+            continue
+        if (resolved / "index.html").is_file():
+            logger.info(f"检测到前端静态资源目录: {resolved}")
+            return resolved
+    logger.info("未检测到前端静态资源目录，后端以 API-only 模式运行")
+    return None
+
+
+FRONTEND_DIST_DIR = _resolve_frontend_dist_dir()
 
 
 # ─── 生命周期：启动时预加载，关闭时清理 ───
@@ -199,6 +233,8 @@ app.include_router(training_router_module.router,        prefix=API_PREFIX)
 
 @app.get("/")
 async def root():
+    if FRONTEND_DIST_DIR is not None:
+        return FileResponse(FRONTEND_DIST_DIR / "index.html")
     return {
         "name": "AresVision API",
         "status": "running",
@@ -209,3 +245,26 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+if FRONTEND_DIST_DIR is not None:
+    _RESERVED_PATHS = {"api", "docs", "redoc", "openapi.json", "health"}
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        normalized = (full_path or "").lstrip("/")
+        if normalized in _RESERVED_PATHS or normalized.startswith("api/"):
+            return ORJSONResponse({"detail": "Not Found"}, status_code=404)
+
+        if not normalized:
+            return FileResponse(FRONTEND_DIST_DIR / "index.html")
+
+        candidate = (FRONTEND_DIST_DIR / normalized).resolve()
+        try:
+            candidate.relative_to(FRONTEND_DIST_DIR)
+        except ValueError:
+            return ORJSONResponse({"detail": "Not Found"}, status_code=404)
+
+        if candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(FRONTEND_DIST_DIR / "index.html")

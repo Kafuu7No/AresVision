@@ -221,7 +221,8 @@ async def send_code(body: SendCodeRequest):
 
     outcome = send_verification_code(body.email, purpose=body.purpose)
     if not outcome["success"]:
-        raise HTTPException(status_code=429, detail=outcome["message"])
+        status_code = 429 if outcome.get("reason") == "cooldown" else 503
+        raise HTTPException(status_code=status_code, detail=outcome["message"])
 
     return {"message": outcome["message"]}
 
