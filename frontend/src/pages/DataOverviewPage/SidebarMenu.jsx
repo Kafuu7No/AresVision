@@ -73,7 +73,40 @@ export default function SidebarMenu() {
     label: isZh ? option.zh : option.en,
   }));
   const isPersonalMode = dataSourceMode === 'personal';
-  const sourceMessage = sourceMeta?.message || '';
+  const sourceMessage = React.useMemo(() => {
+    const rawMessage = sourceMeta?.message;
+    if (!rawMessage) return '';
+    if (isZh) return rawMessage;
+
+    // Keep backend-provided message as-is when it is already English.
+    if (/[a-zA-Z]/.test(rawMessage) && !/[\u4e00-\u9fff]/.test(rawMessage)) {
+      return rawMessage;
+    }
+
+    const yearFallbackMatch = rawMessage.match(/MY\s*(\d+)\s*不可用.*?MY\s*(\d+)/i);
+    if (yearFallbackMatch) {
+      const [, fromYear, toYear] = yearFallbackMatch;
+      return `MY${fromYear} is unavailable. Switched to system source MY${toYear}.`;
+    }
+    if (rawMessage.includes('未登录')) {
+      return 'Not signed in. Switched to the system default data source.';
+    }
+    if (rawMessage.includes('个人 OpenMARS 不足完整一年')) {
+      return 'Personal OpenMARS does not cover a full Mars year. Automatically using system OpenMARS + personal MCD.';
+    }
+    if (rawMessage.includes('个人数据源不足')) {
+      return 'Personal data source is insufficient. Switched to the system default data source.';
+    }
+
+    // Safe fallback based on source meta.
+    if (sourceMeta?.effective_source === 'personal_mcd_plus_system_openmars') {
+      return 'Personal OpenMARS is incomplete. Using system OpenMARS + personal MCD.';
+    }
+    if (sourceMeta?.effective_source === 'default' && sourceMeta?.requested_source === 'personal') {
+      return 'Personal data source is insufficient. Switched to the system default data source.';
+    }
+    return rawMessage;
+  }, [isZh, sourceMeta]);
 
   const handleMouseDown = React.useCallback((e) => {
     e.preventDefault();
@@ -125,14 +158,27 @@ export default function SidebarMenu() {
             textShadow: '0 2px 10px rgba(0,0,0,0.5)',
           }}
         >
-          {isZh ? '鍒嗘瀽妯″紡' : 'EXPLORATION MODE'}
+          {isZh ? '分析模式' : 'EXPLORATION MODE'}
         </h2>
         <div style={{ color: C.ice60, fontSize: isCompact ? 9 : 10, textAlign: 'center', fontFamily: "'Exo 2', sans-serif" }}>
-          {isZh ? '閫夋嫨涓嬮捇鍒嗘瀽瑙嗙晫' : 'Select analysis perspective'}
+          {isZh ? '选择下钻分析视角' : 'Select analysis perspective'}
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: isCompact ? 8 : 12, flex: 1, overflowY: 'auto' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: isCompact ? 8 : 12,
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          paddingRight: 4,
+          scrollbarGutter: 'stable',
+          overscrollBehavior: 'contain',
+        }}
+      >
         {MODE_DEFS.map((mode) => {
           const isSelected = activeAnalysisMode === mode.id;
           return (
@@ -141,7 +187,7 @@ export default function SidebarMenu() {
               onClick={() => setActiveAnalysisMode(mode.id)}
               style={{
                 display: 'flex',
-                alignItems: isCompact ? 'flex-start' : 'center',
+                alignItems: 'flex-start',
                 gap: isCompact ? 10 : 16,
                 padding: isCompact ? 12 : 16,
                 borderRadius: 12,
@@ -152,6 +198,7 @@ export default function SidebarMenu() {
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 position: 'relative',
                 overflow: 'hidden',
+                minHeight: isCompact ? 88 : 100,
               }}
               onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
               onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
@@ -173,10 +220,9 @@ export default function SidebarMenu() {
                     fontFamily: "'Orbitron', sans-serif",
                     marginBottom: 6,
                     letterSpacing: isCompact ? 0.4 : 1,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
+                    lineHeight: 1.35,
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
                   }}
                   title={isZh ? mode.title.zh : mode.title.en}
                 >
@@ -188,10 +234,8 @@ export default function SidebarMenu() {
                     fontSize: isCompact ? 10 : 11,
                     fontFamily: "'Exo 2', sans-serif",
                     lineHeight: 1.45,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
                   }}
                   title={isZh ? mode.desc.zh : mode.desc.en}
                 >
@@ -205,67 +249,68 @@ export default function SidebarMenu() {
 
       <div style={{ marginTop: isCompact ? 16 : 24, paddingTop: isCompact ? 16 : 24, borderTop: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
         <div style={{ color: C.ice60, fontSize: 10, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, marginBottom: 16 }}>
-          {isZh ? '绯荤粺鎺у埗' : 'SYSTEM CONTROLS'}
+          {isZh ? '系统控制' : 'SYSTEM CONTROLS'}
         </div>
 
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 10, color: C.ice30, marginBottom: 8, fontFamily: "'Exo 2', sans-serif", lineHeight: 1.3 }}>
             {isZh ? '数据源切换' : 'DATA SOURCE'}
           </div>
-          <button
-            onClick={() => setDataSourceMode(isPersonalMode ? 'default' : 'personal')}
+          <div
             style={{
-              width: '100%',
-              border: `1px solid ${isPersonalMode ? C.blue : C.mars}`,
-              background: 'rgba(255,255,255,0.03)',
-              borderRadius: 999,
-              padding: '4px 6px',
-              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 12px',
+              background: 'rgba(255,255,255,0.02)',
+              borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.05)',
             }}
           >
-            <div
-              style={{
-                position: 'relative',
-                height: 26,
-                borderRadius: 999,
-                background: isPersonalMode ? 'rgba(74,158,255,0.18)' : 'rgba(199,91,57,0.18)',
-              }}
-            >
-              <div
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+              <span style={{ color: C.ice, fontSize: 11, fontFamily: "'Exo 2', sans-serif", whiteSpace: 'nowrap' }}>
+                {isZh ? '默认 / 个人' : 'Default / Personal'}
+              </span>
+              <span style={{ color: isPersonalMode ? C.blue : C.ice60, fontSize: 10, fontFamily: "'Orbitron', sans-serif", fontWeight: 700, whiteSpace: 'nowrap' }}>
+                {isPersonalMode ? (isZh ? '当前：个人' : 'Current: Personal') : (isZh ? '当前：默认' : 'Current: Default')}
+              </span>
+            </div>
+            <label style={{ position: 'relative', display: 'inline-block', width: 32, height: 18 }}>
+              <input
+                type="checkbox"
+                checked={isPersonalMode}
+                onChange={() => setDataSourceMode(isPersonalMode ? 'default' : 'personal')}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span
                 style={{
                   position: 'absolute',
-                  top: 1,
-                  left: isPersonalMode ? 'calc(50% + 1px)' : 1,
-                  width: 'calc(50% - 2px)',
-                  height: 24,
-                  borderRadius: 999,
-                  background: isPersonalMode ? 'rgba(74,158,255,0.35)' : 'rgba(199,91,57,0.35)',
-                  border: `1px solid ${isPersonalMode ? C.blue : C.mars}`,
-                  transition: 'left 0.25s ease',
-                }}
-              />
-              <div
-                style={{
-                  position: 'relative',
-                  zIndex: 1,
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  height: '100%',
-                  alignItems: 'center',
-                  fontFamily: "'Orbitron', sans-serif",
-                  fontSize: 10,
-                  letterSpacing: 0.4,
+                  cursor: 'pointer',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: isPersonalMode ? 'rgba(74,158,255,0.3)' : 'rgba(255,255,255,0.1)',
+                  border: `1px solid ${isPersonalMode ? C.blue : 'rgba(255,255,255,0.2)'}`,
+                  transition: '.4s',
+                  borderRadius: 34,
                 }}
               >
-                <span style={{ color: !isPersonalMode ? C.mars : C.ice60, fontWeight: !isPersonalMode ? 700 : 500 }}>
-                  {isZh ? '榛樿' : 'Default'}
-                </span>
-                <span style={{ color: isPersonalMode ? C.blue : C.ice60, fontWeight: isPersonalMode ? 700 : 500 }}>
-                  {isZh ? '涓汉' : 'Personal'}
-                </span>
-              </div>
-            </div>
-          </button>
+                <span
+                  style={{
+                    position: 'absolute',
+                    height: 12,
+                    width: 12,
+                    left: isPersonalMode ? 16 : 2,
+                    bottom: 2,
+                    backgroundColor: isPersonalMode ? C.blue : 'rgba(255,255,255,0.5)',
+                    transition: '.4s',
+                    borderRadius: '50%',
+                  }}
+                />
+              </span>
+            </label>
+          </div>
           {sourceMessage ? (
             <div style={{ marginTop: 8, color: C.ice60, fontSize: 10, lineHeight: 1.5 }}>
               {sourceMessage}
@@ -275,7 +320,7 @@ export default function SidebarMenu() {
 
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 10, color: C.ice30, marginBottom: 8, fontFamily: "'Exo 2', sans-serif", lineHeight: 1.3 }}>
-            {isZh ? '鐏槦骞达紙鏁版嵁闆嗭級' : 'MARS YEAR (Dataset)'}
+            {isZh ? '火星年（数据集）' : 'MARS YEAR (Dataset)'}
           </div>
           <div
             style={{
@@ -389,7 +434,7 @@ export default function SidebarMenu() {
                 style={{ accentColor: C.blue, cursor: 'pointer', flexShrink: 0 }}
               />
               <span style={{ color: C.ice, fontSize: 11, fontFamily: "'Exo 2', sans-serif", minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {isZh ? '3D鏁版嵁娴撳害灞曠ず' : '3D Concentration Display'}
+                {isZh ? '3D数据浓度展示' : '3D Concentration Display'}
               </span>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, cursor: 'pointer' }} title={isZh ? '经纬度标注开关' : 'Latitude/Longitude Labels'}>
@@ -411,7 +456,7 @@ export default function SidebarMenu() {
                 style={{ accentColor: C.blue, cursor: 'pointer', flexShrink: 0 }}
               />
               <span style={{ color: C.ice, fontSize: 11, fontFamily: "'Exo 2', sans-serif", minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {isZh ? '鐏槦璐村浘' : 'Mars Texture'}
+                {isZh ? '火星贴图' : 'Mars Texture'}
               </span>
             </label>
           </div>
@@ -430,9 +475,9 @@ export default function SidebarMenu() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-            <span style={{ fontSize: 14 }}>馃攣</span>
-            <span style={{ color: C.ice, fontSize: 11, fontFamily: "'Exo 2', sans-serif", minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={isZh ? '鐞冧綋鑷姩鏃嬭浆' : 'GLOBE AUTO-ROTATE'}>
-              {isZh ? '鐞冧綋鑷姩鏃嬭浆' : 'GLOBE AUTO-ROTATE'}
+            <span style={{ fontSize: 14 }}>🔄</span>
+            <span style={{ color: C.ice, fontSize: 11, fontFamily: "'Exo 2', sans-serif", minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={isZh ? '球体自动旋转' : 'GLOBE AUTO-ROTATE'}>
+              {isZh ? '球体自动旋转' : 'GLOBE AUTO-ROTATE'}
             </span>
           </div>
           <label style={{ position: 'relative', display: 'inline-block', width: 32, height: 18 }}>
@@ -480,8 +525,8 @@ export default function SidebarMenu() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
             <span style={{ fontSize: 14 }}>✋</span>
-            <span style={{ color: C.mars, fontSize: 11, fontFamily: "'Exo 2', sans-serif", fontWeight: 'bold', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={isZh ? '鎵嬪娍鎺у埗' : 'GESTURE CONTROL'}>
-              {isZh ? '鎵嬪娍鎺у埗' : 'GESTURE CONTROL'}
+            <span style={{ color: C.mars, fontSize: 11, fontFamily: "'Exo 2', sans-serif", fontWeight: 'bold', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={isZh ? '手势控制' : 'GESTURE CONTROL'}>
+              {isZh ? '手势控制' : 'GESTURE CONTROL'}
             </span>
           </div>
           <label style={{ position: 'relative', display: 'inline-block', width: 32, height: 18 }}>
