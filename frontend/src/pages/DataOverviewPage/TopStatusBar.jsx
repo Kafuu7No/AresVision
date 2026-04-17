@@ -8,13 +8,23 @@ export default function TopStatusBar() {
   const t = useT();
   const { settings } = useSettings();
   const isZh = settings?.language !== 'en';
-  const { globalTimeLs, selectedCoordinate } = useDataOverview();
+  const { globalTimeLs, selectedCoordinate, dataSourceMode, sourceMeta } = useDataOverview();
 
   const seasonName =
-    globalTimeLs < 90 ? t('common.season.spring') || (isZh ? '北半球春季' : 'Northern Spring') :
-    globalTimeLs < 180 ? t('common.season.summer') || (isZh ? '北半球夏季' : 'Northern Summer') :
-    globalTimeLs < 270 ? t('common.season.autumn') || (isZh ? '北半球秋季' : 'Northern Autumn') :
-    t('common.season.winter') || (isZh ? '北半球冬季' : 'Northern Winter');
+    globalTimeLs < 90 ? t('common.season.spring') || (isZh ? '北半球春季' : 'Northern Spring')
+      : globalTimeLs < 180 ? t('common.season.summer') || (isZh ? '北半球夏季' : 'Northern Summer')
+        : globalTimeLs < 270 ? t('common.season.autumn') || (isZh ? '北半球秋季' : 'Northern Autumn')
+          : t('common.season.winter') || (isZh ? '北半球冬季' : 'Northern Winter');
+
+  const sourceLabel = (() => {
+    const mode = sourceMeta?.effective_source;
+    if (mode === 'personal_full_year') return isZh ? '个人数据源' : 'PERSONAL';
+    if (mode === 'personal_mcd_plus_system_openmars') return isZh ? '个人MCD+系统OpenMARS' : 'HYBRID';
+    return isZh ? '系统默认' : 'DEFAULT';
+  })();
+  const isEffectivePersonal =
+    sourceMeta?.effective_source === 'personal_full_year' ||
+    sourceMeta?.effective_source === 'personal_mcd_plus_system_openmars';
 
   return (
     <div
@@ -37,13 +47,13 @@ export default function TopStatusBar() {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: C.mars, fontSize: 14 }}>⦿</span>
+          <span style={{ color: C.mars, fontSize: 14 }}>●</span>
           <span style={{ color: C.ice, fontSize: 12, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, fontWeight: 'bold' }}>ARES VISION</span>
         </div>
         <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.2)' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ color: C.ice60, fontSize: 10, fontFamily: "'Exo 2', sans-serif" }}>
-            {isZh ? '太阳黄经：' : 'SOLAR LONGITUDE:'}
+            {isZh ? '太阳黄经:' : 'SOLAR LONGITUDE:'}
           </span>
           <span style={{ color: C.mars, fontSize: 12, fontFamily: "'Orbitron', sans-serif", fontWeight: 'bold' }}>
             {globalTimeLs}°
@@ -51,7 +61,7 @@ export default function TopStatusBar() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ color: C.ice60, fontSize: 10, fontFamily: "'Exo 2', sans-serif" }}>
-            {isZh ? '季节：' : 'SEASON:'}
+            {isZh ? '季节:' : 'SEASON:'}
           </span>
           <span style={{ color: '#4acfac', fontSize: 12, fontFamily: "'Exo 2', sans-serif", fontWeight: 'bold' }}>
             {seasonName}
@@ -62,7 +72,7 @@ export default function TopStatusBar() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ color: C.ice60, fontSize: 10, fontFamily: "'Exo 2', sans-serif" }}>
-            {isZh ? '焦点：' : 'FOCUS:'}
+            {isZh ? '焦点:' : 'FOCUS:'}
           </span>
           <span style={{ color: selectedCoordinate ? C.mars : C.blue, fontSize: 12, fontFamily: "'Orbitron', sans-serif", fontWeight: 'bold' }}>
             {selectedCoordinate
@@ -72,10 +82,18 @@ export default function TopStatusBar() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ color: C.ice60, fontSize: 10, fontFamily: "'Exo 2', sans-serif" }}>
-            {isZh ? '高度：' : 'ALTITUDE:'}
+            {isZh ? '高度:' : 'ALTITUDE:'}
           </span>
           <span style={{ color: C.ice, fontSize: 12, fontFamily: "'Orbitron', sans-serif" }}>
             {isZh ? '柱平均' : 'COLUMN AVG'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ color: C.ice60, fontSize: 10, fontFamily: "'Exo 2', sans-serif" }}>
+            {isZh ? '数据源:' : 'SOURCE:'}
+          </span>
+          <span style={{ color: isEffectivePersonal ? C.blue : C.ice, fontSize: 12, fontFamily: "'Orbitron', sans-serif", fontWeight: 'bold' }}>
+            {sourceLabel}
           </span>
         </div>
       </div>

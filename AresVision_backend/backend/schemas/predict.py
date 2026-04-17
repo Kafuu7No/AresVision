@@ -2,6 +2,7 @@
 预测分析页 — 请求/响应 Schema
 """
 from pydantic import BaseModel, Field
+from schemas.explore import SourceMeta
 
 
 class PredictRequest(BaseModel):
@@ -64,6 +65,7 @@ class DiurnalResponse(BaseModel):
     ozone_values: list[float]
     lat_band: str
     ls: float
+    source_meta: SourceMeta | None = None
 class PerformancePoint(BaseModel):
     ls: float
     my: int

@@ -40,7 +40,7 @@ const CARD_TITLES = {
   correlation: { zh: '点位相关性', en: 'Correlation' },
 };
 
-export default function DetailPanel({ ozoneData }) {
+export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
   const { settings } = useSettings();
   const isZh = settings?.language !== 'en';
   const {
@@ -122,16 +122,16 @@ export default function DetailPanel({ ozoneData }) {
     };
   }, [expandedCard, activeAnalysisMode, selectedCoordinate]);
 
-  const realtimeComponent = useMemo(() => <RealtimeMonitor marsYear={marsYear} lsValue={globalTimeLs} />, [marsYear, globalTimeLs]);
-  const seasonalComponent = useMemo(() => <SeasonalChart marsYear={marsYear} />, [marsYear]);
-  const seasonalExtremesComponent = useMemo(() => <SeasonalExtremesChart marsYear={marsYear} />, [marsYear]);
-  const globalTrendComponent = useMemo(() => <GlobalTrendLinesChart marsYear={marsYear} />, [marsYear]);
-  const environmentComponent = useMemo(() => <EnvironmentDashboard marsYear={marsYear} />, [marsYear]);
-  const solarsensComponent = useMemo(() => <SolarSensitivity marsYear={marsYear} />, [marsYear]);
-  const waveComponent = useMemo(() => <WaveExplorer marsYear={marsYear} />, [marsYear]);
-  const waveDiagComponent = useMemo(() => <WaveBandDiagnosticsChart marsYear={marsYear} />, [marsYear]);
-  const polarComponent = useMemo(() => <PolarDynamics marsYear={marsYear} />, [marsYear]);
-  const couplingComponent = useMemo(() => <CouplingAnalysis marsYear={marsYear} />, [marsYear]);
+  const realtimeComponent = useMemo(() => <RealtimeMonitor marsYear={marsYear} lsValue={globalTimeLs} dataSourceMode={dataSourceMode} />, [marsYear, globalTimeLs, dataSourceMode]);
+  const seasonalComponent = useMemo(() => <SeasonalChart marsYear={marsYear} dataSourceMode={dataSourceMode} />, [marsYear, dataSourceMode]);
+  const seasonalExtremesComponent = useMemo(() => <SeasonalExtremesChart marsYear={marsYear} dataSourceMode={dataSourceMode} />, [marsYear, dataSourceMode]);
+  const globalTrendComponent = useMemo(() => <GlobalTrendLinesChart marsYear={marsYear} dataSourceMode={dataSourceMode} />, [marsYear, dataSourceMode]);
+  const environmentComponent = useMemo(() => <EnvironmentDashboard marsYear={marsYear} dataSourceMode={dataSourceMode} />, [marsYear, dataSourceMode]);
+  const solarsensComponent = useMemo(() => <SolarSensitivity marsYear={marsYear} dataSourceMode={dataSourceMode} />, [marsYear, dataSourceMode]);
+  const waveComponent = useMemo(() => <WaveExplorer marsYear={marsYear} dataSourceMode={dataSourceMode} />, [marsYear, dataSourceMode]);
+  const waveDiagComponent = useMemo(() => <WaveBandDiagnosticsChart marsYear={marsYear} dataSourceMode={dataSourceMode} />, [marsYear, dataSourceMode]);
+  const polarComponent = useMemo(() => <PolarDynamics marsYear={marsYear} dataSourceMode={dataSourceMode} />, [marsYear, dataSourceMode]);
+  const couplingComponent = useMemo(() => <CouplingAnalysis marsYear={marsYear} dataSourceMode={dataSourceMode} />, [marsYear, dataSourceMode]);
   const distributionComponent = useMemo(
     () => (
       <DataDistribution
@@ -144,8 +144,8 @@ export default function DetailPanel({ ozoneData }) {
     [marsYear, globalTimeLs, ozoneData, selectedCoordinate],
   );
   const correlationComponent = useMemo(
-    () => <CorrelationMatrix marsYear={marsYear} coordinate={selectedCoordinate} />,
-    [marsYear, selectedCoordinate],
+    () => <CorrelationMatrix marsYear={marsYear} coordinate={selectedCoordinate} dataSourceMode={dataSourceMode} />,
+    [marsYear, selectedCoordinate, dataSourceMode],
   );
 
   const cardsMap = {

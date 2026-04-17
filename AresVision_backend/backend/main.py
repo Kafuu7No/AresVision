@@ -6,6 +6,7 @@ AresVision 后端入口
 """
 
 import logging
+import os
 import time
 import sys
 import asyncio
@@ -30,6 +31,7 @@ from services.ai_service import AIService
 from services.copilot_service import CopilotService
 from services.upload_service import UploadService
 from services.user_data_service import UserDataService
+from services.personal_data_source_service import PersonalDataSourceService
 from core.analysis_transforms import AnalysisTransforms
 from core.predict_transforms import PredictTransforms
 from core.predict_inference import PredictInference
@@ -87,6 +89,10 @@ async def lifespan(app: FastAPI):
     user_data_service = UserDataService()
     app.state.user_data_service = user_data_service
 
+    # 数据源解析服务（默认/个人数据源切换 + 自动降级）
+    personal_source_service = PersonalDataSourceService(data_service)
+    app.state.personal_data_source_service = personal_source_service
+
     # 2. 领域服务：可视化与 ML 数据准备
     logger.info("[2/5] 初始化分析与 ML 准备服务...")
     analysis_service = AnalysisService(data_service)
@@ -124,9 +130,13 @@ async def lifespan(app: FastAPI):
     app.state.copilot_service = copilot_service
 
     # 5. 后台预生成性能分析缓存 (不阻塞启动)
-    logger.info("[5/5] 启动后台性能缓存预生成检查...")
-    import asyncio
-    asyncio.create_task(predict_orchestrator.ensure_performance_caches())
+    # 默认关闭，避免在开发态(尤其 --reload)触发长时间计算与频繁文件写入导致接口卡顿。
+    warmup_on_startup = os.getenv("ARESVISION_WARMUP_ON_STARTUP", "0").strip() == "1"
+    if warmup_on_startup:
+        logger.info("[5/5] 启动后台性能缓存预生成检查...")
+        asyncio.create_task(predict_orchestrator.ensure_performance_caches())
+    else:
+        logger.info("[5/5] 跳过启动期性能缓存预生成 (ARESVISION_WARMUP_ON_STARTUP!=1)")
 
     elapsed = time.time() - t0
     logger.info("=" * 60)
