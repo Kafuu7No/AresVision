@@ -89,7 +89,7 @@ function strongestCorrelation(matrix, names) {
   return best;
 }
 
-export default function CorrelationMatrix({ marsYear }) {
+export default function CorrelationMatrix({ marsYear, dataSourceMode = 'default' }) {
   const { settings } = useSettings();
 
   const isLight = settings?.theme === 'light';
@@ -204,9 +204,9 @@ export default function CorrelationMatrix({ marsYear }) {
     let active = true;
     setLoading(true);
     Promise.all([
-      fetchCorrelation(marsYear),
-      fetchSeasonalHeatmap(marsYear),
-      Promise.all(VARIABLE_META_BASE.map((meta) => fetchEnvHeatmap(marsYear, meta.id))),
+      fetchCorrelation(marsYear, { dataSource: dataSourceMode }),
+      fetchSeasonalHeatmap(marsYear, { dataSource: dataSourceMode }),
+      Promise.all(VARIABLE_META_BASE.map((meta) => fetchEnvHeatmap(marsYear, meta.id, { dataSource: dataSourceMode }))),
     ])
       .then(([corrRes, ozoneRes, envRes]) => {
         if (!active) return;
@@ -226,7 +226,7 @@ export default function CorrelationMatrix({ marsYear }) {
     return () => {
       active = false;
     };
-  }, [marsYear]);
+  }, [marsYear, dataSourceMode]);
 
   const derived = useMemo(() => {
     if (!ozoneHeatmap || !envHeatmaps[selectedVariable]) return null;

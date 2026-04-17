@@ -14,7 +14,7 @@ const LABELS = {
   wind: { zh: '风速', en: 'Wind Speed' },
 };
 
-export default function GlobalTrendLinesChart({ marsYear }) {
+export default function GlobalTrendLinesChart({ marsYear, dataSourceMode = 'default' }) {
   const { settings } = useSettings();
   const isLight = settings?.theme === 'light';
   const isZh = settings?.language !== 'en';
@@ -45,7 +45,7 @@ export default function GlobalTrendLinesChart({ marsYear }) {
     let active = true;
     setLoading(true);
 
-    loadResearchSuiteCached(marsYear)
+    loadResearchSuiteCached(marsYear, { dataSource: dataSourceMode })
       .then((res) => {
         if (active) setData(res?.trend_lines || null);
       })
@@ -60,7 +60,7 @@ export default function GlobalTrendLinesChart({ marsYear }) {
     return () => {
       active = false;
     };
-  }, [marsYear]);
+  }, [marsYear, dataSourceMode]);
 
   const traces = useMemo(() => {
     const ls = data?.ls || [];

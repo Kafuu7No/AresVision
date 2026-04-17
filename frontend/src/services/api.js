@@ -24,6 +24,17 @@ async function authedFetch(url, options = {}) {
   return res;
 }
 
+function resolveDataSource(optionsOrSource) {
+  if (typeof optionsOrSource === 'string') return optionsOrSource;
+  return optionsOrSource?.dataSource || 'default';
+}
+
+function appendDataSource(url, optionsOrSource) {
+  const dataSource = resolveDataSource(optionsOrSource);
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}data_source=${encodeURIComponent(dataSource)}`;
+}
+
 // ─── 认证接口 ───
 
 export async function apiLogin(email, password) {
@@ -96,77 +107,78 @@ export async function apiChangePassword(oldPassword, newPassword) {
   return res.json();
 }
 
-export async function fetchGlobeData(marsYear = 27, ls = 10, variableOrSignal = 'o3col', maybeSignal = null) {
+export async function fetchGlobeData(marsYear = 27, ls = 10, variableOrSignal = 'o3col', maybeSignal = null, options = {}) {
   const variable = typeof variableOrSignal === 'string' ? variableOrSignal : 'o3col';
   const signal = typeof variableOrSignal === 'string' ? maybeSignal : variableOrSignal;
   const opts = signal ? { signal } : {};
-  const res = await fetch(`${BASE}/explore/globe?my=${marsYear}&ls=${ls}&variable=${encodeURIComponent(variable)}`, opts);
+  const url = appendDataSource(`${BASE}/explore/globe?my=${marsYear}&ls=${ls}&variable=${encodeURIComponent(variable)}`, options);
+  const res = await authedFetch(url, opts);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
 
-export async function fetchSeasonalHeatmap(marsYear = 27) {
-  const res = await fetch(`${BASE}/explore/seasonal-heatmap?my=${marsYear}`);
+export async function fetchSeasonalHeatmap(marsYear = 27, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/seasonal-heatmap?my=${marsYear}`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
 
-export async function fetchSeasonalBands(marsYear = 27) {
-  const res = await fetch(`${BASE}/explore/seasonal-bands?my=${marsYear}`);
+export async function fetchSeasonalBands(marsYear = 27, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/seasonal-bands?my=${marsYear}`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
 
-export async function fetchEnvHeatmap(marsYear = 27, variable) {
-  const res = await fetch(`${BASE}/explore/env-heatmap?my=${marsYear}&variable=${variable}`);
+export async function fetchEnvHeatmap(marsYear = 27, variable, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/env-heatmap?my=${marsYear}&variable=${variable}`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
 
-export async function fetchCorrelation(marsYear = 27) {
-  const res = await fetch(`${BASE}/explore/correlation?my=${marsYear}`);
+export async function fetchCorrelation(marsYear = 27, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/correlation?my=${marsYear}`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
 
-export async function fetchDataInfo() {
-  const res = await fetch(`${BASE}/explore/info`);
+export async function fetchDataInfo(options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/info`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
 
-export async function fetchCouplingData(marsYear = 27, var1 = 'o3col', var2 = 'Dust_Optical_Depth') {
-  const res = await fetch(`${BASE}/explore/coupling?my=${marsYear}&var1=${var1}&var2=${var2}`);
+export async function fetchCouplingData(marsYear = 27, var1 = 'o3col', var2 = 'Dust_Optical_Depth', options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/coupling?my=${marsYear}&var1=${var1}&var2=${var2}`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
 
-export async function fetchZonalAnomaly(marsYear = 27, variable = 'o3col') {
-  const res = await fetch(`${BASE}/explore/zonal-anomaly?my=${marsYear}&variable=${variable}`);
+export async function fetchZonalAnomaly(marsYear = 27, variable = 'o3col', options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/zonal-anomaly?my=${marsYear}&variable=${variable}`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
 
-export async function fetchSolarPhotochemical(marsYear = 27, latBand = 'Equatorial (30S-30N)') {
-  const res = await fetch(`${BASE}/explore/solar-photochemical?my=${marsYear}&lat_band=${encodeURIComponent(latBand)}`);
+export async function fetchSolarPhotochemical(marsYear = 27, latBand = 'Equatorial (30S-30N)', options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/solar-photochemical?my=${marsYear}&lat_band=${encodeURIComponent(latBand)}`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
 
-export async function fetchPolarDynamics(marsYear = 27) {
-  const res = await fetch(`${BASE}/explore/polar-dynamics?my=${marsYear}`);
+export async function fetchPolarDynamics(marsYear = 27, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/polar-dynamics?my=${marsYear}`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
 
-export async function fetchResearchSuite(marsYear = 27) {
-  const res = await fetch(`${BASE}/explore/research-suite?my=${marsYear}`);
+export async function fetchResearchSuite(marsYear = 27, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/research-suite?my=${marsYear}`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
 
-export async function fetchPhaseSpace(marsYear = 27, driver = 'Dust_Optical_Depth') {
-  const res = await fetch(`${BASE}/explore/phase-space?my=${marsYear}&driver=${encodeURIComponent(driver)}`);
+export async function fetchPhaseSpace(marsYear = 27, driver = 'Dust_Optical_Depth', options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/phase-space?my=${marsYear}&driver=${encodeURIComponent(driver)}`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
@@ -217,8 +229,8 @@ export async function fetchAblation(marsYear = 27, ls = 90) {
   return res.json();
 }
 
-export async function fetchDiurnal(marsYear = 27, ls = 90, latBand = 'Equatorial (30S-30N)') {
-  const res = await fetch(`${BASE}/predict/diurnal?my=${marsYear}&ls=${ls}&lat_band=${encodeURIComponent(latBand)}`);
+export async function fetchDiurnal(marsYear = 27, ls = 90, latBand = 'Equatorial (30S-30N)', options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/predict/diurnal?my=${marsYear}&ls=${ls}&lat_band=${encodeURIComponent(latBand)}`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }

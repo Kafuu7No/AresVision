@@ -530,11 +530,11 @@ class PredictOrchestratorService:
             try:
                 logger.info(f"正在后台预生成持久化缓存: {variables}")
                 if needs_perf:
-                    self.get_performance_curve(variables)
+                    await asyncio.to_thread(self.get_performance_curve, variables)
                 if needs_errdist:
-                    self.get_error_distribution(variables)
+                    await asyncio.to_thread(self.get_error_distribution, variables)
                 if needs_pfi:
-                    self.get_permutation_importance(variables)
+                    await asyncio.to_thread(self.get_permutation_importance, variables)
                 count_generated += 1
                 # 稍微出让 CPU 权限，避免完全阻塞事件循环
                 await asyncio.sleep(0.1)

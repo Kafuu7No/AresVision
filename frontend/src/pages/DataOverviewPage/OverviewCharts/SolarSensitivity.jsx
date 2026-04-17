@@ -14,7 +14,7 @@ const BANDS = [
   'Polar South (60S-90S)',
 ];
 
-export default function SolarSensitivity({ marsYear }) {
+export default function SolarSensitivity({ marsYear, dataSourceMode = 'default' }) {
   const { settings } = useSettings();
 
   const isLight = settings?.theme === 'light';
@@ -68,7 +68,7 @@ export default function SolarSensitivity({ marsYear }) {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetchSolarPhotochemical(marsYear, activeBand)
+    fetchSolarPhotochemical(marsYear, activeBand, { dataSource: dataSourceMode })
       .then((res) => {
         if (active) {
           setData(res);
@@ -80,7 +80,7 @@ export default function SolarSensitivity({ marsYear }) {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [marsYear, activeBand]);
+  }, [marsYear, activeBand, dataSourceMode]);
 
   const diagnostics = useMemo(() => {
     if (!data?.solar?.length || !data?.ozone?.length) return null;

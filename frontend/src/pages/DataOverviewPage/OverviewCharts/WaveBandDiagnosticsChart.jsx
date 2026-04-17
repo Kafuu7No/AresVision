@@ -53,7 +53,7 @@ function calcSpan(values) {
   return Math.max(...values) - Math.min(...values);
 }
 
-export default function WaveBandDiagnosticsChart({ marsYear }) {
+export default function WaveBandDiagnosticsChart({ marsYear, dataSourceMode = 'default' }) {
   const { settings } = useSettings();
   const isLight = settings?.theme === 'light';
   const isZh = settings?.language !== 'en';
@@ -106,7 +106,7 @@ export default function WaveBandDiagnosticsChart({ marsYear }) {
     let active = true;
     setLoading(true);
 
-    fetchZonalAnomaly(marsYear, variable)
+    fetchZonalAnomaly(marsYear, variable, { dataSource: dataSourceMode })
       .then((res) => {
         if (active) setRawData(res || null);
       })
@@ -121,7 +121,7 @@ export default function WaveBandDiagnosticsChart({ marsYear }) {
     return () => {
       active = false;
     };
-  }, [marsYear, variable]);
+  }, [marsYear, variable, dataSourceMode]);
 
   const diagnostics = useMemo(() => {
     if (!rawData?.z?.length || !rawData?.x?.length || !rawData?.y?.length) return null;

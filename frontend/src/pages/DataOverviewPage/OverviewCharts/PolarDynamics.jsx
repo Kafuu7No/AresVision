@@ -6,7 +6,7 @@ import { fetchPolarDynamics } from '../../../services/api';
 import useAiInsightRegistration from './useAiInsightRegistration';
 import { roundValue, sampleSeries, summarizeSeries } from './aiInsight';
 
-export default function PolarDynamics({ marsYear }) {
+export default function PolarDynamics({ marsYear, dataSourceMode = 'default' }) {
   const { settings } = useSettings();
 
   const isLight = settings?.theme === 'light';
@@ -47,7 +47,7 @@ export default function PolarDynamics({ marsYear }) {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetchPolarDynamics(marsYear)
+    fetchPolarDynamics(marsYear, { dataSource: dataSourceMode })
       .then((res) => {
         if (active) {
           setData(res);
@@ -59,7 +59,7 @@ export default function PolarDynamics({ marsYear }) {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [marsYear]);
+  }, [marsYear, dataSourceMode]);
 
   const diagnostics = useMemo(() => {
     if (!data?.ls?.length) return null;

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import C from '../constants/colors';
 import { useT } from '../i18n';
+import { useAuth } from '../contexts/AuthContext';
 import { DataOverviewProvider, useDataOverview } from '../contexts/DataOverviewContext';
-import { fetchGlobeData } from '../services/api';
+import { fetchDataInfo, fetchGlobeData } from '../services/api';
 import useHandTracking from '../hooks/useHandTracking';
 
 // Sub-components
@@ -16,8 +17,13 @@ import GlobeLegend from './DataOverviewPage/GlobeLegend';
 
 const DataOverviewPageContent = () => {
   const t = useT();
+  const { user } = useAuth();
   const { 
     marsYear, 
+    setMarsYear,
+    dataSourceMode,
+    setAvailableMarsYears,
+    setSourceMeta,
     globalTimeLs, setGlobalTimeLs, 
     isPlayingTimeline, setIsPlayingTimeline,
     setSelectedCoordinate,
@@ -100,7 +106,7 @@ const DataOverviewPageContent = () => {
     abortRef.current = ctrl;
     setLoadingGlobe(true);
     try {
-      const d = await fetchGlobeData(year, ls, variable, ctrl.signal);
+      const d = await fetchGlobeData(year, ls, variable, ctrl.signal, { dataSource: dataSourceMode });
       if (!ctrl.signal.aborted) {
         setOzoneData({
           points: d.points || [],
@@ -108,6 +114,7 @@ const DataOverviewPageContent = () => {
           maxVal: d.maxVal ?? 1,
           variable: d.variable || variable || 'o3col',
         });
+        setSourceMeta(d?.source_meta || null);
         setLoadingGlobe(false);
       }
     } catch (e) {
@@ -116,11 +123,33 @@ const DataOverviewPageContent = () => {
         setLoadingGlobe(false);
       }
     }
-  }, []);
+  }, [dataSourceMode, setSourceMeta]);
+
+  useEffect(() => {
+    let active = true;
+    fetchDataInfo({ dataSource: dataSourceMode })
+      .then((info) => {
+        if (!active) return;
+        const years = Array.isArray(info?.available_years) && info.available_years.length > 0
+          ? info.available_years
+          : [27, 28];
+        setAvailableMarsYears(years);
+        setSourceMeta(info?.source_meta || null);
+        setMarsYear((prev) => (years.includes(prev) ? prev : years[0]));
+      })
+      .catch((err) => {
+        console.error('Data source info error:', err);
+        if (!active) return;
+        setAvailableMarsYears([27, 28]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [dataSourceMode, setAvailableMarsYears, setMarsYear, setSourceMeta, user?.id]);
 
   useEffect(() => {
     loadGlobe(globalTimeLs, marsYear, globeVariable);
-  }, [globalTimeLs, marsYear, globeVariable, loadGlobe]);
+  }, [globalTimeLs, marsYear, globeVariable, dataSourceMode, loadGlobe]);
 
   useEffect(() => {
     if (isPlayingTimeline) {
@@ -205,7 +234,7 @@ const DataOverviewPageContent = () => {
         </div>
 
         <div style={{ pointerEvents: 'auto' }}>
-          <DetailPanel ozoneData={ozoneData} />
+          <DetailPanel ozoneData={ozoneData} dataSourceMode={dataSourceMode} />
         </div>
 
         <div style={{ pointerEvents: 'auto' }}>
