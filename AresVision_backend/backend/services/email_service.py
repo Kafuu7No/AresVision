@@ -18,6 +18,14 @@ logger = logging.getLogger("aresvision.email")
 
 # 内存缓存：{ email: { code, expires_at, sent_at, purpose } }
 _code_store: dict[str, dict] = {}
+_SMTP_USER_PLACEHOLDERS = {
+    "your-email@example.com",
+    "example@example.com",
+}
+_SMTP_PASS_PLACEHOLDERS = {
+    "your-email-app-password",
+    "your-app-password",
+}
 
 
 def _generate_code() -> str:
@@ -29,6 +37,18 @@ def _clean_expired():
     expired = [k for k, v in _code_store.items() if v["expires_at"] < now]
     for k in expired:
         del _code_store[k]
+
+
+def _is_smtp_configured() -> bool:
+    user = (SMTP_USER or "").strip().strip('"').strip("'").lower()
+    pwd = (SMTP_PASSWORD or "").strip().strip('"').strip("'")
+    if not user or not pwd:
+        return False
+    if user in _SMTP_USER_PLACEHOLDERS or "example.com" in user:
+        return False
+    if pwd.lower() in _SMTP_PASS_PLACEHOLDERS or "your-email" in pwd.lower():
+        return False
+    return True
 
 
 def send_verification_code(email: str, purpose: str = "register") -> dict:
@@ -51,12 +71,12 @@ def send_verification_code(email: str, purpose: str = "register") -> dict:
         elapsed = now - _code_store[email]["sent_at"]
         if elapsed < VERIFICATION_CODE_COOLDOWN_SECONDS:
             remaining = int(VERIFICATION_CODE_COOLDOWN_SECONDS - elapsed)
-            return {"success": False, "message": f"请 {remaining} 秒后再试"}
+            return {"success": False, "reason": "cooldown", "message": f"请 {remaining} 秒后再试"}
 
     code = _generate_code()
 
     # 开发模式：SMTP 未配置时打印到日志
-    if not SMTP_USER or not SMTP_PASSWORD:
+    if not _is_smtp_configured():
         _code_store[email] = {
             "code": code,
             "expires_at": now + VERIFICATION_CODE_EXPIRE_MINUTES * 60,
@@ -64,7 +84,7 @@ def send_verification_code(email: str, purpose: str = "register") -> dict:
             "purpose": purpose,
         }
         logger.warning("[DEV] 验证码未通过邮件发送（SMTP 未配置）: %s -> %s", email, code)
-        return {"success": True, "message": "验证码已发送（开发模式：请查看后端日志）"}
+        return {"success": True, "reason": "dev_log", "message": "验证码已发送（本地模式：请查看后端日志）"}
 
     purpose_text = "注册账号" if purpose == "register" else "重置密码"
     subject = f"【AresVision】{purpose_text}验证码"
@@ -108,11 +128,11 @@ def send_verification_code(email: str, purpose: str = "register") -> dict:
             "purpose": purpose,
         }
         logger.info("验证码已发送: %s (purpose=%s)", email, purpose)
-        return {"success": True, "message": "验证码已发送，请查看邮箱"}
+        return {"success": True, "reason": "ok", "message": "验证码已发送，请查看邮箱"}
 
     except Exception as exc:
         logger.error("邮件发送失败: %s -> %s", email, exc)
-        return {"success": False, "message": "邮件发送失败，请稍后重试"}
+        return {"success": False, "reason": "delivery_failed", "message": "邮件发送失败，请检查 SMTP 配置或网络连接"}
 
 
 def verify_code(email: str, code: str, purpose: str = "register") -> bool:
