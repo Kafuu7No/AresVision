@@ -183,8 +183,9 @@ export async function fetchPhaseSpace(marsYear = 27, driver = 'Dust_Optical_Dept
   return res.json();
 }
 
-export async function runPrediction(body) {
-  const res = await fetch(`${BASE}/predict/run`, {
+export async function runPrediction(body, options = {}) {
+  const url = appendDataSource(`${BASE}/predict/run`, options);
+  const res = await authedFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -193,8 +194,9 @@ export async function runPrediction(body) {
   return res.json();
 }
 
-export async function fetchPredictMetrics(body) {
-  const res = await fetch(`${BASE}/predict/metrics`, {
+export async function fetchPredictMetrics(body, options = {}) {
+  const url = appendDataSource(`${BASE}/predict/metrics`, options);
+  const res = await authedFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -203,8 +205,16 @@ export async function fetchPredictMetrics(body) {
   return res.json();
 }
 
-export async function fetchPerformanceCurve(body) {
-  const res = await fetch(`${BASE}/predict/performance`, {
+export async function prewarmPredictSource(marsYear = 27, options = {}) {
+  const url = appendDataSource(`${BASE}/predict/prewarm?my=${marsYear}`, options);
+  const res = await authedFetch(url, { method: 'POST' });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchPerformanceCurve(body, options = {}) {
+  const url = appendDataSource(`${BASE}/predict/performance`, options);
+  const res = await authedFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -213,8 +223,10 @@ export async function fetchPerformanceCurve(body) {
   return res.json();
 }
 
-export async function fetchPerformanceComparison(configs) {
-  const res = await fetch(`${BASE}/predict/performance-compare`, {
+export async function fetchPerformanceComparison(configs, options = {}) {
+  const marsYear = options?.marsYear ?? 27;
+  const url = appendDataSource(`${BASE}/predict/performance-compare?my=${marsYear}`, options);
+  const res = await authedFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ configs }),
@@ -223,8 +235,10 @@ export async function fetchPerformanceComparison(configs) {
   return res.json();
 }
 
-export async function fetchAblation(marsYear = 27, ls = 90) {
-  const res = await fetch(`${BASE}/predict/ablation?my=${marsYear}&ls=${ls}`);
+export async function fetchAblation(marsYear = 27, ls = 90, options = {}) {
+  const res = await authedFetch(
+    appendDataSource(`${BASE}/predict/ablation?my=${marsYear}&ls=${ls}`, options)
+  );
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
@@ -478,10 +492,10 @@ export async function fetchScripts() {
   return res.json();
 }
 
-export async function startTrainingTask(model_script, hyperparameters, model_name = null) {
+export async function startTrainingTask(model_script, hyperparameters, model_name = null, data_source = 'default') {
   const res = await authedFetch(`${BASE}/training/start`, {
     method: 'POST',
-    body: JSON.stringify({ model_script, hyperparameters, model_name }),
+    body: JSON.stringify({ model_script, hyperparameters, model_name, data_source }),
   });
   if (!res.ok) throw new Error(`${res.status}`);
   return res.json();

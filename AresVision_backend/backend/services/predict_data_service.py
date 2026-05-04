@@ -15,7 +15,7 @@ from config import OPENMARS_DIR, MCD_DIR, MCD_VARIABLES, TRAINING_MASTER_ORDER, 
 logger = logging.getLogger("aresvision.predict.data")
 
 class PredictDataService:
-    def __init__(self, data_service=None):
+    def __init__(self, data_service=None, use_processed_tensor: bool = True):
         # 保留 data_service 参数仅为了兼容性，逻辑上已实现解耦
         self.data_service = data_service
         self._max_flux = 1.0  # 动态计算辐射归一化参数
@@ -26,15 +26,29 @@ class PredictDataService:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         self.tensor_path = os.path.join(current_dir, "..", "data", "processed_tensors.pt")
         
-        if os.path.exists(self.tensor_path):
-            try:
-                # weights_only=False is the default for torch.load, but explicitly stated in instruction
-                self.processed_data = torch.load(self.tensor_path, weights_only=False)
-                logger.info(f"成功加载预处理张量: {self.tensor_path}")
-            except Exception as e:
-                logger.error(f"加载预处理张量失败: {e}")
+        if use_processed_tensor:
+            if os.path.exists(self.tensor_path):
+                try:
+                    # weights_only=False is the default for torch.load, but explicitly stated in instruction
+                    self.processed_data = torch.load(self.tensor_path, weights_only=False)
+                    logger.info(f"成功加载预处理张量: {self.tensor_path}")
+                except Exception as e:
+                    logger.error(f"加载预处理张量失败: {e}")
+            else:
+                logger.info(f"未找到预处理张量文件: {self.tensor_path}，将回退到原始 NetCDF 读取。")
         else:
-            logger.info(f"未找到预处理张量文件: {self.tensor_path}，将回退到原始 NetCDF 读取。")
+            logger.info("已禁用预处理张量读取，按请求数据源直接走原始 NetCDF 数据流。")
+        # Cache heavy per-year preparation in raw NetCDF path.
+        self._prepared_year_cache: dict[int, tuple[np.ndarray, np.ndarray, dict[str, np.ndarray]]] = {}
+
+    def prewarm_for_year(self, mars_year: int) -> None:
+        """
+        Warm raw-data preparation cache for a specific Mars year.
+        This is primarily used by personal data-source prewarm flow after login.
+        """
+        if self.processed_data is not None:
+            return
+        self._prepare_aligned_year_data(mars_year)
 
     def get_model_input(
         self,
@@ -126,37 +140,8 @@ class PredictDataService:
         """
         原始的端到端构造模型输入张量逻辑 (作为回退)
         """
-        # 1. 独立读取原始数据
-        o3_raw, om_ls_raw = self._load_raw_openmars(mars_year)
-        mcd_raw_dict, mcd_ls_raw = self._load_raw_mcd(mars_year)
-
-        # 2. 清洗数据 (demo3 L185)
-        o3_clean = self._clean_invalid(o3_raw, "OpenMars O3")
-        for k in mcd_raw_dict:
-            mcd_raw_dict[k] = self._clean_invalid(mcd_raw_dict[k], k)
-
-        # 3. 物理预处理 (demo3 L204)
-        # 沙尘 Log1p (同步 demo3-D.py: 训练脚本中注释掉了此行，因此部署端也需移除以保持尺度一致)
-        dust = mcd_raw_dict['Dust_Optical_Depth']
-        dust[dust < 0] = 0.0
-        # mcd_raw_dict['Dust_Optical_Depth'] = np.log1p(dust)  # 停用以对齐训练脚本
-        # 辐射归一化
-        flux = mcd_raw_dict['Solar_Flux_DN']
-        self._max_flux = np.max(np.abs(flux)) + 1e-6
-        mcd_raw_dict['Solar_Flux_DN'] = flux / self._max_flux
-
-        # 4. 时间对齐 (demo3 L214)
-        om_ls_cont = self._unwrap_ls(om_ls_raw)
-        mcd_ls_cont = self._unwrap_ls(mcd_ls_raw)
-        
-        aligned_mcd = {}
-        for k in mcd_raw_dict:
-            interpolator = interp1d(
-                mcd_ls_cont, mcd_raw_dict[k],
-                axis=0, kind='linear',
-                bounds_error=False, fill_value="extrapolate"
-            )
-            aligned_mcd[k] = interpolator(om_ls_cont)
+        # 1) Prepare (clean + align) once per Mars year and reuse.
+        o3_clean, om_ls_raw, aligned_mcd = self._prepare_aligned_year_data(mars_year)
 
         # 5. 构造滑窗张量索引
         start_idx = self._get_nearest_ls_index(om_ls_raw, ls_start, mars_year)
@@ -185,6 +170,50 @@ class PredictDataService:
 
         return input_arr, channel_mask, target_ls
 
+    def _prepare_aligned_year_data(
+        self,
+        mars_year: int,
+    ) -> tuple[np.ndarray, np.ndarray, dict[str, np.ndarray]]:
+        cached = self._prepared_year_cache.get(mars_year)
+        if cached is not None:
+            return cached
+
+        # 1. 独立读取原始数据
+        o3_raw, om_ls_raw = self._load_raw_openmars(mars_year)
+        mcd_raw_dict, mcd_ls_raw = self._load_raw_mcd(mars_year)
+
+        # 2. 清洗数据 (demo3 L185)
+        o3_clean = self._clean_invalid(o3_raw, "OpenMars O3")
+        for k in mcd_raw_dict:
+            mcd_raw_dict[k] = self._clean_invalid(mcd_raw_dict[k], k)
+
+        # 3. 物理预处理 (demo3 L204)
+        # 沙尘 Log1p (同步 demo3-D.py: 训练脚本中注释掉了此行，因此部署端也需移除以保持尺度一致)
+        dust = mcd_raw_dict['Dust_Optical_Depth']
+        dust[dust < 0] = 0.0
+        # mcd_raw_dict['Dust_Optical_Depth'] = np.log1p(dust)  # 停用以对齐训练脚本
+        # 辐射归一化
+        flux = mcd_raw_dict['Solar_Flux_DN']
+        self._max_flux = np.max(np.abs(flux)) + 1e-6
+        mcd_raw_dict['Solar_Flux_DN'] = flux / self._max_flux
+
+        # 4. 时间对齐 (demo3 L214)
+        om_ls_cont = self._unwrap_ls(om_ls_raw)
+        mcd_ls_cont = self._unwrap_ls(mcd_ls_raw)
+
+        aligned_mcd: dict[str, np.ndarray] = {}
+        for k in mcd_raw_dict:
+            interpolator = interp1d(
+                mcd_ls_cont, mcd_raw_dict[k],
+                axis=0, kind='linear',
+                bounds_error=False, fill_value="extrapolate"
+            )
+            aligned_mcd[k] = interpolator(om_ls_cont)
+
+        packed = (o3_clean, om_ls_raw, aligned_mcd)
+        self._prepared_year_cache[mars_year] = packed
+        return packed
+
     def _fallback_get_ground_truth(
         self,
         mars_year: int,
@@ -209,6 +238,18 @@ class PredictDataService:
     # --- 内部逻辑函数 ---
 
     def _load_raw_openmars(self, mars_year: int):
+        if self.data_service is not None and hasattr(self.data_service, "get_openmars_data"):
+            om = self.data_service.get_openmars_data(mars_year)
+            o3 = np.asarray(om["o3col"], dtype=np.float32)
+            if o3.ndim == 4:  # (time, level, lat, lon)
+                o3 = np.nanmean(o3, axis=1)
+            ls = np.asarray(om["ls"], dtype=np.float32).reshape(-1)
+            if o3.shape[0] != len(ls):
+                n = min(o3.shape[0], len(ls))
+                o3 = o3[:n]
+                ls = ls[:n]
+            return o3, ls
+
         pattern = str(OPENMARS_DIR / f"*my{mars_year}*.nc")
         files = sorted(glob.glob(pattern), key=self._natural_sort_key)
         if not files: raise FileNotFoundError(f"Missing OpenMars data for MY{mars_year}")
@@ -226,6 +267,34 @@ class PredictDataService:
         return np.concatenate(o3_list, axis=0), np.concatenate(ls_list, axis=0)
 
     def _load_raw_mcd(self, mars_year: int):
+        if self.data_service is not None and hasattr(self.data_service, "get_mcd_data"):
+            mc = self.data_service.get_mcd_data(mars_year)
+            ls = np.asarray(mc.get("ls"), dtype=np.float32).reshape(-1)
+            if ls.size == 0:
+                raise ValueError(f"Missing MCD ls for MY{mars_year}")
+
+            out = {}
+            for v in MCD_VARIABLES:
+                arr = mc.get(v)
+                if arr is None:
+                    continue
+                arr = np.asarray(arr, dtype=np.float32)
+                if arr.ndim == 4:  # (sol, hour, lat, lon)
+                    arr = np.nanmean(arr, axis=1)
+                if arr.ndim != 3:
+                    continue
+                if arr.shape[0] != len(ls):
+                    n = min(arr.shape[0], len(ls))
+                    arr = arr[:n]
+                    ls = ls[:n]
+                out[v] = arr
+
+            # Keep channel count predictable even when one variable is absent.
+            for v in MCD_VARIABLES:
+                if v not in out:
+                    out[v] = np.zeros((len(ls), N_LAT, N_LON), dtype=np.float32)
+            return out, ls
+
         pattern = str(MCD_DIR / f"*my{mars_year}*.nc")
         files = sorted(glob.glob(pattern))
         if not files: raise FileNotFoundError(f"Missing MCD data for MY{mars_year}")

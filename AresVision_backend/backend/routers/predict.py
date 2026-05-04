@@ -5,6 +5,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, Body
+from cachetools import LRUCache
 
 from auth.dependencies import get_optional_user
 from database.models import User
@@ -18,6 +19,8 @@ from schemas.predict import (
 from config import DEFAULT_MARS_YEAR, LATITUDE_BANDS
 from services.analysis_service import AnalysisService
 from services.personal_data_source_service import SingleYearDataView
+from services.predict_data_service import PredictDataService
+from services.predict_service import PredictOrchestratorService
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +33,84 @@ def _get_predict_service(request: Request):
 
 def _get_analysis_service(request: Request):
     return request.app.state.analysis_service
+
+
+def _get_personal_predict_service_cache(request: Request) -> LRUCache:
+    cache = getattr(request.app.state, "personal_predict_service_cache", None)
+    if cache is None:
+        cache = LRUCache(maxsize=16)
+        request.app.state.personal_predict_service_cache = cache
+    return cache
+
+
+async def _resolve_predict_context(
+    request: Request,
+    my: int,
+    data_source: str,
+    current_user: User | None,
+) -> tuple[PredictOrchestratorService, dict, int]:
+    requested = (data_source or "default").strip().lower()
+    if requested not in ("default", "personal"):
+        raise HTTPException(status_code=400, detail="data_source must be 'default' or 'personal'")
+
+    if requested == "default":
+        return (
+            _get_predict_service(request),
+            {
+                "requested_source": "default",
+                "effective_source": "default",
+                "fallback": False,
+                "message": None,
+                "mars_year": my,
+            },
+            my,
+        )
+
+    resolver = request.app.state.personal_data_source_service
+    resolution = await resolver.resolve_for_year("personal", my, current_user.id if current_user else None)
+    if resolution.effective_source == "default":
+        return _get_predict_service(request), resolution.source_meta(), resolution.mars_year
+
+    service_cache = _get_personal_predict_service_cache(request)
+    cache_key = (
+        int(current_user.id if current_user else 0),
+        int(resolution.mars_year),
+        str(resolution.effective_source),
+        id(resolution.openmars_data),
+        id(resolution.aligned_mcd_data),
+        id(resolution.mcd_raw_data),
+    )
+    cached_service = service_cache.get(cache_key)
+    if cached_service is not None:
+        logger.info(
+            "personal predict service cache hit (uid=%s, MY%s, mode=%s)",
+            current_user.id if current_user else "anon",
+            resolution.mars_year,
+            resolution.effective_source,
+        )
+        return cached_service, resolution.source_meta(), resolution.mars_year
+
+    data_view = SingleYearDataView(
+        mars_year=resolution.mars_year,
+        openmars_data=resolution.openmars_data,
+        aligned_mcd_data=resolution.aligned_mcd_data,
+        mcd_raw_data=resolution.mcd_raw_data,
+    )
+    personal_prep = PredictDataService(data_view, use_processed_tensor=False)
+    personal_service = PredictOrchestratorService(
+        data_service=data_view,
+        ml_data_prep=personal_prep,
+        transforms=request.app.state.predict_transforms,
+        inference=request.app.state.predict_inference,
+    )
+    service_cache[cache_key] = personal_service
+    logger.info(
+        "personal predict service cache miss -> create (uid=%s, MY%s, mode=%s)",
+        current_user.id if current_user else "anon",
+        resolution.mars_year,
+        resolution.effective_source,
+    )
+    return personal_service, resolution.source_meta(), resolution.mars_year
 
 
 async def _resolve_diurnal_context(
@@ -75,6 +156,8 @@ async def _resolve_diurnal_context(
 async def run_prediction(
     request: Request,
     body: PredictRequest = Body(...),
+    data_source: str = Query("default", description="default | personal"),
+    current_user: User | None = Depends(get_optional_user),
 ):
     """
     鎵ц棰勬祴銆?
@@ -82,9 +165,11 @@ async def run_prediction(
     杩斿洖鐪熷€煎満銆侀娴嬪満銆佸樊鍊煎満銆?
     """
     try:
-        ps = _get_predict_service(request)
+        ps, source_meta, resolved_year = await _resolve_predict_context(
+            request, body.mars_year, data_source, current_user
+        )
         result = ps.predict(
-            mars_year=body.mars_year,
+            mars_year=resolved_year,
             ls_start=body.ls_start,
             selected_variables=body.selected_variables,
             horizon=body.horizon,
@@ -97,6 +182,7 @@ async def run_prediction(
             "horizon": result["horizon"],
             "ls_values": result["ls_values"],
             "model_info": result["model_info"],
+            "source_meta": source_meta,
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -110,19 +196,55 @@ async def run_prediction(
 async def get_eval_metrics(
     request: Request,
     body: PredictRequest = Body(...),
+    data_source: str = Query("default", description="default | personal"),
+    current_user: User | None = Depends(get_optional_user),
 ):
     """鑾峰彇棰勬祴璇勪及鎸囨爣锛圧MSE, MAE, SSIM, R虏锛?"""
     try:
-        ps = _get_predict_service(request)
+        ps, source_meta, resolved_year = await _resolve_predict_context(
+            request, body.mars_year, data_source, current_user
+        )
         result = ps.predict(
-            mars_year=body.mars_year,
+            mars_year=resolved_year,
             ls_start=body.ls_start,
             selected_variables=body.selected_variables,
             horizon=body.horizon,
         )
-        return result["metrics"]
+        metrics = dict(result["metrics"])
+        metrics["source_meta"] = source_meta
+        return metrics
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/prewarm")
+async def prewarm_personal_source(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR),
+    data_source: str = Query("personal", description="default | personal"),
+    current_user: User | None = Depends(get_optional_user),
+):
+    """
+    Prewarm predict data path for the requested source/year.
+    Used by frontend after login to reduce first interactive switch latency.
+    """
+    try:
+        ps, source_meta, resolved_year = await _resolve_predict_context(
+            request, my, data_source, current_user
+        )
+        warmed = False
+        ml_data_prep = getattr(ps, "ml_data_prep", None)
+        if ml_data_prep is not None and hasattr(ml_data_prep, "prewarm_for_year"):
+            ml_data_prep.prewarm_for_year(resolved_year)
+            warmed = True
+        return {
+            "ok": True,
+            "warmed": warmed,
+            "mars_year": resolved_year,
+            "source_meta": source_meta,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"prewarm failed: {e}")
 
 
 # 鈹€鈹€鈹€ 娑堣瀺瀹為獙 鈹€鈹€鈹€
@@ -132,14 +254,18 @@ async def get_ablation_results(
     request: Request,
     my: int = Query(DEFAULT_MARS_YEAR),
     ls: float = Query(90.0, ge=0, le=360),
+    data_source: str = Query("default", description="default | personal"),
+    current_user: User | None = Depends(get_optional_user),
 ):
     """
     鑾峰彇娑堣瀺瀹為獙缁撴灉锛氫笉鍚屽彉閲忕粍鍚堢殑棰勬祴鏁堟灉瀵规瘮銆?
     娉ㄦ剰锛氭鎺ュ彛浼氳繍琛屽娆￠娴嬶紝棣栨璋冪敤鍙兘杈冩參銆?
     """
     try:
-        ps = _get_predict_service(request)
-        items = ps.get_ablation_results(mars_year=my, ls_start=ls)
+        ps, _source_meta, resolved_year = await _resolve_predict_context(
+            request, my, data_source, current_user
+        )
+        items = ps.get_ablation_results(mars_year=resolved_year, ls_start=ls)
         return {"items": items}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"娑堣瀺瀹為獙閿欒: {e}")
@@ -151,14 +277,27 @@ async def get_ablation_results(
 async def get_performance_results(
     request: Request,
     body: PredictRequest = Body(...),
+    data_source: str = Query("default", description="default | personal"),
+    current_user: User | None = Depends(get_optional_user),
 ):
     """
     鑾峰彇妯″瀷鍦ㄦ祴璇曢泦涓婄殑 R2 鎬ц兘鏇茬嚎銆?
     妯酱涓?Ls锛岀旱杞翠负绌洪棿 R2 鍧囧€笺€?
     """
     try:
-        ps = _get_predict_service(request)
+        ps, source_meta, resolved_year = await _resolve_predict_context(
+            request, body.mars_year, data_source, current_user
+        )
+        if resolved_year != body.mars_year:
+            logger.info(
+                "performance request MY%s resolved to MY%s for source=%s",
+                body.mars_year,
+                resolved_year,
+                data_source,
+            )
         result = ps.get_performance_curve(selected_variables=body.selected_variables)
+        if isinstance(result, dict):
+            result["source_meta"] = source_meta
         return result
     except Exception as e:
         logger.error(f"鎬ц兘鏇茬嚎鎺ュ彛閿欒: {e}")
@@ -169,10 +308,22 @@ async def get_performance_results(
 async def get_performance_comparison(
     request: Request,
     body: PerformanceCompareRequest = Body(...),
+    my: int = Query(DEFAULT_MARS_YEAR),
+    data_source: str = Query("default", description="default | personal"),
+    current_user: User | None = Depends(get_optional_user),
 ):
     """鍚屾椂鑾峰彇澶氫釜鍙橀噺缁勫悎鐨勬ā鍨嬫€ц兘鏇茬嚎浠ヤ究瀵规瘮鍒嗘瀽"""
     try:
-        ps = _get_predict_service(request)
+        ps, source_meta, resolved_year = await _resolve_predict_context(
+            request, my, data_source, current_user
+        )
+        if resolved_year != my:
+            logger.info(
+                "performance-compare request MY%s resolved to MY%s for source=%s",
+                my,
+                resolved_year,
+                data_source,
+            )
         results = {}
         for vars_list in body.configs:
             # 浣跨敤鍒楄〃鍐呭浣滀负 key
@@ -184,7 +335,7 @@ async def get_performance_comparison(
             
             perf = ps.get_performance_curve(selected_variables=vars_list)
             results[key] = perf
-        return {"results": results}
+        return {"results": results, "source_meta": source_meta}
     except Exception as e:
         logger.error(f"澶氭ā鍨嬪姣旀帴鍙ｉ敊璇? {e}")
         raise HTTPException(status_code=500, detail=f"瀵规瘮鏁版嵁鐢熸垚澶辫触: {e}")

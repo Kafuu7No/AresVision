@@ -6,6 +6,7 @@ class TrainingStartRequest(BaseModel):
     model_script: str = Field(..., description="The script filename to execute")
     hyperparameters: Dict[str, Any] = Field(default_factory=dict, description="Custom hyperparameters")
     model_name: str = Field(..., min_length=1, description="Required unique name for the resulting model")
+    data_source: str = Field(default="default", description="default | personal")
 
 class TrainingTaskResponse(BaseModel):
     id: int

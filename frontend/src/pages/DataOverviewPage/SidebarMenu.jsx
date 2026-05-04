@@ -32,6 +32,7 @@ export const MODE_DEFS = [
 
 export default function SidebarMenu() {
   const { settings } = useSettings();
+  const isLight = settings?.theme === 'light';
   const isZh = settings?.language !== 'en';
   const {
     activeAnalysisMode,
@@ -41,6 +42,7 @@ export default function SidebarMenu() {
     availableMarsYears,
     dataSourceMode,
     setDataSourceMode,
+    isSwitchingSource,
     sourceMeta,
     autoRotate,
     setAutoRotate,
@@ -58,6 +60,13 @@ export default function SidebarMenu() {
     setLeftPanelWidth,
   } = useDataOverview();
   const isCompact = leftPanelWidth <= 300;
+  const panelBg = isLight ? 'rgba(255,255,255,0.78)' : 'rgba(10,12,18,0.4)';
+  const borderSoft = isLight ? 'rgba(15,23,42,0.14)' : 'rgba(255,255,255,0.08)';
+  const borderFaint = isLight ? 'rgba(15,23,42,0.10)' : 'rgba(255,255,255,0.05)';
+  const subtleBg = isLight ? 'rgba(15,23,42,0.04)' : 'rgba(255,255,255,0.02)';
+  const strongBg = isLight ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.04)';
+  const toggleOff = isLight ? 'rgba(15,23,42,0.14)' : 'rgba(255,255,255,0.1)';
+  const knobOff = isLight ? 'rgba(15,23,42,0.45)' : 'rgba(255,255,255,0.5)';
   const VISIBLE_GLOBE_OPTION_COUNT = 4;
   const globeOptionColumns = leftPanelWidth >= 340 ? 2 : 1;
   const globeOptionRowsInView = Math.ceil(VISIBLE_GLOBE_OPTION_COUNT / globeOptionColumns);
@@ -135,17 +144,17 @@ export default function SidebarMenu() {
         top: `${NAVBAR_HEIGHT}px`,
         width: leftPanelWidth,
         height: `calc(100vh - ${NAVBAR_HEIGHT}px)`,
-        background: 'rgba(10, 12, 18, 0.4)',
+        background: panelBg,
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        borderRight: '1px solid rgba(255,255,255,0.08)',
+        borderRight: `1px solid ${borderSoft}`,
         zIndex: 1000,
         padding: isCompact ? '22px 12px' : '32px 20px',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
-      <div style={{ paddingBottom: isCompact ? 16 : 24, marginBottom: isCompact ? 16 : 24, borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+      <div style={{ paddingBottom: isCompact ? 16 : 24, marginBottom: isCompact ? 16 : 24, borderBottom: `1px solid ${borderSoft}`, flexShrink: 0 }}>
         <h2
           style={{
             color: C.ice,
@@ -155,7 +164,7 @@ export default function SidebarMenu() {
             margin: '0 0 8px 0',
             letterSpacing: isCompact ? 1.4 : 3,
             textAlign: 'center',
-            textShadow: '0 2px 10px rgba(0,0,0,0.5)',
+            textShadow: isLight ? 'none' : '0 2px 10px rgba(0,0,0,0.5)',
           }}
         >
           {isZh ? '分析模式' : 'EXPLORATION MODE'}
@@ -191,16 +200,22 @@ export default function SidebarMenu() {
                 gap: isCompact ? 10 : 16,
                 padding: isCompact ? 12 : 16,
                 borderRadius: 12,
-                background: isSelected ? 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01))' : 'transparent',
-                border: `1px solid ${isSelected ? `${mode.color}40` : 'rgba(255,255,255,0.02)'}`,
-                boxShadow: isSelected ? `inset 0 0 20px ${mode.color}10, 0 4px 12px rgba(0,0,0,0.2)` : 'none',
+                background: isSelected
+                  ? (isLight
+                    ? `linear-gradient(135deg, ${mode.color}12, rgba(255,255,255,0.8))`
+                    : 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01))')
+                  : 'transparent',
+                border: `1px solid ${isSelected ? `${mode.color}40` : borderFaint}`,
+                boxShadow: isSelected
+                  ? (isLight ? `0 6px 18px ${mode.color}20` : `inset 0 0 20px ${mode.color}10, 0 4px 12px rgba(0,0,0,0.2)`)
+                  : 'none',
                 cursor: 'pointer',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 position: 'relative',
                 overflow: 'hidden',
                 minHeight: isCompact ? 88 : 100,
               }}
-              onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+              onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = strongBg; }}
               onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
             >
               {isSelected && (
@@ -247,7 +262,7 @@ export default function SidebarMenu() {
         })}
       </div>
 
-      <div style={{ marginTop: isCompact ? 16 : 24, paddingTop: isCompact ? 16 : 24, borderTop: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+      <div style={{ marginTop: isCompact ? 16 : 24, paddingTop: isCompact ? 16 : 24, borderTop: `1px solid ${borderSoft}`, flexShrink: 0 }}>
         <div style={{ color: C.ice60, fontSize: 10, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, marginBottom: 16 }}>
           {isZh ? '系统控制' : 'SYSTEM CONTROLS'}
         </div>
@@ -262,9 +277,10 @@ export default function SidebarMenu() {
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '10px 12px',
-              background: 'rgba(255,255,255,0.02)',
+              background: subtleBg,
               borderRadius: 8,
-              border: '1px solid rgba(255,255,255,0.05)',
+              border: `1px solid ${borderFaint}`,
+              opacity: isSwitchingSource ? 0.72 : 1,
             }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
@@ -275,10 +291,11 @@ export default function SidebarMenu() {
                 {isPersonalMode ? (isZh ? '当前：个人' : 'Current: Personal') : (isZh ? '当前：默认' : 'Current: Default')}
               </span>
             </div>
-            <label style={{ position: 'relative', display: 'inline-block', width: 32, height: 18 }}>
+            <label style={{ position: 'relative', display: 'inline-block', width: 32, height: 18, pointerEvents: isSwitchingSource ? 'none' : 'auto' }}>
               <input
                 type="checkbox"
                 checked={isPersonalMode}
+                disabled={isSwitchingSource}
                 onChange={() => setDataSourceMode(isPersonalMode ? 'default' : 'personal')}
                 style={{ opacity: 0, width: 0, height: 0 }}
               />
@@ -290,8 +307,8 @@ export default function SidebarMenu() {
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  backgroundColor: isPersonalMode ? 'rgba(74,158,255,0.3)' : 'rgba(255,255,255,0.1)',
-                  border: `1px solid ${isPersonalMode ? C.blue : 'rgba(255,255,255,0.2)'}`,
+                  backgroundColor: isPersonalMode ? 'rgba(74,158,255,0.3)' : toggleOff,
+                  border: `1px solid ${isPersonalMode ? C.blue : borderSoft}`,
                   transition: '.4s',
                   borderRadius: 34,
                 }}
@@ -303,7 +320,7 @@ export default function SidebarMenu() {
                     width: 12,
                     left: isPersonalMode ? 16 : 2,
                     bottom: 2,
-                    backgroundColor: isPersonalMode ? C.blue : 'rgba(255,255,255,0.5)',
+                    backgroundColor: isPersonalMode ? C.blue : knobOff,
                     transition: '.4s',
                     borderRadius: '50%',
                   }}
@@ -311,6 +328,11 @@ export default function SidebarMenu() {
               </span>
             </label>
           </div>
+          {isSwitchingSource ? (
+            <div style={{ marginTop: 8, color: C.ice60, fontSize: 10, lineHeight: 1.5 }}>
+              {isZh ? '正在切换数据源，请稍候...' : 'Switching data source, please wait...'}
+            </div>
+          ) : null}
           {sourceMessage ? (
             <div style={{ marginTop: 8, color: C.ice60, fontSize: 10, lineHeight: 1.5 }}>
               {sourceMessage}
@@ -338,20 +360,22 @@ export default function SidebarMenu() {
               <button
                 key={y}
                 onClick={() => setMarsYear(y)}
+                disabled={isSwitchingSource}
                 style={{
                   flex: '0 0 auto',
                   minWidth: isCompact ? 64 : 72,
                   padding: '8px 0',
-                  background: marsYear === y ? 'rgba(199,91,57,0.2)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${marsYear === y ? C.mars : 'rgba(255,255,255,0.1)'}`,
+                  background: marsYear === y ? 'rgba(199,91,57,0.2)' : subtleBg,
+                  border: `1px solid ${marsYear === y ? C.mars : borderFaint}`,
                   borderRadius: 8,
                   color: marsYear === y ? C.mars : C.ice60,
                   fontSize: 12,
                   fontWeight: 700,
-                  cursor: 'pointer',
+                  cursor: isSwitchingSource ? 'not-allowed' : 'pointer',
                   fontFamily: "'Orbitron', sans-serif",
                   transition: 'all 0.2s',
                   scrollSnapAlign: 'start',
+                  opacity: isSwitchingSource ? 0.7 : 1,
                 }}
               >
                 MY{y}
@@ -386,8 +410,8 @@ export default function SidebarMenu() {
                   style={{
                     padding: '8px 10px',
                     minHeight: globeOptionHeight,
-                    background: isActive ? 'rgba(74,158,255,0.2)' : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${isActive ? C.blue : 'rgba(255,255,255,0.1)'}`,
+                    background: isActive ? 'rgba(74,158,255,0.2)' : subtleBg,
+                    border: `1px solid ${isActive ? C.blue : borderFaint}`,
                     borderRadius: 8,
                     color: isActive ? C.blue : C.ice60,
                     fontSize: 10,
@@ -421,9 +445,9 @@ export default function SidebarMenu() {
               display: 'grid',
               gap: 8,
               padding: '10px 12px',
-              background: 'rgba(255,255,255,0.02)',
+              background: subtleBg,
               borderRadius: 8,
-              border: '1px solid rgba(255,255,255,0.05)',
+              border: `1px solid ${borderFaint}`,
             }}
           >
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, cursor: 'pointer' }} title={isZh ? '3D数据浓度显示开关' : '3D Concentration Display'}>
@@ -469,9 +493,9 @@ export default function SidebarMenu() {
             justifyContent: 'space-between',
             marginBottom: 12,
             padding: '10px 12px',
-            background: 'rgba(255,255,255,0.02)',
+            background: subtleBg,
             borderRadius: 8,
-            border: '1px solid rgba(255,255,255,0.05)',
+            border: `1px solid ${borderFaint}`,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
@@ -490,8 +514,8 @@ export default function SidebarMenu() {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: autoRotate ? 'rgba(74,158,255,0.3)' : 'rgba(255,255,255,0.1)',
-                border: `1px solid ${autoRotate ? C.blue : 'rgba(255,255,255,0.2)'}`,
+                backgroundColor: autoRotate ? 'rgba(74,158,255,0.3)' : toggleOff,
+                border: `1px solid ${autoRotate ? C.blue : borderSoft}`,
                 transition: '.4s',
                 borderRadius: 34,
               }}
@@ -503,7 +527,7 @@ export default function SidebarMenu() {
                   width: 12,
                   left: autoRotate ? 16 : 2,
                   bottom: 2,
-                  backgroundColor: autoRotate ? C.blue : 'rgba(255,255,255,0.5)',
+                  backgroundColor: autoRotate ? C.blue : knobOff,
                   transition: '.4s',
                   borderRadius: '50%',
                 }}
@@ -518,9 +542,9 @@ export default function SidebarMenu() {
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '10px 12px',
-            background: 'rgba(255,255,255,0.02)',
+            background: subtleBg,
             borderRadius: 8,
-            border: '1px solid rgba(255,255,255,0.05)',
+            border: `1px solid ${borderFaint}`,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
@@ -539,8 +563,8 @@ export default function SidebarMenu() {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: gestureEnabled ? 'rgba(199,91,57,0.3)' : 'rgba(255,255,255,0.1)',
-                border: `1px solid ${gestureEnabled ? C.mars : 'rgba(255,255,255,0.2)'}`,
+                backgroundColor: gestureEnabled ? 'rgba(199,91,57,0.3)' : toggleOff,
+                border: `1px solid ${gestureEnabled ? C.mars : borderSoft}`,
                 transition: '.4s',
                 borderRadius: 34,
               }}
@@ -552,7 +576,7 @@ export default function SidebarMenu() {
                   width: 12,
                   left: gestureEnabled ? 16 : 2,
                   bottom: 2,
-                  backgroundColor: gestureEnabled ? C.mars : 'rgba(255,255,255,0.5)',
+                  backgroundColor: gestureEnabled ? C.mars : knobOff,
                   transition: '.4s',
                   borderRadius: '50%',
                 }}

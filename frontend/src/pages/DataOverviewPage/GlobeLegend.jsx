@@ -26,6 +26,7 @@ function unitLabelByVariable(variable, units) {
 
 export default function GlobeLegend({ ozoneData }) {
   const { settings } = useSettings();
+  const isLight = settings?.theme === 'light';
   const isZh = settings?.language !== 'en';
   const { leftPanelWidth, gestureEnabled } = useDataOverview();
   const variable = ozoneData?.variable || 'o3col';
@@ -65,14 +66,14 @@ export default function GlobeLegend({ ozoneData }) {
         transition: 'bottom 0.2s ease, width 0.2s ease',
       }}
     >
-      <GlowCard style={{ padding: '10px', background: 'rgba(10, 14, 23, 0.5)' }}>
+      <GlowCard style={{ padding: '10px', background: isLight ? 'rgba(255,255,255,0.84)' : 'rgba(10, 14, 23, 0.5)' }}>
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             marginBottom: '8px',
-            borderBottom: '1px solid rgba(255,255,255,0.05)',
+            borderBottom: `1px solid ${C.border}`,
             paddingBottom: '5px',
           }}
         >

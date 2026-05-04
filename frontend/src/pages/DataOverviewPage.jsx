@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import C from '../constants/colors';
 import { useT } from '../i18n';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { DataOverviewProvider, useDataOverview } from '../contexts/DataOverviewContext';
 import { fetchDataInfo, fetchGlobeData } from '../services/api';
 import useHandTracking from '../hooks/useHandTracking';
@@ -18,12 +19,15 @@ import GlobeLegend from './DataOverviewPage/GlobeLegend';
 const DataOverviewPageContent = () => {
   const t = useT();
   const { user } = useAuth();
+  const { settings } = useSettings();
+  const isLight = settings?.theme === 'light';
   const { 
     marsYear, 
     setMarsYear,
     dataSourceMode,
     setAvailableMarsYears,
     setSourceMeta,
+    setIsSwitchingSource,
     globalTimeLs, setGlobalTimeLs, 
     isPlayingTimeline, setIsPlayingTimeline,
     setSelectedCoordinate,
@@ -127,6 +131,7 @@ const DataOverviewPageContent = () => {
 
   useEffect(() => {
     let active = true;
+    setIsSwitchingSource(true);
     fetchDataInfo({ dataSource: dataSourceMode })
       .then((info) => {
         if (!active) return;
@@ -141,11 +146,15 @@ const DataOverviewPageContent = () => {
         console.error('Data source info error:', err);
         if (!active) return;
         setAvailableMarsYears([27, 28]);
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsSwitchingSource(false);
       });
     return () => {
       active = false;
     };
-  }, [dataSourceMode, setAvailableMarsYears, setMarsYear, setSourceMeta, user?.id]);
+  }, [dataSourceMode, setAvailableMarsYears, setMarsYear, setSourceMeta, setIsSwitchingSource, user?.id]);
 
   useEffect(() => {
     loadGlobe(globalTimeLs, marsYear, globeVariable);
@@ -195,7 +204,8 @@ const DataOverviewPageContent = () => {
           borderRadius: '10px',
           overflow: 'hidden',
           border: `2px solid ${C.mars}`,
-          boxShadow: `0 0 20px rgba(255,107,53,0.3)`, background: '#000',
+          boxShadow: isLight ? '0 8px 18px rgba(15,23,42,0.20)' : '0 0 20px rgba(255,107,53,0.3)',
+          background: isLight ? 'rgba(255,255,255,0.86)' : '#000',
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
           <div style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.5 }}>
@@ -213,7 +223,7 @@ const DataOverviewPageContent = () => {
             style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 2, transform: 'scaleX(-1)' }}
           />
           <div style={{
-            position: 'absolute', top: '8px', left: '8px', background: 'rgba(0,0,0,0.6)',
+            position: 'absolute', top: '8px', left: '8px', background: isLight ? 'rgba(255,255,255,0.86)' : 'rgba(0,0,0,0.6)',
             padding: '2px 7px', borderRadius: '4px', color: C.mars, fontSize: '9px',
             fontFamily: 'Orbitron', zIndex: 3, border: `1px solid ${C.mars}`
           }}>

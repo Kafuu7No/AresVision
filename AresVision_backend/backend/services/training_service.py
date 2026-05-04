@@ -7,16 +7,22 @@ import traceback
 import psutil
 import subprocess
 import re
+import tempfile
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import time
+import numpy as np
+import netCDF4 as nc
 from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import USER_UPLOADS_DIR
+from config import USER_UPLOADS_DIR, MCD_VARIABLES
 from database.engine import async_session_maker
 from database.models import ModelTrainingTask
+from services.data_service import DataService
+from services.personal_data_source_service import PersonalDataSourceService
 import config
 
 logger = logging.getLogger("aresvision.training")
@@ -36,15 +42,24 @@ class TrainingService:
         for file in MODELS_DIR.iterdir():
             if file.is_file() and file.name.endswith(".py"):
                 scripts.append(file.name)
-        return scripts
+        return sorted(scripts)
 
-    async def start_training(self, user_id: int | None, model_script: str, hyperparameters: dict, custom_model_name: str | None = None) -> ModelTrainingTask:
+    async def start_training(
+        self,
+        user_id: int | None,
+        model_script: str,
+        hyperparameters: dict,
+        custom_model_name: str | None = None,
+        data_source: str = "default",
+        data_service: DataService | None = None,
+        personal_source_service: PersonalDataSourceService | None = None,
+    ) -> ModelTrainingTask:
         if not MODELS_DIR.joinpath(model_script).exists():
             raise FileNotFoundError(f"Script {model_script} not found in {MODELS_DIR}")
 
-        # ── 唯一性校验 ──
         if not custom_model_name or not custom_model_name.strip():
             raise ValueError("模型命名不能为空")
+
         async with async_session_maker() as session:
             existing = await session.execute(
                 select(ModelTrainingTask).where(ModelTrainingTask.custom_model_name == custom_model_name.strip())
@@ -52,11 +67,18 @@ class TrainingService:
             if existing.scalars().first():
                 raise ValueError(f"模型名称 '{custom_model_name}' 已被使用，请换一个名称")
 
+        source = (data_source or "default").strip().lower()
+        if source not in ("default", "personal"):
+            source = "default"
+
+        payload_hypers = dict(hyperparameters or {})
+        payload_hypers["_data_source"] = source
+
         async with async_session_maker() as session:
             task = ModelTrainingTask(
                 user_id=user_id,
                 model_script=model_script,
-                hyperparameters=json.dumps(hyperparameters),
+                hyperparameters=json.dumps(payload_hypers),
                 custom_model_name=custom_model_name,
                 status="pending",
             )
@@ -66,30 +88,217 @@ class TrainingService:
 
             task_id = task.id
             log_file = LOGS_DIR / f"task_{task_id}.log"
-            
-            # Determine output filename
-            if custom_model_name:
-                # Sanitize: remove special characters, replace spaces with underscores
-                safe_name = re.sub(r'[^\w\-]', '_', custom_model_name)
-                # Still include task_id to avoid collisions if user reuses name
-                output_filename = f"task_{task_id}_{safe_name}.pth"
-            else:
-                model_stem = Path(model_script).stem
-                output_filename = f"task_{task_id}_{model_stem}.pth"
-                
+
+            safe_name = re.sub(r"[^\w\-]", "_", custom_model_name)
+            output_filename = f"task_{task_id}_{safe_name}.pth"
             output_path = OUTPUT_MODELS_DIR / output_filename
-            
+
             task.log_file_path = str(log_file)
             task.output_model_path = str(output_path)
+
+            env_overrides: dict[str, str] = {}
+            temp_data_root: Path | None = None
+
+            if source == "personal":
+                env_overrides, temp_data_root, effective_source, source_note = await self._prepare_personal_training_env(
+                    user_id=user_id,
+                    task_id=task_id,
+                    data_service=data_service,
+                    personal_source_service=personal_source_service,
+                )
+                payload_hypers["_effective_data_source"] = effective_source
+                if source_note:
+                    payload_hypers["_data_source_note"] = source_note
+                task.hyperparameters = json.dumps(payload_hypers)
+
             await session.commit()
-            
-            # Start background execution
-            asyncio.create_task(self._run_training_subprocess(task_id, model_script, hyperparameters, log_file, output_path))
-            
+            logger.info(
+                "Training task queued: id=%s script=%s source=%s effective=%s",
+                task_id,
+                model_script,
+                source,
+                payload_hypers.get("_effective_data_source", source),
+            )
+
+            asyncio.create_task(
+                self._run_training_subprocess(
+                    task_id,
+                    model_script,
+                    payload_hypers,
+                    log_file,
+                    output_path,
+                    env_overrides=env_overrides,
+                    temp_data_root=temp_data_root,
+                )
+            )
+
             return task
 
-    async def _run_training_subprocess(self, task_id: int, script_name: str, hyperparameters: dict, log_file: Path, output_path: Path):
-        # Update status to running and set total_epochs
+    async def _prepare_personal_training_env(
+        self,
+        user_id: int | None,
+        task_id: int,
+        data_service: DataService | None,
+        personal_source_service: PersonalDataSourceService | None,
+    ) -> tuple[dict[str, str], Path | None, str, str | None]:
+        if user_id is None:
+            return {}, None, "default", "personal source requested without user id; fallback to default"
+        if data_service is None or personal_source_service is None:
+            return {}, None, "default", "personal source resolver unavailable; fallback to default"
+
+        temp_root = Path(tempfile.mkdtemp(prefix=f"aresvision_train_{task_id}_"))
+        openmars_dir = temp_root / "openmars"
+        mcd_dir = temp_root / "MCD"
+        openmars_dir.mkdir(parents=True, exist_ok=True)
+        mcd_dir.mkdir(parents=True, exist_ok=True)
+
+        has_personal = False
+        try:
+            years = data_service.get_available_years() or [27, 28]
+            for year in years:
+                resolution = await personal_source_service.resolve_for_year("personal", year, user_id)
+                if resolution.effective_source != "default":
+                    has_personal = True
+
+                my = int(resolution.mars_year)
+                openmars_path = openmars_dir / f"openmars_my{my}_ls_personal.nc"
+                self._write_openmars_nc(openmars_path, resolution.openmars_data)
+
+                mcd_src = resolution.mcd_raw_data or data_service.get_mcd_data(my)
+                mcd_path = mcd_dir / f"MCD_MY{my}_Lat-90-90_real.nc"
+                self._write_mcd_nc(mcd_path, mcd_src, resolution.openmars_data)
+
+            effective_source = "personal" if has_personal else "default"
+            note = None if has_personal else "personal datasets unavailable; fallback to default training data"
+            env = {
+                "ARESVISION_OPENMARS_DIR": str(openmars_dir),
+                "ARESVISION_MCD_DIR": str(mcd_dir),
+            }
+            return env, temp_root, effective_source, note
+        except Exception:
+            shutil.rmtree(temp_root, ignore_errors=True)
+            raise
+
+    def _write_openmars_nc(self, file_path: Path, openmars_data: dict[str, Any]) -> None:
+        lat = np.asarray(openmars_data.get("lat"), dtype=np.float32).reshape(-1)
+        lon = np.asarray(openmars_data.get("lon"), dtype=np.float32).reshape(-1)
+        ls = np.asarray(openmars_data.get("ls"), dtype=np.float32).reshape(-1)
+        o3 = np.asarray(openmars_data.get("o3col"), dtype=np.float32)
+
+        if o3.ndim == 4:
+            o3 = np.nanmean(o3, axis=1)
+        if o3.ndim != 3:
+            raise ValueError(f"Invalid openmars o3col shape: {o3.shape}")
+
+        n_time = min(len(ls), o3.shape[0])
+        if n_time <= 0:
+            raise ValueError("Empty openmars timeline")
+
+        ls = ls[:n_time]
+        o3 = o3[:n_time, : len(lat), : len(lon)]
+
+        sort_idx = np.argsort(ls)
+        ls = ls[sort_idx]
+        o3 = o3[sort_idx]
+
+        with nc.Dataset(str(file_path), "w", format="NETCDF4") as ds:
+            ds.createDimension("time", n_time)
+            ds.createDimension("lat", len(lat))
+            ds.createDimension("lon", len(lon))
+
+            v_ls = ds.createVariable("Ls", "f4", ("time",))
+            v_lat = ds.createVariable("lat", "f4", ("lat",))
+            v_lon = ds.createVariable("lon", "f4", ("lon",))
+            v_o3 = ds.createVariable("o3col", "f4", ("time", "lat", "lon"), zlib=True)
+
+            v_ls[:] = ls
+            v_lat[:] = lat
+            v_lon[:] = lon
+            v_o3[:] = o3
+
+    def _write_mcd_nc(self, file_path: Path, mcd_data: dict[str, Any], openmars_data: dict[str, Any]) -> None:
+        lat_raw = mcd_data.get("lat")
+        lon_raw = mcd_data.get("lon")
+        ls_raw = mcd_data.get("ls")
+
+        lat = np.asarray(lat_raw if lat_raw is not None else openmars_data.get("lat"), dtype=np.float32).reshape(-1)
+        lon = np.asarray(lon_raw if lon_raw is not None else openmars_data.get("lon"), dtype=np.float32).reshape(-1)
+        ls = np.asarray(ls_raw if ls_raw is not None else openmars_data.get("ls"), dtype=np.float32).reshape(-1)
+
+        if ls.size == 0:
+            raise ValueError("Empty MCD ls timeline")
+
+        hourly_vars: dict[str, np.ndarray] = {}
+        max_hour = 1
+        min_time = int(ls.shape[0])
+
+        for var in MCD_VARIABLES:
+            arr = None
+            hourly_key = f"{var}_hourly"
+            if hourly_key in mcd_data and mcd_data[hourly_key] is not None:
+                arr = np.asarray(mcd_data[hourly_key], dtype=np.float32)
+            elif var in mcd_data and mcd_data[var] is not None:
+                arr = np.asarray(mcd_data[var], dtype=np.float32)
+
+            if arr is None:
+                raise ValueError(f"MCD variable missing: {var}")
+
+            if arr.ndim == 3:
+                arr = arr[:, None, :, :]
+            elif arr.ndim != 4:
+                raise ValueError(f"Invalid MCD shape for {var}: {arr.shape}")
+
+            hourly_vars[var] = arr
+            max_hour = max(max_hour, int(arr.shape[1]))
+            min_time = min(min_time, int(arr.shape[0]))
+
+        lat_size = min(int(len(lat)), *[int(v.shape[2]) for v in hourly_vars.values()])
+        lon_size = min(int(len(lon)), *[int(v.shape[3]) for v in hourly_vars.values()])
+        if min_time <= 0 or lat_size <= 0 or lon_size <= 0:
+            raise ValueError("Invalid MCD dimensions after alignment")
+
+        ls = ls[:min_time]
+        lat = lat[:lat_size]
+        lon = lon[:lon_size]
+
+        normalized: dict[str, np.ndarray] = {}
+        for var, arr in hourly_vars.items():
+            arr = arr[:min_time, :, :lat_size, :lon_size]
+            h = int(arr.shape[1])
+            if h < max_hour:
+                repeat_factor = int(np.ceil(max_hour / h))
+                arr = np.repeat(arr, repeat_factor, axis=1)[:, :max_hour, :, :]
+            elif h > max_hour:
+                arr = arr[:, :max_hour, :, :]
+            normalized[var] = arr
+
+        with nc.Dataset(str(file_path), "w", format="NETCDF4") as ds:
+            ds.createDimension("sol", min_time)
+            ds.createDimension("hour", max_hour)
+            ds.createDimension("lat", lat_size)
+            ds.createDimension("lon", lon_size)
+
+            v_ls = ds.createVariable("Ls", "f4", ("sol",))
+            v_lat = ds.createVariable("lat", "f4", ("lat",))
+            v_lon = ds.createVariable("lon", "f4", ("lon",))
+            v_ls[:] = ls
+            v_lat[:] = lat
+            v_lon[:] = lon
+
+            for var in MCD_VARIABLES:
+                v = ds.createVariable(var, "f4", ("sol", "hour", "lat", "lon"), zlib=True)
+                v[:] = normalized[var]
+
+    async def _run_training_subprocess(
+        self,
+        task_id: int,
+        script_name: str,
+        hyperparameters: dict,
+        log_file: Path,
+        output_path: Path,
+        env_overrides: dict[str, str] | None = None,
+        temp_data_root: Path | None = None,
+    ):
         total_epochs = hyperparameters.get("epochs", 1)
         async with async_session_maker() as session:
             task = await session.get(ModelTrainingTask, task_id)
@@ -100,32 +309,38 @@ class TrainingService:
 
         script_path = MODELS_DIR / script_name
         python_exe = getattr(config, "TRAINING_PYTHON_PATH", sys.executable)
-        
-        # Prepare arguments
+
         args = [python_exe, str(script_path)]
         for k, v in hyperparameters.items():
             args.extend([f"--{k}", str(v)])
         args.extend(["--output_path", str(output_path)])
-            
+
         with open(log_file, "w", encoding="utf-8") as f:
-            f.write(f"--- 训练任务 {task_id} 已启动 ---\n")
+            f.write(f"--- 训练任务 {task_id} 已启动 ---\\n")
             f.flush()
 
         try:
-            # 使用同步 Popen + PIPE 以确保 Windows 兼容性
+            process_env = {
+                **os.environ,
+                "PYTHONIOENCODING": "utf-8",
+                "PYTHONUNBUFFERED": "1",
+            }
+            if env_overrides:
+                process_env.update(env_overrides)
+
             process = subprocess.Popen(
                 args,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 cwd=str(MODELS_DIR),
-                env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"},
+                env=process_env,
                 text=True,
                 bufsize=1,
-                encoding='utf-8',
-                errors='replace'
+                encoding="utf-8",
+                errors="replace",
             )
+            logger.info("Training subprocess started: task_id=%s pid=%s script=%s", task_id, process.pid, script_name)
 
-            # 更新 PID
             async with async_session_maker() as session:
                 task = await session.get(ModelTrainingTask, task_id)
                 if task:
@@ -136,37 +351,30 @@ class TrainingService:
             from services.ws_manager import manager as ws_manager
             loop = asyncio.get_event_loop()
 
-            # 初始化损失历史缓冲区
             loss_history_buf = {"train": [], "val": []}
             async with async_session_maker() as session:
                 task = await session.get(ModelTrainingTask, task_id)
                 if task and task.loss_history:
                     try:
                         loss_history_buf = json.loads(task.loss_history)
-                    except: pass
+                    except Exception:
+                        pass
 
-            # 定义一个同步的读取函数，在线程中运行
             def read_and_parse_thread():
                 with open(log_file, "a", encoding="utf-8") as f:
-                    # 使用迭代器逐行读取管道内容
                     for line in iter(process.stdout.readline, ""):
                         f.write(line)
                         f.flush()
-                        
-                        # 解析进度
+
                         progress_data = self._parse_progress_from_log(line, total_epochs, start_time_ts, loss_history_buf)
                         if progress_data:
-                            # 将数据库更新和广播任务发回主线程异步循环
                             asyncio.run_coroutine_threadsafe(
-                                self._update_task_progress(task_id, progress_data, ws_manager), 
-                                loop
+                                self._update_task_progress(task_id, progress_data, ws_manager),
+                                loop,
                             )
                     process.stdout.close()
 
-            # 在线程池中执行读取，避免阻塞主循环
             await asyncio.to_thread(read_and_parse_thread)
-            
-            # 等待进程结束
             returncode = await asyncio.to_thread(process.wait)
             status = "completed" if returncode == 0 else "failed"
 
@@ -180,48 +388,53 @@ class TrainingService:
                         parsed_metrics = self._extract_metrics_from_log(log_file)
                         task.metrics = json.dumps(parsed_metrics) if parsed_metrics else json.dumps({"note": "completed"})
                     await session.commit()
-                    
-                    # 最后一次广播状态变更
+
                     await ws_manager.broadcast_to_task(str(task_id), {
                         "type": "status_update",
                         "task_id": task_id,
-                        "status": status
+                        "status": status,
                     })
-                    
+                    logger.info("Training task finished: id=%s status=%s", task_id, status)
+
         except Exception:
             error_msg = traceback.format_exc()
             with open(log_file, "a", encoding="utf-8") as f:
-                f.write(f"\n[系统错误]:\n{error_msg}")
-            
+                f.write(f"\\n[系统错误]:\\n{error_msg}")
+
             logger.error(f"Task {task_id} failed with error: {error_msg}")
-            
+
             async with async_session_maker() as session:
                 task = await session.get(ModelTrainingTask, task_id)
                 if task:
                     task.status = "failed"
                     task.end_time = datetime.now(timezone.utc)
                     await session.commit()
+        finally:
+            if temp_data_root is not None:
+                shutil.rmtree(temp_data_root, ignore_errors=True)
 
     async def _update_task_progress(self, task_id: int, progress_data: dict, ws_manager):
-        """异步更新任务进度并广播消息 (供线程调用)"""
         async with async_session_maker() as session:
+            update_values = {
+                "progress": progress_data["progress"],
+                "current_epoch": progress_data["current_epoch"],
+                "current_loss": progress_data["current_loss"],
+                "eta": progress_data["eta"],
+            }
+            if "loss_history" in progress_data:
+                update_values["loss_history"] = json.dumps(progress_data["loss_history"])
+
             await session.execute(
                 update(ModelTrainingTask)
                 .where(ModelTrainingTask.id == task_id)
-                .values(
-                    progress=progress_data["progress"],
-                    current_epoch=progress_data["current_epoch"],
-                    current_loss=progress_data["current_loss"],
-                    eta=progress_data["eta"],
-                    loss_history=json.dumps(progress_data["loss_history"]) if "loss_history" in progress_data else None
-                )
+                .values(**update_values)
             )
             await session.commit()
-        
+
         await ws_manager.broadcast_to_task(str(task_id), {
             "type": "training_update",
             "task_id": task_id,
-            "data": progress_data
+            "data": progress_data,
         })
 
     async def get_task(self, task_id: int) -> ModelTrainingTask:
@@ -239,18 +452,17 @@ class TrainingService:
             task = await session.get(ModelTrainingTask, task_id)
             if not task or task.status != "running" or not task.pid:
                 return False
-            
+
             try:
                 parent = psutil.Process(task.pid)
                 for child in parent.children(recursive=True):
                     child.terminate()
                 parent.terminate()
-                
-                # Wait for termination
+
                 _, alive = psutil.wait_procs([parent] + parent.children(), timeout=3)
                 for p in alive:
                     p.kill()
-                    
+
                 task.status = "failed"
                 task.end_time = datetime.now(timezone.utc)
                 task.metrics = json.dumps({"note": "Stopped by user"})
@@ -269,103 +481,119 @@ class TrainingService:
             task = await session.get(ModelTrainingTask, task_id)
             if not task:
                 return False
-            
-            # 1. Stop if running
+
             if task.status == "running":
                 await self.stop_training(task_id)
                 await session.refresh(task)
 
-            # 2. Delete log file
             if task.log_file_path and os.path.exists(task.log_file_path):
                 try:
                     os.remove(task.log_file_path)
-                except: pass
+                except Exception:
+                    pass
 
-            # 3. Delete model file
             if task.output_model_path and os.path.exists(task.output_model_path):
                 try:
                     os.remove(task.output_model_path)
-                except: pass
+                except Exception:
+                    pass
 
-            # 4. Delete from DB
             await session.delete(task)
             await session.commit()
             return True
 
     def _extract_metrics_from_log(self, log_file: Path) -> dict | None:
-        """从日志文件中使用正则提取训练指标"""
         if not log_file.exists():
             return None
         try:
             with open(log_file, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
-            
-            # 使用正则匹配 Metrics 之后的内容
+
             metrics = {}
             patterns = {
                 "mse": r"MSE:\s*([\d\.]+)",
                 "rmse": r"RMSE:\s*([\d\.]+)",
                 "r2": r"R-Squared:\s*([\d\.\-]+)",
                 "mape": r"MAPE:\s*([\d\.]+)%",
-                "smape": r"SMAPE:\s*([\d\.]+)%"
+                "smape": r"SMAPE:\s*([\d\.]+)%",
             }
-            
+
             for key, pattern in patterns.items():
                 match = re.search(pattern, content)
                 if match:
                     metrics[key] = float(match.group(1))
-            
+
             return metrics if metrics else None
         except Exception as e:
             logger.error(f"Error extracting metrics from log: {e}")
             return None
 
     async def test_model(self, task_id: int):
-        """执行模型推理测试，生成散点图数据"""
-        # 这是一个占位，具体逻辑待实现
         return {"id": task_id, "status": "testing"}
 
     def _parse_progress_from_log(self, line: str, total_epochs: int, start_time: float, history: dict = None) -> dict | None:
-        # 模式1: Epoch 1/10 Loss=0.1234 Val Loss=0.1567
-        # 模式2: Epoch 1/10 Loss=0.1234
-        pattern = r"Epoch\s+(\d+)/(\d+)\s+Loss=([\d\.]+)(?:\s+Val Loss=([\d\.]+))?"
-        match = re.search(pattern, line)
-        if match:
-            current_ep = int(match.group(1))
-            loss = float(match.group(3))
-            val_loss = float(match.group(4)) if match.group(4) else None
-            progress = (current_ep / total_epochs) * 100
-            
-            # 更新历史记录
-            if history is not None:
-                # 检查是否是同一 epoch 的重复更新（只保留最后一次或仅在增加时追加）
-                # 这里我们假设脚本每 epoch 输出一次
-                if len(history["train"]) < current_ep:
-                    history["train"].append(loss)
-                    if val_loss is not None:
-                        history["val"].append(val_loss)
-                    else:
-                        # 兜底：如果没输出 val_loss，用 None 或上一个值占位
-                        history["val"].append(None)
+        batch_pattern = r"Epoch\s+(\d+)/(\d+)\s+Batch\s+(\d+)/(\d+)\s+Loss=([\d\.]+)"
+        batch_match = re.search(batch_pattern, line)
+        if batch_match:
+            current_ep = int(batch_match.group(1))
+            total_ep_from_log = int(batch_match.group(2))
+            batch_idx = int(batch_match.group(3))
+            batch_total = max(1, int(batch_match.group(4)))
+            loss = float(batch_match.group(5))
 
-            # 计算简单的 ETA
+            effective_total_epochs = max(total_epochs, total_ep_from_log)
+            completed_units = max(0.0, (current_ep - 1) + (batch_idx / batch_total))
+            progress = min(99.9, (completed_units / max(1, effective_total_epochs)) * 100.0)
+
             elapsed = time.time() - start_time
-            if current_ep > 0:
-                total_est = elapsed / current_ep * total_epochs
+            if completed_units > 0:
+                total_est = elapsed / completed_units * effective_total_epochs
                 remaining = max(0, total_est - elapsed)
                 m, s = divmod(int(remaining), 60)
                 h, m = divmod(m, 60)
                 eta = f"{h:02d}:{m:02d}:{s:02d}" if h > 0 else f"{m:02d}:{s:02d}"
             else:
                 eta = "--:--"
-                
+
             return {
                 "progress": round(progress, 2),
                 "current_epoch": current_ep,
-                "total_epochs": total_epochs,
+                "total_epochs": effective_total_epochs,
+                "current_loss": round(loss, 4),
+                "eta": eta,
+            }
+
+        epoch_pattern = r"Epoch\s+(\d+)/(\d+)\s+Loss=([\d\.]+)(?:\s+Val Loss=([\d\.]+))?"
+        epoch_match = re.search(epoch_pattern, line)
+        if epoch_match:
+            current_ep = int(epoch_match.group(1))
+            total_ep_from_log = int(epoch_match.group(2))
+            loss = float(epoch_match.group(3))
+            val_loss = float(epoch_match.group(4)) if epoch_match.group(4) else None
+            effective_total_epochs = max(total_epochs, total_ep_from_log)
+            progress = (current_ep / max(1, effective_total_epochs)) * 100
+
+            if history is not None and len(history["train"]) < current_ep:
+                history["train"].append(loss)
+                history["val"].append(val_loss if val_loss is not None else None)
+
+            elapsed = time.time() - start_time
+            if current_ep > 0:
+                total_est = elapsed / current_ep * effective_total_epochs
+                remaining = max(0, total_est - elapsed)
+                m, s = divmod(int(remaining), 60)
+                h, m = divmod(m, 60)
+                eta = f"{h:02d}:{m:02d}:{s:02d}" if h > 0 else f"{m:02d}:{s:02d}"
+            else:
+                eta = "--:--"
+
+            return {
+                "progress": round(progress, 2),
+                "current_epoch": current_ep,
+                "total_epochs": effective_total_epochs,
                 "current_loss": round(loss, 4),
                 "val_loss": round(val_loss, 4) if val_loss is not None else None,
                 "eta": eta,
-                "loss_history": history
+                "loss_history": history,
             }
         return None

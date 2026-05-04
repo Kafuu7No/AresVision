@@ -16,6 +16,7 @@ export const TrainingProvider = ({ children, enabled = true }) => {
   const wsRef = useRef(null);
   const pollingRef = useRef(null);
   const logPollingRef = useRef(null);
+  const loadTasksRef = useRef(null);
 
   const clearTaskPolling = useCallback(() => {
     if (pollingRef.current) {
@@ -54,6 +55,10 @@ export const TrainingProvider = ({ children, enabled = true }) => {
       console.error('Failed to load tasks', err);
     }
   }, [enabled, user, activeTaskId]);
+
+  useEffect(() => {
+    loadTasksRef.current = loadTasks;
+  }, [loadTasks]);
 
   // Poll training task list only when provider is enabled.
   useEffect(() => {
@@ -120,25 +125,34 @@ export const TrainingProvider = ({ children, enabled = true }) => {
     });
   }, [activeTaskId, tasks]);
 
+  const currentUserId = user?.id || null;
+
   // WebSocket live updates only when enabled and task is running.
   useEffect(() => {
-    if (!enabled || !activeTaskId || !user) {
+    if (!enabled || !activeTaskId || !currentUserId) {
       closeWs();
       return;
     }
 
-    const task = tasks.find((t) => t.id === activeTaskId);
-    if (!task || (task.status !== 'running' && task.status !== 'pending')) {
-      closeWs();
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.hostname}:8000/api/ws/training/${activeTaskId}`;
+
+    if (wsRef.current?.url === wsUrl && wsRef.current.readyState <= WebSocket.OPEN) {
       return;
     }
 
     closeWs();
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.hostname}:8000/api/ws/training/${activeTaskId}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
+    let heartbeatTimer = null;
+
+    ws.onopen = () => {
+      heartbeatTimer = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send('ping');
+        }
+      }, 4000);
+    };
 
     ws.onmessage = (event) => {
       try {
@@ -150,15 +164,32 @@ export const TrainingProvider = ({ children, enabled = true }) => {
             setProgressData((prev) => ({ ...prev, ...msg.data }));
           }
         } else if (msg.type === 'status_update') {
-          loadTasks();
+          loadTasksRef.current?.();
         }
       } catch (e) {
         console.error('WS parse error', e);
       }
     };
 
-    return () => closeWs();
-  }, [enabled, activeTaskId, user, tasks, loadTasks, closeWs]);
+    ws.onclose = () => {
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+      }
+      if (wsRef.current === ws) wsRef.current = null;
+    };
+
+    return () => {
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+      }
+      if (wsRef.current === ws) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
+  }, [enabled, activeTaskId, currentUserId, closeWs]);
 
   const value = {
     tasks,

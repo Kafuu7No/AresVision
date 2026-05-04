@@ -16,6 +16,7 @@ export const DataOverviewProvider = ({ children }) => {
   const [marsYear, setMarsYear] = useState(27);
   const [availableMarsYears, setAvailableMarsYears] = useState([27, 28]);
   const [dataSourceMode, setDataSourceMode] = useState('default');
+  const [isSwitchingSource, setIsSwitchingSource] = useState(false);
   const [sourceMeta, setSourceMeta] = useState(null);
   const [globalTimeLs, setGlobalTimeLs] = useState(0);
   const [isPlayingTimeline, setIsPlayingTimeline] = useState(false);
@@ -70,6 +71,8 @@ export const DataOverviewProvider = ({ children }) => {
     setAvailableMarsYears,
     dataSourceMode,
     setDataSourceMode,
+    isSwitchingSource,
+    setIsSwitchingSource,
     sourceMeta,
     setSourceMeta,
     globalTimeLs,

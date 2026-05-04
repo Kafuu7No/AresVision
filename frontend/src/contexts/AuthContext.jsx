@@ -1,5 +1,13 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { apiLogin, apiRegister, apiGetMe, apiChangePassword } from '../services/api';
+import {
+  apiLogin,
+  apiRegister,
+  apiGetMe,
+  apiChangePassword,
+  fetchDataInfo,
+  fetchGlobeData,
+  prewarmPredictSource,
+} from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -7,18 +15,17 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  // AuthModal 开关状态放在这里，方便从任意组件触发
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalTab, setAuthModalTab] = useState('login'); // 'login' | 'register'
+  const [authModalTab, setAuthModalTab] = useState('login');
+  const prewarmedKeysRef = useRef(new Set());
 
-  // 初始化：检查 localStorage 中是否有有效 token
   useEffect(() => {
     const stored = localStorage.getItem('aresvision_token');
     if (!stored) {
       setIsLoading(false);
       return;
     }
-    // 验证 token 是否仍有效
+
     apiGetMe()
       .then((me) => {
         setUser(me);
@@ -30,7 +37,6 @@ export function AuthProvider({ children }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  // 监听 authedFetch 发出的全局 logout 事件（token 过期时）
   useEffect(() => {
     const handler = () => {
       setUser(null);
@@ -39,6 +45,25 @@ export function AuthProvider({ children }) {
     window.addEventListener('aresvision:logout', handler);
     return () => window.removeEventListener('aresvision:logout', handler);
   }, []);
+
+  useEffect(() => {
+    if (!user?.id || !token) return;
+    const warmKey = `${user.id}:${token}`;
+    if (prewarmedKeysRef.current.has(warmKey)) return;
+    prewarmedKeysRef.current.add(warmKey);
+
+    const warmups = [
+      prewarmPredictSource(27, { dataSource: 'default' }),
+      prewarmPredictSource(27, { dataSource: 'personal' }),
+      fetchDataInfo({ dataSource: 'default' }),
+      fetchDataInfo({ dataSource: 'personal' }),
+      fetchGlobeData(27, 0, 'o3col', null, { dataSource: 'default' }),
+      fetchGlobeData(27, 0, 'o3col', null, { dataSource: 'personal' }),
+    ];
+    Promise.allSettled(warmups).catch(() => {
+      // Do not block login UX on prewarm failure.
+    });
+  }, [user?.id, token]);
 
   const login = useCallback(async (email, password) => {
     const data = await apiLogin(email, password);
@@ -85,7 +110,8 @@ export function AuthProvider({ children }) {
       changePassword,
       openAuthModal,
       closeAuthModal,
-    }}>
+    }}
+    >
       {children}
     </AuthContext.Provider>
   );
