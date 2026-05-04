@@ -4,6 +4,8 @@ import {
   apiRegister,
   apiGetMe,
   apiChangePassword,
+  fetchDataInfo,
+  fetchGlobeData,
   prewarmPredictSource,
 } from '../services/api';
 
@@ -13,19 +15,17 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  // AuthModal 开关状态放在这里，方便从任意组件触发
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalTab, setAuthModalTab] = useState('login'); // 'login' | 'register'
+  const [authModalTab, setAuthModalTab] = useState('login');
   const prewarmedKeysRef = useRef(new Set());
 
-  // 初始化：检查 localStorage 中是否有有效 token
   useEffect(() => {
     const stored = localStorage.getItem('aresvision_token');
     if (!stored) {
       setIsLoading(false);
       return;
     }
-    // 验证 token 是否仍有效
+
     apiGetMe()
       .then((me) => {
         setUser(me);
@@ -37,7 +37,6 @@ export function AuthProvider({ children }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  // 监听 authedFetch 发出的全局 logout 事件（token 过期时）
   useEffect(() => {
     const handler = () => {
       setUser(null);
@@ -47,15 +46,22 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('aresvision:logout', handler);
   }, []);
 
-  // 用户登录后静默预热 personal 数据源，避免首次切换卡顿。
   useEffect(() => {
     if (!user?.id || !token) return;
     const warmKey = `${user.id}:${token}`;
     if (prewarmedKeysRef.current.has(warmKey)) return;
     prewarmedKeysRef.current.add(warmKey);
 
-    prewarmPredictSource(27, { dataSource: 'personal' }).catch(() => {
-      // Silent prewarm failure should never block login UX.
+    const warmups = [
+      prewarmPredictSource(27, { dataSource: 'default' }),
+      prewarmPredictSource(27, { dataSource: 'personal' }),
+      fetchDataInfo({ dataSource: 'default' }),
+      fetchDataInfo({ dataSource: 'personal' }),
+      fetchGlobeData(27, 0, 'o3col', null, { dataSource: 'default' }),
+      fetchGlobeData(27, 0, 'o3col', null, { dataSource: 'personal' }),
+    ];
+    Promise.allSettled(warmups).catch(() => {
+      // Do not block login UX on prewarm failure.
     });
   }, [user?.id, token]);
 
@@ -104,7 +110,8 @@ export function AuthProvider({ children }) {
       changePassword,
       openAuthModal,
       closeAuthModal,
-    }}>
+    }}
+    >
       {children}
     </AuthContext.Provider>
   );

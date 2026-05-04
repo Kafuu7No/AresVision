@@ -108,6 +108,7 @@ function ModelHyperparams({ t }) {
 export default function PredictSidebar({
   isLight,
   loading,
+  isSwitchingSource,
   error,
   dataSourceMode,
   setDataSourceMode,
@@ -197,28 +198,28 @@ export default function PredictSidebar({
         </div>
         <button
           onClick={handlePredict}
-          disabled={loading}
+          disabled={loading || isSwitchingSource}
           style={{
             width: '100%', padding: '14px 0',
-            background: loading
+            background: (loading || isSwitchingSource)
               ? 'rgba(199,91,57,0.3)'
               : `linear-gradient(135deg, ${C.mars}, ${C.marsLight})`,
             border: 'none', borderRadius: 10, color: '#fff',
             fontSize: 13, fontWeight: 700,
             fontFamily: "'Orbitron', sans-serif", letterSpacing: 2,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            boxShadow: loading ? 'none' : '0 4px 24px rgba(199,91,57,0.35)',
+            cursor: (loading || isSwitchingSource) ? 'not-allowed' : 'pointer',
+            boxShadow: (loading || isSwitchingSource) ? 'none' : '0 4px 24px rgba(199,91,57,0.35)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
-          {loading ? (
+          {(loading || isSwitchingSource) ? (
             <>
               <div style={{
                 width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)',
                 borderTop: '2px solid #fff', borderRadius: '50%',
                 animation: 'spin-slow 0.8s linear infinite',
               }} />
-              {t('predict.runningBtn')}
+              {isSwitchingSource ? t('predict.switchingBtn', 'SWITCHING') : t('predict.runningBtn')}
             </>
           ) : t('predict.runBtn')}
         </button>
@@ -268,6 +269,7 @@ export default function PredictSidebar({
             padding: '10px 12px', borderRadius: 8,
             background: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)',
             border: `1px solid ${C.border}`,
+            opacity: isSwitchingSource ? 0.72 : 1,
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <span style={{ color: C.ice, fontSize: 11 }}>Default / Personal</span>
@@ -275,10 +277,11 @@ export default function PredictSidebar({
                 {isPersonalMode ? '当前：Personal' : '当前：Default'}
               </span>
             </div>
-            <label style={{ position: 'relative', display: 'inline-block', width: 32, height: 18 }}>
+            <label style={{ position: 'relative', display: 'inline-block', width: 32, height: 18, pointerEvents: isSwitchingSource ? 'none' : 'auto' }}>
               <input
                 type="checkbox"
                 checked={isPersonalMode}
+                disabled={isSwitchingSource}
                 onChange={() => setDataSourceMode(isPersonalMode ? 'default' : 'personal')}
                 style={{ opacity: 0, width: 0, height: 0 }}
               />
@@ -297,6 +300,11 @@ export default function PredictSidebar({
               </span>
             </label>
           </div>
+          {isSwitchingSource ? (
+            <div style={{ marginTop: 8, fontSize: 10, color: C.ice60, lineHeight: 1.5 }}>
+              {t('predict.switchingSourceHint', 'Switching data source, please wait...')}
+            </div>
+          ) : null}
           {sourceMessage ? (
             <div style={{ marginTop: 8, fontSize: 10, color: C.ice60, lineHeight: 1.5 }}>
               {sourceMessage}
@@ -307,13 +315,14 @@ export default function PredictSidebar({
           <div style={{ fontSize: 11, color: C.ice30, marginBottom: 6 }}>{t('predict.marsYear')}</div>
           <div style={{ display: 'flex', gap: 8 }}>
             {years.map((y) => (
-              <button key={y} onClick={() => setMarsYear(y)} style={{
+              <button key={y} disabled={isSwitchingSource} onClick={() => setMarsYear(y)} style={{
                 flex: 1, padding: '8px 0',
                 background: marsYear === y ? (isLight ? 'rgba(199,91,57,0.15)' : 'rgba(199,91,57,0.2)') : (isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)'),
                 border: `1px solid ${marsYear === y ? C.mars : C.border}`,
                 borderRadius: 8, color: marsYear === y ? C.mars : C.ice60,
-                fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                fontSize: 13, fontWeight: 700, cursor: isSwitchingSource ? 'not-allowed' : 'pointer',
                 fontFamily: "'Orbitron', sans-serif",
+                opacity: isSwitchingSource ? 0.7 : 1,
               }}>MY{y}</button>
             ))}
           </div>

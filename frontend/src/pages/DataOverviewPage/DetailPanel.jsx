@@ -61,6 +61,7 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
   const subtleBorder = isLight ? 'rgba(15,23,42,0.18)' : 'rgba(255,255,255,0.2)';
 
   const [isVisible, setIsVisible] = useState(false);
+  const [renderedCards, setRenderedCards] = useState(() => new Set());
   const dragFrameRef = useRef(0);
 
   const handleMouseDown = useCallback((e) => {
@@ -111,11 +112,26 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
     if (selectedCoordinate) return ['distribution'];
     return MODE_CARD_KEYS[activeAnalysisMode] || [];
   }, [activeAnalysisMode, selectedCoordinate]);
+  const activeCards = useMemo(() => getActiveCards(), [getActiveCards]);
 
   useEffect(() => {
-    const cards = getActiveCards();
-    setExpandedCard((prev) => (cards.includes(prev) ? prev : (cards[0] || '')));
-  }, [getActiveCards, setExpandedCard]);
+    setExpandedCard((prev) => (activeCards.includes(prev) ? prev : (activeCards[0] || '')));
+  }, [activeCards, setExpandedCard]);
+
+  useEffect(() => {
+    setRenderedCards((prev) => {
+      const next = new Set();
+      activeCards.forEach((key) => {
+        if (prev.has(key)) next.add(key);
+      });
+      if (activeCards[0]) next.add(activeCards[0]);
+      if (expandedCard && activeCards.includes(expandedCard)) next.add(expandedCard);
+      if (next.size === prev.size && Array.from(next).every((key) => prev.has(key))) {
+        return prev;
+      }
+      return next;
+    });
+  }, [activeCards, expandedCard]);
 
   useEffect(() => {
     const dispatchResize = () => window.dispatchEvent(new Event('resize'));
@@ -168,7 +184,6 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
     correlation: { title: isZh ? CARD_TITLES.correlation.zh : CARD_TITLES.correlation.en, component: correlationComponent, color: C.blue },
   };
 
-  const activeCards = getActiveCards();
   const currentModeInfo = selectedCoordinate
     ? {
       icon: '📍',
@@ -271,6 +286,7 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
           const cardDef = cardsMap[key];
           if (!cardDef) return null;
           const isExpanded = expandedCard === key;
+          const shouldRender = renderedCards.has(key);
 
           return (
             <GlowCard
@@ -327,7 +343,11 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
               >
                 <div style={{ overflow: 'hidden' }}>
                   <div style={{ padding: 20, boxSizing: 'border-box' }}>
-                    {cardDef.component}
+                    {shouldRender ? cardDef.component : (
+                      <div style={{ color: C.ice40, fontSize: 11, fontFamily: "'Exo 2', sans-serif" }}>
+                        {isZh ? '展开后加载该分析模块' : 'Expand to load this analysis module'}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -42,6 +42,7 @@ export default function SidebarMenu() {
     availableMarsYears,
     dataSourceMode,
     setDataSourceMode,
+    isSwitchingSource,
     sourceMeta,
     autoRotate,
     setAutoRotate,
@@ -279,6 +280,7 @@ export default function SidebarMenu() {
               background: subtleBg,
               borderRadius: 8,
               border: `1px solid ${borderFaint}`,
+              opacity: isSwitchingSource ? 0.72 : 1,
             }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
@@ -289,10 +291,11 @@ export default function SidebarMenu() {
                 {isPersonalMode ? (isZh ? '当前：个人' : 'Current: Personal') : (isZh ? '当前：默认' : 'Current: Default')}
               </span>
             </div>
-            <label style={{ position: 'relative', display: 'inline-block', width: 32, height: 18 }}>
+            <label style={{ position: 'relative', display: 'inline-block', width: 32, height: 18, pointerEvents: isSwitchingSource ? 'none' : 'auto' }}>
               <input
                 type="checkbox"
                 checked={isPersonalMode}
+                disabled={isSwitchingSource}
                 onChange={() => setDataSourceMode(isPersonalMode ? 'default' : 'personal')}
                 style={{ opacity: 0, width: 0, height: 0 }}
               />
@@ -325,6 +328,11 @@ export default function SidebarMenu() {
               </span>
             </label>
           </div>
+          {isSwitchingSource ? (
+            <div style={{ marginTop: 8, color: C.ice60, fontSize: 10, lineHeight: 1.5 }}>
+              {isZh ? '正在切换数据源，请稍候...' : 'Switching data source, please wait...'}
+            </div>
+          ) : null}
           {sourceMessage ? (
             <div style={{ marginTop: 8, color: C.ice60, fontSize: 10, lineHeight: 1.5 }}>
               {sourceMessage}
@@ -352,6 +360,7 @@ export default function SidebarMenu() {
               <button
                 key={y}
                 onClick={() => setMarsYear(y)}
+                disabled={isSwitchingSource}
                 style={{
                   flex: '0 0 auto',
                   minWidth: isCompact ? 64 : 72,
@@ -362,10 +371,11 @@ export default function SidebarMenu() {
                   color: marsYear === y ? C.mars : C.ice60,
                   fontSize: 12,
                   fontWeight: 700,
-                  cursor: 'pointer',
+                  cursor: isSwitchingSource ? 'not-allowed' : 'pointer',
                   fontFamily: "'Orbitron', sans-serif",
                   transition: 'all 0.2s',
                   scrollSnapAlign: 'start',
+                  opacity: isSwitchingSource ? 0.7 : 1,
                 }}
               >
                 MY{y}

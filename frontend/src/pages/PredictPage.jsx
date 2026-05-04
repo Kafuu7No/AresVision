@@ -74,6 +74,7 @@ export default function PredictPage() {
   const [viewMode, setViewMode] = useState(_c.viewMode);
 
   const [loading, setLoading] = useState(false);
+  const [isSwitchingSource, setIsSwitchingSource] = useState(false);
   const [results, setResults] = useState(_c.results);
   const [metrics, setMetrics] = useState(_c.metrics);
   const [errorDistData, setErrorDistData] = useState(_c.errorDistData);
@@ -101,6 +102,7 @@ export default function PredictPage() {
 
   useEffect(() => {
     let active = true;
+    setIsSwitchingSource(true);
     fetchDataInfo({ dataSource: dataSourceMode })
       .then((info) => {
         if (!active) return;
@@ -115,6 +117,10 @@ export default function PredictPage() {
         if (!active) return;
         setAvailableMarsYears([27, 28]);
         setSourceMeta(null);
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsSwitchingSource(false);
       });
 
     return () => {
@@ -122,7 +128,13 @@ export default function PredictPage() {
     };
   }, [dataSourceMode, user?.id]);
 
+  const handleDataSourceModeChange = useCallback((nextMode) => {
+    if (isSwitchingSource || nextMode === dataSourceMode) return;
+    setDataSourceMode(nextMode);
+  }, [dataSourceMode, isSwitchingSource]);
+
   const handlePredict = useCallback(async () => {
+    if (isSwitchingSource) return;
     setMetrics(null);
     setErrorDistData(null);
     setPfiData(null);
@@ -166,7 +178,7 @@ export default function PredictPage() {
       setLoading(false);
       setPfiLoading(false);
     }
-  }, [selectedVars, predStep, lsStart, marsYear, dataSourceMode, t]);
+  }, [selectedVars, predStep, lsStart, marsYear, dataSourceMode, isSwitchingSource, t]);
 
   // 同步 UI 状态到缓存（用户在页面内的操作也持久化）
   useEffect(() => { setPredictCache({ viewMode }); }, [viewMode]);
@@ -241,9 +253,10 @@ export default function PredictPage() {
         <PredictSidebar
           isLight={isLight}
           loading={loading}
+          isSwitchingSource={isSwitchingSource}
           error={error}
           dataSourceMode={dataSourceMode}
-          setDataSourceMode={setDataSourceMode}
+          setDataSourceMode={handleDataSourceModeChange}
           sourceMeta={sourceMeta}
           marsYear={marsYear}
           setMarsYear={setMarsYear}

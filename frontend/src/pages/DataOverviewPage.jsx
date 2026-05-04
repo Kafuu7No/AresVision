@@ -27,6 +27,7 @@ const DataOverviewPageContent = () => {
     dataSourceMode,
     setAvailableMarsYears,
     setSourceMeta,
+    setIsSwitchingSource,
     globalTimeLs, setGlobalTimeLs, 
     isPlayingTimeline, setIsPlayingTimeline,
     setSelectedCoordinate,
@@ -130,6 +131,7 @@ const DataOverviewPageContent = () => {
 
   useEffect(() => {
     let active = true;
+    setIsSwitchingSource(true);
     fetchDataInfo({ dataSource: dataSourceMode })
       .then((info) => {
         if (!active) return;
@@ -144,11 +146,15 @@ const DataOverviewPageContent = () => {
         console.error('Data source info error:', err);
         if (!active) return;
         setAvailableMarsYears([27, 28]);
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsSwitchingSource(false);
       });
     return () => {
       active = false;
     };
-  }, [dataSourceMode, setAvailableMarsYears, setMarsYear, setSourceMeta, user?.id]);
+  }, [dataSourceMode, setAvailableMarsYears, setMarsYear, setSourceMeta, setIsSwitchingSource, user?.id]);
 
   useEffect(() => {
     loadGlobe(globalTimeLs, marsYear, globeVariable);
