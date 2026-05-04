@@ -102,6 +102,7 @@ function compactAnswer(text, maxChars = 220) {
 
 export default function AICopilotWidget() {
   const { settings } = useSettings();
+  const isLight = settings?.theme === 'light';
   const isZh = settings?.language !== 'en';
   const copy = isZh ? {
     title: 'Ares Copilot',
@@ -162,6 +163,10 @@ Requirements:
   } = useDataOverview();
 
   const bubbleWidth = `clamp(300px, calc(100vw - ${leftPanelWidth + rightPanelWidth + 220}px), 420px)`;
+  const bubbleBg = isLight ? 'rgba(255,255,255,0.9)' : 'rgba(10, 14, 23, 0.85)';
+  const bubbleShadow = isLight
+    ? '0 12px 28px rgba(15,23,42,0.16), inset 0 0 10px rgba(74, 158, 255, 0.08)'
+    : '0 8px 32px rgba(74, 158, 255, 0.2), inset 0 0 10px rgba(74, 158, 255, 0.1)';
 
   const [showBubble, setShowBubble] = useState(false);
   const [hasTriggered, setHasTriggered] = useState(false);
@@ -264,13 +269,13 @@ Requirements:
         <div
           style={{
             width: bubbleWidth,
-            background: 'rgba(10, 14, 23, 0.85)',
+            background: bubbleBg,
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
             border: `1px solid ${C.blue}`,
             borderRadius: 12,
             padding: 20,
-            boxShadow: '0 8px 32px rgba(74, 158, 255, 0.2), inset 0 0 10px rgba(74, 158, 255, 0.1)',
+            boxShadow: bubbleShadow,
             position: 'relative',
             animation: 'fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
             display: 'flex',
@@ -289,7 +294,7 @@ Requirements:
               {copy.title}
             </span>
             {hasResult && !isAnalyzing && (
-              <span style={{ color: C.ice, fontSize: 10, background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4 }}>
+              <span style={{ color: C.ice, fontSize: 10, background: isLight ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4 }}>
                 {copy.done}
               </span>
             )}
@@ -323,7 +328,7 @@ Requirements:
             )}
 
             {hasResult && !isAnalyzing && (
-              <div style={{ color: C.ice, background: 'rgba(255,255,255,0.02)', padding: 12, borderRadius: 8, borderLeft: `3px solid ${C.blue}` }}>
+              <div style={{ color: C.ice, background: isLight ? 'rgba(15,23,42,0.04)' : 'rgba(255,255,255,0.02)', padding: 12, borderRadius: 8, borderLeft: `3px solid ${C.blue}` }}>
                 <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                   {aiResponse}
                 </div>
@@ -381,13 +386,13 @@ Requirements:
           width: 52,
           height: 52,
           borderRadius: '50%',
-          background: 'rgba(10, 14, 23, 0.8)',
+          background: isLight ? 'rgba(255,255,255,0.9)' : 'rgba(10, 14, 23, 0.8)',
           border: `2px solid ${C.blue}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
-          boxShadow: pulse ? '0 0 0 0 rgba(74, 158, 255, 0.7)' : '0 4px 12px rgba(0,0,0,0.5)',
+          boxShadow: pulse ? '0 0 0 0 rgba(74, 158, 255, 0.7)' : (isLight ? '0 6px 16px rgba(15,23,42,0.18)' : '0 4px 12px rgba(0,0,0,0.5)'),
           animation: pulse ? 'pulseBlue 2s infinite' : 'none',
           backdropFilter: 'blur(10px)',
           fontSize: 24,

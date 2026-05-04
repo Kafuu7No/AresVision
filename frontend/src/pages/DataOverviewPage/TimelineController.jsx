@@ -8,6 +8,7 @@ import { useDataOverview } from '../../contexts/DataOverviewContext';
 export default function TimelineController() {
   const t = useT();
   const { settings } = useSettings();
+  const isLight = settings?.theme === 'light';
   const isZh = settings?.language !== 'en';
   const {
     globalTimeLs,
@@ -89,7 +90,7 @@ export default function TimelineController() {
             onClick={() => setGlobalTimeLs(0)}
             title={isZh ? '重置 Ls' : 'Reset Ls'}
             style={{
-              background: 'rgba(255,255,255,0.05)',
+              background: isLight ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.05)',
               border: `1px solid ${C.border}`,
               borderRadius: '50%',
               width: 28,
