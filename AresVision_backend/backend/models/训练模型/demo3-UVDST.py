@@ -60,8 +60,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Training Device: {device}")
 print(f"Config: Epochs={epochs}, BatchSize={batch_size}, LR={learning_rate}, HiddenDims={hidden_dims}")
 
-openmars_dir = os.path.join(base_dir, "data", "openmars")
-mcd_dir = os.path.join(base_dir, "data", "MCD")
+openmars_dir = os.environ.get("ARESVISION_OPENMARS_DIR", os.path.join(base_dir, "data", "openmars"))
+mcd_dir = os.environ.get("ARESVISION_MCD_DIR", os.path.join(base_dir, "data", "MCD"))
 window, horizon = args.window, args.horizon
 ST_H, ST_W = 36, 72 # 使用 ST_ 前缀避免冲突
 
@@ -209,10 +209,12 @@ patience_counter = 0
 for ep in range(epochs):
     model.train()
     loss_sum = 0
-    for xb, yb in train_loader:
+    for batch_idx, (xb, yb) in enumerate(train_loader, start=1):
         xb, yb = xb.to(device), yb.to(device)
         opt.zero_grad(); pred = model(xb); loss = criterion(pred, yb)
         loss.backward(); opt.step(); loss_sum += loss.item()
+        if batch_idx % 20 == 0 or batch_idx == len(train_loader):
+            print(f"Epoch {ep+1}/{epochs} Batch {batch_idx}/{len(train_loader)} Loss={loss.item():.4f}")
     
     # Validation
     model.eval()

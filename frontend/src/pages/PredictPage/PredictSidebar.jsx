@@ -109,8 +109,12 @@ export default function PredictSidebar({
   isLight,
   loading,
   error,
+  dataSourceMode,
+  setDataSourceMode,
+  sourceMeta,
   marsYear,
   setMarsYear,
+  availableMarsYears,
   lsStart,
   setLsStart,
   predStep,
@@ -131,6 +135,16 @@ export default function PredictSidebar({
 }) {
 
   const t = useT();
+  const isPersonalMode = dataSourceMode === 'personal';
+  const years = Array.isArray(availableMarsYears) && availableMarsYears.length > 0
+    ? availableMarsYears
+    : [27, 28];
+  const sourceMessage = sourceMeta?.message
+    || (
+      sourceMeta?.effective_source === 'personal_mcd_plus_system_openmars'
+        ? '个人 OpenMARS 不完整，自动使用系统 OpenMARS + 个人 MCD。'
+        : ''
+    );
 
   const handleSeed32 = () => {
     // Generate all 32 combinations based on 5 core variables
@@ -246,9 +260,53 @@ export default function PredictSidebar({
           {t('predict.sidebar.parameters')}
         </div>
         <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, color: C.ice30, marginBottom: 6 }}>
+            数据源
+          </div>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '10px 12px', borderRadius: 8,
+            background: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)',
+            border: `1px solid ${C.border}`,
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ color: C.ice, fontSize: 11 }}>Default / Personal</span>
+              <span style={{ color: isPersonalMode ? C.blue : C.ice60, fontSize: 10, fontWeight: 700 }}>
+                {isPersonalMode ? '当前：Personal' : '当前：Default'}
+              </span>
+            </div>
+            <label style={{ position: 'relative', display: 'inline-block', width: 32, height: 18 }}>
+              <input
+                type="checkbox"
+                checked={isPersonalMode}
+                onChange={() => setDataSourceMode(isPersonalMode ? 'default' : 'personal')}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span style={{
+                position: 'absolute', cursor: 'pointer', inset: 0,
+                backgroundColor: isPersonalMode ? 'rgba(74,158,255,0.3)' : 'rgba(255,255,255,0.1)',
+                border: `1px solid ${isPersonalMode ? C.blue : C.border}`,
+                transition: '.3s', borderRadius: 34,
+              }}>
+                <span style={{
+                  position: 'absolute', width: 12, height: 12, bottom: 2,
+                  left: isPersonalMode ? 16 : 2,
+                  borderRadius: '50%', transition: '.3s',
+                  backgroundColor: isPersonalMode ? C.blue : C.ice60,
+                }} />
+              </span>
+            </label>
+          </div>
+          {sourceMessage ? (
+            <div style={{ marginTop: 8, fontSize: 10, color: C.ice60, lineHeight: 1.5 }}>
+              {sourceMessage}
+            </div>
+          ) : null}
+        </div>
+        <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 11, color: C.ice30, marginBottom: 6 }}>{t('predict.marsYear')}</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {[27, 28].map((y) => (
+            {years.map((y) => (
               <button key={y} onClick={() => setMarsYear(y)} style={{
                 flex: 1, padding: '8px 0',
                 background: marsYear === y ? (isLight ? 'rgba(199,91,57,0.15)' : 'rgba(199,91,57,0.2)') : (isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)'),

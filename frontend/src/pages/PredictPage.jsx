@@ -3,9 +3,18 @@ import { getPredictCache, setPredictCache } from '../stores/predictCache';
 import C from '../constants/colors';
 import { useT } from '../i18n';
 import { useSettings } from '../contexts/SettingsContext';
+import { useAuth } from '../contexts/AuthContext';
 import SectionTitle from '../components/SectionTitle';
 
-import { runPrediction, fetchPredictMetrics, fetchPerformanceCurve, fetchPerformanceComparison, fetchErrorDistribution, fetchPermutationImportance } from '../services/api';
+import {
+  runPrediction,
+  fetchPredictMetrics,
+  fetchPerformanceCurve,
+  fetchPerformanceComparison,
+  fetchErrorDistribution,
+  fetchPermutationImportance,
+  fetchDataInfo,
+} from '../services/api';
 
 // Sub-components
 import { VARIABLE_DEFS, VIEW_MODE_IDS, TRIPTYCH_PANEL_DEFS } from './PredictPage/PredictComponents';
@@ -36,6 +45,7 @@ const getShorthands = (vars) => {
 export default function PredictPage() {
   const t = useT();
   const { settings } = useSettings();
+  const { user } = useAuth();
   const precision = settings.precision;
   const ozoneUnit = settings.units.ozone;
   const isLight = settings.theme === 'light';
@@ -57,6 +67,9 @@ export default function PredictPage() {
   const [predStep, setPredStep] = useState(_c.params?.predStep ?? 3);
   const [lsStart, setLsStart] = useState(_c.params?.lsStart ?? 90);
   const [marsYear, setMarsYear] = useState(_c.params?.marsYear ?? 27);
+  const [dataSourceMode, setDataSourceMode] = useState(_c.params?.dataSource ?? 'default');
+  const [sourceMeta, setSourceMeta] = useState(null);
+  const [availableMarsYears, setAvailableMarsYears] = useState([27, 28]);
   const [activeHorizon, setActiveHorizon] = useState(_c.activeHorizon);
   const [viewMode, setViewMode] = useState(_c.viewMode);
 
@@ -86,6 +99,29 @@ export default function PredictPage() {
     setSelectedVars((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
+  useEffect(() => {
+    let active = true;
+    fetchDataInfo({ dataSource: dataSourceMode })
+      .then((info) => {
+        if (!active) return;
+        const years = Array.isArray(info?.available_years) && info.available_years.length > 0
+          ? info.available_years
+          : [27, 28];
+        setAvailableMarsYears(years);
+        setSourceMeta(info?.source_meta || null);
+        setMarsYear((prev) => (years.includes(prev) ? prev : years[0]));
+      })
+      .catch(() => {
+        if (!active) return;
+        setAvailableMarsYears([27, 28]);
+        setSourceMeta(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [dataSourceMode, user?.id]);
+
   const handlePredict = useCallback(async () => {
     setMetrics(null);
     setErrorDistData(null);
@@ -101,12 +137,16 @@ export default function PredictPage() {
     };
 
     try {
-      const [predResult, metricsResult, errorDistResult, pfiResult] = await Promise.all([
-        runPrediction(body),
-        fetchPredictMetrics(body),
-        fetchErrorDistribution(selectedVars),
-        fetchPermutationImportance(selectedVars)
+      const [predResult, metricsResult] = await Promise.all([
+        runPrediction(body, { dataSource: dataSourceMode }),
+        fetchPredictMetrics(body, { dataSource: dataSourceMode }),
       ]);
+      const [errorDistResult, pfiResult] = dataSourceMode === 'personal'
+        ? [null, null]
+        : await Promise.all([
+            fetchErrorDistribution(selectedVars),
+            fetchPermutationImportance(selectedVars),
+          ]);
       setResults(predResult);
       setMetrics(metricsResult);
       setErrorDistData(errorDistResult);
@@ -118,7 +158,7 @@ export default function PredictPage() {
         errorDistData: errorDistResult,
         pfiData: pfiResult,
         activeHorizon: 0,
-        params: { selectedVars, predStep, lsStart, marsYear },
+        params: { selectedVars, predStep, lsStart, marsYear, dataSource: dataSourceMode },
       });
     } catch (e) {
       setError(e.message || t('predict.errorPrefix'));
@@ -126,7 +166,7 @@ export default function PredictPage() {
       setLoading(false);
       setPfiLoading(false);
     }
-  }, [selectedVars, predStep, lsStart, marsYear, t]);
+  }, [selectedVars, predStep, lsStart, marsYear, dataSourceMode, t]);
 
   // 同步 UI 状态到缓存（用户在页面内的操作也持久化）
   useEffect(() => { setPredictCache({ viewMode }); }, [viewMode]);
@@ -147,7 +187,10 @@ export default function PredictPage() {
 
         let res = { results: {} };
         if (configs.length > 0) {
-          res = await fetchPerformanceComparison(configs);
+          res = await fetchPerformanceComparison(configs, {
+            dataSource: dataSourceMode,
+            marsYear,
+          });
           console.log('fetchPerformanceComparison RAW:', res);
         }
 
@@ -160,7 +203,7 @@ export default function PredictPage() {
           ls_start: lsStart,
           mars_year: marsYear,
         };
-        const res = await fetchPerformanceCurve(body);
+        const res = await fetchPerformanceCurve(body, { dataSource: dataSourceMode });
         console.log('fetchPerformanceCurve RAW (current):', res);
         const key = selectedVars.length === 0 ? 'baseline' : 'current';
         setPerformanceData({ results: { [key]: res } });
@@ -170,7 +213,7 @@ export default function PredictPage() {
     } finally {
       setPerfLoading(false);
     }
-  }, [selectedVars, predStep, lsStart, marsYear, selectedCompareIds, compareConfigs]);
+  }, [selectedVars, predStep, lsStart, marsYear, selectedCompareIds, compareConfigs, dataSourceMode]);
 
 
 
@@ -199,8 +242,12 @@ export default function PredictPage() {
           isLight={isLight}
           loading={loading}
           error={error}
+          dataSourceMode={dataSourceMode}
+          setDataSourceMode={setDataSourceMode}
+          sourceMeta={sourceMeta}
           marsYear={marsYear}
           setMarsYear={setMarsYear}
+          availableMarsYears={availableMarsYears}
           lsStart={lsStart}
           setLsStart={setLsStart}
           predStep={predStep}

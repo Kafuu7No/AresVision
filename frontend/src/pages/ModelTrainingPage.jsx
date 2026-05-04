@@ -3,7 +3,15 @@ import C from '../constants/colors';
 import { useT } from '../i18n';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchScripts, startTrainingTask, fetchTasks, fetchLogs, stopTrainingTask, deleteTrainingTask } from '../services/api';
+import {
+  fetchScripts,
+  startTrainingTask,
+  fetchTasks,
+  fetchLogs,
+  stopTrainingTask,
+  deleteTrainingTask,
+  fetchDataInfo,
+} from '../services/api';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ModelTestModal from '../components/ModelTestModal';
 import TrainingProgressMonitor from '../components/TrainingProgressMonitor';
@@ -28,6 +36,8 @@ export default function ModelTrainingPage() {
   } = useTraining();
 
   const [scripts, setScripts] = useState([]);
+  const [dataSourceMode, setDataSourceMode] = useState('default');
+  const [sourceMeta, setSourceMeta] = useState(null);
   
   const logsEndRef = useRef(null);
   const logContainerRef = useRef(null);
@@ -113,6 +123,22 @@ export default function ModelTrainingPage() {
     }).catch(console.error);
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    fetchDataInfo({ dataSource: dataSourceMode })
+      .then((info) => {
+        if (!active) return;
+        setSourceMeta(info?.source_meta || null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setSourceMeta(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [dataSourceMode, user?.id]);
+
 
   // Scroll to bottom of logs (internal only)
   useEffect(() => {
@@ -157,7 +183,7 @@ export default function ModelTrainingPage() {
         horizon: Number(horizon) || 3,
         early_stopping_patience: Number(earlyStoppingPatience) || 0,
       };
-      const task = await startTrainingTask(selectedScript, hypers, customModelName);
+      const task = await startTrainingTask(selectedScript, hypers, customModelName, dataSourceMode);
       // 先同步到本地，确保渲染能找到该任务
       setTasks(prev => {
         const exists = prev.find(t => t.id === task.id);
@@ -238,6 +264,8 @@ export default function ModelTrainingPage() {
     fontWeight: 600,
     opacity: 0.8,
   };
+  const isPersonalMode = dataSourceMode === 'personal';
+  const sourceMessage = sourceMeta?.message || '';
 
   // --- SUB-COMPONENTS for cleaner UI ---
   const TrainingTaskCard = ({ tk, onLog, onStop, onDelete, onTest, isLight, isProcessing, C }) => {
@@ -444,6 +472,49 @@ export default function ModelTrainingPage() {
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <div style={{ ...labelStyle, marginBottom: 6 }}>数据源</div>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '10px 12px',
+                borderRadius: 8,
+                background: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${isLight ? '#ddd' : '#444'}`,
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontSize: 11, color: isLight ? '#333' : C.ice }}>Default / Personal</span>
+                  <span style={{ fontSize: 10, color: isPersonalMode ? C.blue : C.ice60, fontWeight: 700 }}>
+                    {isPersonalMode ? '当前：Personal' : '当前：Default'}
+                  </span>
+                </div>
+                <label style={{ position: 'relative', display: 'inline-block', width: 32, height: 18 }}>
+                  <input
+                    type="checkbox"
+                    checked={isPersonalMode}
+                    onChange={() => setDataSourceMode(isPersonalMode ? 'default' : 'personal')}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: 'absolute', inset: 0, cursor: 'pointer', borderRadius: 34,
+                    transition: '.3s',
+                    backgroundColor: isPersonalMode ? 'rgba(74,158,255,0.3)' : 'rgba(0,0,0,0.08)',
+                    border: `1px solid ${isPersonalMode ? C.blue : (isLight ? '#ccc' : '#555')}`,
+                  }}>
+                    <span style={{
+                      position: 'absolute', width: 12, height: 12, bottom: 2,
+                      left: isPersonalMode ? 16 : 2,
+                      borderRadius: '50%', transition: '.3s',
+                      backgroundColor: isPersonalMode ? C.blue : (isLight ? '#666' : C.ice60),
+                    }} />
+                  </span>
+                </label>
+              </div>
+              {sourceMessage ? (
+                <div style={{ marginTop: 8, fontSize: 11, color: isLight ? '#666' : C.ice60, lineHeight: 1.5 }}>
+                  {sourceMessage}
+                </div>
+              ) : null}
+            </div>
             <div style={{ marginBottom: 4 }}>
               <div style={{ ...labelStyle, marginBottom: 12 }}>{t('modelTraining.inputChannels')}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>

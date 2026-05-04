@@ -1,5 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { apiLogin, apiRegister, apiGetMe, apiChangePassword } from '../services/api';
+import {
+  apiLogin,
+  apiRegister,
+  apiGetMe,
+  apiChangePassword,
+  prewarmPredictSource,
+} from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -10,6 +16,7 @@ export function AuthProvider({ children }) {
   // AuthModal 开关状态放在这里，方便从任意组件触发
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState('login'); // 'login' | 'register'
+  const prewarmedKeysRef = useRef(new Set());
 
   // 初始化：检查 localStorage 中是否有有效 token
   useEffect(() => {
@@ -39,6 +46,18 @@ export function AuthProvider({ children }) {
     window.addEventListener('aresvision:logout', handler);
     return () => window.removeEventListener('aresvision:logout', handler);
   }, []);
+
+  // 用户登录后静默预热 personal 数据源，避免首次切换卡顿。
+  useEffect(() => {
+    if (!user?.id || !token) return;
+    const warmKey = `${user.id}:${token}`;
+    if (prewarmedKeysRef.current.has(warmKey)) return;
+    prewarmedKeysRef.current.add(warmKey);
+
+    prewarmPredictSource(27, { dataSource: 'personal' }).catch(() => {
+      // Silent prewarm failure should never block login UX.
+    });
+  }, [user?.id, token]);
 
   const login = useCallback(async (email, password) => {
     const data = await apiLogin(email, password);

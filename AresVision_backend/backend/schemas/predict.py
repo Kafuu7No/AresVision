@@ -32,6 +32,7 @@ class PredictResponse(BaseModel):
     horizon: int
     ls_values: list[float]
     model_info: dict = Field(default_factory=dict)
+    source_meta: SourceMeta | None = None
 
 
 class StepMetrics(BaseModel):
@@ -45,6 +46,7 @@ class StepMetrics(BaseModel):
 class EvalMetricsResponse(BaseModel):
     overall: StepMetrics
     per_step: list[StepMetrics]
+    source_meta: SourceMeta | None = None
 
 
 class AblationItem(BaseModel):
@@ -81,6 +83,7 @@ class PerformanceResponse(BaseModel):
     global_rmse: float = 0.0
     global_mae: float = 0.0
     global_ssim: float = 0.0
+    source_meta: SourceMeta | None = None
 
 
 class PerformanceCompareRequest(BaseModel):
@@ -91,6 +94,7 @@ class PerformanceCompareRequest(BaseModel):
 class PerformanceCompareResponse(BaseModel):
     # key 为模型后缀或变量标识，val 为对应的性能数据
     results: dict[str, PerformanceResponse]
+    source_meta: SourceMeta | None = None
 
 
 class ScatterData(BaseModel):

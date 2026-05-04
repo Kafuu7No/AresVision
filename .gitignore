@@ -100,3 +100,5 @@ AresVision_backend/backend/models/训练模型/repair_all.py
 AresVision_backend/backend/models/训练结果/
 AresVision_backend/backend/models/训练过程/
 
+/AresVision_backend/backend/models/训练模型
+
