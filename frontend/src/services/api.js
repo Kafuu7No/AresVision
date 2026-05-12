@@ -345,6 +345,33 @@ export async function revokeDataset(uploadId) {
   return res.json();
 }
 
+export async function getDataGovernanceOverview(scope = 'mine') {
+  const res = await authedFetch(`${BASE}/upload/governance/overview?scope=${encodeURIComponent(scope)}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getDataGovernanceQuality(uploadId) {
+  const res = await authedFetch(`${BASE}/upload/governance/quality/${uploadId}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getDataGovernanceLineage(uploadId) {
+  const res = await authedFetch(`${BASE}/upload/governance/lineage/${uploadId}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
 export async function getNotifications() {
   const res = await authedFetch(`${BASE}/notification/list`);
   if (!res.ok) {

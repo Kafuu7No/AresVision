@@ -1,13 +1,32 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import C from '../constants/colors';
 import { useT } from '../i18n';
+import { useAuth } from '../contexts/AuthContext';
 import SectionTitle from '../components/SectionTitle';
 import MyDataTab from './ExplorePage/MyDataTab';
 import DefaultDatasetTab from './ExplorePage/DefaultDatasetTab';
+import GovernanceTab from './ExplorePage/GovernanceTab';
 
 export default function ExplorePage() {
   const t = useT();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [dataSource, setDataSource] = useState('default');
+
+  const tabs = useMemo(() => {
+    const base = [
+      { id: 'default', label: t('explore.tabDefault') },
+      { id: 'myData', label: t('explore.tabMy') },
+    ];
+    if (isAdmin) base.push({ id: 'governance', label: t('explore.tabGovernance') });
+    return base;
+  }, [isAdmin, t]);
+
+  useEffect(() => {
+    if (!tabs.some((tab) => tab.id === dataSource)) {
+      setDataSource('default');
+    }
+  }, [tabs, dataSource]);
 
   return (
     <div className="page-enter" style={{ padding: '100px 40px 60px', maxWidth: 1400, margin: '0 auto' }}>
@@ -18,10 +37,7 @@ export default function ExplorePage() {
       </p>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {[
-          { id: 'default', label: t('explore.tabDefault') },
-          { id: 'myData', label: t('explore.tabMy') },
-        ].map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setDataSource(tab.id)}
@@ -44,6 +60,7 @@ export default function ExplorePage() {
 
       {dataSource === 'default' && <DefaultDatasetTab />}
       {dataSource === 'myData' && <MyDataTab />}
+      {dataSource === 'governance' && isAdmin && <GovernanceTab />}
     </div>
   );
 }

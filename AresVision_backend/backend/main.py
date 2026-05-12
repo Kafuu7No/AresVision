@@ -33,12 +33,14 @@ from services.copilot_service import CopilotService
 from services.upload_service import UploadService
 from services.user_data_service import UserDataService
 from services.personal_data_source_service import PersonalDataSourceService
+from services.data_governance_service import DataGovernanceService
 from core.analysis_transforms import AnalysisTransforms
 from core.predict_transforms import PredictTransforms
 from core.predict_inference import PredictInference
 from routers import analysis, predict, ai, copilot
 from routers import auth
 from routers import upload as upload_router_module
+from routers import governance as governance_router_module
 from routers import notification as notification_router_module
 from routers import user_data as user_data_router_module
 from routers import feedback as feedback_router_module
@@ -126,6 +128,10 @@ async def lifespan(app: FastAPI):
     # 数据源解析服务（默认/个人数据源切换 + 自动降级）
     personal_source_service = PersonalDataSourceService(data_service)
     app.state.personal_data_source_service = personal_source_service
+
+    # 数据治理服务（资产总览 / 质量评分 / 血缘信息）
+    data_governance_service = DataGovernanceService()
+    app.state.data_governance_service = data_governance_service
 
     # 2. 领域服务：可视化与 ML 数据准备
     logger.info("[2/5] 初始化分析与 ML 准备服务...")
@@ -223,6 +229,7 @@ app.include_router(ai.router,                        prefix=API_PREFIX)
 app.include_router(copilot.router,                   prefix=API_PREFIX)
 app.include_router(auth.router,                      prefix=API_PREFIX)
 app.include_router(upload_router_module.router,        prefix=API_PREFIX)
+app.include_router(governance_router_module.router,    prefix=API_PREFIX)
 app.include_router(notification_router_module.router,  prefix=API_PREFIX)
 app.include_router(user_data_router_module.router,     prefix=API_PREFIX)
 app.include_router(feedback_router_module.router,      prefix=API_PREFIX)
