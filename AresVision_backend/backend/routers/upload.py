@@ -24,7 +24,7 @@ from sqlalchemy.orm import selectinload
 from auth.dependencies import get_current_user, require_admin
 from config import ALLOWED_NC_EXTENSIONS, APPROVED_DIR, PENDING_REVIEW_DIR
 from database.engine import async_session_maker
-from database.models import Notification, UploadRecord, User
+from database.models import DatasetLineageEvent, Notification, UploadRecord, User
 
 logger = logging.getLogger("aresvision.upload_router")
 
@@ -33,6 +33,24 @@ router = APIRouter(prefix="/upload", tags=["文件上传"])
 
 def _svc(request: Request):
     return request.app.state.upload_service
+
+
+async def _add_lineage_event(
+    db,
+    upload_id: int,
+    event_type: str,
+    actor: Optional[User] = None,
+    detail: Optional[str] = None,
+) -> None:
+    db.add(
+        DatasetLineageEvent(
+            upload_id=upload_id,
+            event_type=event_type,
+            event_detail=detail,
+            actor_user_id=actor.id if actor else None,
+            actor_role=actor.role if actor else None,
+        )
+    )
 
 
 # ─── POST /nc ────────────────────────────────────────────────────────────────
@@ -66,6 +84,28 @@ async def upload_nc_file(
                 mars_year=mars_year,
                 description=description,
             )
+            event_type = "validated" if result.is_valid else "validation_failed"
+            detail = (
+                f"data_type={result.data_type or 'unknown'}; "
+                f"mars_year={result.mars_year}; "
+                f"ls=({result.ls_start},{result.ls_end}); "
+                f"warnings={len(result.warnings)}"
+            )
+            if not result.is_valid and result.error:
+                detail = f"{detail}; error={result.error}"
+            await _add_lineage_event(
+                db=db,
+                upload_id=record.id,
+                event_type=event_type,
+                actor=current_user,
+                detail=detail,
+            )
+            await db.commit()
+            if result.is_valid:
+                try:
+                    await request.app.state.data_governance_service.prime_quality_snapshot(record.id)
+                except Exception as exc:
+                    logger.warning("precompute governance quality snapshot failed: %s", exc)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
         except OSError as exc:
@@ -254,7 +294,40 @@ async def review_upload(
                 related_upload_id=record.id,
             )
 
+        lineage_event_type = "approved" if body.action == "approve" else "rejected"
+        lineage_detail = (
+            "approved by admin review"
+            if body.action == "approve"
+            else (body.reason or "rejected by admin review")
+        )
+
         db.add(notif)
+        await _add_lineage_event(
+            db=db,
+            upload_id=record.id,
+            event_type=lineage_event_type,
+            actor=current_user,
+            detail=lineage_detail,
+        )
+        if body.action == "approve":
+            approved_path = APPROVED_DIR / str(record.id) / "original.nc"
+            fallback_path = Path(record.file_path) if record.file_path else None
+            if approved_path.exists():
+                effective_path = str(approved_path)
+                effective_status = "active"
+            elif fallback_path and fallback_path.exists():
+                effective_path = str(fallback_path)
+                effective_status = "active_fallback_user_uploads"
+            else:
+                effective_path = ""
+                effective_status = "approved_but_missing"
+            await _add_lineage_event(
+                db=db,
+                upload_id=record.id,
+                event_type="activated",
+                actor=current_user,
+                detail=f"effective_status={effective_status}; effective_path={effective_path or 'None'}",
+            )
         await db.commit()
 
     # 审核通过后触发用户数据服务热更新索引
@@ -304,6 +377,13 @@ async def contribute_upload(
         record.status = "pending_review"
         if body.description:
             record.description = body.description
+        await _add_lineage_event(
+            db=db,
+            upload_id=record.id,
+            event_type="submitted_for_review",
+            actor=current_user,
+            detail=body.description or "submitted to admin review",
+        )
         await db.commit()
 
     return {"message": "感谢贡献！文件已提交审核", "status": "pending_review"}
@@ -383,6 +463,13 @@ async def revoke_upload(
             related_upload_id=record.id,
         )
         db.add(notif)
+        await _add_lineage_event(
+            db=db,
+            upload_id=record.id,
+            event_type="revoked",
+            actor=current_user,
+            detail="revoked by admin",
+        )
         await db.commit()
 
     return {"message": "已撤销", "status": "rejected"}

@@ -7,6 +7,7 @@ Data governance service:
 
 from __future__ import annotations
 
+import json
 import logging
 from collections import Counter
 from pathlib import Path
@@ -20,7 +21,7 @@ from sqlalchemy.orm import selectinload
 
 from config import APPROVED_DIR, MCD_VARIABLES, N_LAT, N_LON
 from database.engine import async_session_maker
-from database.models import UploadRecord, User
+from database.models import DatasetLineageEvent, DatasetQualitySnapshot, UploadRecord, User
 
 logger = logging.getLogger("aresvision.data_governance")
 
@@ -90,7 +91,7 @@ class DataGovernanceService:
 
             quality_score = None
             if path:
-                quality = self._get_quality_metrics(record, path, meta)
+                quality = await self._get_quality_metrics_cached(record, path, meta)
                 quality_score = quality["scores"]["overall"]
                 quality_scores.append(quality_score)
 
@@ -125,6 +126,8 @@ class DataGovernanceService:
                     "reviewed_at": _iso(record.reviewed_at),
                     "storage_zone": file_meta["storage_zone"],
                     "effective": file_meta["effective"],
+                    "effective_path": file_meta["effective_path"],
+                    "effective_status": file_meta["effective_status"],
                 }
             )
 
@@ -158,7 +161,7 @@ class DataGovernanceService:
             raise FileNotFoundError("dataset file not found")
 
         meta = self._get_dataset_meta(record, file_meta["path"])
-        quality = self._get_quality_metrics(record, file_meta["path"], meta)
+        quality = await self._get_quality_metrics_cached(record, file_meta["path"], meta)
 
         return {
             "upload_id": record.id,
@@ -178,35 +181,9 @@ class DataGovernanceService:
         record = await self._get_record(upload_id)
         self._assert_access(record, current_user)
         file_meta = self._resolve_record_file(record)
-
-        events = [
-            {
-                "type": "uploaded",
-                "actor": record.uploader.username if record.uploader else None,
-                "at": _iso(record.created_at),
-                "detail": "file uploaded and validated",
-            }
-        ]
-
-        if record.status in ("pending_review", "approved", "rejected") and record.is_public:
-            events.append(
-                {
-                    "type": "submitted_for_review",
-                    "actor": record.uploader.username if record.uploader else None,
-                    "at": None,
-                    "detail": "submitted to public review workflow",
-                }
-            )
-
-        if record.reviewed_at:
-            events.append(
-                {
-                    "type": record.status if record.status in ("approved", "rejected") else "reviewed",
-                    "actor": record.reviewer.username if record.reviewer else None,
-                    "at": _iso(record.reviewed_at),
-                    "detail": record.validation_message or "",
-                }
-            )
+        events = await self._fetch_lineage_events(upload_id)
+        if not events:
+            events = self._build_inferred_lineage_events(record)
 
         return {
             "upload_id": record.id,
@@ -236,9 +213,170 @@ class DataGovernanceService:
                 "storage_zone": file_meta["storage_zone"],
                 "effective": file_meta["effective"],
                 "path_exists": bool(file_meta["path"]),
+                "effective_path": file_meta["effective_path"],
+                "effective_status": file_meta["effective_status"],
             },
             "events": events,
         }
+
+    async def prime_quality_snapshot(self, upload_id: int) -> None:
+        """Compute and persist quality snapshot right after upload if file exists."""
+        record = await self._get_record(upload_id)
+        file_meta = self._resolve_record_file(record)
+        if file_meta["path"] is None:
+            return
+        meta = self._get_dataset_meta(record, file_meta["path"])
+        await self._get_quality_metrics_cached(record, file_meta["path"], meta)
+
+    async def _get_quality_metrics_cached(self, record: UploadRecord, file_path: Path, meta: dict) -> dict:
+        key = self._cache_key(record, file_path, "quality")
+        cached = self._quality_cache.get(key)
+        if cached is not None:
+            return cached
+
+        file_hash = record.file_hash or ""
+        file_mtime_ns = self._file_mtime_ns(file_path)
+
+        snapshot = await self._load_quality_snapshot(record.id, file_hash, file_mtime_ns)
+        if snapshot is not None:
+            self._quality_cache[key] = snapshot
+            return snapshot
+
+        quality = self._get_quality_metrics(record, file_path, meta)
+        self._quality_cache[key] = quality
+        await self._save_quality_snapshot(record.id, file_hash, file_mtime_ns, quality)
+        return quality
+
+    async def _load_quality_snapshot(
+        self, upload_id: int, file_hash: str, file_mtime_ns: int
+    ) -> Optional[dict]:
+        async with async_session_maker() as db:
+            stmt = (
+                select(DatasetQualitySnapshot)
+                .where(
+                    DatasetQualitySnapshot.upload_id == upload_id,
+                    DatasetQualitySnapshot.file_hash == file_hash,
+                    DatasetQualitySnapshot.file_mtime_ns == file_mtime_ns,
+                )
+                .order_by(DatasetQualitySnapshot.computed_at.desc(), DatasetQualitySnapshot.id.desc())
+            )
+            row = (await db.execute(stmt)).scalars().first()
+            if row is None:
+                return None
+
+        try:
+            metrics = json.loads(row.metrics_json or "{}")
+        except Exception:
+            metrics = {}
+        try:
+            scores = json.loads(row.scores_json or "{}")
+        except Exception:
+            scores = {}
+        try:
+            issues = json.loads(row.issues_json or "[]")
+        except Exception:
+            issues = []
+
+        if not isinstance(metrics, dict) or not isinstance(scores, dict):
+            return None
+        if not isinstance(issues, list):
+            issues = []
+
+        scores.setdefault("overall", float(row.overall_score))
+        scores.setdefault("grade", row.grade or _grade(float(row.overall_score)))
+        scores.setdefault("missing_rate_score", round((1.0 - float(row.missing_rate)) * 100.0, 2))
+        scores.setdefault("valid_ratio_score", round(float(row.valid_value_ratio) * 100.0, 2))
+        scores.setdefault("variable_score", round(float(row.variable_completeness) * 100.0, 2))
+        scores.setdefault("time_score", round(float(row.time_score), 2))
+        scores.setdefault("grid_score", round(float(row.grid_score), 2))
+
+        return {"metrics": metrics, "scores": scores, "issues": issues}
+
+    async def _save_quality_snapshot(
+        self,
+        upload_id: int,
+        file_hash: str,
+        file_mtime_ns: int,
+        quality: dict,
+    ) -> None:
+        metrics = quality.get("metrics", {})
+        scores = quality.get("scores", {})
+        issues = quality.get("issues", [])
+
+        snapshot = DatasetQualitySnapshot(
+            upload_id=upload_id,
+            file_hash=file_hash,
+            file_mtime_ns=file_mtime_ns,
+            overall_score=float(scores.get("overall", 0.0) or 0.0),
+            grade=str(scores.get("grade", "D") or "D"),
+            missing_rate=float(metrics.get("missing_rate", 1.0) or 1.0),
+            valid_value_ratio=float(metrics.get("valid_value_ratio", 0.0) or 0.0),
+            variable_completeness=float(metrics.get("variable_completeness", 0.0) or 0.0),
+            time_score=float(metrics.get("time_continuity", {}).get("score", 0.0) or 0.0),
+            grid_score=float(metrics.get("grid_compatibility", {}).get("score", 0.0) or 0.0),
+            metrics_json=json.dumps(metrics, ensure_ascii=False),
+            scores_json=json.dumps(scores, ensure_ascii=False),
+            issues_json=json.dumps(issues if isinstance(issues, list) else [], ensure_ascii=False),
+        )
+
+        async with async_session_maker() as db:
+            db.add(snapshot)
+            await db.commit()
+
+    async def _fetch_lineage_events(self, upload_id: int) -> list[dict]:
+        async with async_session_maker() as db:
+            stmt = (
+                select(DatasetLineageEvent)
+                .options(selectinload(DatasetLineageEvent.actor))
+                .where(DatasetLineageEvent.upload_id == upload_id)
+                .order_by(DatasetLineageEvent.created_at.asc(), DatasetLineageEvent.id.asc())
+            )
+            rows = (await db.execute(stmt)).scalars().all()
+
+        return [
+            {
+                "id": row.id,
+                "type": row.event_type,
+                "actor": row.actor.username if row.actor else None,
+                "actor_email": row.actor.email if row.actor else None,
+                "actor_role": row.actor_role,
+                "at": _iso(row.created_at),
+                "detail": row.event_detail or "",
+            }
+            for row in rows
+        ]
+
+    @staticmethod
+    def _build_inferred_lineage_events(record: UploadRecord) -> list[dict]:
+        events = [
+            {
+                "type": "uploaded",
+                "actor": record.uploader.username if record.uploader else None,
+                "at": _iso(record.created_at),
+                "detail": "file uploaded and validated",
+            }
+        ]
+
+        if record.status in ("pending_review", "approved", "rejected") and record.is_public:
+            events.append(
+                {
+                    "type": "submitted_for_review",
+                    "actor": record.uploader.username if record.uploader else None,
+                    "at": None,
+                    "detail": "submitted to public review workflow",
+                }
+            )
+
+        if record.reviewed_at:
+            events.append(
+                {
+                    "type": record.status if record.status in ("approved", "rejected") else "reviewed",
+                    "actor": record.reviewer.username if record.reviewer else None,
+                    "at": _iso(record.reviewed_at),
+                    "detail": record.validation_message or "",
+                }
+            )
+        return events
 
     async def _fetch_records(self, scope: str, user_id: int) -> list[UploadRecord]:
         async with async_session_maker() as db:
@@ -272,26 +410,61 @@ class DataGovernanceService:
         raise PermissionError("insufficient permission")
 
     @staticmethod
+    def _file_mtime_ns(file_path: Path) -> int:
+        try:
+            return int(file_path.stat().st_mtime_ns)
+        except OSError:
+            return 0
+
+    @staticmethod
     def _resolve_record_file(record: UploadRecord) -> dict:
         approved_path = APPROVED_DIR / str(record.id) / "original.nc"
-        if record.status == "approved" and approved_path.exists():
-            return {"path": approved_path, "storage_zone": "approved", "effective": True}
+        user_path = Path(record.file_path) if record.file_path else None
 
-        p = Path(record.file_path) if record.file_path else None
-        if p and p.exists():
+        if record.status == "approved":
+            if approved_path.exists():
+                return {
+                    "path": approved_path,
+                    "storage_zone": "approved",
+                    "effective": True,
+                    "effective_path": str(approved_path),
+                    "effective_status": "active",
+                }
+            if user_path and user_path.exists():
+                return {
+                    "path": user_path,
+                    "storage_zone": "user_uploads",
+                    "effective": True,
+                    "effective_path": str(user_path),
+                    "effective_status": "active_fallback_user_uploads",
+                }
             return {
-                "path": p,
-                "storage_zone": "user_uploads",
-                "effective": record.status == "approved",
+                "path": None,
+                "storage_zone": "missing",
+                "effective": False,
+                "effective_path": None,
+                "effective_status": "approved_but_missing",
             }
 
-        return {"path": None, "storage_zone": "missing", "effective": False}
+        if user_path and user_path.exists():
+            return {
+                "path": user_path,
+                "storage_zone": "user_uploads",
+                "effective": False,
+                "effective_path": None,
+                "effective_status": "inactive",
+            }
+
+        return {
+            "path": None,
+            "storage_zone": "missing",
+            "effective": False,
+            "effective_path": None,
+            "effective_status": "missing",
+        }
 
     def _cache_key(self, record: UploadRecord, file_path: Path, suffix: str) -> tuple:
-        try:
-            mtime_ns = file_path.stat().st_mtime_ns
-        except OSError:
-            mtime_ns = 0
+        mtime_ns = self._file_mtime_ns(file_path)
         return (record.id, str(file_path), mtime_ns, record.file_hash or "", suffix)
 
     @staticmethod

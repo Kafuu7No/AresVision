@@ -11,7 +11,14 @@ from sqlalchemy import select, text
 
 from config import DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD
 from database.engine import Base, engine, async_session_maker
-from database.models import User, Notification, Feedback, ModelTrainingTask  # noqa: F401
+from database.models import (
+    User,
+    Notification,
+    Feedback,
+    ModelTrainingTask,
+    DatasetLineageEvent,
+    DatasetQualitySnapshot,
+)  # noqa: F401
 
 logger = logging.getLogger("aresvision.db")
 

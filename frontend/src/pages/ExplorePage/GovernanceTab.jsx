@@ -33,6 +33,53 @@ function fmtLsRange(range) {
   return `${fmtNum(range[0], 1)} - ${fmtNum(range[1], 1)} deg`;
 }
 
+function fmtLsCoverage(v) {
+  if (v == null || Number.isNaN(Number(v))) return '--';
+  return `${(Number(v) * 100).toFixed(1)}%`;
+}
+
+function fmtVars(vars) {
+  if (!Array.isArray(vars) || vars.length === 0) return '--';
+  if (vars.length <= 4) return vars.join(', ');
+  return `${vars.slice(0, 4).join(', ')} ... (+${vars.length - 4})`;
+}
+
+function fmtStatusDist(dist) {
+  const entries = Object.entries(dist || {}).filter(([, n]) => Number(n) > 0);
+  if (!entries.length) return '--';
+  return entries.map(([k, n]) => `${k}:${n}`).join(' | ');
+}
+
+function StatusDistributionChart({ distribution }) {
+  const entries = Object.entries(distribution || {});
+  const total = entries.reduce((sum, [, n]) => sum + Number(n || 0), 0);
+  if (!entries.length || total <= 0) return null;
+
+  return (
+    <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {entries.map(([status, count]) => {
+        const safeCount = Number(count || 0);
+        const pct = total > 0 ? (safeCount / total) * 100 : 0;
+        return (
+          <div key={`status-bar-${status}`} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 72px', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: STATUS_COLORS[status] || C.ice60 }}>{status}</span>
+            <div style={{ height: 8, borderRadius: 999, overflow: 'hidden', background: 'rgba(255,255,255,0.08)' }}>
+              <div
+                style={{
+                  height: '100%',
+                  width: `${Math.max(0, Math.min(100, pct))}%`,
+                  background: STATUS_COLORS[status] || C.ice60,
+                }}
+              />
+            </div>
+            <span style={{ fontSize: 11, color: C.ice30, textAlign: 'right' }}>{`${safeCount} (${pct.toFixed(1)}%)`}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function MetricBar({ label, value }) {
   const safe = Math.max(0, Math.min(100, Number(value || 0)));
   return (
@@ -93,6 +140,91 @@ export default function GovernanceTab() {
 
   const assets = overview?.assets || [];
   const summary = overview?.summary || null;
+  const groupedAssets = useMemo(() => {
+    const map = new Map();
+    assets.forEach((asset) => {
+      const yearKey = asset.mars_year == null ? 'unknown' : `MY${asset.mars_year}`;
+      const typeKey = asset.data_type || 'unknown';
+      const key = `${yearKey}__${typeKey}`;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          yearLabel: yearKey,
+          dataType: typeKey,
+          datasetCount: 0,
+          variableSet: new Set(),
+          gridSet: new Set(),
+          lsMin: null,
+          lsMax: null,
+          lsCoverageValues: [],
+          statusDistribution: {},
+          qualityValues: [],
+          latestUploadId: asset.upload_id,
+          latestCreatedAt: asset.created_at || '',
+        });
+      }
+
+      const group = map.get(key);
+      group.datasetCount += 1;
+      (asset.variables || []).forEach((v) => group.variableSet.add(v));
+      if (asset.grid?.lat_points && asset.grid?.lon_points) {
+        group.gridSet.add(`${asset.grid.lat_points}x${asset.grid.lon_points}`);
+      }
+      if (Array.isArray(asset.ls_range) && asset.ls_range.length >= 2) {
+        const [start, end] = asset.ls_range;
+        if (start != null && (group.lsMin == null || start < group.lsMin)) group.lsMin = start;
+        if (end != null && (group.lsMax == null || end > group.lsMax)) group.lsMax = end;
+      }
+      if (asset.ls_coverage != null && !Number.isNaN(Number(asset.ls_coverage))) {
+        group.lsCoverageValues.push(Number(asset.ls_coverage));
+      }
+      const statusKey = asset.status || 'unknown';
+      group.statusDistribution[statusKey] = (group.statusDistribution[statusKey] || 0) + 1;
+      if (asset.quality_score != null && !Number.isNaN(Number(asset.quality_score))) {
+        group.qualityValues.push(Number(asset.quality_score));
+      }
+      const createdAt = asset.created_at || '';
+      if (createdAt > group.latestCreatedAt) {
+        group.latestCreatedAt = createdAt;
+        group.latestUploadId = asset.upload_id;
+      }
+    });
+
+    return Array.from(map.values())
+      .map((group) => {
+        const lsRange =
+          group.lsMin != null && group.lsMax != null
+            ? [group.lsMin, group.lsMax]
+            : null;
+        const lsCoverage =
+          group.lsCoverageValues.length > 0
+            ? group.lsCoverageValues.reduce((sum, v) => sum + v, 0) / group.lsCoverageValues.length
+            : null;
+        const avgQuality =
+          group.qualityValues.length > 0
+            ? group.qualityValues.reduce((sum, v) => sum + v, 0) / group.qualityValues.length
+            : null;
+
+        return {
+          key: group.key,
+          yearLabel: group.yearLabel,
+          dataType: group.dataType,
+          datasetCount: group.datasetCount,
+          variables: Array.from(group.variableSet).sort(),
+          grids: Array.from(group.gridSet).sort(),
+          lsRange,
+          lsCoverage,
+          statusDistribution: group.statusDistribution,
+          avgQuality,
+          latestUploadId: group.latestUploadId,
+        };
+      })
+      .sort((a, b) => {
+        if (a.yearLabel === b.yearLabel) return a.dataType.localeCompare(b.dataType);
+        return a.yearLabel < b.yearLabel ? 1 : -1;
+      });
+  }, [assets]);
 
   const loadOverview = useCallback(async () => {
     setLoading(true);
@@ -112,14 +244,15 @@ export default function GovernanceTab() {
   }, [loadOverview]);
 
   useEffect(() => {
-    if (!assets.length) {
+    if (!groupedAssets.length) {
       setSelectedId(null);
       return;
     }
-    if (!selectedId || !assets.some((x) => x.upload_id === selectedId)) {
-      setSelectedId(assets[0].upload_id);
+    const validIds = new Set(groupedAssets.map((x) => x.latestUploadId));
+    if (!selectedId || !validIds.has(selectedId)) {
+      setSelectedId(groupedAssets[0].latestUploadId);
     }
-  }, [assets, selectedId]);
+  }, [groupedAssets, selectedId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -247,27 +380,68 @@ export default function GovernanceTab() {
                 </span>
               ))}
             </div>
+            <StatusDistributionChart distribution={summary?.status_distribution} />
+
+            <div style={{ marginTop: 14, fontSize: 11, color: C.ice30 }}>DATA SOURCE DISTRIBUTION</div>
+            <div style={{ marginTop: 6, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {Object.entries(summary?.data_source_distribution || {}).map(([k, n]) => (
+                <span
+                  key={`src-${k}`}
+                  style={{
+                    fontSize: 11,
+                    color: C.ice60,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 999,
+                    padding: '3px 10px',
+                    background: 'rgba(255,255,255,0.02)',
+                  }}
+                >
+                  {`${k}: ${n}`}
+                </span>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 14, fontSize: 11, color: C.ice30 }}>MARS YEAR DISTRIBUTION</div>
+            <div style={{ marginTop: 6, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {Object.entries(summary?.mars_year_distribution || {}).map(([k, n]) => (
+                <span
+                  key={`year-${k}`}
+                  style={{
+                    fontSize: 11,
+                    color: C.ice60,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 999,
+                    padding: '3px 10px',
+                    background: 'rgba(255,255,255,0.02)',
+                  }}
+                >
+                  {`${k}: ${n}`}
+                </span>
+              ))}
+            </div>
           </GlowCard>
 
           <GlowCard style={{ padding: '16px 18px' }}>
             <div style={{ fontSize: 11, color: C.blue, letterSpacing: 2, fontWeight: 700, fontFamily: "'Orbitron', sans-serif", marginBottom: 12 }}>
               {t('explore.governance.assetList')}
             </div>
-            {!assets.length && (
+            {!groupedAssets.length && (
               <div style={{ fontSize: 12, color: C.ice30, padding: '8px 0' }}>{t('common.noData')}</div>
             )}
-            {assets.length > 0 && (
+            {groupedAssets.length > 0 && (
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1150 }}>
                   <thead>
                     <tr style={{ borderBottom: `1px solid ${C.border}` }}>
                       {[
-                        t('explore.governance.colDataset'),
-                        t('explore.governance.colType'),
                         t('explore.governance.colYear'),
+                        t('explore.governance.colType'),
+                        'DATASETS',
+                        t('explore.upload.variables'),
+                        'GRID PROFILES',
+                        t('explore.upload.lsRange'),
                         t('explore.governance.colLs'),
-                        t('explore.governance.colGrid'),
-                        t('explore.governance.colStatus'),
+                        'STATUS DIST',
                         t('explore.governance.colQuality'),
                         t('explore.governance.colAction'),
                       ].map((h) => (
@@ -281,33 +455,36 @@ export default function GovernanceTab() {
                     </tr>
                   </thead>
                   <tbody>
-                    {assets.map((asset) => {
-                      const active = selectedId === asset.upload_id;
+                    {groupedAssets.map((group) => {
+                      const active = selectedId === group.latestUploadId;
                       return (
                         <tr
-                          key={asset.upload_id}
+                          key={group.key}
                           style={{ borderBottom: `1px solid ${C.border}`, background: active ? 'rgba(74,158,255,0.06)' : 'transparent' }}
                         >
-                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60, maxWidth: 280, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {asset.filename}
-                          </td>
-                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>{asset.data_type || '--'}</td>
                           <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>
-                            {asset.mars_year != null ? `MY ${asset.mars_year}` : '--'}
+                            {group.yearLabel}
                           </td>
-                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>{fmtLsRange(asset.ls_range)}</td>
-                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>
-                            {asset.grid?.lat_points && asset.grid?.lon_points
-                              ? `${asset.grid.lat_points} x ${asset.grid.lon_points}`
-                              : '--'}
+                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>{group.dataType || '--'}</td>
+                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>{group.datasetCount}</td>
+                          <td
+                            style={{ padding: '9px 6px', fontSize: 12, color: C.ice60, maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                            title={Array.isArray(group.variables) ? group.variables.join(', ') : '--'}
+                          >
+                            {fmtVars(group.variables)}
                           </td>
-                          <td style={{ padding: '9px 6px', fontSize: 12, color: STATUS_COLORS[asset.status] || C.ice60 }}>{asset.status}</td>
                           <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>
-                            {asset.quality_score != null ? fmtNum(asset.quality_score, 1) : '--'}
+                            {group.grids.length ? group.grids.join(' | ') : '--'}
+                          </td>
+                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>{fmtLsRange(group.lsRange)}</td>
+                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>{fmtLsCoverage(group.lsCoverage)}</td>
+                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>{fmtStatusDist(group.statusDistribution)}</td>
+                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>
+                            {group.avgQuality != null ? fmtNum(group.avgQuality, 1) : '--'}
                           </td>
                           <td style={{ padding: '9px 6px' }}>
                             <button
-                              onClick={() => setSelectedId(asset.upload_id)}
+                              onClick={() => setSelectedId(group.latestUploadId)}
                               style={{
                                 border: `1px solid ${C.border}`,
                                 background: 'rgba(255,255,255,0.03)',
@@ -375,6 +552,8 @@ export default function GovernanceTab() {
                   <div style={{ fontSize: 12, color: C.ice60 }}>{`${t('explore.governance.uploader')}: ${lineage?.uploader?.username || lineage?.uploader?.email || '--'}`}</div>
                   <div style={{ fontSize: 12, color: C.ice60 }}>{`${t('explore.governance.reviewer')}: ${lineage?.reviewer?.username || lineage?.reviewer?.email || '--'}`}</div>
                   <div style={{ fontSize: 12, color: C.ice60 }}>{`${t('explore.governance.sourceZone')}: ${lineage?.current_effective_data_source?.storage_zone || '--'}`}</div>
+                  <div style={{ fontSize: 12, color: C.ice60 }}>{`effective_status: ${lineage?.current_effective_data_source?.effective_status || '--'}`}</div>
+                  <div style={{ fontSize: 12, color: C.ice60 }}>{`effective_path: ${lineage?.current_effective_data_source?.effective_path || '--'}`}</div>
                   <div style={{ fontSize: 12, color: C.ice60 }}>{`${t('explore.governance.createdAt')}: ${lineage?.timestamps?.uploaded_at || '--'}`}</div>
                   <div style={{ fontSize: 12, color: C.ice60 }}>{`${t('explore.governance.reviewedAt')}: ${lineage?.timestamps?.reviewed_at || '--'}`}</div>
 
@@ -390,10 +569,19 @@ export default function GovernanceTab() {
                           background: 'rgba(255,255,255,0.02)',
                         }}
                       >
-                        <div style={{ fontSize: 11, color: C.ice60 }}>{`${evt.type}${evt.at ? ` · ${evt.at}` : ''}`}</div>
+                        <div style={{ fontSize: 11, color: C.ice60 }}>{`${evt.type}${evt.at ? ` | ${evt.at}` : ''}`}</div>
                         <div style={{ marginTop: 2, fontSize: 11, color: C.ice30 }}>
-                          {evt.actor ? `${evt.actor} · ` : ''}
-                          {evt.detail || '--'}
+                          {(() => {
+                            const actor = [
+                              evt.actor || '',
+                              evt.actor_role ? `[${evt.actor_role}]` : '',
+                              evt.actor_email ? `<${evt.actor_email}>` : '',
+                            ]
+                              .filter(Boolean)
+                              .join(' ');
+                            const detail = evt.detail || '--';
+                            return actor ? `${actor} | ${detail}` : detail;
+                          })()}
                         </div>
                       </div>
                     ))}

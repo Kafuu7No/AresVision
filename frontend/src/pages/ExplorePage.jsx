@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import C from '../constants/colors';
 import { useT } from '../i18n';
-import { useAuth } from '../contexts/AuthContext';
 import SectionTitle from '../components/SectionTitle';
 import MyDataTab from './ExplorePage/MyDataTab';
 import DefaultDatasetTab from './ExplorePage/DefaultDatasetTab';
@@ -9,18 +8,15 @@ import GovernanceTab from './ExplorePage/GovernanceTab';
 
 export default function ExplorePage() {
   const t = useT();
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
   const [dataSource, setDataSource] = useState('default');
 
   const tabs = useMemo(() => {
-    const base = [
+    return [
       { id: 'default', label: t('explore.tabDefault') },
       { id: 'myData', label: t('explore.tabMy') },
+      { id: 'governance', label: t('explore.tabGovernance') },
     ];
-    if (isAdmin) base.push({ id: 'governance', label: t('explore.tabGovernance') });
-    return base;
-  }, [isAdmin, t]);
+  }, [t]);
 
   useEffect(() => {
     if (!tabs.some((tab) => tab.id === dataSource)) {
@@ -60,7 +56,7 @@ export default function ExplorePage() {
 
       {dataSource === 'default' && <DefaultDatasetTab />}
       {dataSource === 'myData' && <MyDataTab />}
-      {dataSource === 'governance' && isAdmin && <GovernanceTab />}
+      {dataSource === 'governance' && <GovernanceTab />}
     </div>
   );
 }
