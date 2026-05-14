@@ -209,3 +209,24 @@ class ModelTrainingTask(Base):
 
     def __repr__(self) -> str:
         return f"<ModelTrainingTask id={self.id} script={self.model_script} status={self.status}>"
+
+
+class PersonalSourceBuildState(Base):
+    __tablename__ = "personal_source_build_states"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    signature_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="idle")  # idle | building | ready | failed
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    built_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+
+    def __repr__(self) -> str:
+        return (
+            f"<PersonalSourceBuildState user_id={self.user_id} status={self.status} "
+            f"signature={self.signature_hash[:8]}>"
+        )

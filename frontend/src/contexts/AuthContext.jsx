@@ -52,13 +52,13 @@ export function AuthProvider({ children }) {
     if (prewarmedKeysRef.current.has(warmKey)) return;
     prewarmedKeysRef.current.add(warmKey);
 
+    // Keep login-time warmup lightweight.
+    // Personal-source warmups are intentionally skipped here to avoid blocking
+    // default-source pages immediately after login.
     const warmups = [
       prewarmPredictSource(27, { dataSource: 'default' }),
-      prewarmPredictSource(27, { dataSource: 'personal' }),
       fetchDataInfo({ dataSource: 'default' }),
-      fetchDataInfo({ dataSource: 'personal' }),
       fetchGlobeData(27, 0, 'o3col', null, { dataSource: 'default' }),
-      fetchGlobeData(27, 0, 'o3col', null, { dataSource: 'personal' }),
     ];
     Promise.allSettled(warmups).catch(() => {
       // Do not block login UX on prewarm failure.

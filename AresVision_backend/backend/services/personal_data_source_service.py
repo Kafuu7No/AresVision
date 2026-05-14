@@ -9,9 +9,16 @@ Resolution strategy for a given user + Mars year:
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
+import json
 import logging
 import re
+import shutil
+import time
+import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -20,10 +27,10 @@ import xarray as xr
 from cachetools import LRUCache
 from sqlalchemy import select
 
-from config import APPROVED_DIR, MCD_VARIABLES
+from config import APPROVED_DIR, MCD_VARIABLES, PERSONAL_CACHE_DIR
 from core.data_align import interpolate_mcd_to_openmars
 from database.engine import async_session_maker
-from database.models import UploadRecord
+from database.models import PersonalSourceBuildState, UploadRecord
 from services.data_service import DataService
 
 logger = logging.getLogger("aresvision.personal_source")
@@ -52,15 +59,22 @@ class SourceResolution:
     mcd_raw_data: dict | None
     fallback: bool = False
     message: Optional[str] = None
+    build_status: Optional[str] = None
+    signature_hash: Optional[str] = None
 
     def source_meta(self) -> dict:
-        return {
+        out = {
             "requested_source": self.requested_source,
             "effective_source": self.effective_source,
             "fallback": self.fallback,
             "message": self.message,
             "mars_year": self.mars_year,
         }
+        if self.build_status:
+            out["build_status"] = self.build_status
+        if self.signature_hash:
+            out["signature_hash"] = self.signature_hash
+        return out
 
 
 class SingleYearDataView:
@@ -98,6 +112,348 @@ class PersonalDataSourceService:
         self._file_cache: LRUCache = LRUCache(maxsize=24)
         self._year_resolution_cache: LRUCache = LRUCache(maxsize=48)
         self._info_cache: LRUCache = LRUCache(maxsize=32)
+        self._building_users: set[int] = set()
+        PERSONAL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+    def _schedule_build(self, user_id: int) -> None:
+        try:
+            uid = int(user_id)
+        except (TypeError, ValueError):
+            return
+        if uid <= 0 or uid in self._building_users:
+            return
+        self._building_users.add(uid)
+
+        async def _runner() -> None:
+            try:
+                await self.build_user_cache(uid)
+            finally:
+                self._building_users.discard(uid)
+
+        asyncio.create_task(_runner())
+
+    @staticmethod
+    def _signature_hash(signature: tuple) -> str:
+        payload = repr(signature).encode("utf-8", errors="replace")
+        return hashlib.sha256(payload).hexdigest()
+
+    @staticmethod
+    def _cache_user_dir(user_id: int) -> Path:
+        return PERSONAL_CACHE_DIR / str(user_id)
+
+    @classmethod
+    def _cache_build_dir(cls, user_id: int, signature_hash: str) -> Path:
+        return cls._cache_user_dir(user_id) / signature_hash
+
+    @staticmethod
+    def _now_iso() -> str:
+        return datetime.now(timezone.utc).isoformat()
+
+    @staticmethod
+    def _to_jsonable_value(value):
+        if isinstance(value, np.ndarray):
+            return value.tolist()
+        if isinstance(value, (np.floating, np.integer)):
+            return value.item()
+        if isinstance(value, dict):
+            return {str(k): PersonalDataSourceService._to_jsonable_value(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [PersonalDataSourceService._to_jsonable_value(v) for v in value]
+        return value
+
+    @staticmethod
+    def _write_json(file_path: Path, payload: dict) -> None:
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def _save_array_dict(file_path: Path, data: dict) -> None:
+        arrays: dict[str, np.ndarray] = {}
+        for k, v in data.items():
+            if isinstance(v, np.ndarray):
+                arrays[k] = v
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(file_path, **arrays)
+
+    @staticmethod
+    def _load_array_dict(file_path: Path) -> dict:
+        out: dict[str, np.ndarray] = {}
+        with np.load(file_path, allow_pickle=False) as npz:
+            for k in npz.files:
+                out[k] = np.asarray(npz[k])
+        return out
+
+    async def _upsert_build_state(
+        self,
+        user_id: int,
+        signature_hash: str,
+        status: str,
+        error: str | None = None,
+        duration_ms: int | None = None,
+        built_at: datetime | None = None,
+    ) -> None:
+        async with async_session_maker() as db:
+            row = (
+                await db.execute(
+                    select(PersonalSourceBuildState).where(PersonalSourceBuildState.user_id == user_id)
+                )
+            ).scalars().first()
+            if row is None:
+                row = PersonalSourceBuildState(
+                    user_id=user_id,
+                    signature_hash=signature_hash,
+                    status=status,
+                    error=error,
+                    duration_ms=duration_ms,
+                    built_at=built_at,
+                    updated_at=datetime.now(timezone.utc),
+                )
+                db.add(row)
+            else:
+                row.signature_hash = signature_hash
+                row.status = status
+                row.error = error
+                row.duration_ms = duration_ms
+                row.built_at = built_at
+                row.updated_at = datetime.now(timezone.utc)
+            await db.commit()
+
+    async def _get_build_state(self, user_id: int) -> PersonalSourceBuildState | None:
+        async with async_session_maker() as db:
+            return (
+                await db.execute(
+                    select(PersonalSourceBuildState).where(PersonalSourceBuildState.user_id == user_id)
+                )
+            ).scalars().first()
+
+    def _build_personal_info(self, system_years: list[int], resolutions: dict[int, SourceResolution]) -> dict:
+        per_year = {}
+        personal_years = []
+        has_full = False
+        has_mixed = False
+
+        for year in system_years:
+            res = resolutions[year]
+            mode = res.effective_source
+            ls_min = float(res.openmars_data["ls"][0])
+            ls_max = float(res.openmars_data["ls"][-1])
+            per_year[f"MY{year}"] = {
+                "ls_range": [ls_min, ls_max],
+                "source_mode": mode,
+            }
+            if mode in ("personal_full_year", "personal_mcd_plus_system_openmars"):
+                personal_years.append(year)
+            if mode == "personal_full_year":
+                has_full = True
+            if mode == "personal_mcd_plus_system_openmars":
+                has_mixed = True
+
+        if personal_years:
+            meta = {
+                "requested_source": _PERSONAL,
+                "effective_source": "personal_available",
+                "fallback": has_mixed and not has_full,
+                "message": (
+                    "个人 OpenMARS 不足完整一年，已自动使用系统 OpenMARS + 个人 MCD"
+                    if (has_mixed and not has_full)
+                    else None
+                ),
+            }
+            return {
+                "available_years": sorted(personal_years),
+                "details": {f"MY{y}": per_year[f"MY{y}"] for y in sorted(personal_years)},
+                "source_meta": meta,
+            }
+
+        fallback_details = {}
+        for y in system_years:
+            ls_min, ls_max = self.data_service.get_ls_range(y)
+            fallback_details[f"MY{y}"] = {"ls_range": [ls_min, ls_max], "source_mode": _DEFAULT}
+        return {
+            "available_years": system_years,
+            "details": fallback_details,
+            "source_meta": {
+                "requested_source": _PERSONAL,
+                "effective_source": _DEFAULT,
+                "fallback": True,
+                "message": "个人数据源不足，已切换为系统默认数据源",
+            },
+        }
+
+    def _build_source_meta_with_status(self, source_meta: dict, build_status: str | None) -> dict:
+        out = dict(source_meta or {})
+        if build_status:
+            out["build_status"] = build_status
+        return out
+
+    async def build_user_cache(self, user_id: int) -> None:
+        if user_id <= 0:
+            return
+
+        t0 = time.time()
+        records = await self._fetch_user_records(user_id)
+        signature = self._build_signature(records)
+        signature_hash = self._signature_hash(signature)
+        system_years = self.data_service.get_available_years()
+
+        await self._upsert_build_state(user_id, signature_hash, status="building")
+
+        target_dir = self._cache_build_dir(user_id, signature_hash)
+        tmp_dir = self._cache_user_dir(user_id) / f".tmp_{signature_hash}_{uuid.uuid4().hex[:8]}"
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+
+        try:
+            user_assets = self._build_user_assets(records)
+            resolutions = {
+                year: self._resolve_from_assets(_PERSONAL, year, user_assets)
+                for year in system_years
+            }
+            info = self._build_personal_info(system_years, resolutions)
+
+            year_files: dict[str, dict] = {}
+            for year, res in resolutions.items():
+                year_key = f"MY{year}"
+                entry = {
+                    "source_meta": self._to_jsonable_value(res.source_meta()),
+                    "files": {},
+                }
+                if res.effective_source != _DEFAULT:
+                    openmars_name = f"{year_key}_openmars.npz"
+                    aligned_name = f"{year_key}_aligned_mcd.npz"
+                    raw_name = f"{year_key}_mcd_raw.npz"
+                    self._save_array_dict(tmp_dir / openmars_name, res.openmars_data)
+                    self._save_array_dict(tmp_dir / aligned_name, res.aligned_mcd_data)
+                    self._save_array_dict(tmp_dir / raw_name, res.mcd_raw_data or {})
+                    entry["files"] = {
+                        "openmars": openmars_name,
+                        "aligned_mcd": aligned_name,
+                        "mcd_raw": raw_name,
+                    }
+                year_files[year_key] = entry
+
+            manifest = {
+                "user_id": user_id,
+                "signature_hash": signature_hash,
+                "built_at": self._now_iso(),
+                "info": self._to_jsonable_value(info),
+                "years": year_files,
+            }
+            self._write_json(tmp_dir / "manifest.json", manifest)
+
+            target_dir.parent.mkdir(parents=True, exist_ok=True)
+            if target_dir.exists():
+                shutil.rmtree(target_dir, ignore_errors=True)
+            tmp_dir.replace(target_dir)
+
+            # Keep only the latest two build snapshots to bound disk usage.
+            siblings = sorted(
+                [p for p in self._cache_user_dir(user_id).iterdir() if p.is_dir() and p.name != signature_hash],
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            for old_dir in siblings[2:]:
+                shutil.rmtree(old_dir, ignore_errors=True)
+
+            duration_ms = int((time.time() - t0) * 1000)
+            await self._upsert_build_state(
+                user_id,
+                signature_hash,
+                status="ready",
+                error=None,
+                duration_ms=duration_ms,
+                built_at=datetime.now(timezone.utc),
+            )
+            logger.info(
+                "personal source cache built: user_id=%s signature=%s duration_ms=%s",
+                user_id,
+                signature_hash[:8],
+                duration_ms,
+            )
+        except Exception as exc:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            duration_ms = int((time.time() - t0) * 1000)
+            await self._upsert_build_state(
+                user_id,
+                signature_hash,
+                status="failed",
+                error=str(exc),
+                duration_ms=duration_ms,
+                built_at=None,
+            )
+            logger.warning(
+                "personal source cache build failed: user_id=%s signature=%s error=%s",
+                user_id,
+                signature_hash[:8],
+                exc,
+            )
+
+    def _read_manifest(self, user_id: int, signature_hash: str) -> dict | None:
+        manifest_file = self._cache_build_dir(user_id, signature_hash) / "manifest.json"
+        if not manifest_file.exists():
+            return None
+        try:
+            return json.loads(manifest_file.read_text(encoding="utf-8"))
+        except Exception as exc:
+            logger.warning("failed to read personal cache manifest: %s", exc)
+            return None
+
+    def _resolve_from_manifest(
+        self,
+        user_id: int,
+        signature_hash: str,
+        mars_year: int,
+    ) -> SourceResolution | None:
+        manifest = self._read_manifest(user_id, signature_hash)
+        if manifest is None:
+            return None
+
+        year_key = f"MY{mars_year}"
+        year_entry = (manifest.get("years") or {}).get(year_key)
+        if not year_entry:
+            return None
+
+        source_meta = year_entry.get("source_meta") or {}
+        effective_source = source_meta.get("effective_source") or _DEFAULT
+        if effective_source == _DEFAULT:
+            return self._default_resolution(
+                requested_source=_PERSONAL,
+                mars_year=int(source_meta.get("mars_year") or mars_year),
+                message=source_meta.get("message"),
+                fallback=bool(source_meta.get("fallback")),
+            )
+
+        files = year_entry.get("files") or {}
+        base_dir = self._cache_build_dir(user_id, signature_hash)
+        try:
+            openmars_data = self._load_array_dict(base_dir / files["openmars"])
+            aligned_mcd_data = self._load_array_dict(base_dir / files["aligned_mcd"])
+            mcd_raw_data = self._load_array_dict(base_dir / files["mcd_raw"])
+        except Exception as exc:
+            logger.warning("failed to load cached personal year data: %s", exc)
+            return None
+
+        return SourceResolution(
+            requested_source=_PERSONAL,
+            effective_source=effective_source,
+            mars_year=int(source_meta.get("mars_year") or mars_year),
+            openmars_data=openmars_data,
+            aligned_mcd_data=aligned_mcd_data,
+            mcd_raw_data=mcd_raw_data,
+            fallback=bool(source_meta.get("fallback")),
+            message=source_meta.get("message"),
+        )
+
+    def _info_from_manifest(self, user_id: int, signature_hash: str) -> dict | None:
+        manifest = self._read_manifest(user_id, signature_hash)
+        if manifest is None:
+            return None
+        info = manifest.get("info")
+        if isinstance(info, dict):
+            return info
+        return None
 
     # ---------------- public API ----------------
 
@@ -121,13 +477,32 @@ class PersonalDataSourceService:
 
         records = await self._fetch_user_records(user_id)
         signature = self._build_signature(records)
-        cache_key = (user_id, mars_year, signature)
+        signature_hash = self._signature_hash(signature)
+        build_state = await self._get_build_state(user_id)
+        build_status = None
+        if build_state and build_state.signature_hash == signature_hash:
+            build_status = build_state.status
+
+        cache_key = (user_id, mars_year, signature_hash, build_status)
         cached = self._year_resolution_cache.get(cache_key)
         if cached is not None:
             return cached
 
+        cached_resolution = self._resolve_from_manifest(user_id, signature_hash, mars_year)
+        if cached_resolution is not None:
+            cached_resolution.build_status = build_status or "ready"
+            cached_resolution.signature_hash = signature_hash
+            self._year_resolution_cache[cache_key] = cached_resolution
+            return cached_resolution
+
+        if build_status != "building":
+            self._schedule_build(user_id)
+
         user_assets = self._build_user_assets(records)
         resolution = self._resolve_from_assets(_PERSONAL, mars_year, user_assets)
+        if build_status:
+            resolution.build_status = build_status
+        resolution.signature_hash = signature_hash
         self._year_resolution_cache[cache_key] = resolution
         return resolution
 
@@ -176,65 +551,30 @@ class PersonalDataSourceService:
 
         records = await self._fetch_user_records(user_id)
         signature = self._build_signature(records)
-        cache_key = (user_id, signature)
+        signature_hash = self._signature_hash(signature)
+        build_state = await self._get_build_state(user_id)
+        build_status = None
+        if build_state and build_state.signature_hash == signature_hash:
+            build_status = build_state.status
+
+        cache_key = (user_id, signature_hash, build_status)
         cached = self._info_cache.get(cache_key)
         if cached is not None:
             return cached
 
-        user_assets = self._build_user_assets(records)
-        per_year = {}
-        personal_years = []
-        has_full = False
-        has_mixed = False
+        info = self._info_from_manifest(user_id, signature_hash)
+        if info is None:
+            if build_status != "building":
+                self._schedule_build(user_id)
+            user_assets = self._build_user_assets(records)
+            resolutions = {
+                year: self._resolve_from_assets(_PERSONAL, year, user_assets)
+                for year in system_years
+            }
+            info = self._build_personal_info(system_years, resolutions)
 
-        for year in system_years:
-            res = self._resolve_from_assets(_PERSONAL, year, user_assets)
-            mode = res.effective_source
-            ls_min = float(res.openmars_data["ls"][0])
-            ls_max = float(res.openmars_data["ls"][-1])
-            per_year[f"MY{year}"] = {
-                "ls_range": [ls_min, ls_max],
-                "source_mode": mode,
-            }
-            if mode in ("personal_full_year", "personal_mcd_plus_system_openmars"):
-                personal_years.append(year)
-            if mode == "personal_full_year":
-                has_full = True
-            if mode == "personal_mcd_plus_system_openmars":
-                has_mixed = True
-
-        if personal_years:
-            meta = {
-                "requested_source": _PERSONAL,
-                "effective_source": "personal_available",
-                "fallback": has_mixed and not has_full,
-                "message": (
-                    "个人 OpenMARS 不足完整一年，已自动使用系统 OpenMARS + 个人 MCD"
-                    if (has_mixed and not has_full)
-                    else None
-                ),
-            }
-            info = {
-                "available_years": sorted(personal_years),
-                "details": {f"MY{y}": per_year[f"MY{y}"] for y in sorted(personal_years)},
-                "source_meta": meta,
-            }
-        else:
-            fallback_details = {}
-            for y in system_years:
-                ls_min, ls_max = self.data_service.get_ls_range(y)
-                fallback_details[f"MY{y}"] = {"ls_range": [ls_min, ls_max], "source_mode": _DEFAULT}
-            info = {
-                "available_years": system_years,
-                "details": fallback_details,
-                "source_meta": {
-                    "requested_source": _PERSONAL,
-                    "effective_source": _DEFAULT,
-                    "fallback": True,
-                    "message": "个人数据源不足，已切换为系统默认数据源",
-                },
-            }
-
+        info = dict(info)
+        info["source_meta"] = self._build_source_meta_with_status(info.get("source_meta", {}), build_status)
         self._info_cache[cache_key] = info
         return info
 

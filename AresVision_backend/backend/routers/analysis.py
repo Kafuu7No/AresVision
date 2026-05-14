@@ -2,6 +2,9 @@
 Data overview / exploration routes.
 """
 
+import logging
+
+from cachetools import LRUCache
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from auth.dependencies import get_optional_user
@@ -17,8 +20,26 @@ from services.analysis_service import AnalysisService
 from services.personal_data_source_service import SingleYearDataView
 
 router = APIRouter(prefix="/explore", tags=["数据探索"])
+logger = logging.getLogger(__name__)
 
 _ALLOWED_SOURCES = ("default", "personal")
+
+
+def _get_personal_analysis_service_cache(request: Request) -> LRUCache:
+    cache = getattr(request.app.state, "personal_analysis_service_cache", None)
+    if cache is None:
+        cache = LRUCache(maxsize=16)
+        request.app.state.personal_analysis_service_cache = cache
+    return cache
+
+
+def _personal_cache_key(current_user: User | None, resolution) -> tuple:
+    return (
+        int(current_user.id if current_user else 0),
+        int(resolution.mars_year),
+        str(resolution.effective_source),
+        str(getattr(resolution, "signature_hash", "") or ""),
+    )
 
 
 def _with_source_meta(payload: dict, source_meta: dict) -> dict:
@@ -61,13 +82,32 @@ async def _resolve_analysis_context(
     if resolution.effective_source == "default":
         service = request.app.state.analysis_service
     else:
-        data_view = SingleYearDataView(
-            mars_year=resolution.mars_year,
-            openmars_data=resolution.openmars_data,
-            aligned_mcd_data=resolution.aligned_mcd_data,
-            mcd_raw_data=resolution.mcd_raw_data,
-        )
-        service = AnalysisService(data_view)
+        cache = _get_personal_analysis_service_cache(request)
+        key = _personal_cache_key(current_user, resolution)
+        cached_service = cache.get(key)
+        if cached_service is not None:
+            logger.info(
+                "personal analysis service cache hit (uid=%s, MY%s, mode=%s)",
+                current_user.id if current_user else "anon",
+                resolution.mars_year,
+                resolution.effective_source,
+            )
+            service = cached_service
+        else:
+            data_view = SingleYearDataView(
+                mars_year=resolution.mars_year,
+                openmars_data=resolution.openmars_data,
+                aligned_mcd_data=resolution.aligned_mcd_data,
+                mcd_raw_data=resolution.mcd_raw_data,
+            )
+            service = AnalysisService(data_view)
+            cache[key] = service
+            logger.info(
+                "personal analysis service cache miss -> create (uid=%s, MY%s, mode=%s)",
+                current_user.id if current_user else "anon",
+                resolution.mars_year,
+                resolution.effective_source,
+            )
 
     return service, resolution.source_meta(), resolution.mars_year
 

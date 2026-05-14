@@ -11,7 +11,7 @@ import time
 import sys
 import asyncio
 from pathlib import Path
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 # Windows 下异步子进程必须使用 ProactorEventLoop
 if sys.platform == 'win32':
@@ -128,6 +128,38 @@ async def lifespan(app: FastAPI):
     # 数据源解析服务（默认/个人数据源切换 + 自动降级）
     personal_source_service = PersonalDataSourceService(data_service)
     app.state.personal_data_source_service = personal_source_service
+    personal_cache_rebuild_queue: asyncio.Queue[int] = asyncio.Queue()
+    personal_cache_pending_users: set[int] = set()
+
+    def enqueue_personal_cache_rebuild(user_id: int) -> None:
+        try:
+            uid = int(user_id)
+        except (TypeError, ValueError):
+            return
+        if uid <= 0:
+            return
+        if uid in personal_cache_pending_users:
+            return
+        personal_cache_pending_users.add(uid)
+        personal_cache_rebuild_queue.put_nowait(uid)
+
+    async def personal_cache_rebuild_worker() -> None:
+        while True:
+            uid = await personal_cache_rebuild_queue.get()
+            try:
+                await personal_source_service.build_user_cache(uid)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("personal cache rebuild worker failed for user %s", uid)
+            finally:
+                personal_cache_pending_users.discard(uid)
+                personal_cache_rebuild_queue.task_done()
+
+    app.state.personal_cache_rebuild_queue = personal_cache_rebuild_queue
+    app.state.personal_cache_pending_users = personal_cache_pending_users
+    app.state.enqueue_personal_cache_rebuild = enqueue_personal_cache_rebuild
+    app.state.personal_cache_rebuild_worker_task = asyncio.create_task(personal_cache_rebuild_worker())
 
     # 数据治理服务（资产总览 / 质量评分 / 血缘信息）
     data_governance_service = DataGovernanceService()
@@ -190,6 +222,11 @@ async def lifespan(app: FastAPI):
 
     # 关闭时清理
     logger.info("正在关闭服务...")
+    worker_task = getattr(app.state, "personal_cache_rebuild_worker_task", None)
+    if worker_task is not None:
+        worker_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await worker_task
     await ai_service.close()
     await copilot_service.close()
 
