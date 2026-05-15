@@ -30,7 +30,7 @@ function fmtPct(v) {
 
 function fmtLsRange(range) {
   if (!Array.isArray(range) || range.length < 2 || range[0] == null || range[1] == null) return '--';
-  return `${fmtNum(range[0], 1)} - ${fmtNum(range[1], 1)} deg`;
+  return `${fmtNum(range[0], 1)} - ${fmtNum(range[1], 1)}°`;
 }
 
 function fmtLsCoverage(v) {
@@ -44,10 +44,29 @@ function fmtVars(vars) {
   return `${vars.slice(0, 4).join(', ')} ... (+${vars.length - 4})`;
 }
 
-function fmtStatusDist(dist) {
-  const entries = Object.entries(dist || {}).filter(([, n]) => Number(n) > 0);
-  if (!entries.length) return '--';
-  return entries.map(([k, n]) => `${k}:${n}`).join(' | ');
+function gradeColor(grade) {
+  if (grade === 'A') return '#22c55e';
+  if (grade === 'B') return C.blue;
+  if (grade === 'C') return '#4ade80';
+  if (grade === 'D') return '#f59e0b';
+  return C.mars;
+}
+
+function SourceModeBadge({ label, color = C.ice60 }) {
+  return (
+    <span
+      style={{
+        fontSize: 10,
+        color,
+        border: `1px solid ${C.border}`,
+        borderRadius: 999,
+        padding: '4px 10px',
+        background: 'rgba(255,255,255,0.03)',
+      }}
+    >
+      {label}
+    </span>
+  );
 }
 
 function StatusDistributionChart({ distribution }) {
@@ -102,21 +121,68 @@ function MetricBar({ label, value }) {
   );
 }
 
-function StatCard({ label, value }) {
+function StatCard({ eyebrow, label, value, desc, accent = C.blue }) {
   return (
     <div
       style={{
         border: `1px solid ${C.border}`,
-        borderRadius: 12,
-        padding: '14px 14px',
+        borderRadius: 14,
+        padding: '16px 18px',
         background: 'rgba(255,255,255,0.02)',
       }}
     >
-      <div style={{ fontSize: 11, color: C.ice30 }}>{label}</div>
-      <div style={{ marginTop: 6, fontSize: 20, fontWeight: 700, color: C.ice, fontFamily: "'Orbitron', sans-serif" }}>
+      <div style={{ fontSize: 10, color: accent, fontWeight: 700, letterSpacing: 1.5, fontFamily: "'Orbitron', sans-serif" }}>
+        {eyebrow}
+      </div>
+      <div style={{ marginTop: 10, fontSize: 28, fontWeight: 700, color: C.ice, fontFamily: "'Orbitron', sans-serif" }}>
         {value}
       </div>
+      <div style={{ marginTop: 4, fontSize: 12, color: C.ice60, fontWeight: 600 }}>{label}</div>
+      <div style={{ marginTop: 8, fontSize: 11, color: C.ice30, lineHeight: 1.75 }}>{desc}</div>
     </div>
+  );
+}
+
+function AssetOverviewCard({ asset, active, onClick, t }) {
+  const statusColor = STATUS_COLORS[asset.dominantStatus] || C.ice60;
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: '100%',
+        textAlign: 'left',
+        border: `1px solid ${active ? C.blue : C.border}`,
+        borderRadius: 14,
+        padding: '16px 18px',
+        background: active ? 'rgba(74,158,255,0.08)' : 'rgba(255,255,255,0.02)',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 13, color: C.ice, fontWeight: 700 }}>
+            {asset.yearLabel} · {asset.dataType}
+          </div>
+          <div style={{ marginTop: 4, fontSize: 11, color: C.ice30 }}>
+            {`${asset.datasetCount} ${t('explore.governance.datasetUnit')} · ${asset.grids.length ? asset.grids.join(' / ') : '--'}`}
+          </div>
+        </div>
+        <div style={{ fontSize: 18, color: asset.avgQuality != null ? gradeColor(asset.grade) : C.ice30, fontWeight: 700, fontFamily: "'Orbitron', sans-serif" }}>
+          {asset.avgQuality != null ? fmtNum(asset.avgQuality, 1) : '--'}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+        <SourceModeBadge label={`${t('explore.governance.assetCoverage')}: ${fmtLsCoverage(asset.lsCoverage)}`} />
+        <SourceModeBadge label={`${t('explore.governance.assetRange')}: ${fmtLsRange(asset.lsRange)}`} />
+        <SourceModeBadge label={`${t('explore.governance.assetStatus')}: ${asset.dominantStatus}`} color={statusColor} />
+      </div>
+
+      <div style={{ marginTop: 12, fontSize: 11, color: C.ice60, lineHeight: 1.7 }}>
+        {fmtVars(asset.variables)}
+      </div>
+    </button>
   );
 }
 
@@ -140,6 +206,7 @@ export default function GovernanceTab() {
 
   const assets = overview?.assets || [];
   const summary = overview?.summary || null;
+
   const groupedAssets = useMemo(() => {
     const map = new Map();
     assets.forEach((asset) => {
@@ -160,6 +227,8 @@ export default function GovernanceTab() {
           lsCoverageValues: [],
           statusDistribution: {},
           qualityValues: [],
+          effectiveCount: 0,
+          storageZones: new Set(),
           latestUploadId: asset.upload_id,
           latestCreatedAt: asset.created_at || '',
         });
@@ -184,6 +253,9 @@ export default function GovernanceTab() {
       if (asset.quality_score != null && !Number.isNaN(Number(asset.quality_score))) {
         group.qualityValues.push(Number(asset.quality_score));
       }
+      if (asset.effective) group.effectiveCount += 1;
+      if (asset.storage_zone) group.storageZones.add(asset.storage_zone);
+
       const createdAt = asset.created_at || '';
       if (createdAt > group.latestCreatedAt) {
         group.latestCreatedAt = createdAt;
@@ -193,18 +265,11 @@ export default function GovernanceTab() {
 
     return Array.from(map.values())
       .map((group) => {
-        const lsRange =
-          group.lsMin != null && group.lsMax != null
-            ? [group.lsMin, group.lsMax]
-            : null;
-        const lsCoverage =
-          group.lsCoverageValues.length > 0
-            ? group.lsCoverageValues.reduce((sum, v) => sum + v, 0) / group.lsCoverageValues.length
-            : null;
-        const avgQuality =
-          group.qualityValues.length > 0
-            ? group.qualityValues.reduce((sum, v) => sum + v, 0) / group.qualityValues.length
-            : null;
+        const lsRange = group.lsMin != null && group.lsMax != null ? [group.lsMin, group.lsMax] : null;
+        const lsCoverage = group.lsCoverageValues.length > 0 ? group.lsCoverageValues.reduce((sum, v) => sum + v, 0) / group.lsCoverageValues.length : null;
+        const avgQuality = group.qualityValues.length > 0 ? group.qualityValues.reduce((sum, v) => sum + v, 0) / group.qualityValues.length : null;
+        const dominantStatus = Object.entries(group.statusDistribution).sort((a, b) => b[1] - a[1])[0]?.[0] || 'unknown';
+        const grade = avgQuality == null ? '--' : avgQuality >= 90 ? 'A' : avgQuality >= 80 ? 'B' : avgQuality >= 70 ? 'C' : avgQuality >= 60 ? 'D' : 'E';
 
         return {
           key: group.key,
@@ -217,6 +282,10 @@ export default function GovernanceTab() {
           lsCoverage,
           statusDistribution: group.statusDistribution,
           avgQuality,
+          grade,
+          effectiveCount: group.effectiveCount,
+          storageZones: Array.from(group.storageZones).sort(),
+          dominantStatus,
           latestUploadId: group.latestUploadId,
         };
       })
@@ -265,10 +334,7 @@ export default function GovernanceTab() {
     (async () => {
       setDetailLoading(true);
       try {
-        const [q, l] = await Promise.all([
-          getDataGovernanceQuality(selectedId),
-          getDataGovernanceLineage(selectedId),
-        ]);
+        const [q, l] = await Promise.all([getDataGovernanceQuality(selectedId), getDataGovernanceLineage(selectedId)]);
         if (cancelled) return;
         setQuality(q);
         setLineage(l);
@@ -286,18 +352,51 @@ export default function GovernanceTab() {
     };
   }, [selectedId]);
 
+  const selectedGroup = useMemo(() => groupedAssets.find((item) => item.latestUploadId === selectedId) || null, [groupedAssets, selectedId]);
+
   const statItems = useMemo(() => {
     if (!summary) return [];
     const dist = summary.status_distribution || {};
     return [
-      { key: 'total', label: t('explore.governance.totalDatasets'), value: summary.total_datasets ?? 0 },
-      { key: 'effective', label: t('explore.governance.effectiveDatasets'), value: summary.effective_datasets ?? 0 },
-      { key: 'approved', label: t('explore.governance.approvedCount'), value: dist.approved ?? 0 },
-      { key: 'pending', label: t('explore.governance.pendingCount'), value: dist.pending_review ?? 0 },
+      {
+        key: 'total',
+        eyebrow: 'ASSETS',
+        label: t('explore.governance.totalDatasets'),
+        value: summary.total_datasets ?? 0,
+        desc: t('explore.governance.totalDatasetsDesc'),
+        accent: C.blue,
+      },
+      {
+        key: 'effective',
+        eyebrow: 'ACTIVE',
+        label: t('explore.governance.effectiveDatasets'),
+        value: summary.effective_datasets ?? 0,
+        desc: t('explore.governance.effectiveDatasetsDesc'),
+        accent: C.green,
+      },
+      {
+        key: 'approved',
+        eyebrow: 'APPROVED',
+        label: t('explore.governance.approvedCount'),
+        value: dist.approved ?? 0,
+        desc: t('explore.governance.approvedCountDesc'),
+        accent: C.blue,
+      },
+      {
+        key: 'pending',
+        eyebrow: 'PENDING',
+        label: t('explore.governance.pendingCount'),
+        value: dist.pending_review ?? 0,
+        desc: t('explore.governance.pendingCountDesc'),
+        accent: '#f59e0b',
+      },
       {
         key: 'quality',
+        eyebrow: 'QUALITY',
         label: t('explore.governance.avgQuality'),
         value: summary.average_quality_score != null ? fmtNum(summary.average_quality_score, 1) : '--',
+        desc: t('explore.governance.avgQualityDesc'),
+        accent: C.mars,
       },
     ];
   }, [summary, t]);
@@ -313,7 +412,7 @@ export default function GovernanceTab() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <GlowCard style={{ padding: '18px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, letterSpacing: 2, fontFamily: "'Orbitron', sans-serif" }}>
               {t('explore.governance.title')}
@@ -357,158 +456,44 @@ export default function GovernanceTab() {
       {!loading && !error && (
         <>
           <GlowCard style={{ padding: '18px 20px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
+            <div style={{ fontSize: 11, color: C.blue, letterSpacing: 2, fontWeight: 700, fontFamily: "'Orbitron', sans-serif", marginBottom: 14 }}>
+              {t('explore.governance.sectionAssets')}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
               {statItems.map((item) => (
-                <StatCard key={item.key} label={item.label} value={item.value} />
+                <StatCard key={item.key} eyebrow={item.eyebrow} label={item.label} value={item.value} desc={item.desc} accent={item.accent} />
               ))}
             </div>
 
             <div style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {Object.entries(summary?.status_distribution || {}).map(([k, n]) => (
-                <span
-                  key={k}
-                  style={{
-                    fontSize: 11,
-                    color: STATUS_COLORS[k] || C.ice60,
-                    border: `1px solid ${C.border}`,
-                    borderRadius: 999,
-                    padding: '3px 10px',
-                    background: 'rgba(255,255,255,0.02)',
-                  }}
-                >
-                  {`${k}: ${n}`}
-                </span>
+              {Object.entries(summary?.data_source_distribution || {}).map(([k, n]) => (
+                <SourceModeBadge key={`src-${k}`} label={`${k}: ${n}`} />
+              ))}
+            </div>
+            <div style={{ marginTop: 10, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {Object.entries(summary?.mars_year_distribution || {}).map(([k, n]) => (
+                <SourceModeBadge key={`year-${k}`} label={`${k}: ${n}`} />
               ))}
             </div>
             <StatusDistributionChart distribution={summary?.status_distribution} />
-
-            <div style={{ marginTop: 14, fontSize: 11, color: C.ice30 }}>DATA SOURCE DISTRIBUTION</div>
-            <div style={{ marginTop: 6, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {Object.entries(summary?.data_source_distribution || {}).map(([k, n]) => (
-                <span
-                  key={`src-${k}`}
-                  style={{
-                    fontSize: 11,
-                    color: C.ice60,
-                    border: `1px solid ${C.border}`,
-                    borderRadius: 999,
-                    padding: '3px 10px',
-                    background: 'rgba(255,255,255,0.02)',
-                  }}
-                >
-                  {`${k}: ${n}`}
-                </span>
-              ))}
-            </div>
-
-            <div style={{ marginTop: 14, fontSize: 11, color: C.ice30 }}>MARS YEAR DISTRIBUTION</div>
-            <div style={{ marginTop: 6, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {Object.entries(summary?.mars_year_distribution || {}).map(([k, n]) => (
-                <span
-                  key={`year-${k}`}
-                  style={{
-                    fontSize: 11,
-                    color: C.ice60,
-                    border: `1px solid ${C.border}`,
-                    borderRadius: 999,
-                    padding: '3px 10px',
-                    background: 'rgba(255,255,255,0.02)',
-                  }}
-                >
-                  {`${k}: ${n}`}
-                </span>
-              ))}
-            </div>
           </GlowCard>
 
           <GlowCard style={{ padding: '16px 18px' }}>
             <div style={{ fontSize: 11, color: C.blue, letterSpacing: 2, fontWeight: 700, fontFamily: "'Orbitron', sans-serif", marginBottom: 12 }}>
               {t('explore.governance.assetList')}
             </div>
-            {!groupedAssets.length && (
-              <div style={{ fontSize: 12, color: C.ice30, padding: '8px 0' }}>{t('common.noData')}</div>
-            )}
+            {!groupedAssets.length && <div style={{ fontSize: 12, color: C.ice30, padding: '8px 0' }}>{t('common.noData')}</div>}
             {groupedAssets.length > 0 && (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1150 }}>
-                  <thead>
-                    <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                      {[
-                        t('explore.governance.colYear'),
-                        t('explore.governance.colType'),
-                        'DATASETS',
-                        t('explore.upload.variables'),
-                        'GRID PROFILES',
-                        t('explore.upload.lsRange'),
-                        t('explore.governance.colLs'),
-                        'STATUS DIST',
-                        t('explore.governance.colQuality'),
-                        t('explore.governance.colAction'),
-                      ].map((h) => (
-                        <th
-                          key={h}
-                          style={{ textAlign: 'left', fontSize: 11, color: C.ice30, fontWeight: 600, padding: '8px 6px' }}
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {groupedAssets.map((group) => {
-                      const active = selectedId === group.latestUploadId;
-                      return (
-                        <tr
-                          key={group.key}
-                          style={{ borderBottom: `1px solid ${C.border}`, background: active ? 'rgba(74,158,255,0.06)' : 'transparent' }}
-                        >
-                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>
-                            {group.yearLabel}
-                          </td>
-                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>{group.dataType || '--'}</td>
-                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>{group.datasetCount}</td>
-                          <td
-                            style={{ padding: '9px 6px', fontSize: 12, color: C.ice60, maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                            title={Array.isArray(group.variables) ? group.variables.join(', ') : '--'}
-                          >
-                            {fmtVars(group.variables)}
-                          </td>
-                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>
-                            {group.grids.length ? group.grids.join(' | ') : '--'}
-                          </td>
-                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>{fmtLsRange(group.lsRange)}</td>
-                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>{fmtLsCoverage(group.lsCoverage)}</td>
-                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>{fmtStatusDist(group.statusDistribution)}</td>
-                          <td style={{ padding: '9px 6px', fontSize: 12, color: C.ice60 }}>
-                            {group.avgQuality != null ? fmtNum(group.avgQuality, 1) : '--'}
-                          </td>
-                          <td style={{ padding: '9px 6px' }}>
-                            <button
-                              onClick={() => setSelectedId(group.latestUploadId)}
-                              style={{
-                                border: `1px solid ${C.border}`,
-                                background: 'rgba(255,255,255,0.03)',
-                                borderRadius: 7,
-                                fontSize: 11,
-                                color: C.ice60,
-                                padding: '4px 10px',
-                                cursor: 'pointer',
-                                fontFamily: 'inherit',
-                              }}
-                            >
-                              {t('explore.governance.viewDetail')}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 }}>
+                {groupedAssets.map((asset) => (
+                  <AssetOverviewCard key={asset.key} asset={asset} active={selectedId === asset.latestUploadId} onClick={() => setSelectedId(asset.latestUploadId)} t={t} />
+                ))}
               </div>
             )}
           </GlowCard>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 14 }}>
             <GlowCard style={{ padding: '16px 18px' }}>
               <div style={{ fontSize: 11, color: C.blue, letterSpacing: 2, fontWeight: 700, fontFamily: "'Orbitron', sans-serif", marginBottom: 10 }}>
                 {t('explore.governance.qualityTitle')}
@@ -517,9 +502,17 @@ export default function GovernanceTab() {
               {!detailLoading && !quality && <div style={{ fontSize: 12, color: C.ice30 }}>{t('common.noData')}</div>}
               {!detailLoading && quality && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+                  {selectedGroup && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      <SourceModeBadge label={`${selectedGroup.yearLabel} · ${selectedGroup.dataType}`} />
+                      <SourceModeBadge label={`${t('explore.governance.assetStatus')}: ${selectedGroup.dominantStatus}`} color={STATUS_COLORS[selectedGroup.dominantStatus] || C.ice60} />
+                      <SourceModeBadge label={`${t('explore.governance.assetCoverage')}: ${fmtLsCoverage(selectedGroup.lsCoverage)}`} />
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 12, color: C.ice60 }}>{t('explore.governance.overallScore')}</span>
-                    <span style={{ fontSize: 18, color: C.ice, fontWeight: 700 }}>
+                    <span style={{ fontSize: 18, color: gradeColor(quality?.scores?.grade), fontWeight: 700 }}>
                       {fmtNum(quality?.scores?.overall, 1)} / 100 ({quality?.scores?.grade || '--'})
                     </span>
                   </div>
@@ -530,12 +523,29 @@ export default function GovernanceTab() {
                   <MetricBar label={t('explore.governance.timeScore')} value={quality?.scores?.time_score} />
                   <MetricBar label={t('explore.governance.gridScore')} value={quality?.scores?.grid_score} />
 
-                  <div style={{ marginTop: 4, fontSize: 11, color: C.ice30 }}>
-                    {`${t('explore.governance.missingRate')}: ${fmtPct(quality?.metrics?.missing_rate)}`}
-                  </div>
-                  <div style={{ fontSize: 11, color: C.ice30 }}>
-                    {`${t('explore.governance.validRatio')}: ${fmtPct(quality?.metrics?.valid_value_ratio)}`}
-                  </div>
+                  <div style={{ marginTop: 4, fontSize: 11, color: C.ice30 }}>{`${t('explore.governance.missingRate')}: ${fmtPct(quality?.metrics?.missing_rate)}`}</div>
+                  <div style={{ fontSize: 11, color: C.ice30 }}>{`${t('explore.governance.validRatio')}: ${fmtPct(quality?.metrics?.valid_value_ratio)}`}</div>
+
+                  {(quality?.issues || []).length > 0 && (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        border: `1px solid ${C.border}`,
+                        borderRadius: 10,
+                        padding: '10px 12px',
+                        background: 'rgba(255,255,255,0.02)',
+                      }}
+                    >
+                      <div style={{ fontSize: 11, color: C.ice30, marginBottom: 8 }}>{t('explore.governance.qualityIssues')}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {quality.issues.slice(0, 5).map((issue, idx) => (
+                          <div key={`${issue}-${idx}`} style={{ fontSize: 11, color: C.ice60 }}>
+                            {issue}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </GlowCard>
@@ -547,36 +557,35 @@ export default function GovernanceTab() {
               {detailLoading && <LoadingBox h={160} label={t('common.loading')} />}
               {!detailLoading && !lineage && <div style={{ fontSize: 12, color: C.ice30 }}>{t('common.noData')}</div>}
               {!detailLoading && lineage && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ fontSize: 12, color: C.ice60 }}>{`${t('explore.governance.hash')}: ${lineage.file_hash || '--'}`}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+                    <SourceModeBadge label={`${t('explore.governance.hash')}: ${lineage.file_hash || '--'}`} />
+                    <SourceModeBadge label={`${t('explore.governance.sourceZone')}: ${lineage?.current_effective_data_source?.storage_zone || '--'}`} />
+                    <SourceModeBadge label={`effective_status: ${lineage?.current_effective_data_source?.effective_status || '--'}`} />
+                  </div>
+
                   <div style={{ fontSize: 12, color: C.ice60 }}>{`${t('explore.governance.uploader')}: ${lineage?.uploader?.username || lineage?.uploader?.email || '--'}`}</div>
                   <div style={{ fontSize: 12, color: C.ice60 }}>{`${t('explore.governance.reviewer')}: ${lineage?.reviewer?.username || lineage?.reviewer?.email || '--'}`}</div>
-                  <div style={{ fontSize: 12, color: C.ice60 }}>{`${t('explore.governance.sourceZone')}: ${lineage?.current_effective_data_source?.storage_zone || '--'}`}</div>
-                  <div style={{ fontSize: 12, color: C.ice60 }}>{`effective_status: ${lineage?.current_effective_data_source?.effective_status || '--'}`}</div>
-                  <div style={{ fontSize: 12, color: C.ice60 }}>{`effective_path: ${lineage?.current_effective_data_source?.effective_path || '--'}`}</div>
                   <div style={{ fontSize: 12, color: C.ice60 }}>{`${t('explore.governance.createdAt')}: ${lineage?.timestamps?.uploaded_at || '--'}`}</div>
                   <div style={{ fontSize: 12, color: C.ice60 }}>{`${t('explore.governance.reviewedAt')}: ${lineage?.timestamps?.reviewed_at || '--'}`}</div>
+                  <div style={{ fontSize: 12, color: C.ice60, wordBreak: 'break-all' }}>{`effective_path: ${lineage?.current_effective_data_source?.effective_path || '--'}`}</div>
 
                   <div style={{ marginTop: 6, fontSize: 11, color: C.ice30 }}>{t('explore.governance.eventTimeline')}</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {(lineage.events || []).map((evt, idx) => (
                       <div
                         key={`${evt.type}-${idx}`}
                         style={{
                           border: `1px solid ${C.border}`,
                           borderRadius: 8,
-                          padding: '7px 10px',
+                          padding: '8px 10px',
                           background: 'rgba(255,255,255,0.02)',
                         }}
                       >
-                        <div style={{ fontSize: 11, color: C.ice60 }}>{`${evt.type}${evt.at ? ` | ${evt.at}` : ''}`}</div>
-                        <div style={{ marginTop: 2, fontSize: 11, color: C.ice30 }}>
+                        <div style={{ fontSize: 11, color: STATUS_COLORS[evt.type] || C.ice60 }}>{`${evt.type}${evt.at ? ` | ${evt.at}` : ''}`}</div>
+                        <div style={{ marginTop: 3, fontSize: 11, color: C.ice30 }}>
                           {(() => {
-                            const actor = [
-                              evt.actor || '',
-                              evt.actor_role ? `[${evt.actor_role}]` : '',
-                              evt.actor_email ? `<${evt.actor_email}>` : '',
-                            ]
+                            const actor = [evt.actor || '', evt.actor_role ? `[${evt.actor_role}]` : '', evt.actor_email ? `<${evt.actor_email}>` : '']
                               .filter(Boolean)
                               .join(' ');
                             const detail = evt.detail || '--';
