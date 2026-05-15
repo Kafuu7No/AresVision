@@ -105,7 +105,7 @@ export default function App() {
         >
           {page === 'home' && <HomePage onNavigate={navigate} />}
           {page === 'overview' && <DataOverviewPage />}
-          {page === 'explore' && <ExplorePage />}
+          {page === 'explore' && <ExplorePage onOpenAdmin={() => setAdminPanelOpen(true)} reviewSignal={reviewSignal} />}
           {page === 'predict' && <PredictPage />}
           {page === 'training' && <ModelTrainingPage />}
           {page === 'ai' && <AIPage />}
