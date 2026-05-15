@@ -131,8 +131,8 @@ export default function PolarDynamics({ marsYear, dataSourceMode = 'default' }) 
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div>
-        <h3 style={{ color: C.ice, margin: '0 0 4px 0', fontSize: 16 }}>{copy.title}</h3>
-        <p style={{ color: C.ice60, fontSize: 12, margin: 0 }}>{copy.desc}</p>
+        <h3 style={{ color: C.ice, margin: '0 0 4px 0', fontSize: 'calc(16px * var(--font-scale, 1))' }}>{copy.title}</h3>
+        <p style={{ color: C.ice60, fontSize: 'calc(12px * var(--font-scale, 1))', margin: 0 }}>{copy.desc}</p>
       </div>
 
       <div style={{ height: '600px', display: 'grid', gridTemplateColumns: '1fr', gridTemplateRows: '1fr 1fr', gap: 10 }}>

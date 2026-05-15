@@ -8,6 +8,7 @@
 
 /* ─── 主题 CSS 变量 ─── */
 :root {
+  --font-scale:       1;
   --bg:               #050508;
   --bg-card:          rgba(15,15,22,0.65);
   --bg-nav:           rgba(5,5,8,0.85);
@@ -79,7 +80,6 @@ body {
   font-family: 'Exo 2', sans-serif;
   overflow-x: hidden;
   transition: background 0.3s, color 0.3s;
-  zoom: var(--app-zoom, 1);
 }
 
 /* ─── Scrollbar ─── */

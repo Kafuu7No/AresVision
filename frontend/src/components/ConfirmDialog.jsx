@@ -47,12 +47,12 @@ function ConfirmContent({ title, message, confirmLabel, cancelLabel, onConfirm, 
         }}
       >
         <div style={{
-          fontSize: 15, fontWeight: 700, color: titleColor, marginBottom: 10,
+          fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, marginBottom: 10,
           fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.02em',
         }}>
           {title}
         </div>
-        <div style={{ fontSize: 13, color: msgColor, marginBottom: 22, lineHeight: 1.65 }}>
+        <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: msgColor, marginBottom: 22, lineHeight: 1.65 }}>
           {message}
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -61,7 +61,7 @@ function ConfirmContent({ title, message, confirmLabel, cancelLabel, onConfirm, 
             style={{
               padding: '8px 20px', borderRadius: 8,
               background: cancelBg, border: 'none',
-              color: cancelClr, fontSize: 13, fontWeight: 500,
+              color: cancelClr, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 500,
               cursor: 'pointer', fontFamily: 'inherit',
               transition: 'background 0.12s',
             }}
@@ -73,7 +73,7 @@ function ConfirmContent({ title, message, confirmLabel, cancelLabel, onConfirm, 
             style={{
               padding: '8px 20px', borderRadius: 8,
               background: color, border: 'none',
-              color: '#fff', fontSize: 13, fontWeight: 600,
+              color: '#fff', fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 600,
               cursor: 'pointer', fontFamily: 'inherit',
             }}
           >

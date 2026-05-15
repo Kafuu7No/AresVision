@@ -24,7 +24,7 @@ function PwdInput({ label, value, onChange, placeholder, disabled, error, name, 
   return (
     <div style={{ marginBottom: 14 }}>
       <label style={{
-        display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+        display: 'block', fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 600, letterSpacing: '0.08em',
         color: L ? '#000000' : '#ffffff',
         marginBottom: 5, textTransform: 'uppercase',
       }}>
@@ -47,12 +47,12 @@ function PwdInput({ label, value, onChange, placeholder, disabled, error, name, 
           border: `1px solid ${error ? C.mars : focused ? C.blue : L ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)'}`,
           borderRadius: 8,
           color: L ? '#000000' : '#ffffff',
-          fontSize: 14, outline: 'none',
+          fontSize: 'calc(14px * var(--font-scale, 1))', outline: 'none',
           transition: 'border-color 0.15s',
           fontFamily: 'inherit',
         }}
       />
-      {error && <div style={{ fontSize: 12, color: C.mars, marginTop: 4 }}>{error}</div>}
+      {error && <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.mars, marginTop: 4 }}>{error}</div>}
     </div>
   );
 }
@@ -141,10 +141,10 @@ function ModalContent({ onClose }) {
           </button>
 
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.blue, fontFamily: 'Orbitron, sans-serif', marginBottom: 4 }}>
+            <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, letterSpacing: '0.12em', color: C.blue, fontFamily: 'Orbitron, sans-serif', marginBottom: 4 }}>
               ARESVISION
             </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: titleColor, fontFamily: 'Orbitron, sans-serif' }}>
+            <div style={{ fontSize: 'calc(18px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: 'Orbitron, sans-serif' }}>
               {t('auth.changePassword')}
             </div>
           </div>
@@ -183,7 +183,7 @@ function ModalContent({ onClose }) {
 
             {globalError && (
               <div style={{
-                fontSize: 13, color: C.mars, marginBottom: 12,
+                fontSize: 'calc(13px * var(--font-scale, 1))', color: C.mars, marginBottom: 12,
                 padding: '8px 12px', borderRadius: 7,
                 background: L ? 'rgba(220,80,50,0.07)' : 'rgba(220,80,50,0.12)',
                 border: '1px solid rgba(220,80,50,0.22)',
@@ -199,7 +199,7 @@ function ModalContent({ onClose }) {
                 width: '100%', padding: '11px 0',
                 background: loading ? 'rgba(74,158,255,0.45)' : C.blue,
                 border: 'none', borderRadius: 9,
-                color: '#fff', fontSize: 13, fontWeight: 700,
+                color: '#fff', fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 700,
                 letterSpacing: '0.04em',
                 cursor: loading ? 'default' : 'pointer',
                 fontFamily: 'Orbitron, sans-serif',

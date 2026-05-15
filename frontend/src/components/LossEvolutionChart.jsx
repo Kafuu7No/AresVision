@@ -78,7 +78,7 @@ const LossEvolutionChart = ({ lossHistory, isLight }) => {
   };
 
   const titleStyle = {
-    fontSize: 12,
+    fontSize: 'calc(12px * var(--font-scale, 1))',
     fontWeight: 700,
     opacity: 0.6,
     marginBottom: 8,
@@ -93,7 +93,7 @@ const LossEvolutionChart = ({ lossHistory, isLight }) => {
       {trainLoss.length === 0 ? (
         <div style={{ 
           height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          opacity: 0.3, fontSize: 13, fontStyle: 'italic'
+          opacity: 0.3, fontSize: 'calc(13px * var(--font-scale, 1))', fontStyle: 'italic'
         }}>
           {t('modelTraining.charts.noMetrics')}
         </div>

@@ -17,7 +17,7 @@ const ShapImportanceChart = ({ data, loading }) => {
           borderTop: `3px solid ${C.mars}`, borderRadius: '50%',
           animation: 'spin-slow 1s linear infinite'
         }} />
-        <div style={{ marginTop: 12, fontSize: 13, color: C.ice30 }}>{t('predict.shap.computing')}</div>
+        <div style={{ marginTop: 12, fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice30 }}>{t('predict.shap.computing')}</div>
       </div>
     );
   }
@@ -59,10 +59,10 @@ const ShapImportanceChart = ({ data, loading }) => {
   return (
     <div className="shap-chart-container" style={{ padding: '16px 8px' }}>
       <div style={{ marginBottom: 20 }}>
-        <h4 style={{ margin: '0 0 8px 0', fontSize: 13, color: C.ice60, letterSpacing: 0.5 }}>
+        <h4 style={{ margin: '0 0 8px 0', fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice60, letterSpacing: 0.5 }}>
           {t('predict.shap.waterfallTitle') || 'WATERFALL ATTRIBUTION / 瀑布归因分析'}
         </h4>
-        <p style={{ margin: 0, fontSize: 11, color: C.ice30, lineHeight: 1.5 }}>
+        <p style={{ margin: 0, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.5 }}>
           {t('predict.shap.waterfallDesc') || '从基准值到预测值的逐级演化过程 (O₃ μm-atm)'}
         </p>
       </div>
@@ -70,7 +70,7 @@ const ShapImportanceChart = ({ data, loading }) => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* 1. 基准值条 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.ice50 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice50 }}>
             <span>{t('predict.shap.baseValue') || 'Base (E[f(x)])'}</span>
             <span style={{ fontFamily: "'Orbitron', sans-serif" }}>{baseValue.toFixed(4)}</span>
           </div>
@@ -90,7 +90,7 @@ const ShapImportanceChart = ({ data, loading }) => {
           
           return (
             <div key={step.key} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'calc(10px * var(--font-scale, 1))' }}>
                 <span style={{ color: C.ice80 }}>{step.label}</span>
                 <span style={{ color: barColor, fontWeight: 600 }}>
                   {step.val > 0 ? '+' : ''}{step.val.toFixed(4)}
@@ -118,7 +118,7 @@ const ShapImportanceChart = ({ data, loading }) => {
 
         {/* 3. 最终预测值条 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.ice80, fontWeight: 700 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice80, fontWeight: 700 }}>
             <span>{t('predict.shap.totalValue') || 'Prediction (f(x))'}</span>
             <span style={{ color: C.ice, fontFamily: "'Orbitron', sans-serif" }}>{finalValue.toFixed(4)}</span>
           </div>
@@ -135,7 +135,7 @@ const ShapImportanceChart = ({ data, loading }) => {
       {/* 坐标轴 */}
       <div style={{ 
         position: 'relative', height: 20, marginTop: 12, 
-        borderTop: `1px solid ${C.border}`, fontSize: 9, color: C.ice30,
+        borderTop: `1px solid ${C.border}`, fontSize: 'calc(9px * var(--font-scale, 1))', color: C.ice30,
         fontFamily: "'Orbitron', sans-serif"
       }}>
         <div style={{ position: 'absolute', left: `${getX(axisMin)}%`, top: 4 }}>{axisMin.toFixed(3)}</div>
@@ -146,7 +146,7 @@ const ShapImportanceChart = ({ data, loading }) => {
       <div style={{ 
         marginTop: 16, paddingTop: 12, borderTop: `1px dotted ${C.border}`, 
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        fontSize: 10, color: C.ice20
+        fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice20
       }}>
         <div style={{ display: 'flex', gap: 8 }}>
           <span style={{ color: C.blue }}>← {t('predict.shap.inhibitory') || 'Inhibitory'}</span>

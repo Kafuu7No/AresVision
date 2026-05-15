@@ -187,8 +187,8 @@ export default function WaveBandDiagnosticsChart({ marsYear, dataSourceMode = 'd
 
   useAiInsightRegistration('waveDiag', aiInsightProvider);
 
-  if (loading) return <div style={{ color: C.ice60, fontSize: 12 }}>{copy.loading}</div>;
-  if (!diagnostics?.bands?.length) return <div style={{ color: C.mars, fontSize: 12 }}>{copy.noData}</div>;
+  if (loading) return <div style={{ color: C.ice60, fontSize: 'calc(12px * var(--font-scale, 1))' }}>{copy.loading}</div>;
+  if (!diagnostics?.bands?.length) return <div style={{ color: C.mars, fontSize: 'calc(12px * var(--font-scale, 1))' }}>{copy.noData}</div>;
 
   return (
     <div style={{ width: '100%', display: 'grid', gap: 10 }}>
@@ -203,7 +203,7 @@ export default function WaveBandDiagnosticsChart({ marsYear, dataSourceMode = 'd
               color: variable === option.id ? C.blue : C.ice60,
               borderRadius: 999,
               padding: '6px 10px',
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               cursor: 'pointer',
               fontFamily: "'Orbitron', sans-serif",
             }}
@@ -214,7 +214,7 @@ export default function WaveBandDiagnosticsChart({ marsYear, dataSourceMode = 'd
         ))}
       </div>
 
-      <div style={{ color: C.ice60, fontSize: 11 }}>
+      <div style={{ color: C.ice60, fontSize: 'calc(11px * var(--font-scale, 1))' }}>
         {copy.variableLabel}: <span style={{ color: C.blue, fontWeight: 700 }}>{currentVariableLabel}</span>
       </div>
 
@@ -265,7 +265,7 @@ export default function WaveBandDiagnosticsChart({ marsYear, dataSourceMode = 'd
           border: `1px solid ${C.border}`,
           background: 'rgba(255,255,255,0.03)',
           color: C.ice60,
-          fontSize: 12,
+          fontSize: 'calc(12px * var(--font-scale, 1))',
           lineHeight: 1.65,
         }}
       >

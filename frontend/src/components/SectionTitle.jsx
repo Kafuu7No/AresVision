@@ -9,7 +9,7 @@ export default function SectionTitle({ title, subtitle, align = 'left' }) {
     <div style={{ textAlign: align, marginBottom: 32 }}>
       <div
         style={{
-          fontSize: 11,
+          fontSize: 'calc(11px * var(--font-scale, 1))',
           fontWeight: 700,
           letterSpacing: 4,
           color: C.mars,
@@ -22,7 +22,7 @@ export default function SectionTitle({ title, subtitle, align = 'left' }) {
       </div>
       <h2
         style={{
-          fontSize: 32,
+          fontSize: 'calc(32px * var(--font-scale, 1))',
           fontWeight: 700,
           fontFamily: "'Orbitron', sans-serif",
           color: C.ice,

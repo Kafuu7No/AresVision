@@ -70,8 +70,8 @@ function formatDate(iso) {
 function MetaRow({ label, value }) {
   return (
     <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
-      <span style={{ fontSize: 10, color: 'var(--text-30)', whiteSpace: 'nowrap', minWidth: 52 }}>{label}</span>
-      <span style={{ fontSize: 12, color: 'var(--text-60)', fontWeight: 500 }}>{value ?? '—'}</span>
+      <span style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: 'var(--text-30)', whiteSpace: 'nowrap', minWidth: 52 }}>{label}</span>
+      <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: 'var(--text-60)', fontWeight: 500 }}>{value ?? '—'}</span>
     </div>
   );
 }
@@ -116,7 +116,7 @@ function RejectionModal({ t, isLight, onConfirm, onCancel }) {
         }}
       >
         <div style={{
-          fontSize: 14, fontWeight: 700, color: titleColor,
+          fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700, color: titleColor,
           fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.02em', marginBottom: 10,
         }}>
           {t('admin.rejectTitle')}
@@ -132,7 +132,7 @@ function RejectionModal({ t, isLight, onConfirm, onCancel }) {
             background: inputBg,
             border: `1px solid ${inputBorder}`,
             borderRadius: 8, padding: '8px 12px',
-            color: titleColor, fontSize: 13,
+            color: titleColor, fontSize: 'calc(13px * var(--font-scale, 1))',
             resize: 'vertical', outline: 'none',
             fontFamily: 'inherit', lineHeight: 1.55,
             marginBottom: 18,
@@ -144,7 +144,7 @@ function RejectionModal({ t, isLight, onConfirm, onCancel }) {
             style={{
               padding: '8px 18px', borderRadius: 8,
               background: cancelBg, border: 'none',
-              color: cancelClr, fontSize: 13, fontWeight: 500,
+              color: cancelClr, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 500,
               cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
@@ -155,7 +155,7 @@ function RejectionModal({ t, isLight, onConfirm, onCancel }) {
             style={{
               padding: '8px 18px', borderRadius: 8,
               background: C.mars, border: 'none',
-              color: '#fff', fontSize: 13, fontWeight: 600,
+              color: '#fff', fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 600,
               cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
@@ -188,7 +188,7 @@ function ReviewCard({ record, t, isLight, onApprove, onReject, loading }) {
           <FileIcon size={14} color="currentColor" />
         </span>
         <span style={{
-          fontSize: 13, fontWeight: 700, color: 'var(--text)',
+          fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 700, color: 'var(--text)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
         }} title={record.filename}>
           {record.filename}
@@ -196,7 +196,7 @@ function ReviewCard({ record, t, isLight, onApprove, onReject, loading }) {
       </div>
 
       {/* Uploader */}
-      <div style={{ fontSize: 11, color: 'var(--text-30)' }}>
+      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: 'var(--text-30)' }}>
         {t('admin.cardUploader')}: <span style={{ color: 'var(--text-60)', fontWeight: 500 }}>
           {record.uploader_username || record.uploader_email || '—'}
           {record.uploader_email && record.uploader_username
@@ -207,7 +207,7 @@ function ReviewCard({ record, t, isLight, onApprove, onReject, loading }) {
 
       {/* Description / Note */}
       {record.description && (
-        <div style={{ fontSize: 12, color: 'var(--text-60)', lineHeight: 1.55 }}>
+        <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: 'var(--text-60)', lineHeight: 1.55 }}>
           <span style={{ color: 'var(--text-30)' }}>{t('admin.cardNote')}：</span>
           {record.description}
         </div>
@@ -236,7 +236,7 @@ function ReviewCard({ record, t, isLight, onApprove, onReject, loading }) {
             flex: 1, padding: '7px 0', borderRadius: 8,
             background: 'rgba(34,197,94,0.12)',
             border: '1px solid rgba(34,197,94,0.35)',
-            color: '#22c55e', fontSize: 12, fontWeight: 600,
+            color: '#22c55e', fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 600,
             cursor: loading ? 'not-allowed' : 'pointer',
             opacity: loading ? 0.6 : 1, fontFamily: 'inherit',
             transition: 'opacity 0.15s',
@@ -251,7 +251,7 @@ function ReviewCard({ record, t, isLight, onApprove, onReject, loading }) {
             flex: 1, padding: '7px 0', borderRadius: 8,
             background: 'rgba(199,91,57,0.12)',
             border: `1px solid rgba(199,91,57,0.35)`,
-            color: C.mars, fontSize: 12, fontWeight: 600,
+            color: C.mars, fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 600,
             cursor: loading ? 'not-allowed' : 'pointer',
             opacity: loading ? 0.6 : 1, fontFamily: 'inherit',
             transition: 'opacity 0.15s',
@@ -283,14 +283,14 @@ function ApprovedCard({ record, t, isLight, onRevoke, loading }) {
           <FileIcon size={14} color="currentColor" />
         </span>
         <span style={{
-          fontSize: 13, fontWeight: 700, color: 'var(--text)',
+          fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 700, color: 'var(--text)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
         }} title={record.filename}>
           {record.filename}
         </span>
       </div>
 
-      <div style={{ fontSize: 11, color: 'var(--text-30)' }}>
+      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: 'var(--text-30)' }}>
         {t('admin.cardUploader')}: <span style={{ color: 'var(--text-60)', fontWeight: 500 }}>
           {record.uploader_username || record.uploader_email || '—'}
           {record.uploader_email && record.uploader_username
@@ -318,7 +318,7 @@ function ApprovedCard({ record, t, isLight, onRevoke, loading }) {
           padding: '7px 0', borderRadius: 8,
           background: 'rgba(199,91,57,0.10)',
           border: `1px solid rgba(199,91,57,0.30)`,
-          color: C.mars, fontSize: 12, fontWeight: 600,
+          color: C.mars, fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 600,
           cursor: loading ? 'not-allowed' : 'pointer',
           opacity: loading ? 0.6 : 1, fontFamily: 'inherit',
           transition: 'opacity 0.15s',
@@ -393,7 +393,7 @@ function PendingTab({ t, isLight, onReviewComplete, subColor }) {
     <>
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         {loading && (
-          <div style={{ textAlign: 'center', color: subColor, paddingTop: 60, fontSize: 13 }}>
+          <div style={{ textAlign: 'center', color: subColor, paddingTop: 60, fontSize: 'calc(13px * var(--font-scale, 1))' }}>
             {t('admin.loading')}
           </div>
         )}
@@ -405,10 +405,10 @@ function PendingTab({ t, isLight, onReviewComplete, subColor }) {
             <div style={{ color: subColor, opacity: 0.5 }}>
               <InboxIcon size={48} color="currentColor" />
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
+            <div style={{ fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
               {t('admin.empty')}
             </div>
-            <div style={{ fontSize: 12, color: subColor }}>{t('admin.emptySub')}</div>
+            <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: subColor }}>{t('admin.emptySub')}</div>
           </div>
         )}
         {!loading && records.map(record => (
@@ -447,13 +447,13 @@ function PendingTab({ t, isLight, onReviewComplete, subColor }) {
             }}
           >
             <div style={{
-              fontSize: 14, fontWeight: 700,
+              fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700,
               color: isLight ? '#000000' : '#ffffff',
               fontFamily: 'Orbitron, sans-serif', marginBottom: 10,
             }}>
               {t('admin.confirmApproveTitle')}
             </div>
-            <div style={{ fontSize: 13, color: isLight ? '#000000' : '#ffffff', marginBottom: 22, lineHeight: 1.65 }}>
+            <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: isLight ? '#000000' : '#ffffff', marginBottom: 22, lineHeight: 1.65 }}>
               {t('admin.confirmApproveMsg')}
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -463,7 +463,7 @@ function PendingTab({ t, isLight, onReviewComplete, subColor }) {
                   padding: '8px 18px', borderRadius: 8,
                   background: isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.08)',
                   border: 'none', color: isLight ? '#000000' : '#ffffff',
-                  fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
                 {t('admin.cancelBtn')}
@@ -473,7 +473,7 @@ function PendingTab({ t, isLight, onReviewComplete, subColor }) {
                 style={{
                   padding: '8px 18px', borderRadius: 8,
                   background: '#22c55e', border: 'none',
-                  color: '#fff', fontSize: 13, fontWeight: 600,
+                  color: '#fff', fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 600,
                   cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
@@ -540,7 +540,7 @@ function ApprovedTab({ t, isLight, subColor }) {
     <>
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         {loading && (
-          <div style={{ textAlign: 'center', color: subColor, paddingTop: 60, fontSize: 13 }}>
+          <div style={{ textAlign: 'center', color: subColor, paddingTop: 60, fontSize: 'calc(13px * var(--font-scale, 1))' }}>
             {t('admin.loading')}
           </div>
         )}
@@ -552,10 +552,10 @@ function ApprovedTab({ t, isLight, subColor }) {
             <div style={{ color: subColor, opacity: 0.5 }}>
               <InboxIcon size={48} color="currentColor" />
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
+            <div style={{ fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
               {t('admin.approvedEmpty')}
             </div>
-            <div style={{ fontSize: 12, color: subColor }}>{t('admin.approvedEmptySub')}</div>
+            <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: subColor }}>{t('admin.approvedEmptySub')}</div>
           </div>
         )}
         {!loading && records.map(record => (
@@ -593,13 +593,13 @@ function ApprovedTab({ t, isLight, subColor }) {
             }}
           >
             <div style={{
-              fontSize: 14, fontWeight: 700,
+              fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700,
               color: isLight ? '#000000' : '#ffffff',
               fontFamily: 'Orbitron, sans-serif', marginBottom: 10,
             }}>
               {t('admin.confirmRevokeTitle')}
             </div>
-            <div style={{ fontSize: 13, color: isLight ? '#000000' : '#ffffff', marginBottom: 22, lineHeight: 1.65 }}>
+            <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: isLight ? '#000000' : '#ffffff', marginBottom: 22, lineHeight: 1.65 }}>
               {t('admin.confirmRevokeMsg')}
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -609,7 +609,7 @@ function ApprovedTab({ t, isLight, subColor }) {
                   padding: '8px 18px', borderRadius: 8,
                   background: isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.08)',
                   border: 'none', color: isLight ? '#000000' : '#ffffff',
-                  fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
                 {t('admin.cancelBtn')}
@@ -619,7 +619,7 @@ function ApprovedTab({ t, isLight, subColor }) {
                 style={{
                   padding: '8px 18px', borderRadius: 8,
                   background: C.mars, border: 'none',
-                  color: '#fff', fontSize: 13, fontWeight: 600,
+                  color: '#fff', fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 600,
                   cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
@@ -663,13 +663,13 @@ function PanelContent({ t, isLight, onClose, onReviewComplete }) {
         }}>
           <div>
             <div style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: 2.5,
+              fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, letterSpacing: 2.5,
               fontFamily: "'Orbitron', sans-serif",
               color: C.mars, textTransform: 'uppercase', marginBottom: 3,
             }}>
               {t('admin.panelSubtitle')}
             </div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
+            <div style={{ fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
               {t('admin.panelTitle')}
             </div>
           </div>
@@ -699,7 +699,7 @@ function PanelContent({ t, isLight, onClose, onReviewComplete }) {
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 padding: '8px 18px 10px',
-                fontSize: 12, fontWeight: 600,
+                fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 600,
                 fontFamily: 'inherit',
                 transition: 'color 0.15s',
                 ...(activeTab === tab ? tabActive : tabInactive),

@@ -109,8 +109,8 @@ const zh = {
       dpi150Sub: '标准', dpi300Sub: '出版', dpi600Sub: '超清',
     },
     appearance: {
-      label: 'APPEARANCE / 显示与字体',
-      desc: '调节全局界面元素和字体缩放大小',
+      label: 'APPEARANCE / 文字与可读性',
+      desc: '只调节全站文字大小，不会整体缩放页面或拉伸控件布局',
       scaleSmall: '较小',
       scaleMedium: '默认',
       scaleLarge: '较大',

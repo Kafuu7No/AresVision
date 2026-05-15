@@ -77,10 +77,10 @@ export default function GlobeLegend({ ozoneData }) {
             paddingBottom: '5px',
           }}
         >
-          <span style={{ color: C.ice60, fontSize: '9px', fontFamily: "'Exo 2', sans-serif", letterSpacing: 1 }}>
+          <span style={{ color: C.ice60, fontSize: 'calc(9px * var(--font-scale, 1))', fontFamily: "'Exo 2', sans-serif", letterSpacing: 1 }}>
             {isZh ? '数据点' : 'DATA POINTS'}
           </span>
-          <span style={{ color: C.mars, fontSize: '12px', fontFamily: "'Orbitron', sans-serif", fontWeight: 'bold' }}>
+          <span style={{ color: C.mars, fontSize: 'calc(12px * var(--font-scale, 1))', fontFamily: "'Orbitron', sans-serif", fontWeight: 'bold' }}>
             {pointsCount}
           </span>
         </div>
@@ -88,7 +88,7 @@ export default function GlobeLegend({ ozoneData }) {
         <div
           style={{
             color: C.ice30,
-            fontSize: '8px',
+            fontSize: 'calc(8px * var(--font-scale, 1))',
             fontFamily: "'Orbitron', sans-serif",
             letterSpacing: 1,
             marginBottom: '7px',
@@ -112,7 +112,7 @@ export default function GlobeLegend({ ozoneData }) {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              fontSize: '9px',
+              fontSize: 'calc(9px * var(--font-scale, 1))',
               color: C.ice,
               fontFamily: "'Exo 2', sans-serif",
               fontWeight: 'bold',

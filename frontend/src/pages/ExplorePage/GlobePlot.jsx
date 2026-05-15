@@ -83,11 +83,11 @@ export default function GlobePlot({ data, h = 300 }) {
 
         {[-60, -30, 0, 30, 60].map(lat => (
           <text key={`latl${lat}`} x={-VB_LEFT + 4} y={toY(lat) + 4}
-            fontSize="8" fill={isLight ? 'rgba(26,26,46,0.55)' : 'rgba(255,255,255,0.55)'}>{latLabel(lat)}</text>
+            fontSize="calc(8px * var(--font-scale, 1))" fill={isLight ? 'rgba(26,26,46,0.55)' : 'rgba(255,255,255,0.55)'}>{latLabel(lat)}</text>
         ))}
         {[-120, -60, 0, 60, 120].map(lng => (
           <text key={`lngl${lng}`} x={toX(lng)} y={H + 13}
-            textAnchor="middle" fontSize="8" fill={isLight ? 'rgba(26,26,46,0.5)' : 'rgba(255,255,255,0.5)'}>{lngLabel(lng)}</text>
+            textAnchor="middle" fontSize="calc(8px * var(--font-scale, 1))" fill={isLight ? 'rgba(26,26,46,0.5)' : 'rgba(255,255,255,0.5)'}>{lngLabel(lng)}</text>
         ))}
 
         {points.map((p, i) => {
@@ -120,20 +120,20 @@ export default function GlobePlot({ data, h = 300 }) {
         }} />
         <span style={{
           position: 'absolute', right: 18, top: 0,
-          fontSize: 9, color: C.ice60, whiteSpace: 'nowrap',
+          fontSize: 'calc(9px * var(--font-scale, 1))', color: C.ice60, whiteSpace: 'nowrap',
         }}>{fmtNum(convertOzone(maxVal, ozoneUnit), precision)}</span>
         <span style={{
           position: 'absolute', right: 18, top: '50%',
           transform: 'translateY(-50%)',
-          fontSize: 9, color: C.ice60, whiteSpace: 'nowrap',
+          fontSize: 'calc(9px * var(--font-scale, 1))', color: C.ice60, whiteSpace: 'nowrap',
         }}>{fmtNum(convertOzone((maxVal + minVal) / 2, ozoneUnit), precision)}</span>
         <span style={{
           position: 'absolute', right: 18, bottom: 0,
-          fontSize: 9, color: C.ice60, whiteSpace: 'nowrap',
+          fontSize: 'calc(9px * var(--font-scale, 1))', color: C.ice60, whiteSpace: 'nowrap',
         }}>{fmtNum(convertOzone(minVal, ozoneUnit), precision)}</span>
         <span style={{
           position: 'absolute', right: 0, bottom: -14,
-          fontSize: 9, color: C.ice30, whiteSpace: 'nowrap',
+          fontSize: 'calc(9px * var(--font-scale, 1))', color: C.ice30, whiteSpace: 'nowrap',
         }}>{ozoneLabel(ozoneUnit)}</span>
       </div>
 
@@ -147,7 +147,7 @@ export default function GlobePlot({ data, h = 300 }) {
           backdropFilter: 'blur(10px)',
           borderRadius: 8,
           padding: '8px 12px',
-          fontSize: 12,
+          fontSize: 'calc(12px * var(--font-scale, 1))',
           color: C.ice,
           pointerEvents: 'none',
           zIndex: 10,

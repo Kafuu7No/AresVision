@@ -88,7 +88,7 @@ function YearCoverageCard({ row, t }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div
           style={{
-            fontSize: 13,
+            fontSize: 'calc(13px * var(--font-scale, 1))',
             fontWeight: 700,
             color: C.ice,
             fontFamily: "'Orbitron', sans-serif",
@@ -99,7 +99,7 @@ function YearCoverageCard({ row, t }) {
         </div>
         <span
           style={{
-            fontSize: 10,
+            fontSize: 'calc(10px * var(--font-scale, 1))',
             color: C.blue,
             border: '1px solid rgba(74,158,255,0.35)',
             background: 'rgba(74,158,255,0.08)',
@@ -113,10 +113,10 @@ function YearCoverageCard({ row, t }) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-        <div style={{ fontSize: 28, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif" }}>
+        <div style={{ fontSize: 'calc(28px * var(--font-scale, 1))', fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif" }}>
           {pct(coverage)}
         </div>
-        <div style={{ fontSize: 11, color: C.ice30 }}>{t('explore.defaultDataset.coverageHint')}</div>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>{t('explore.defaultDataset.coverageHint')}</div>
       </div>
 
       <div style={{ height: 7, borderRadius: 999, overflow: 'hidden', background: 'rgba(255,255,255,0.08)' }}>
@@ -129,7 +129,7 @@ function YearCoverageCard({ row, t }) {
         />
       </div>
 
-      <div style={{ fontSize: 11, color: C.ice60, lineHeight: 1.8 }}>
+      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8 }}>
         <div>{`${t('explore.defaultDataset.metaLsRange')}: ${formatLs(row.lsStart)} - ${formatLs(row.lsEnd)}`}</div>
         <div>{`${t('explore.defaultDataset.metaGrid')}: 5° x 5°`}</div>
         <div>{`${t('explore.defaultDataset.metaSourceMode')}: ${row.sourceMode}`}</div>
@@ -150,7 +150,7 @@ function MetricCard({ eyebrow, value, label, desc, accent = C.blue }) {
     >
       <div
         style={{
-          fontSize: 10,
+          fontSize: 'calc(10px * var(--font-scale, 1))',
           color: accent,
           fontWeight: 700,
           letterSpacing: 1.6,
@@ -159,11 +159,11 @@ function MetricCard({ eyebrow, value, label, desc, accent = C.blue }) {
       >
         {eyebrow}
       </div>
-      <div style={{ marginTop: 10, fontSize: 28, color: C.ice, fontWeight: 700, fontFamily: "'Orbitron', sans-serif" }}>
+      <div style={{ marginTop: 10, fontSize: 'calc(28px * var(--font-scale, 1))', color: C.ice, fontWeight: 700, fontFamily: "'Orbitron', sans-serif" }}>
         {value}
       </div>
-      <div style={{ marginTop: 4, fontSize: 12, color: C.ice60, fontWeight: 600 }}>{label}</div>
-      <div style={{ marginTop: 8, fontSize: 11, color: C.ice30, lineHeight: 1.75 }}>{desc}</div>
+      <div style={{ marginTop: 4, fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, fontWeight: 600 }}>{label}</div>
+      <div style={{ marginTop: 8, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.75 }}>{desc}</div>
     </div>
   );
 }
@@ -185,7 +185,7 @@ function SourceCard({ title, subtitle, tags, body }) {
         <div>
           <div
             style={{
-              fontSize: 12,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
               fontWeight: 700,
               color: C.ice,
               fontFamily: "'Orbitron', sans-serif",
@@ -194,7 +194,7 @@ function SourceCard({ title, subtitle, tags, body }) {
           >
             {title}
           </div>
-          <div style={{ fontSize: 11, color: C.ice30, marginTop: 3 }}>{subtitle}</div>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, marginTop: 3 }}>{subtitle}</div>
         </div>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -202,7 +202,7 @@ function SourceCard({ title, subtitle, tags, body }) {
           <span
             key={tag}
             style={{
-              fontSize: 10,
+              fontSize: 'calc(10px * var(--font-scale, 1))',
               color: C.ice60,
               padding: '3px 8px',
               borderRadius: 999,
@@ -214,7 +214,7 @@ function SourceCard({ title, subtitle, tags, body }) {
           </span>
         ))}
       </div>
-      <div style={{ fontSize: 11, color: C.ice60, lineHeight: 1.8 }}>{body}</div>
+      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8 }}>{body}</div>
     </div>
   );
 }
@@ -230,8 +230,8 @@ function VariableGroupCard({ group }) {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ fontSize: 13, color: C.ice, fontWeight: 700 }}>{group.name}</div>
-        <div style={{ fontSize: 12, color: group.color, fontWeight: 700 }}>{pct(group.coverage)}</div>
+        <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice, fontWeight: 700 }}>{group.name}</div>
+        <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: group.color, fontWeight: 700 }}>{pct(group.coverage)}</div>
       </div>
       <div style={{ marginTop: 10, height: 7, borderRadius: 999, overflow: 'hidden', background: 'rgba(255,255,255,0.08)' }}>
         <div style={{ width: `${group.coverage}%`, height: '100%', background: group.color }} />
@@ -241,7 +241,7 @@ function VariableGroupCard({ group }) {
           <span
             key={variable}
             style={{
-              fontSize: 10,
+              fontSize: 'calc(10px * var(--font-scale, 1))',
               color: C.ice60,
               padding: '4px 9px',
               borderRadius: 999,
@@ -304,7 +304,7 @@ export default function DefaultDatasetTab() {
       <GlowCard style={{ padding: '20px 22px' }}>
         <div
           style={{
-            fontSize: 11,
+            fontSize: 'calc(11px * var(--font-scale, 1))',
             fontWeight: 700,
             color: C.blue,
             fontFamily: "'Orbitron', sans-serif",
@@ -314,7 +314,7 @@ export default function DefaultDatasetTab() {
         >
           {t('explore.defaultDataset.header')}
         </div>
-        <div style={{ fontSize: 13, color: C.ice60, lineHeight: 1.8, maxWidth: 1050 }}>
+        <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8, maxWidth: 1050 }}>
           {t('explore.defaultDataset.headerDesc')}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
@@ -322,7 +322,7 @@ export default function DefaultDatasetTab() {
             <span
               key={tag}
               style={{
-                fontSize: 10,
+                fontSize: 'calc(10px * var(--font-scale, 1))',
                 color: C.blue,
                 padding: '4px 10px',
                 borderRadius: 999,
@@ -370,7 +370,7 @@ export default function DefaultDatasetTab() {
       <GlowCard style={{ padding: '18px 20px' }}>
         <div
           style={{
-            fontSize: 11,
+            fontSize: 'calc(11px * var(--font-scale, 1))',
             fontWeight: 700,
             color: C.blue,
             fontFamily: "'Orbitron', sans-serif",
@@ -409,7 +409,7 @@ export default function DefaultDatasetTab() {
         >
           <div
             style={{
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               fontWeight: 700,
               color: C.blue,
               fontFamily: "'Orbitron', sans-serif",
@@ -419,7 +419,7 @@ export default function DefaultDatasetTab() {
             {t('explore.defaultDataset.listTitle')}
           </div>
           {!loading && (
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 11, color: C.ice30 }}>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>
               <span>{t('explore.defaultDataset.yearCount', { n: yearRows.length })}</span>
               <span>{`${t('explore.defaultDataset.coverageAvg')}: ${lsCoverageStats.avg}`}</span>
               <span>{`${t('explore.defaultDataset.coverageRange')}: ${lsCoverageStats.min} - ${lsCoverageStats.max}`}</span>
@@ -437,7 +437,7 @@ export default function DefaultDatasetTab() {
               padding: '20px 16px',
               textAlign: 'center',
               color: C.mars,
-              fontSize: 12,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -452,7 +452,7 @@ export default function DefaultDatasetTab() {
                 background: 'rgba(255,255,255,0.03)',
                 borderRadius: 8,
                 color: C.ice60,
-                fontSize: 12,
+                fontSize: 'calc(12px * var(--font-scale, 1))',
                 padding: '5px 12px',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
@@ -471,7 +471,7 @@ export default function DefaultDatasetTab() {
               padding: '26px 14px',
               textAlign: 'center',
               color: C.ice30,
-              fontSize: 12,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
             }}
           >
             {t('common.noData')}
@@ -491,7 +491,7 @@ export default function DefaultDatasetTab() {
         <GlowCard style={{ padding: '16px 20px' }}>
           <div
             style={{
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               fontWeight: 700,
               color: C.blue,
               fontFamily: "'Orbitron', sans-serif",
@@ -506,7 +506,7 @@ export default function DefaultDatasetTab() {
               <VariableGroupCard key={group.name} group={group} />
             ))}
           </div>
-          <div style={{ marginTop: 12, fontSize: 11, color: C.ice30, lineHeight: 1.8 }}>
+          <div style={{ marginTop: 12, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.8 }}>
             {t('explore.defaultDataset.variableDesc')}
           </div>
         </GlowCard>
@@ -514,7 +514,7 @@ export default function DefaultDatasetTab() {
         <GlowCard style={{ padding: '16px 20px' }}>
           <div
             style={{
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               fontWeight: 700,
               color: C.blue,
               fontFamily: "'Orbitron', sans-serif",
@@ -529,7 +529,7 @@ export default function DefaultDatasetTab() {
               <span
                 key={name}
                 style={{
-                  fontSize: 10,
+                  fontSize: 'calc(10px * var(--font-scale, 1))',
                   color: C.ice60,
                   padding: '5px 10px',
                   borderRadius: 999,
@@ -541,7 +541,7 @@ export default function DefaultDatasetTab() {
               </span>
             ))}
           </div>
-          <div style={{ fontSize: 11, color: C.ice30, lineHeight: 1.85 }}>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.85 }}>
             {t('explore.defaultDataset.capabilityDesc')}
           </div>
         </GlowCard>

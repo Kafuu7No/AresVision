@@ -226,7 +226,7 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
       <GlowCard style={{ padding: '16px 20px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <span style={{ fontSize: 24, marginRight: 16, filter: `drop-shadow(0 0 8px ${currentModeInfo.color})` }}>
+            <span style={{ fontSize: 'calc(24px * var(--font-scale, 1))', marginRight: 16, filter: `drop-shadow(0 0 8px ${currentModeInfo.color})` }}>
               {currentModeInfo.icon}
             </span>
             <div>
@@ -234,7 +234,7 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
                 style={{
                   color: currentModeInfo.color,
                   fontFamily: "'Orbitron', sans-serif",
-                  fontSize: 14,
+                  fontSize: 'calc(14px * var(--font-scale, 1))',
                   fontWeight: 'bold',
                   margin: 0,
                   textShadow: isLight ? 'none' : `0 0 10px ${currentModeInfo.color}80`,
@@ -255,7 +255,7 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
                 borderRadius: 6,
                 cursor: 'pointer',
                 fontFamily: "'Exo 2', sans-serif",
-                fontSize: 11,
+                fontSize: 'calc(11px * var(--font-scale, 1))',
                 transition: '0.2s',
               }}
               onMouseEnter={(event) => { event.currentTarget.style.background = isLight ? 'rgba(15,23,42,0.14)' : 'rgba(255,255,255,0.2)'; }}
@@ -265,7 +265,7 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
             </button>
           )}
         </div>
-        <p style={{ color: C.ice60, fontFamily: "'Exo 2', sans-serif", fontSize: 11, margin: 0, lineHeight: 1.6 }}>
+        <p style={{ color: C.ice60, fontFamily: "'Exo 2', sans-serif", fontSize: 'calc(11px * var(--font-scale, 1))', margin: 0, lineHeight: 1.6 }}>
           {currentModeInfo.desc}
         </p>
       </GlowCard>
@@ -314,7 +314,7 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
                   style={{
                     color: isExpanded ? cardDef.color : C.ice60,
                     fontFamily: "'Orbitron', sans-serif",
-                    fontSize: 13,
+                    fontSize: 'calc(13px * var(--font-scale, 1))',
                     fontWeight: isExpanded ? 'bold' : 'normal',
                     letterSpacing: 1,
                   }}
@@ -324,7 +324,7 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
                 <span
                   style={{
                     color: isExpanded ? cardDef.color : C.ice30,
-                    fontSize: 16,
+                    fontSize: 'calc(16px * var(--font-scale, 1))',
                     transition: 'transform 0.3s',
                     transform: isExpanded ? 'rotate(45deg)' : 'rotate(0deg)',
                   }}
@@ -344,7 +344,7 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
                 <div style={{ overflow: 'hidden' }}>
                   <div style={{ padding: 20, boxSizing: 'border-box' }}>
                     {shouldRender ? cardDef.component : (
-                      <div style={{ color: C.ice40, fontSize: 11, fontFamily: "'Exo 2', sans-serif" }}>
+                      <div style={{ color: C.ice40, fontSize: 'calc(11px * var(--font-scale, 1))', fontFamily: "'Exo 2', sans-serif" }}>
                         {isZh ? '展开后加载该分析模块' : 'Expand to load this analysis module'}
                       </div>
                     )}

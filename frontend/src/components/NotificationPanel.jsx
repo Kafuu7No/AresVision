@@ -97,7 +97,7 @@ function NotificationCard({ notif, t, isLight, onMarkRead }) {
         width: 28, height: 28, borderRadius: '50%',
         background: bg, border: `1px solid ${border}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0, fontSize: 12, fontWeight: 700, color,
+        flexShrink: 0, fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 700, color,
       }}>
         {icon}
       </div>
@@ -105,7 +105,7 @@ function NotificationCard({ notif, t, isLight, onMarkRead }) {
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: 12, fontWeight: notif.is_read ? 500 : 700,
+          fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: notif.is_read ? 500 : 700,
           color: 'var(--text)', marginBottom: 3,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
@@ -113,12 +113,12 @@ function NotificationCard({ notif, t, isLight, onMarkRead }) {
         </div>
         {notif.content && (
           <div style={{
-            fontSize: 11, color: 'var(--text-60)', lineHeight: 1.55, marginBottom: 5,
+            fontSize: 'calc(11px * var(--font-scale, 1))', color: 'var(--text-60)', lineHeight: 1.55, marginBottom: 5,
           }}>
             {notif.content}
           </div>
         )}
-        <div style={{ fontSize: 10, color: 'var(--text-30)' }}>
+        <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: 'var(--text-30)' }}>
           {relativeTime(notif.created_at, t)}
         </div>
       </div>
@@ -198,13 +198,13 @@ function PanelContent({ t, isLight, onClose, onReadCountChange }) {
       }}>
         <div>
           <div style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: 2.5,
+            fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, letterSpacing: 2.5,
             fontFamily: "'Orbitron', sans-serif",
             color: C.blue, textTransform: 'uppercase', marginBottom: 3,
           }}>
             {t('notification.titleEn')}
           </div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
+          <div style={{ fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
             {t('notification.title')}
           </div>
         </div>
@@ -215,7 +215,7 @@ function PanelContent({ t, isLight, onClose, onReadCountChange }) {
               style={{
                 background: 'none', border: `1px solid ${borderColor}`,
                 borderRadius: 7, padding: '5px 10px', cursor: 'pointer',
-                color: subColor, fontSize: 11, fontWeight: 500,
+                color: subColor, fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 500,
                 fontFamily: 'inherit', transition: 'background 0.1s',
               }}
               onMouseEnter={e => e.currentTarget.style.background = hoverBg}
@@ -243,7 +243,7 @@ function PanelContent({ t, isLight, onClose, onReadCountChange }) {
       {/* Body */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {loading && (
-          <div style={{ textAlign: 'center', color: subColor, paddingTop: 60, fontSize: 13 }}>
+          <div style={{ textAlign: 'center', color: subColor, paddingTop: 60, fontSize: 'calc(13px * var(--font-scale, 1))' }}>
             {t('common.loading')}
           </div>
         )}
@@ -256,10 +256,10 @@ function PanelContent({ t, isLight, onClose, onReadCountChange }) {
             <div style={{ color: subColor, opacity: 0.5 }}>
               <BellEmptyIcon size={48} color="currentColor" />
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
+            <div style={{ fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
               {t('notification.empty')}
             </div>
-            <div style={{ fontSize: 12, color: subColor }}>{t('notification.emptySub')}</div>
+            <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: subColor }}>{t('notification.emptySub')}</div>
           </div>
         )}
 

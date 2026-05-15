@@ -125,10 +125,10 @@ export default function App() {
           alignItems: 'center',
         }}
       >
-        <div style={{ fontSize: 11, color: C.ice30 }}>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>
           {t('footer.copyright')}
         </div>
-        <div style={{ fontSize: 10, color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>
+        <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>
           {t('footer.powered')}
         </div>
       </footer>

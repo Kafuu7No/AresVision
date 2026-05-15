@@ -56,7 +56,7 @@ function SourceModeBadge({ label, color = C.ice60 }) {
   return (
     <span
       style={{
-        fontSize: 10,
+        fontSize: 'calc(10px * var(--font-scale, 1))',
         color,
         border: `1px solid ${C.border}`,
         borderRadius: 999,
@@ -81,7 +81,7 @@ function StatusDistributionChart({ distribution }) {
         const pct = total > 0 ? (safeCount / total) * 100 : 0;
         return (
           <div key={`status-bar-${status}`} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 72px', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontSize: 11, color: STATUS_COLORS[status] || C.ice60 }}>{status}</span>
+            <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: STATUS_COLORS[status] || C.ice60 }}>{status}</span>
             <div style={{ height: 8, borderRadius: 999, overflow: 'hidden', background: 'rgba(255,255,255,0.08)' }}>
               <div
                 style={{
@@ -91,7 +91,7 @@ function StatusDistributionChart({ distribution }) {
                 }}
               />
             </div>
-            <span style={{ fontSize: 11, color: C.ice30, textAlign: 'right' }}>{`${safeCount} (${pct.toFixed(1)}%)`}</span>
+            <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, textAlign: 'right' }}>{`${safeCount} (${pct.toFixed(1)}%)`}</span>
           </div>
         );
       })}
@@ -103,7 +103,7 @@ function MetricBar({ label, value }) {
   const safe = Math.max(0, Math.min(100, Number(value || 0)));
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.ice60 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice60 }}>
         <span>{label}</span>
         <span>{fmtNum(safe, 1)}</span>
       </div>
@@ -131,14 +131,14 @@ function StatCard({ eyebrow, label, value, desc, accent = C.blue }) {
         background: 'rgba(255,255,255,0.02)',
       }}
     >
-      <div style={{ fontSize: 10, color: accent, fontWeight: 700, letterSpacing: 1.5, fontFamily: "'Orbitron', sans-serif" }}>
+      <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: accent, fontWeight: 700, letterSpacing: 1.5, fontFamily: "'Orbitron', sans-serif" }}>
         {eyebrow}
       </div>
-      <div style={{ marginTop: 10, fontSize: 28, fontWeight: 700, color: C.ice, fontFamily: "'Orbitron', sans-serif" }}>
+      <div style={{ marginTop: 10, fontSize: 'calc(28px * var(--font-scale, 1))', fontWeight: 700, color: C.ice, fontFamily: "'Orbitron', sans-serif" }}>
         {value}
       </div>
-      <div style={{ marginTop: 4, fontSize: 12, color: C.ice60, fontWeight: 600 }}>{label}</div>
-      <div style={{ marginTop: 8, fontSize: 11, color: C.ice30, lineHeight: 1.75 }}>{desc}</div>
+      <div style={{ marginTop: 4, fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, fontWeight: 600 }}>{label}</div>
+      <div style={{ marginTop: 8, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.75 }}>{desc}</div>
     </div>
   );
 }
@@ -161,14 +161,14 @@ function AssetOverviewCard({ asset, active, onClick, t }) {
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div>
-          <div style={{ fontSize: 13, color: C.ice, fontWeight: 700 }}>
+          <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice, fontWeight: 700 }}>
             {asset.yearLabel} · {asset.dataType}
           </div>
-          <div style={{ marginTop: 4, fontSize: 11, color: C.ice30 }}>
+          <div style={{ marginTop: 4, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>
             {`${asset.datasetCount} ${t('explore.governance.datasetUnit')} · ${asset.grids.length ? asset.grids.join(' / ') : '--'}`}
           </div>
         </div>
-        <div style={{ fontSize: 18, color: asset.avgQuality != null ? gradeColor(asset.grade) : C.ice30, fontWeight: 700, fontFamily: "'Orbitron', sans-serif" }}>
+        <div style={{ fontSize: 'calc(18px * var(--font-scale, 1))', color: asset.avgQuality != null ? gradeColor(asset.grade) : C.ice30, fontWeight: 700, fontFamily: "'Orbitron', sans-serif" }}>
           {asset.avgQuality != null ? fmtNum(asset.avgQuality, 1) : '--'}
         </div>
       </div>
@@ -179,7 +179,7 @@ function AssetOverviewCard({ asset, active, onClick, t }) {
         <SourceModeBadge label={`${t('explore.governance.assetStatus')}: ${asset.dominantStatus}`} color={statusColor} />
       </div>
 
-      <div style={{ marginTop: 12, fontSize: 11, color: C.ice60, lineHeight: 1.7 }}>
+      <div style={{ marginTop: 12, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.7 }}>
         {fmtVars(asset.variables)}
       </div>
     </button>
@@ -404,7 +404,7 @@ export default function GovernanceTab() {
   if (!user) {
     return (
       <GlowCard style={{ padding: 22 }}>
-        <div style={{ fontSize: 13, color: C.ice60 }}>{t('explore.upload.loginPrompt')}</div>
+        <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice60 }}>{t('explore.upload.loginPrompt')}</div>
       </GlowCard>
     );
   }
@@ -414,10 +414,10 @@ export default function GovernanceTab() {
       <GlowCard style={{ padding: '18px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, letterSpacing: 2, fontFamily: "'Orbitron', sans-serif" }}>
+            <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: C.blue, letterSpacing: 2, fontFamily: "'Orbitron', sans-serif" }}>
               {t('explore.governance.title')}
             </div>
-            <div style={{ marginTop: 6, fontSize: 12, color: C.ice60 }}>{t('explore.governance.subtitle')}</div>
+            <div style={{ marginTop: 6, fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60 }}>{t('explore.governance.subtitle')}</div>
           </div>
 
           {isAdmin && (
@@ -432,7 +432,7 @@ export default function GovernanceTab() {
                     border: `1px solid ${scope === s ? C.blue : C.border}`,
                     background: scope === s ? 'rgba(74,158,255,0.12)' : 'rgba(255,255,255,0.03)',
                     color: scope === s ? C.blue : C.ice60,
-                    fontSize: 11,
+                    fontSize: 'calc(11px * var(--font-scale, 1))',
                     cursor: 'pointer',
                     fontFamily: 'inherit',
                   }}
@@ -449,14 +449,14 @@ export default function GovernanceTab() {
 
       {!loading && error && (
         <GlowCard style={{ padding: '20px 22px' }}>
-          <div style={{ color: C.mars, fontSize: 12 }}>{error}</div>
+          <div style={{ color: C.mars, fontSize: 'calc(12px * var(--font-scale, 1))' }}>{error}</div>
         </GlowCard>
       )}
 
       {!loading && !error && (
         <>
           <GlowCard style={{ padding: '18px 20px' }}>
-            <div style={{ fontSize: 11, color: C.blue, letterSpacing: 2, fontWeight: 700, fontFamily: "'Orbitron', sans-serif", marginBottom: 14 }}>
+            <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.blue, letterSpacing: 2, fontWeight: 700, fontFamily: "'Orbitron', sans-serif", marginBottom: 14 }}>
               {t('explore.governance.sectionAssets')}
             </div>
 
@@ -480,10 +480,10 @@ export default function GovernanceTab() {
           </GlowCard>
 
           <GlowCard style={{ padding: '16px 18px' }}>
-            <div style={{ fontSize: 11, color: C.blue, letterSpacing: 2, fontWeight: 700, fontFamily: "'Orbitron', sans-serif", marginBottom: 12 }}>
+            <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.blue, letterSpacing: 2, fontWeight: 700, fontFamily: "'Orbitron', sans-serif", marginBottom: 12 }}>
               {t('explore.governance.assetList')}
             </div>
-            {!groupedAssets.length && <div style={{ fontSize: 12, color: C.ice30, padding: '8px 0' }}>{t('common.noData')}</div>}
+            {!groupedAssets.length && <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice30, padding: '8px 0' }}>{t('common.noData')}</div>}
             {groupedAssets.length > 0 && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 }}>
                 {groupedAssets.map((asset) => (
@@ -495,11 +495,11 @@ export default function GovernanceTab() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 14 }}>
             <GlowCard style={{ padding: '16px 18px' }}>
-              <div style={{ fontSize: 11, color: C.blue, letterSpacing: 2, fontWeight: 700, fontFamily: "'Orbitron', sans-serif", marginBottom: 10 }}>
+              <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.blue, letterSpacing: 2, fontWeight: 700, fontFamily: "'Orbitron', sans-serif", marginBottom: 10 }}>
                 {t('explore.governance.qualityTitle')}
               </div>
               {detailLoading && <LoadingBox h={160} label={t('common.loading')} />}
-              {!detailLoading && !quality && <div style={{ fontSize: 12, color: C.ice30 }}>{t('common.noData')}</div>}
+              {!detailLoading && !quality && <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice30 }}>{t('common.noData')}</div>}
               {!detailLoading && quality && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
                   {selectedGroup && (
@@ -511,8 +511,8 @@ export default function GovernanceTab() {
                   )}
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: C.ice60 }}>{t('explore.governance.overallScore')}</span>
-                    <span style={{ fontSize: 18, color: gradeColor(quality?.scores?.grade), fontWeight: 700 }}>
+                    <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60 }}>{t('explore.governance.overallScore')}</span>
+                    <span style={{ fontSize: 'calc(18px * var(--font-scale, 1))', color: gradeColor(quality?.scores?.grade), fontWeight: 700 }}>
                       {fmtNum(quality?.scores?.overall, 1)} / 100 ({quality?.scores?.grade || '--'})
                     </span>
                   </div>
@@ -523,8 +523,8 @@ export default function GovernanceTab() {
                   <MetricBar label={t('explore.governance.timeScore')} value={quality?.scores?.time_score} />
                   <MetricBar label={t('explore.governance.gridScore')} value={quality?.scores?.grid_score} />
 
-                  <div style={{ marginTop: 4, fontSize: 11, color: C.ice30 }}>{`${t('explore.governance.missingRate')}: ${fmtPct(quality?.metrics?.missing_rate)}`}</div>
-                  <div style={{ fontSize: 11, color: C.ice30 }}>{`${t('explore.governance.validRatio')}: ${fmtPct(quality?.metrics?.valid_value_ratio)}`}</div>
+                  <div style={{ marginTop: 4, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>{`${t('explore.governance.missingRate')}: ${fmtPct(quality?.metrics?.missing_rate)}`}</div>
+                  <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>{`${t('explore.governance.validRatio')}: ${fmtPct(quality?.metrics?.valid_value_ratio)}`}</div>
 
                   {(quality?.issues || []).length > 0 && (
                     <div
@@ -536,10 +536,10 @@ export default function GovernanceTab() {
                         background: 'rgba(255,255,255,0.02)',
                       }}
                     >
-                      <div style={{ fontSize: 11, color: C.ice30, marginBottom: 8 }}>{t('explore.governance.qualityIssues')}</div>
+                      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, marginBottom: 8 }}>{t('explore.governance.qualityIssues')}</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {quality.issues.slice(0, 5).map((issue, idx) => (
-                          <div key={`${issue}-${idx}`} style={{ fontSize: 11, color: C.ice60 }}>
+                          <div key={`${issue}-${idx}`} style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice60 }}>
                             {issue}
                           </div>
                         ))}
@@ -551,11 +551,11 @@ export default function GovernanceTab() {
             </GlowCard>
 
             <GlowCard style={{ padding: '16px 18px' }}>
-              <div style={{ fontSize: 11, color: C.blue, letterSpacing: 2, fontWeight: 700, fontFamily: "'Orbitron', sans-serif", marginBottom: 10 }}>
+              <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.blue, letterSpacing: 2, fontWeight: 700, fontFamily: "'Orbitron', sans-serif", marginBottom: 10 }}>
                 {t('explore.governance.lineageTitle')}
               </div>
               {detailLoading && <LoadingBox h={160} label={t('common.loading')} />}
-              {!detailLoading && !lineage && <div style={{ fontSize: 12, color: C.ice30 }}>{t('common.noData')}</div>}
+              {!detailLoading && !lineage && <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice30 }}>{t('common.noData')}</div>}
               {!detailLoading && lineage && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
@@ -564,13 +564,13 @@ export default function GovernanceTab() {
                     <SourceModeBadge label={`effective_status: ${lineage?.current_effective_data_source?.effective_status || '--'}`} />
                   </div>
 
-                  <div style={{ fontSize: 12, color: C.ice60 }}>{`${t('explore.governance.uploader')}: ${lineage?.uploader?.username || lineage?.uploader?.email || '--'}`}</div>
-                  <div style={{ fontSize: 12, color: C.ice60 }}>{`${t('explore.governance.reviewer')}: ${lineage?.reviewer?.username || lineage?.reviewer?.email || '--'}`}</div>
-                  <div style={{ fontSize: 12, color: C.ice60 }}>{`${t('explore.governance.createdAt')}: ${lineage?.timestamps?.uploaded_at || '--'}`}</div>
-                  <div style={{ fontSize: 12, color: C.ice60 }}>{`${t('explore.governance.reviewedAt')}: ${lineage?.timestamps?.reviewed_at || '--'}`}</div>
-                  <div style={{ fontSize: 12, color: C.ice60, wordBreak: 'break-all' }}>{`effective_path: ${lineage?.current_effective_data_source?.effective_path || '--'}`}</div>
+                  <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60 }}>{`${t('explore.governance.uploader')}: ${lineage?.uploader?.username || lineage?.uploader?.email || '--'}`}</div>
+                  <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60 }}>{`${t('explore.governance.reviewer')}: ${lineage?.reviewer?.username || lineage?.reviewer?.email || '--'}`}</div>
+                  <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60 }}>{`${t('explore.governance.createdAt')}: ${lineage?.timestamps?.uploaded_at || '--'}`}</div>
+                  <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60 }}>{`${t('explore.governance.reviewedAt')}: ${lineage?.timestamps?.reviewed_at || '--'}`}</div>
+                  <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, wordBreak: 'break-all' }}>{`effective_path: ${lineage?.current_effective_data_source?.effective_path || '--'}`}</div>
 
-                  <div style={{ marginTop: 6, fontSize: 11, color: C.ice30 }}>{t('explore.governance.eventTimeline')}</div>
+                  <div style={{ marginTop: 6, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>{t('explore.governance.eventTimeline')}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {(lineage.events || []).map((evt, idx) => (
                       <div
@@ -582,8 +582,8 @@ export default function GovernanceTab() {
                           background: 'rgba(255,255,255,0.02)',
                         }}
                       >
-                        <div style={{ fontSize: 11, color: STATUS_COLORS[evt.type] || C.ice60 }}>{`${evt.type}${evt.at ? ` | ${evt.at}` : ''}`}</div>
-                        <div style={{ marginTop: 3, fontSize: 11, color: C.ice30 }}>
+                        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: STATUS_COLORS[evt.type] || C.ice60 }}>{`${evt.type}${evt.at ? ` | ${evt.at}` : ''}`}</div>
+                        <div style={{ marginTop: 3, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>
                           {(() => {
                             const actor = [evt.actor || '', evt.actor_role ? `[${evt.actor_role}]` : '', evt.actor_email ? `<${evt.actor_email}>` : '']
                               .filter(Boolean)

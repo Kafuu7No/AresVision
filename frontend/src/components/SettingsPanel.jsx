@@ -13,7 +13,7 @@ function SectionHeader({ label }) {
   return (
     <div style={{ marginBottom: 14 }}>
       <div style={{
-        fontSize: 10,
+        fontSize: 'calc(10px * var(--font-scale, 1))',
         fontWeight: 700,
         letterSpacing: 2.5,
         fontFamily: "'Orbitron', sans-serif",
@@ -58,7 +58,7 @@ function ChipGroup({ options, value, onChange, cols = 2 }) {
                 ? `${C.blue}1a`
                 : isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.03)',
               color: active ? C.blue : 'var(--text-60)',
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               fontWeight: active ? 600 : 400,
               cursor: 'pointer',
               transition: 'all 0.18s',
@@ -68,7 +68,7 @@ function ChipGroup({ options, value, onChange, cols = 2 }) {
           >
             {opt.label}
             {opt.sub && (
-              <div style={{ fontSize: 9, color: active ? `${C.blue}aa` : 'var(--text-30)', marginTop: 1 }}>
+              <div style={{ fontSize: 'calc(9px * var(--font-scale, 1))', color: active ? `${C.blue}aa` : 'var(--text-30)', marginTop: 1 }}>
                 {opt.sub}
               </div>
             )}
@@ -83,7 +83,7 @@ function ChipGroup({ options, value, onChange, cols = 2 }) {
 function SettingRow({ label, children }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
-      <span style={{ fontSize: 12, color: 'var(--text-60)', flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: 'var(--text-60)', flexShrink: 0 }}>{label}</span>
       <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
         {children}
       </div>
@@ -112,7 +112,7 @@ function InlinePill({ options, value, onChange }) {
               borderRadius: 5,
               background: active ? `${C.blue}33` : 'transparent',
               color: active ? C.blue : 'var(--text-30)',
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               fontWeight: active ? 600 : 400,
               cursor: 'pointer',
               transition: 'all 0.15s',
@@ -153,7 +153,7 @@ function Checkbox({ label, checked, onChange }) {
           </svg>
         )}
       </div>
-      <span style={{ fontSize: 12, color: 'var(--text-60)' }}>{label}</span>
+      <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: 'var(--text-60)' }}>{label}</span>
     </label>
   );
 }
@@ -256,7 +256,7 @@ export default function SettingsPanel({ open, onClose }) {
         }}>
           <div>
             <div style={{
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               fontWeight: 700,
               letterSpacing: 3,
               fontFamily: "'Orbitron', sans-serif",
@@ -265,7 +265,7 @@ export default function SettingsPanel({ open, onClose }) {
             }}>
               {t('settings.titleEn')}
             </div>
-            <div style={{ fontSize: 10, color: 'var(--text-30)', marginTop: 2 }}>{t('settings.title')}</div>
+            <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: 'var(--text-30)', marginTop: 2 }}>{t('settings.title')}</div>
           </div>
           <button
             onClick={onClose}
@@ -309,13 +309,13 @@ export default function SettingsPanel({ open, onClose }) {
 
           {/* ── 显示偏好 ── */}
           <SectionHeader label={t('settings.appearance.label')} />
-          <p style={{ fontSize: 10, color: 'var(--text-30)', marginBottom: 12, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: 'var(--text-30)', marginBottom: 12, lineHeight: 1.5 }}>
             {t('settings.appearance.desc')}
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, marginBottom: 12 }}>
             <div style={{
               width: 44,
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               fontWeight: 600,
               color: 'var(--text-60)',
               textAlign: 'right',
@@ -340,7 +340,7 @@ export default function SettingsPanel({ open, onClose }) {
             
             <div style={{
               width: 44,
-              fontSize: 14,
+              fontSize: 'calc(14px * var(--font-scale, 1))',
               fontWeight: 600,
               color: 'var(--text)',
               textAlign: 'left',
@@ -355,7 +355,7 @@ export default function SettingsPanel({ open, onClose }) {
                 background: 'transparent',
                 border: 'none',
                 color: (settings.appearance?.uiScale || 1) !== 1 ? C.blue : 'var(--text-30)',
-                fontSize: 10,
+                fontSize: 'calc(10px * var(--font-scale, 1))',
                 cursor: 'pointer',
                 padding: 0,
                 textDecoration: (settings.appearance?.uiScale || 1) !== 1 ? 'underline' : 'none',
@@ -364,7 +364,7 @@ export default function SettingsPanel({ open, onClose }) {
               {t('settings.appearance.scaleMedium') || 'Reset'}
             </button>
             <div style={{
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               color: C.ice,
               background: 'rgba(74, 158, 255, 0.1)',
               padding: '2px 8px',
@@ -424,7 +424,7 @@ export default function SettingsPanel({ open, onClose }) {
 
           {/* ── 数据精度 ── */}
           <SectionHeader label={t('settings.precision.label')} />
-          <p style={{ fontSize: 10, color: 'var(--text-30)', marginBottom: 12, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: 'var(--text-30)', marginBottom: 12, lineHeight: 1.5 }}>
             {t('settings.precision.desc')}
           </p>
           <ChipGroup
@@ -443,11 +443,11 @@ export default function SettingsPanel({ open, onClose }) {
 
           {/* ── 导出偏好 ── */}
           <SectionHeader label={t('settings.export.label')} />
-          <p style={{ fontSize: 10, color: 'var(--text-30)', marginBottom: 12, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: 'var(--text-30)', marginBottom: 12, lineHeight: 1.5 }}>
             {t('settings.export.desc')}
           </p>
 
-          <div style={{ fontSize: 11, color: 'var(--text-60)', marginBottom: 6 }}>{t('settings.export.format')}</div>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: 'var(--text-60)', marginBottom: 6 }}>{t('settings.export.format')}</div>
           <ChipGroup
             cols={3}
             options={[
@@ -459,7 +459,7 @@ export default function SettingsPanel({ open, onClose }) {
             onChange={v => updateSetting('export.format', v)}
           />
 
-          <div style={{ fontSize: 11, color: 'var(--text-60)', margin: '12px 0 6px' }}>{t('settings.export.dpi')}</div>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: 'var(--text-60)', margin: '12px 0 6px' }}>{t('settings.export.dpi')}</div>
           <ChipGroup
             cols={3}
             options={[
@@ -471,7 +471,7 @@ export default function SettingsPanel({ open, onClose }) {
             onChange={v => updateSetting('export.dpi', v)}
           />
 
-          <div style={{ fontSize: 11, color: 'var(--text-60)', margin: '12px 0 6px' }}>{t('settings.export.fontSize')}</div>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: 'var(--text-60)', margin: '12px 0 6px' }}>{t('settings.export.fontSize')}</div>
           <ChipGroup
             cols={3}
             options={[
@@ -502,7 +502,7 @@ export default function SettingsPanel({ open, onClose }) {
           alignItems: 'center',
           justifyContent: 'space-between',
         }}>
-          <span style={{ fontSize: 10, color: 'var(--text-30)' }}>{t('settings.autoSave')}</span>
+          <span style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: 'var(--text-30)' }}>{t('settings.autoSave')}</span>
           <button
             onClick={() => {
               if (window.confirm(t('settings.resetConfirm'))) {
@@ -516,7 +516,7 @@ export default function SettingsPanel({ open, onClose }) {
               borderRadius: 6,
               padding: '5px 12px',
               color: `${C.mars}cc`,
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               cursor: 'pointer',
               transition: 'all 0.15s',
             }}

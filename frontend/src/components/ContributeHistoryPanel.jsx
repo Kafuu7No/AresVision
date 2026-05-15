@@ -89,13 +89,13 @@ function StatusBlock({ record, t, isLight }) {
           width: 6, height: 6, borderRadius: '50%',
           background: dotClr, flexShrink: 0, display: 'inline-block',
         }} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: textClr }}>
+        <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 600, color: textClr }}>
           {statusText}
         </span>
       </div>
       {record.status === 'rejected' && record.validation_message && (
         <div style={{
-          fontSize: 11, color: isLight ? '#000000' : '#ffffff',
+          fontSize: 'calc(11px * var(--font-scale, 1))', color: isLight ? '#000000' : '#ffffff',
           paddingLeft: 14, lineHeight: 1.55,
         }}>
           <span style={{ fontWeight: 600 }}>{t('explore.contributeHistory.rejectedReason')}：</span>
@@ -126,7 +126,7 @@ function HistoryCard({ record, t, isLight }) {
           <FileIcon size={14} color="currentColor" />
         </span>
         <span style={{
-          fontSize: 13, fontWeight: 700, color: nameClr,
+          fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 700, color: nameClr,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
         }} title={record.filename}>
           {record.filename}
@@ -134,7 +134,7 @@ function HistoryCard({ record, t, isLight }) {
       </div>
 
       {/* Submitted at */}
-      <div style={{ fontSize: 11, color: dimClr }}>
+      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: dimClr }}>
         {t('explore.contributeHistory.submittedAt')}: <span style={{ fontWeight: 500 }}>{formatDate(record.created_at)}</span>
       </div>
 
@@ -182,13 +182,13 @@ function PanelContent({ t, isLight, onClose }) {
       }}>
         <div>
           <div style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: 2.5,
+            fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, letterSpacing: 2.5,
             fontFamily: "'Orbitron', sans-serif",
             color: C.blue, textTransform: 'uppercase', marginBottom: 3,
           }}>
             {t('explore.contributeHistory.subtitle')}
           </div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
+          <div style={{ fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
             {t('explore.contributeHistory.title')}
           </div>
         </div>
@@ -229,7 +229,7 @@ function PanelContent({ t, isLight, onClose }) {
         display: 'flex', flexDirection: 'column', gap: 12,
       }}>
         {loading && (
-          <div style={{ textAlign: 'center', color: subColor, paddingTop: 60, fontSize: 13 }}>
+          <div style={{ textAlign: 'center', color: subColor, paddingTop: 60, fontSize: 'calc(13px * var(--font-scale, 1))' }}>
             {t('explore.contributeHistory.loading')}
           </div>
         )}
@@ -242,10 +242,10 @@ function PanelContent({ t, isLight, onClose }) {
             <div style={{ color: subColor, opacity: 0.5 }}>
               <InboxIcon size={48} color="currentColor" />
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
+            <div style={{ fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
               {t('explore.contributeHistory.empty')}
             </div>
-            <div style={{ fontSize: 12, color: subColor }}>
+            <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: subColor }}>
               {t('explore.contributeHistory.emptySub')}
             </div>
           </div>

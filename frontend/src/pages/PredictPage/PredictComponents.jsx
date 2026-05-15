@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react'; // Re-triggering vite cache
 import C from '../../constants/colors';
 import { useT } from '../../i18n';
 import { useSettings } from '../../contexts/SettingsContext';
+import { buildCanvasFont, normalizeFontScale } from '../../utils/fontScale';
 import { getRgb, rdbuRgb } from '../../utils/colormaps';
 import { ozoneLabel, ozoneDeltaLabel, convertOzone } from '../../utils/units';
 
@@ -21,6 +22,7 @@ export function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
   const colormapName = settings.colormap;
   const ozoneUnit = settings.units.ozone;
   const theme = settings.theme;
+  const fontScale = normalizeFontScale(settings.appearance?.uiScale);
   const isLight = theme === 'light';
 
   useEffect(() => {
@@ -112,7 +114,7 @@ export function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     ctx.strokeStyle = axisLineColor;
     ctx.lineWidth = 1;
     ctx.fillStyle = axisTextColor;
-    ctx.font = '11px sans-serif';
+    ctx.font = buildCanvasFont(11, { scale: fontScale });
     ctx.textAlign = 'center';
     [0, 60, 120, 180, 240, 300, 360].forEach(lonV => {
       const fx = ML + (lonV / 360) * plotW;
@@ -120,13 +122,13 @@ export function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
       ctx.fillText(`${lonV}°`, fx, MT + plotH + 16);
     });
     ctx.fillStyle = axisTitleColor;
-    ctx.font = 'bold 11px sans-serif';
+    ctx.font = buildCanvasFont(11, { weight: 'bold', scale: fontScale });
     ctx.fillText(`${t('overview.controls.longitude')} (°)`, ML + plotW / 2, CH - 6);
 
     // Y 轴（纬度）
     ctx.textAlign = 'right';
     ctx.fillStyle = axisTextColor;
-    ctx.font = '11px sans-serif';
+    ctx.font = buildCanvasFont(11, { scale: fontScale });
     [-90, -60, -30, 0, 30, 60, 90].forEach(latV => {
       const fy = MT + ((90 - latV) / 180) * plotH;
       ctx.beginPath(); ctx.moveTo(ML, fy); ctx.lineTo(ML - 4, fy); ctx.stroke();
@@ -138,7 +140,7 @@ export function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = 'center';
     ctx.fillStyle = axisTitleColor;
-    ctx.font = 'bold 11px sans-serif';
+    ctx.font = buildCanvasFont(11, { weight: 'bold', scale: fontScale });
     ctx.fillText(`${t('overview.controls.latitude')} (°)`, 0, 0);
     ctx.restore();
 
@@ -166,7 +168,7 @@ export function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     const lbX = cbX + cbW + 3;
     ctx.textAlign = 'left';
     ctx.fillStyle = cbLabelColor;
-    ctx.font = '9px sans-serif';
+    ctx.font = buildCanvasFont(9, { scale: fontScale });
     const topLabel = colorMode === 'rdbu' ? `+${fmtVal(convertOzone(absMax, ozoneUnit))}` : fmtVal(convertOzone(dMax, ozoneUnit));
     const midLabel = colorMode === 'rdbu' ? '0' : fmtVal(convertOzone((dMin + dMax) / 2, ozoneUnit));
     const botLabel = colorMode === 'rdbu' ? `-${fmtVal(convertOzone(absMax, ozoneUnit))}` : fmtVal(convertOzone(dMin, ozoneUnit));
@@ -180,11 +182,11 @@ export function FieldCanvas({ fieldData, colorMode = 'inferno', h = 240 }) {
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = 'center';
     ctx.fillStyle = cbTitleColor;
-    ctx.font = '9px sans-serif';
+    ctx.font = buildCanvasFont(9, { scale: fontScale });
     ctx.fillText(colorMode === 'rdbu' ? ozoneDeltaLabel(ozoneUnit) : ozoneLabel(ozoneUnit), 0, 0);
     ctx.restore();
 
-  }, [fieldData, colorMode, h, colormapName, ozoneUnit, theme]);
+  }, [fieldData, colorMode, h, colormapName, ozoneUnit, theme, fontScale]);
 
   return (
     <div style={isLight ? { borderRadius: 10, overflow: 'hidden', background: 'transparent' } : {}}>
@@ -214,7 +216,7 @@ export function LoadingBox({ h = 240 }) {
         borderTop: `3px solid ${C.mars}`, borderRadius: '50%',
         animation: 'spin-slow 0.9s linear infinite',
       }} />
-      <div style={{ marginTop: 10, fontSize: 12, color: C.ice30 }}>{t('predict.computing')}</div>
+      <div style={{ marginTop: 10, fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice30 }}>{t('predict.computing')}</div>
     </div>
   );
 }
@@ -225,7 +227,7 @@ export function EmptyBox({ h = 240 }) {
     <div style={{
       height: h, display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'rgba(255,255,255,0.02)', borderRadius: 8,
-      fontSize: 11, color: C.ice30,
+      fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30,
     }}>
       {t('predict.clickToStart')}
     </div>

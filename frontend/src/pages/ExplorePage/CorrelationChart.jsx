@@ -62,7 +62,7 @@ export default function CorrelationChart({ data, year, h = 320 }) {
               <div />
               {abbrevNames.map((v, i) => (
                 <div key={`h${i}`} style={{
-                  fontSize: 10, color: C.ice60,
+                  fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice60,
                   textAlign: 'center', padding: '2px 1px', lineHeight: 1.3,
                 }}>{v}</div>
               ))}
@@ -76,7 +76,7 @@ export default function CorrelationChart({ data, year, h = 320 }) {
                 gap: 2, marginBottom: 2,
               }}>
                 <div style={{
-                  fontSize: 10, color: C.ice60,
+                  fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice60,
                   display: 'flex', alignItems: 'center',
                   justifyContent: 'flex-end', paddingRight: 6,
                 }}>
@@ -99,7 +99,7 @@ export default function CorrelationChart({ data, year, h = 320 }) {
                       background: bg,
                       borderRadius: 3,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 9, color: textColor,
+                      fontSize: 'calc(9px * var(--font-scale, 1))', color: textColor,
                       fontWeight: Math.abs(val) > 0.5 ? 700 : 400,
                       minHeight: 34,
                     }}>

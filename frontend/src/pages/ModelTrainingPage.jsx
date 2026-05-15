@@ -241,7 +241,7 @@ export default function ModelTrainingPage() {
   };
 
   const titleStyle = {
-    fontSize: 24,
+    fontSize: 'calc(24px * var(--font-scale, 1))',
     fontWeight: 700,
     letterSpacing: 1,
     marginBottom: 8,
@@ -260,7 +260,7 @@ export default function ModelTrainingPage() {
   };
 
   const labelStyle = {
-    fontSize: 13,
+    fontSize: 'calc(13px * var(--font-scale, 1))',
     fontWeight: 600,
     opacity: 0.8,
   };
@@ -304,7 +304,7 @@ export default function ModelTrainingPage() {
       color: filled ? '#fff' : color,
       padding: '7px 16px',
       borderRadius: 20,
-      fontSize: 13,
+      fontSize: 'calc(13px * var(--font-scale, 1))',
       fontWeight: 600,
       cursor: 'pointer',
       transition: 'all 0.2s ease',
@@ -332,20 +332,20 @@ export default function ModelTrainingPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
               <span style={{
-                fontSize: 11, fontWeight: 800, opacity: isLight ? 0.6 : 0.3, letterSpacing: 1,
+                fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 800, opacity: isLight ? 0.6 : 0.3, letterSpacing: 1,
                 padding: '2px 8px', borderRadius: 6, background: 'rgba(128,128,128,0.1)'
               }}>{t('modelTraining.taskId')}: {tk.id}</span>
 
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: isLight ? '#1a1a1a' : '#efefef', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <h3 style={{ margin: 0, fontSize: 'calc(18px * var(--font-scale, 1))', fontWeight: 700, color: isLight ? '#1a1a1a' : '#efefef', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span>{t('modelTraining.modelName')}</span>
                 {tk.custom_model_name || <span style={{ opacity: isLight ? 0.5 : 0.3, fontStyle: 'italic' }}>{t('modelTraining.unnamedModel')}</span>}
               </h3>
 
               {/* Metadata Cluster: Script first, then Date */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 15, fontSize: 13, opacity: isLight ? 0.7 : 0.45, fontWeight: 600 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 15, fontSize: 'calc(13px * var(--font-scale, 1))', opacity: isLight ? 0.7 : 0.45, fontWeight: 600 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span>📄</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: isLight ? '#555' : '#ccc' }}>
+                  <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 700, color: isLight ? '#555' : '#ccc' }}>
                     {(() => {
                       const suffix = tk.model_script.replace('demo3-', '').replace('.py', '');
                       if (!suffix) return t('modelTraining.baselineO3');
@@ -368,7 +368,7 @@ export default function ModelTrainingPage() {
                 background: statusColor + '12', border: `1px solid ${statusColor + '30'}`
               }}>
                 <div style={dotStyle} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: statusColor, letterSpacing: 0.5 }}>{statusLabel}</span>
+                <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 700, color: statusColor, letterSpacing: 0.5 }}>{statusLabel}</span>
               </div>
             </div>
           </div>
@@ -383,10 +383,10 @@ export default function ModelTrainingPage() {
             }}>
               {Object.entries(hypers).map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, opacity: isLight ? 0.6 : 0.4, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                  <span style={{ fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 800, opacity: isLight ? 0.6 : 0.4, textTransform: 'uppercase', letterSpacing: 0.3 }}>
                     {t(`modelTraining.hypers.${k}`)}
                   </span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: statusColor }}>
+                  <span style={{ fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700, color: statusColor }}>
                     {Array.isArray(v) ? `[${v.join(', ')}]` : (k === 'learning_rate' ? v.toFixed(5) : (v === 0 ? t('modelTraining.hypers.disabled') : v))}
                   </span>
                 </div>
@@ -454,10 +454,10 @@ export default function ModelTrainingPage() {
         input[type="number"]::-webkit-inner-spin-button { opacity: 0.3; }
       `}</style>
       <header>
-        <h1 style={{ fontSize: 32, fontWeight: 800, margin: 0, color: isLight ? '#111' : '#fff' }}>
+        <h1 style={{ fontSize: 'calc(32px * var(--font-scale, 1))', fontWeight: 800, margin: 0, color: isLight ? '#111' : '#fff' }}>
           {t('modelTraining.title')}
         </h1>
-        <p style={{ fontSize: 14, color: isLight ? '#666' : C.ice60, letterSpacing: 2 }}>
+        <p style={{ fontSize: 'calc(14px * var(--font-scale, 1))', color: isLight ? '#666' : C.ice60, letterSpacing: 2 }}>
           {t('modelTraining.subtitle')}
         </p>
       </header>
@@ -467,7 +467,7 @@ export default function ModelTrainingPage() {
         {/* Left Col: Config Form */}
         <div style={cardStyle}>
           <div style={titleStyle}>{t('modelTraining.parameters')}</div>
-          <p style={{ fontSize: 13, opacity: 0.7, marginBottom: 20 }}>
+          <p style={{ fontSize: 'calc(13px * var(--font-scale, 1))', opacity: 0.7, marginBottom: 20 }}>
             {t('modelTraining.newTrainingInfo')}
           </p>
 
@@ -482,8 +482,8 @@ export default function ModelTrainingPage() {
                 border: `1px solid ${isLight ? '#ddd' : '#444'}`,
               }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontSize: 11, color: isLight ? '#333' : C.ice }}>Default / Personal</span>
-                  <span style={{ fontSize: 10, color: isPersonalMode ? C.blue : C.ice60, fontWeight: 700 }}>
+                  <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: isLight ? '#333' : C.ice }}>Default / Personal</span>
+                  <span style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: isPersonalMode ? C.blue : C.ice60, fontWeight: 700 }}>
                     {isPersonalMode ? '当前：Personal' : '当前：Default'}
                   </span>
                 </div>
@@ -510,7 +510,7 @@ export default function ModelTrainingPage() {
                 </label>
               </div>
               {sourceMessage ? (
-                <div style={{ marginTop: 8, fontSize: 11, color: isLight ? '#666' : C.ice60, lineHeight: 1.5 }}>
+                <div style={{ marginTop: 8, fontSize: 'calc(11px * var(--font-scale, 1))', color: isLight ? '#666' : C.ice60, lineHeight: 1.5 }}>
                   {sourceMessage}
                 </div>
               ) : null}
@@ -539,8 +539,8 @@ export default function ModelTrainingPage() {
                         transform: active ? 'scale(1.05)' : 'scale(1)',
                       }}
                     >
-                      <span style={{ fontSize: 18 }}>{info.icon}</span>
-                      <span style={{ fontSize: 11, fontWeight: 700 }}>{info.name}</span>
+                      <span style={{ fontSize: 'calc(18px * var(--font-scale, 1))' }}>{info.icon}</span>
+                      <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700 }}>{info.name}</span>
                     </button>
                   );
                 })}
@@ -562,10 +562,10 @@ export default function ModelTrainingPage() {
                 onChange={handleModelNameChange}
               />
               {modelNameError && (
-                <div style={{ fontSize: 11, color: '#F44336', marginTop: 4 }}>⚠ {modelNameError}</div>
+                <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: '#F44336', marginTop: 4 }}>⚠ {modelNameError}</div>
               )}
               {!modelNameError && customModelName.trim() && (
-                <div style={{ fontSize: 11, color: '#4CAF50', marginTop: 4 }}>{t('modelTraining.nameAvailable')}</div>
+                <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: '#4CAF50', marginTop: 4 }}>{t('modelTraining.nameAvailable')}</div>
               )}
             </div>
 
@@ -619,7 +619,7 @@ export default function ModelTrainingPage() {
                 value={earlyStoppingPatience} min="0" max="200"
                 onChange={e => setEarlyStoppingPatience(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
               />
-              <div style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>
+              <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', opacity: 0.5, marginTop: 4 }}>
                 {t('modelTraining.earlyStopNote')}
               </div>
             </div>
@@ -637,9 +637,9 @@ export default function ModelTrainingPage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 12, marginTop: -4 }}>
                 {hiddenDims.map((dim, i) => (
                   <div key={i}>
-                    <div style={{ ...labelStyle, fontSize: 11, opacity: 0.6 }}>{t('modelTraining.layer')} {i + 1} {t('modelTraining.layerDim')}</div>
+                    <div style={{ ...labelStyle, fontSize: 'calc(11px * var(--font-scale, 1))', opacity: 0.6 }}>{t('modelTraining.layer')} {i + 1} {t('modelTraining.layerDim')}</div>
                     <input
-                      type="number" style={{ ...inputStyle, padding: '4px 8px', fontSize: 13 }}
+                      type="number" style={{ ...inputStyle, padding: '4px 8px', fontSize: 'calc(13px * var(--font-scale, 1))' }}
                       value={dim} onChange={e => handleDimChange(i, e.target.value)}
                       min="1"
                     />
@@ -658,7 +658,7 @@ export default function ModelTrainingPage() {
                 border: 'none',
                 padding: '12px',
                 borderRadius: 8,
-                fontSize: 15,
+                fontSize: 'calc(15px * var(--font-scale, 1))',
                 fontWeight: 700,
                 cursor: (user && !selectedScript) ? 'not-allowed' : 'pointer',
                 opacity: (user && !selectedScript) ? 0.5 : 1,
@@ -676,7 +676,7 @@ export default function ModelTrainingPage() {
             <div style={titleStyle}>{t('modelTraining.trainingStatus')}</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {activeTaskId && (
-                <span style={{ fontSize: 12, padding: '4px 8px', background: C.blue, color: '#fff', borderRadius: 4 }}>
+                <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', padding: '4px 8px', background: C.blue, color: '#fff', borderRadius: 4 }}>
                   {t('modelTraining.taskId')}: {activeTaskId}
                 </span>
               )}
@@ -685,7 +685,7 @@ export default function ModelTrainingPage() {
                   onClick={() => handleStopTask(activeTaskId)}
                   disabled={isProcessing}
                   style={{
-                    fontSize: 11, padding: '4px 8px', background: 'rgba(244,67,54,0.15)',
+                    fontSize: 'calc(11px * var(--font-scale, 1))', padding: '4px 8px', background: 'rgba(244,67,54,0.15)',
                     color: '#F44336', border: '1px solid #F44336', borderRadius: 4, cursor: 'pointer'
                   }}>
                   {isProcessing ? '...' : t('modelTraining.stopTraining')}
@@ -704,7 +704,7 @@ export default function ModelTrainingPage() {
               padding: 16,
               overflowY: 'auto',
               fontFamily: 'monospace',
-              fontSize: 13,
+              fontSize: 'calc(13px * var(--font-scale, 1))',
               lineHeight: 1.5,
               color: isLight ? '#333' : '#aeea00',
               border: `1px solid ${isLight ? '#ddd' : '#333'}`,
@@ -743,11 +743,11 @@ export default function ModelTrainingPage() {
 
       {/* Bottom: Training History */}
       <div style={{ ...cardStyle, background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 }}>
-        <div style={{ ...titleStyle, fontSize: 24, marginBottom: 24 }}>{t('modelTraining.historyTitle')}</div>
+        <div style={{ ...titleStyle, fontSize: 'calc(24px * var(--font-scale, 1))', marginBottom: 24 }}>{t('modelTraining.historyTitle')}</div>
 
         {tasks.length === 0 ? (
           <div style={{
-            textAlign: 'center', padding: '60px 0', opacity: 0.4, fontSize: 16,
+            textAlign: 'center', padding: '60px 0', opacity: 0.4, fontSize: 'calc(16px * var(--font-scale, 1))',
             background: isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px dashed rgba(128,128,128,0.2)'
           }}>
             📭 {t('modelTraining.historyEmpty')}

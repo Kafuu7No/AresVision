@@ -171,8 +171,8 @@ function formatLsLabel(start, end, digits = 1) {
 function MetaRow({ label, value }) {
   return (
     <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
-      <span style={{ fontSize: 10, color: C.ice30, whiteSpace: 'nowrap', minWidth: 58 }}>{label}</span>
-      <span style={{ fontSize: 12, color: C.ice60, fontWeight: 500 }}>{value ?? '--'}</span>
+      <span style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30, whiteSpace: 'nowrap', minWidth: 58 }}>{label}</span>
+      <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, fontWeight: 500 }}>{value ?? '--'}</span>
     </div>
   );
 }
@@ -187,7 +187,7 @@ function Badge({ label, color, bg }) {
         borderRadius: 999,
         background: bg,
         color,
-        fontSize: 10,
+        fontSize: 'calc(10px * var(--font-scale, 1))',
         fontWeight: 700,
         whiteSpace: 'nowrap',
       }}
@@ -207,8 +207,8 @@ function TopMetric({ label, value, accent = C.ice }) {
         border: `1px solid ${C.border}`,
       }}
     >
-      <div style={{ fontSize: 10, color: C.ice30, marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 18, color: accent, fontWeight: 700, fontFamily: "'Orbitron', sans-serif" }}>{value}</div>
+      <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 'calc(18px * var(--font-scale, 1))', color: accent, fontWeight: 700, fontFamily: "'Orbitron', sans-serif" }}>{value}</div>
     </div>
   );
 }
@@ -224,7 +224,7 @@ function ActionBtn({ label, borderColor, textColor, activeBg, active, onClick, d
         border: `1px solid ${borderColor ?? C.border}`,
         borderRadius: 10,
         color: loading ? C.ice30 : textColor ?? C.ice60,
-        fontSize: 11,
+        fontSize: 'calc(11px * var(--font-scale, 1))',
         fontWeight: 700,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.6 : 1,
@@ -248,7 +248,7 @@ function FilterPill({ active, label, accent = C.blue, onClick }) {
         border: `1px solid ${active ? accent : C.border}`,
         background: active ? `${accent}1a` : 'rgba(255,255,255,0.03)',
         color: active ? accent : C.ice60,
-        fontSize: 11,
+        fontSize: 'calc(11px * var(--font-scale, 1))',
         fontWeight: 700,
         cursor: 'pointer',
         fontFamily: 'inherit',
@@ -278,8 +278,8 @@ function EmptyState({ icon, title, desc }) {
       }}
     >
       <div style={{ color: C.ice30, opacity: 0.55 }}>{icon}</div>
-      <div style={{ fontSize: 15, color: C.ice, fontWeight: 700 }}>{title}</div>
-      <div style={{ maxWidth: 420, fontSize: 12, color: C.ice30, lineHeight: 1.8 }}>{desc}</div>
+      <div style={{ fontSize: 'calc(15px * var(--font-scale, 1))', color: C.ice, fontWeight: 700 }}>{title}</div>
+      <div style={{ maxWidth: 420, fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.8 }}>{desc}</div>
     </div>
   );
 }
@@ -675,7 +675,7 @@ function UploadZone({
           </div>
           <div
             style={{
-              fontSize: 16,
+              fontSize: 'calc(16px * var(--font-scale, 1))',
               fontWeight: 700,
               color: isDragging ? C.blue : C.ice,
               fontFamily: "'Orbitron', sans-serif",
@@ -687,12 +687,12 @@ function UploadZone({
           </div>
           {!isDragging && (
             <>
-              <div style={{ fontSize: 12, color: C.ice60, maxWidth: 640, textAlign: 'center', lineHeight: 1.8, marginBottom: 18 }}>
+              <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, maxWidth: 640, textAlign: 'center', lineHeight: 1.8, marginBottom: 18 }}>
                 {t('explore.upload.subtitle')}
               </div>
               <div
                 style={{
-                  fontSize: 11,
+                  fontSize: 'calc(11px * var(--font-scale, 1))',
                   color: C.ice30,
                   border: `1px solid ${C.border}`,
                   borderRadius: 10,
@@ -713,10 +713,10 @@ function UploadZone({
             <span style={{ color: C.ice60, flexShrink: 0 }}>
               <FileIcon size={18} color="currentColor" />
             </span>
-            <span style={{ fontSize: 12, color: C.ice60, flex: 1 }}>
+            <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, flex: 1 }}>
               {uploadPhase === 'validating' ? t('explore.upload.validating') : t('explore.upload.uploading')}
             </span>
-            <span style={{ fontSize: 12, color: C.ice60, fontWeight: 600, minWidth: 38, textAlign: 'right' }}>
+            <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, fontWeight: 600, minWidth: 38, textAlign: 'right' }}>
               {uploadProgress}%
             </span>
           </div>
@@ -739,7 +739,7 @@ function UploadZone({
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
             <div
               style={{
-                fontSize: 14,
+                fontSize: 'calc(14px * var(--font-scale, 1))',
                 fontWeight: 700,
                 color: resultIconColor,
                 fontFamily: "'Orbitron', sans-serif",
@@ -758,7 +758,7 @@ function UploadZone({
                 border: `1px solid ${C.border}`,
                 borderRadius: 8,
                 color: C.ice60,
-                fontSize: 11,
+                fontSize: 'calc(11px * var(--font-scale, 1))',
                 cursor: 'pointer',
                 padding: '4px 11px',
                 fontFamily: 'inherit',
@@ -793,7 +793,7 @@ function UploadZone({
           )}
 
           {hasWarnings && (
-            <div style={{ fontSize: 11, color: '#f59e0b', lineHeight: 1.6 }}>
+            <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: '#f59e0b', lineHeight: 1.6 }}>
               <span style={{ fontWeight: 700 }}>{t('explore.upload.warnings')}: </span>
               {uploadResult.data.warnings.join(' | ')}
             </div>
@@ -802,7 +802,7 @@ function UploadZone({
           {!resultOk && (
             <div
               style={{
-                fontSize: 12,
+                fontSize: 'calc(12px * var(--font-scale, 1))',
                 color: C.mars,
                 lineHeight: 1.6,
                 padding: '10px 14px',
@@ -816,7 +816,7 @@ function UploadZone({
             </div>
           )}
 
-          <div style={{ fontSize: 10, color: C.ice30, textAlign: 'right' }}>{resultOk ? '5s' : '8s'} auto close</div>
+          <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30, textAlign: 'right' }}>{resultOk ? '5s' : '8s'} auto close</div>
         </div>
       )}
     </div>
@@ -832,7 +832,7 @@ function CurrentSourcePanel({ personalInfo, buildStatus, t }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: '100%' }}>
       <div
         style={{
-          fontSize: 11,
+          fontSize: 'calc(11px * var(--font-scale, 1))',
           fontWeight: 700,
           color: C.blue,
           fontFamily: "'Orbitron', sans-serif",
@@ -863,7 +863,7 @@ function CurrentSourcePanel({ personalInfo, buildStatus, t }) {
             return <Badge key={yearKey} label={`${yearKey} | ${modeMeta.label}`} color={modeMeta.color} bg={modeMeta.bg} />;
           })
         ) : (
-          <div style={{ fontSize: 11, color: C.ice30 }}>{t('explore.myData.currentSourceEmpty')}</div>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>{t('explore.myData.currentSourceEmpty')}</div>
         )}
       </div>
 
@@ -875,10 +875,10 @@ function CurrentSourcePanel({ personalInfo, buildStatus, t }) {
           background: 'rgba(255,255,255,0.02)',
         }}
       >
-        <div style={{ fontSize: 11, color: C.ice60, lineHeight: 1.75 }}>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.75 }}>
           {sourceMeta.message || t('explore.myData.currentSourceHint')}
         </div>
-        <div style={{ marginTop: 6, fontSize: 11, color: C.ice30, lineHeight: 1.7 }}>
+        <div style={{ marginTop: 6, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.7 }}>
           {t('explore.myData.currentSourceUseHint')}
         </div>
       </div>
@@ -897,14 +897,14 @@ function RuleList({ title, ok, desc, rules }) {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-        <div style={{ fontSize: 11, color: C.ice, fontWeight: 700 }}>{title}</div>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice, fontWeight: 700 }}>{title}</div>
         <Badge
           label={ok ? 'YES' : 'NO'}
           color={ok ? C.green : C.mars}
           bg={ok ? 'rgba(74,207,172,0.1)' : 'rgba(199,91,57,0.1)'}
         />
       </div>
-      <div style={{ marginTop: 6, fontSize: 11, color: C.ice30, lineHeight: 1.7 }}>{desc}</div>
+      <div style={{ marginTop: 6, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.7 }}>{desc}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 12 }}>
         {rules.map((rule) => (
           <div key={rule.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -917,7 +917,7 @@ function RuleList({ title, ok, desc, rules }) {
                 flexShrink: 0,
               }}
             />
-            <span style={{ fontSize: 11, color: rule.ok ? C.ice60 : C.ice30 }}>{rule.label}</span>
+            <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: rule.ok ? C.ice60 : C.ice30 }}>{rule.label}</span>
           </div>
         ))}
       </div>
@@ -952,7 +952,7 @@ function QueueItem({ ctx, selected, onSelect, copy, t }) {
             </span>
             <span
               style={{
-                fontSize: 13,
+                fontSize: 'calc(13px * var(--font-scale, 1))',
                 fontWeight: 700,
                 color: C.ice,
                 overflow: 'hidden',
@@ -970,7 +970,7 @@ function QueueItem({ ctx, selected, onSelect, copy, t }) {
           </div>
         </div>
 
-        <div style={{ flexShrink: 0, fontSize: 10, color: C.ice30 }}>{formatDate(upload.created_at)}</div>
+        <div style={{ flexShrink: 0, fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30 }}>{formatDate(upload.created_at)}</div>
       </div>
 
       <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '6px 10px' }}>
@@ -985,7 +985,7 @@ function QueueItem({ ctx, selected, onSelect, copy, t }) {
         {contributionCondition.ok && <Badge label={copy.canContributeTitle} color={C.blue} bg="rgba(74,158,255,0.1)" />}
       </div>
 
-      <div style={{ marginTop: 10, fontSize: 11, color: C.ice30, lineHeight: 1.7 }}>
+      <div style={{ marginTop: 10, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.7 }}>
         {lifecycleLabel}
       </div>
     </button>
@@ -1002,9 +1002,9 @@ function SnapshotTile({ label, value, desc, accent = C.ice }) {
         background: 'rgba(255,255,255,0.02)',
       }}
     >
-      <div style={{ fontSize: 11, color: C.ice30 }}>{label}</div>
-      <div style={{ marginTop: 8, fontSize: 14, color: accent, fontWeight: 700 }}>{value}</div>
-      {desc ? <div style={{ marginTop: 7, fontSize: 11, color: C.ice30, lineHeight: 1.7 }}>{desc}</div> : null}
+      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>{label}</div>
+      <div style={{ marginTop: 8, fontSize: 'calc(14px * var(--font-scale, 1))', color: accent, fontWeight: 700 }}>{value}</div>
+      {desc ? <div style={{ marginTop: 7, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.7 }}>{desc}</div> : null}
     </div>
   );
 }
@@ -1018,12 +1018,12 @@ function UsagePanel({ pages, copy }) {
           borderRadius: 14,
           padding: '14px 15px',
           background: 'rgba(255,255,255,0.02)',
-          fontSize: 11,
+          fontSize: 'calc(11px * var(--font-scale, 1))',
           color: C.ice30,
           lineHeight: 1.7,
         }}
       >
-        <div style={{ fontSize: 11, color: C.ice, fontWeight: 700, marginBottom: 8 }}>{copy.accessTitle}</div>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice, fontWeight: 700, marginBottom: 8 }}>{copy.accessTitle}</div>
         {copy.accessEmpty}
       </div>
     );
@@ -1038,7 +1038,7 @@ function UsagePanel({ pages, copy }) {
         background: 'rgba(255,255,255,0.02)',
       }}
     >
-      <div style={{ fontSize: 11, color: C.ice, fontWeight: 700, marginBottom: 10 }}>{copy.accessTitle}</div>
+      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice, fontWeight: 700, marginBottom: 10 }}>{copy.accessTitle}</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {pages.map((page) => (
           <Badge key={page} label={page} color={C.blue} bg="rgba(74,158,255,0.1)" />
@@ -1053,7 +1053,7 @@ function PreviewContent({ viewData, viewLs, onLsChange, t }) {
 
   if (viewData.error) {
     return (
-      <div style={{ padding: '24px', textAlign: 'center', color: C.mars, fontSize: 13, border: `1px dashed ${C.border}`, borderRadius: 14 }}>
+      <div style={{ padding: '24px', textAlign: 'center', color: C.mars, fontSize: 'calc(13px * var(--font-scale, 1))', border: `1px dashed ${C.border}`, borderRadius: 14 }}>
         {viewData.error}
       </div>
     );
@@ -1067,7 +1067,7 @@ function PreviewContent({ viewData, viewLs, onLsChange, t }) {
         <>
           {viewData.summary.ls_range && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 11, color: C.ice60, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, whiteSpace: 'nowrap' }}>Ls</span>
+              <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice60, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, whiteSpace: 'nowrap' }}>Ls</span>
               <input
                 type="range"
                 min={Math.round(viewData.summary.ls_range[0])}
@@ -1077,7 +1077,7 @@ function PreviewContent({ viewData, viewLs, onLsChange, t }) {
                 onChange={(e) => onLsChange(Number(e.target.value))}
                 style={{ flex: 1, accentColor: C.mars }}
               />
-              <span style={{ fontSize: 14, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", minWidth: 56, textAlign: 'right' }}>
+              <span style={{ fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", minWidth: 56, textAlign: 'right' }}>
                 {viewLs}°
               </span>
             </div>
@@ -1085,13 +1085,13 @@ function PreviewContent({ viewData, viewLs, onLsChange, t }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 8 }}>
+              <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 8 }}>
                 {t('explore.viewer.globeTitle')}
               </div>
               {viewData.globe ? <GlobePlot data={viewData.globe} h={260} /> : <LoadingBox h={260} />}
             </div>
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 8 }}>
+              <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 8 }}>
                 {t('explore.viewer.heatmapTitle')}
               </div>
               {viewData.heatmap ? <HeatmapCanvas data={viewData.heatmap} h={260} /> : <LoadingBox h={260} />}
@@ -1100,7 +1100,7 @@ function PreviewContent({ viewData, viewLs, onLsChange, t }) {
 
           {viewData.bands && (
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 8 }}>
+              <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 8 }}>
                 {t('explore.viewer.bandsTitle')}
               </div>
               <LineChart data={viewData.bands} h={210} />
@@ -1111,8 +1111,8 @@ function PreviewContent({ viewData, viewLs, onLsChange, t }) {
 
       {!viewData.summary.has_ozone && viewData.summary.has_mcd_vars?.length > 0 && (
         <div style={{ padding: '32px 20px', textAlign: 'center', border: `1px dashed ${C.border}`, borderRadius: 14 }}>
-          <div style={{ fontSize: 13, color: C.ice60, marginBottom: 8 }}>{t('explore.viewer.mcdOnly')}</div>
-          <div style={{ fontSize: 11, color: C.ice30 }}>
+          <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice60, marginBottom: 8 }}>{t('explore.viewer.mcdOnly')}</div>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>
             {t('explore.viewer.mcdVars')}: {viewData.summary.has_mcd_vars.join(', ')}
           </div>
         </div>
@@ -1127,7 +1127,7 @@ function PreviewContent({ viewData, viewLs, onLsChange, t }) {
           background: 'rgba(255,255,255,0.03)',
           border: `1px solid ${C.border}`,
           borderRadius: 14,
-          fontSize: 11,
+          fontSize: 'calc(11px * var(--font-scale, 1))',
         }}
       >
         <div>
@@ -1161,7 +1161,7 @@ function LoginPrompt({ t, openAuthModal }) {
       <div style={{ color: C.ice30, opacity: 0.5 }}>
         <LockIcon size={52} color="currentColor" />
       </div>
-      <div style={{ fontSize: 16, color: C.ice, fontWeight: 600 }}>{t('explore.upload.loginPrompt')}</div>
+      <div style={{ fontSize: 'calc(16px * var(--font-scale, 1))', color: C.ice, fontWeight: 600 }}>{t('explore.upload.loginPrompt')}</div>
       <button
         onClick={() => openAuthModal('login')}
         style={{
@@ -1170,7 +1170,7 @@ function LoginPrompt({ t, openAuthModal }) {
           background: C.mars,
           border: 'none',
           color: '#fff',
-          fontSize: 13,
+          fontSize: 'calc(13px * var(--font-scale, 1))',
           fontWeight: 700,
           cursor: 'pointer',
           fontFamily: "'Orbitron', sans-serif",
@@ -1522,7 +1522,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
           <div>
             <div
               style={{
-                fontSize: 11,
+                fontSize: 'calc(11px * var(--font-scale, 1))',
                 fontWeight: 700,
                 color: C.blue,
                 fontFamily: "'Orbitron', sans-serif",
@@ -1532,7 +1532,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
             >
               {t('explore.myData.ingestTitle')}
             </div>
-            <div style={{ fontSize: 20, color: C.ice, fontWeight: 700, lineHeight: 1.4 }}>{copy.myHubTitle}</div>
+            <div style={{ fontSize: 'calc(20px * var(--font-scale, 1))', color: C.ice, fontWeight: 700, lineHeight: 1.4 }}>{copy.myHubTitle}</div>
             <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               <Badge label="OpenMARS (.nc)" color={C.blue} bg="rgba(74,158,255,0.1)" />
               <Badge label="MCD (.nc)" color={C.mars} bg="rgba(199,91,57,0.1)" />
@@ -1573,7 +1573,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
               <CurrentSourcePanel personalInfo={personalSourceInfo} buildStatus={buildStatus} t={t} />
 
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <div style={{ fontSize: 11, color: C.ice30, lineHeight: 1.7 }}>
+                <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.7 }}>
                   {validContributionUploads.length > 0
                     ? `${copy.contributionReadyStat}: ${summaryStats.contributionReady} | ${copy.reviewQueueStat}: ${summaryStats.inReview}`
                     : copy.contributionNone}
@@ -1588,7 +1588,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
                       border: '1px solid rgba(74,158,255,0.35)',
                       background: validContributionUploads.length > 0 ? 'rgba(74,158,255,0.12)' : 'rgba(255,255,255,0.04)',
                       color: validContributionUploads.length > 0 ? C.blue : C.ice30,
-                      fontSize: 12,
+                      fontSize: 'calc(12px * var(--font-scale, 1))',
                       fontWeight: 700,
                       cursor: validContributionUploads.length > 0 ? 'pointer' : 'not-allowed',
                       fontFamily: 'inherit',
@@ -1604,7 +1604,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
                       border: `1px solid ${C.border}`,
                       background: 'rgba(255,255,255,0.04)',
                       color: C.ice60,
-                      fontSize: 12,
+                      fontSize: 'calc(12px * var(--font-scale, 1))',
                       fontWeight: 600,
                       cursor: 'pointer',
                       fontFamily: 'inherit',
@@ -1623,7 +1623,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
         <GlowCard style={{ padding: '18px 18px 16px' }}>
           <div
             style={{
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               fontWeight: 700,
               color: C.blue,
               fontFamily: "'Orbitron', sans-serif",
@@ -1633,7 +1633,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
           >
             {copy.queueTitle}
           </div>
-          <div style={{ fontSize: 12, color: C.ice60, lineHeight: 1.8, marginBottom: 14 }}>{copy.queueDesc}</div>
+          <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8, marginBottom: 14 }}>{copy.queueDesc}</div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
             {filterDefs.map((filter) => (
@@ -1672,14 +1672,14 @@ export default function MyDataTab({ reviewSignal = 0 }) {
                 outline: 'none',
                 background: 'transparent',
                 color: C.ice,
-                fontSize: 12,
+                fontSize: 'calc(12px * var(--font-scale, 1))',
                 fontFamily: 'inherit',
               }}
             />
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 10 }}>
-            <div style={{ fontSize: 11, color: C.ice30 }}>{uploadsLoading ? t('common.loading') : t('explore.myData.count', { n: filteredUploadContexts.length })}</div>
+            <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>{uploadsLoading ? t('common.loading') : t('explore.myData.count', { n: filteredUploadContexts.length })}</div>
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
@@ -1687,7 +1687,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
                   background: 'none',
                   border: 'none',
                   color: C.ice30,
-                  fontSize: 11,
+                  fontSize: 'calc(11px * var(--font-scale, 1))',
                   cursor: 'pointer',
                   fontFamily: 'inherit',
                 }}
@@ -1734,7 +1734,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
         <GlowCard breathe style={{ padding: 22 }}>
           <div
             style={{
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               fontWeight: 700,
               color: C.blue,
               fontFamily: "'Orbitron', sans-serif",
@@ -1755,7 +1755,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 18, color: C.ice, fontWeight: 700, lineHeight: 1.45 }} title={viewingUpload.filename}>
+                  <div style={{ fontSize: 'calc(18px * var(--font-scale, 1))', color: C.ice, fontWeight: 700, lineHeight: 1.45 }} title={viewingUpload.filename}>
                     {viewingUpload.filename}
                   </div>
                   <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -1794,7 +1794,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
                     padding: '12px 14px',
                     background: viewingSignal.bg,
                     color: viewingSignal.color,
-                    fontSize: 12,
+                    fontSize: 'calc(12px * var(--font-scale, 1))',
                     fontWeight: 700,
                   }}
                 >
@@ -1802,7 +1802,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
                 </div>
               )}
 
-              <div style={{ fontSize: 12, color: C.ice60, lineHeight: 1.85 }}>
+              <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.85 }}>
                 {viewingCtx.datasetState.desc}
               </div>
 
@@ -1850,7 +1850,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
               <div>
                 <div
                   style={{
-                    fontSize: 11,
+                    fontSize: 'calc(11px * var(--font-scale, 1))',
                     fontWeight: 700,
                     color: C.blue,
                     fontFamily: "'Orbitron', sans-serif",

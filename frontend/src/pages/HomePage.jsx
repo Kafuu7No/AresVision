@@ -103,7 +103,7 @@ export default function HomePage({ onNavigate }) {
       <div style={{ textAlign: 'center', zIndex: 1 }}>
         <h1 style={{
           fontFamily: "'Orbitron', sans-serif",
-          fontSize: 56, fontWeight: 900, letterSpacing: 8,
+          fontSize: 'calc(56px * var(--font-scale, 1))', fontWeight: 900, letterSpacing: 8,
           color: isLight ? '#2a2a3a' : C.ice, margin: 0,
           textShadow: isLight
             ? '0 2px 16px rgba(199,91,57,0.12)'
@@ -117,7 +117,7 @@ export default function HomePage({ onNavigate }) {
 
         <div style={{
           fontFamily: "'Orbitron', sans-serif",
-          fontSize: 18, fontWeight: 500, letterSpacing: 12,
+          fontSize: 'calc(18px * var(--font-scale, 1))', fontWeight: 500, letterSpacing: 12,
           color: C.mars, marginTop: 8,
           opacity: showTitle ? 1 : 0,
           transform: showTitle ? 'translateY(0)' : 'translateY(20px)',
@@ -127,7 +127,7 @@ export default function HomePage({ onNavigate }) {
         </div>
 
         <p style={{
-          marginTop: 32, fontSize: 16,
+          marginTop: 32, fontSize: 'calc(16px * var(--font-scale, 1))',
           color: isLight ? 'rgba(42,42,58,0.7)' : C.ice60,
           lineHeight: 1.8, maxWidth: 580,
           opacity: showSub ? 1 : 0,
@@ -136,7 +136,7 @@ export default function HomePage({ onNavigate }) {
         }}>
           {t('home.desc')}
           <br />
-          <span style={{ color: isLight ? '#7a7a8a' : C.ice30, fontSize: 13 }}>
+          <span style={{ color: isLight ? '#7a7a8a' : C.ice30, fontSize: 'calc(13px * var(--font-scale, 1))' }}>
             {t('home.descEn')}
           </span>
         </p>
@@ -152,7 +152,7 @@ export default function HomePage({ onNavigate }) {
             background: `linear-gradient(135deg, ${C.mars}, ${C.marsLight})`,
             border: 'none', borderRadius: 12,
             padding: '14px 36px', color: '#fff',
-            fontSize: 13, fontWeight: 700,
+            fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 700,
             fontFamily: "'Orbitron', sans-serif", letterSpacing: 2,
             cursor: 'pointer',
             boxShadow: '0 4px 24px rgba(199,91,57,0.4)',
@@ -163,7 +163,7 @@ export default function HomePage({ onNavigate }) {
             background: 'transparent',
             border: `1px solid ${C.ice30}`,
             borderRadius: 12, padding: '14px 36px',
-            color: C.ice, fontSize: 13, fontWeight: 600,
+            color: C.ice, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 600,
             fontFamily: "'Exo 2', sans-serif", letterSpacing: 1,
             cursor: 'pointer',
           }}>
@@ -180,7 +180,7 @@ export default function HomePage({ onNavigate }) {
         transition: 'opacity 1s',
         animation: 'float 3s ease-in-out infinite',
       }}>
-        <div style={{ fontSize: 10, letterSpacing: 3, color: C.ice60, fontFamily: "'Orbitron', sans-serif" }}>
+        <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 3, color: C.ice60, fontFamily: "'Orbitron', sans-serif" }}>
           SCROLL
         </div>
         <div style={{ width: 1, height: 30, background: `linear-gradient(180deg, ${C.ice30}, transparent)` }} />
@@ -197,12 +197,12 @@ export default function HomePage({ onNavigate }) {
           <GlowCard key={i} style={{ padding: '24px 20px', textAlign: 'center' }}>
             {f.icon}
             <div style={{
-              fontSize: 14, fontWeight: 700, color: C.ice,
+              fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700, color: C.ice,
               marginBottom: 8, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1,
             }}>
               {f.title}
             </div>
-            <div style={{ fontSize: 12, color: C.ice60, lineHeight: 1.6 }}>
+            <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.6 }}>
               {f.desc}
             </div>
           </GlowCard>

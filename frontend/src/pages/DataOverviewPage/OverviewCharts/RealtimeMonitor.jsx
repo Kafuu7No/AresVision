@@ -171,7 +171,7 @@ export default function RealtimeMonitor({ marsYear, lsValue, dataSourceMode = 'd
                 border: `1px solid ${active ? C.mars : C.border}`,
                 background: active ? 'rgba(199,91,57,0.12)' : 'rgba(255,255,255,0.03)',
                 color: active ? C.mars : C.ice60,
-                fontSize: 11,
+                fontSize: 'calc(11px * var(--font-scale, 1))',
                 cursor: 'pointer',
                 fontFamily: "'Orbitron', sans-serif",
               }}
@@ -184,37 +184,37 @@ export default function RealtimeMonitor({ marsYear, lsValue, dataSourceMode = 'd
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(199,91,57,0.08)', border: '1px solid rgba(199,91,57,0.18)' }}>
-          <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.mean}</div>
-          <div style={{ marginTop: 6, color: C.mars, fontSize: 18, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.mean}</div>
+          <div style={{ marginTop: 6, color: C.mars, fontSize: 'calc(18px * var(--font-scale, 1))', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
             {fmtNum(convertOzone(stats.mean, 'um-atm'), 3)}
           </div>
-          <div style={{ color: C.ice30, fontSize: 11 }}>{ozoneLabel('um-atm')}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{ozoneLabel('um-atm')}</div>
         </div>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(74,158,255,0.08)', border: '1px solid rgba(74,158,255,0.18)' }}>
-          <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.peak}</div>
-          <div style={{ marginTop: 6, color: C.blue, fontSize: 18, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.peak}</div>
+          <div style={{ marginTop: 6, color: C.blue, fontSize: 'calc(18px * var(--font-scale, 1))', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
             {fmtNum(stats.max, 3)}
           </div>
-          <div style={{ color: C.ice30, fontSize: 11 }}>{copy.at} {fmtNum(stats.peakHour, 1)}h</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{copy.at} {fmtNum(stats.peakHour, 1)}h</div>
         </div>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(74,207,172,0.08)', border: '1px solid rgba(74,207,172,0.18)' }}>
-          <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.amplitude}</div>
-          <div style={{ marginTop: 6, color: '#4acfac', fontSize: 18, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.amplitude}</div>
+          <div style={{ marginTop: 6, color: '#4acfac', fontSize: 'calc(18px * var(--font-scale, 1))', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
             {fmtNum(stats.amplitude, 3)}
           </div>
-          <div style={{ color: C.ice30, fontSize: 11 }}>{copy.ampDesc}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{copy.ampDesc}</div>
         </div>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}` }}>
-          <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif", display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1, fontFamily: "'Orbitron', sans-serif", display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
             <span>{copy.selection}</span>
             {refreshing && (
-              <span style={{ color: C.ice60, fontSize: 9, letterSpacing: 0.6 }}>
+              <span style={{ color: C.ice60, fontSize: 'calc(9px * var(--font-scale, 1))', letterSpacing: 0.6 }}>
                 {isZh ? '更新中...' : 'Updating...'}
               </span>
             )}
           </div>
-          <div style={{ marginTop: 6, color: C.ice, fontSize: 13, fontWeight: 700 }}>{shortLabels[latBand]}</div>
-          <div style={{ color: C.ice30, fontSize: 11 }}>{copy.marsYear}{marsYear} · {copy.solarLongitude} {fmtNum(lsValue, 0)}°</div>
+          <div style={{ marginTop: 6, color: C.ice, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 700 }}>{shortLabels[latBand]}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{copy.marsYear}{marsYear} · {copy.solarLongitude} {fmtNum(lsValue, 0)}°</div>
         </div>
       </div>
 

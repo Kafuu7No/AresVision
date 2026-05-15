@@ -14,7 +14,7 @@ export default function AboutPage() {
     <div className="page-enter" style={{ padding: '100px 40px 60px', maxWidth: 1000, margin: '0 auto' }}>
       <SectionTitle title={t('about.title')} subtitle={t('about.subtitle')} align="center" />
 
-      <div style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 48px', fontSize: 15, color: C.ice60, lineHeight: 1.8 }}>
+      <div style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 48px', fontSize: 'calc(15px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8 }}>
         {t('about.description')}
       </div>
 

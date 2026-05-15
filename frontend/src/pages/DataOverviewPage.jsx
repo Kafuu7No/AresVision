@@ -224,7 +224,7 @@ const DataOverviewPageContent = () => {
           />
           <div style={{
             position: 'absolute', top: '8px', left: '8px', background: isLight ? 'rgba(255,255,255,0.86)' : 'rgba(0,0,0,0.6)',
-            padding: '2px 7px', borderRadius: '4px', color: C.mars, fontSize: '9px',
+            padding: '2px 7px', borderRadius: '4px', color: C.mars, fontSize: 'calc(9px * var(--font-scale, 1))',
             fontFamily: 'Orbitron', zIndex: 3, border: `1px solid ${C.mars}`
           }}>
             {t('overview.controls.cameraTracking')}

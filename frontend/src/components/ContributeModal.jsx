@@ -78,10 +78,10 @@ function StepIndicator({ current, t, isLight }) {
               }}>
                 {done
                   ? <CheckIcon size={12} color="#fff" />
-                  : <span style={{ fontSize: 11, fontWeight: 700, color: dotClr }}>{n}</span>
+                  : <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: dotClr }}>{n}</span>
                 }
               </div>
-              <span style={{ fontSize: 10, fontWeight: 600, color: textClr, whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 600, color: textClr, whiteSpace: 'nowrap' }}>
                 {label}
               </span>
             </div>
@@ -107,7 +107,7 @@ function Step1({ validUploads, selected, onToggle, t, isLight }) {
       <div style={{
         padding: '32px 0', textAlign: 'center',
         color: isLight ? '#000000' : '#ffffff',
-        fontSize: 13,
+        fontSize: 'calc(13px * var(--font-scale, 1))',
       }}>
         {t('explore.contribute.step1Empty')}
       </div>
@@ -155,13 +155,13 @@ function Step1({ validUploads, selected, onToggle, t, isLight }) {
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                fontSize: 13, fontWeight: 600, color: nameClr,
+                fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 600, color: nameClr,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }} title={u.filename}>
                 {u.filename}
               </div>
               {meta && (
-                <div style={{ fontSize: 11, color: metaClr, marginTop: 2 }}>{meta}</div>
+                <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: metaClr, marginTop: 2 }}>{meta}</div>
               )}
             </div>
           </div>
@@ -185,7 +185,7 @@ function Step2({ validUploads, selected, note, onNoteChange, t, isLight }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Selected count */}
-      <div style={{ fontSize: 12, color: C.blue, fontWeight: 600 }}>
+      <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.blue, fontWeight: 600 }}>
         {t('explore.contribute.step2Selected', { n: selectedList.length })}
       </div>
 
@@ -200,11 +200,11 @@ function Step2({ validUploads, selected, note, onNoteChange, t, isLight }) {
           }}>
             <span style={{ color: metaClr, flexShrink: 0 }}><FileIcon size={13} color="currentColor" /></span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: nameClr, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 600, color: nameClr, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {u.filename}
               </div>
               {u.data_type && (
-                <div style={{ fontSize: 10, color: metaClr }}>{u.data_type}{u.mars_year != null ? ` · MY ${u.mars_year}` : ''}</div>
+                <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: metaClr }}>{u.data_type}{u.mars_year != null ? ` · MY ${u.mars_year}` : ''}</div>
               )}
             </div>
           </div>
@@ -213,7 +213,7 @@ function Step2({ validUploads, selected, note, onNoteChange, t, isLight }) {
 
       {/* Note input */}
       <div>
-        <div style={{ fontSize: 11, color: metaClr, marginBottom: 6 }}>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: metaClr, marginBottom: 6 }}>
           {t('explore.contribute.noteLabel')}
         </div>
         <textarea
@@ -225,7 +225,7 @@ function Step2({ validUploads, selected, note, onNoteChange, t, isLight }) {
             width: '100%', boxSizing: 'border-box',
             background: inputBg, border: `1px solid ${inputBdr}`,
             borderRadius: 8, padding: '8px 12px',
-            color: nameClr, fontSize: 13, resize: 'vertical',
+            color: nameClr, fontSize: 'calc(13px * var(--font-scale, 1))', resize: 'vertical',
             outline: 'none', fontFamily: 'inherit', lineHeight: 1.55,
           }}
         />
@@ -235,7 +235,7 @@ function Step2({ validUploads, selected, note, onNoteChange, t, isLight }) {
       <div style={{
         padding: '10px 14px', borderRadius: 9,
         background: noticeBg, border: `1px solid ${noticeBdr}`,
-        fontSize: 12, color: metaClr, lineHeight: 1.6,
+        fontSize: 'calc(12px * var(--font-scale, 1))', color: metaClr, lineHeight: 1.6,
       }}>
         {t('explore.contribute.step2Notice')}
       </div>
@@ -258,7 +258,7 @@ function Step3({ validUploads, selected, results, submitting, t, isLight }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Progress text */}
-      <div style={{ fontSize: 13, color: dimClr, textAlign: 'center' }}>
+      <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: dimClr, textAlign: 'center' }}>
         {submitting
           ? t('explore.contribute.step3Progress', { done, total })
           : (failCount === 0
@@ -298,14 +298,14 @@ function Step3({ validUploads, selected, results, submitting, t, isLight }) {
                   background: r.ok ? '#22c55e' : C.mars,
                 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: nameClr, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 600, color: nameClr, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {u?.filename ?? `#${r.id}`}
                   </div>
                   {!r.ok && r.error && (
-                    <div style={{ fontSize: 10, color: C.mars, marginTop: 1 }}>{r.error}</div>
+                    <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.mars, marginTop: 1 }}>{r.error}</div>
                   )}
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 700, color: r.ok ? '#22c55e' : C.mars, flexShrink: 0 }}>
+                <span style={{ fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, color: r.ok ? '#22c55e' : C.mars, flexShrink: 0 }}>
                   {r.ok ? '✓' : '✗'}
                 </span>
               </div>
@@ -316,7 +316,7 @@ function Step3({ validUploads, selected, results, submitting, t, isLight }) {
 
       {/* Loading spinner (pending items) */}
       {submitting && done < total && (
-        <div style={{ fontSize: 12, color: dimClr, textAlign: 'center' }}>
+        <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: dimClr, textAlign: 'center' }}>
           {t('explore.contribute.step3Progress', { done, total })}
         </div>
       )}
@@ -446,7 +446,7 @@ function ContributeModalInner({ open, onClose, validUploads, onDone }) {
           flexShrink: 0,
         }}>
           <div style={{
-            fontSize: 14, fontWeight: 700, color: titleClr,
+            fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700, color: titleClr,
             fontFamily: "'Orbitron', sans-serif", letterSpacing: '0.02em',
           }}>
             {stepTitle}
@@ -511,7 +511,7 @@ function ContributeModalInner({ open, onClose, validUploads, onDone }) {
               <button onClick={handleDone} style={{
                 padding: '9px 20px', borderRadius: 9,
                 background: cancelBg, border: 'none',
-                color: cancelClr, fontSize: 13, fontWeight: 500,
+                color: cancelClr, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 500,
                 cursor: 'pointer', fontFamily: 'inherit',
               }}>
                 {t('explore.myData.cancelBtn')}
@@ -523,7 +523,7 @@ function ContributeModalInner({ open, onClose, validUploads, onDone }) {
                   padding: '9px 20px', borderRadius: 9, border: 'none',
                   background: canNext ? C.blue : btnDisBg,
                   color: canNext ? '#fff' : btnDisClr,
-                  fontSize: 13, fontWeight: 600,
+                  fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 600,
                   cursor: canNext ? 'pointer' : 'not-allowed',
                   fontFamily: 'inherit', transition: 'all 0.15s',
                 }}
@@ -538,7 +538,7 @@ function ContributeModalInner({ open, onClose, validUploads, onDone }) {
               <button onClick={() => setStep(1)} style={{
                 padding: '9px 20px', borderRadius: 9,
                 background: cancelBg, border: 'none',
-                color: cancelClr, fontSize: 13, fontWeight: 500,
+                color: cancelClr, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 500,
                 cursor: 'pointer', fontFamily: 'inherit',
               }}>
                 {t('explore.contribute.prevBtn')}
@@ -546,7 +546,7 @@ function ContributeModalInner({ open, onClose, validUploads, onDone }) {
               <button onClick={handleSubmit} style={{
                 padding: '9px 20px', borderRadius: 9, border: 'none',
                 background: C.mars, color: '#fff',
-                fontSize: 13, fontWeight: 600,
+                fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 600,
                 cursor: 'pointer', fontFamily: 'inherit',
               }}>
                 {t('explore.contribute.submitBtn')}
@@ -562,7 +562,7 @@ function ContributeModalInner({ open, onClose, validUploads, onDone }) {
                 padding: '9px 20px', borderRadius: 9, border: 'none',
                 background: allDone ? C.blue : btnDisBg,
                 color: allDone ? '#fff' : btnDisClr,
-                fontSize: 13, fontWeight: 600,
+                fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 600,
                 cursor: submitting ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit', transition: 'all 0.15s',
               }}

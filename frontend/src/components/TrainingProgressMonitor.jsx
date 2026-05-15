@@ -87,7 +87,7 @@ const TrainingProgressMonitor = ({
   };
 
   const metricLabelStyle = {
-    fontSize: 11,
+    fontSize: 'calc(11px * var(--font-scale, 1))',
     fontWeight: 700,
     opacity: 0.5,
     textTransform: 'uppercase',
@@ -96,7 +96,7 @@ const TrainingProgressMonitor = ({
   };
 
   const metricValueStyle = {
-    fontSize: 18,
+    fontSize: 'calc(18px * var(--font-scale, 1))',
     fontWeight: 800,
     fontFamily: "'Orbitron', monospace",
     color: isLight ? '#111' : C.ice
@@ -113,12 +113,12 @@ const TrainingProgressMonitor = ({
             boxShadow: `0 0 8px ${statusColor}`,
             animation: status === 'running' ? 'pulse 2s infinite' : 'none'
           }} />
-          <span style={{ fontSize: 13, fontWeight: 700, opacity: 0.8 }}>
+          <span style={{ fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 700, opacity: 0.8 }}>
             {t('modelTraining.statsProgress')}
           </span>
         </div>
         <span style={{ 
-          fontSize: 24, 
+          fontSize: 'calc(24px * var(--font-scale, 1))', 
           fontWeight: 900, 
           fontFamily: "'Orbitron', sans-serif",
           background: `linear-gradient(135deg, ${C.mars}, ${C.blue})`,
@@ -139,7 +139,7 @@ const TrainingProgressMonitor = ({
         <div style={metricBoxStyle}>
           <div style={metricLabelStyle}>{t('modelTraining.statsEpoch')}</div>
           <div style={metricValueStyle}>
-            {currentEpoch} <span style={{ fontSize: 12, opacity: 0.4 }}>/ {totalEpochs}</span>
+            {currentEpoch} <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', opacity: 0.4 }}>/ {totalEpochs}</span>
           </div>
         </div>
         
@@ -159,7 +159,7 @@ const TrainingProgressMonitor = ({
 
         <div style={metricBoxStyle}>
           <div style={metricLabelStyle}>{t('modelTraining.status')}</div>
-          <div style={{ ...metricValueStyle, fontSize: 13, color: statusColor }}>
+          <div style={{ ...metricValueStyle, fontSize: 'calc(13px * var(--font-scale, 1))', color: statusColor }}>
             {getStatusText()}
           </div>
         </div>

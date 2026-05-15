@@ -3,6 +3,7 @@ import C from '../../constants/colors';
 import { useT } from '../../i18n';
 import { useSettings } from '../../contexts/SettingsContext';
 import { getRgb } from '../../utils/colormaps';
+import { buildCanvasFont, normalizeFontScale } from '../../utils/fontScale';
 import { convertOzone, ozoneLabel } from '../../utils/units';
 import { fmtNum } from '../../utils/fmt';
 import { LoadingBox, InsightBlock } from './ExploreComponents';
@@ -15,6 +16,7 @@ export default function HeatmapCanvas({ data, year, h = 300 }) {
   const colormapName = settings.colormap;
   const ozoneUnit = settings.units.ozone;
   const precision = settings.precision;
+  const fontScale = normalizeFontScale(settings.appearance?.uiScale);
   const isLight = settings.theme === 'light';
 
   useEffect(() => {
@@ -95,7 +97,7 @@ export default function HeatmapCanvas({ data, year, h = 300 }) {
       ctx.beginPath(); ctx.moveTo(sx, MT); ctx.lineTo(sx, MT + plotH); ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle = seasonLabel;
-      ctx.font = '11px sans-serif';
+      ctx.font = buildCanvasFont(11, { scale: fontScale });
       ctx.textAlign = 'center';
       ctx.fillText(seasonLabels[si], sx, MT - 10);
       ctx.setLineDash([4, 3]);
@@ -107,7 +109,7 @@ export default function HeatmapCanvas({ data, year, h = 300 }) {
     ctx.beginPath(); ctx.moveTo(ML, MT + plotH); ctx.lineTo(ML + plotW, MT + plotH); ctx.stroke();
     const xTicks = [0, 90, 180, 270, 360];
     ctx.fillStyle = tickColor;
-    ctx.font = '11px sans-serif';
+    ctx.font = buildCanvasFont(11, { scale: fontScale });
     ctx.textAlign = 'center';
     xTicks.forEach(ls => {
       const frac = (ls - lsMin) / lsRange;
@@ -117,7 +119,7 @@ export default function HeatmapCanvas({ data, year, h = 300 }) {
       ctx.fillText(`${ls}°`, tx, MT + plotH + 17);
     });
     ctx.fillStyle = titleColor;
-    ctx.font = '11px sans-serif';
+    ctx.font = buildCanvasFont(11, { scale: fontScale });
     ctx.textAlign = 'center';
     ctx.fillText('Solar Longitude Ls (°)', ML + plotW / 2, CH - 8);
 
@@ -126,7 +128,7 @@ export default function HeatmapCanvas({ data, year, h = 300 }) {
     ctx.beginPath(); ctx.moveTo(ML, MT); ctx.lineTo(ML, MT + plotH); ctx.stroke();
     const yTicks = [-90, -60, -30, 0, 30, 60, 90];
     ctx.fillStyle = tickColor;
-    ctx.font = '11px sans-serif';
+    ctx.font = buildCanvasFont(11, { scale: fontScale });
     ctx.textAlign = 'right';
     yTicks.forEach(lat => {
       const frac = (lat + 90) / 180;
@@ -138,7 +140,7 @@ export default function HeatmapCanvas({ data, year, h = 300 }) {
     ctx.translate(14, MT + plotH / 2);
     ctx.rotate(-Math.PI / 2);
     ctx.fillStyle = titleColor;
-    ctx.font = '11px sans-serif';
+    ctx.font = buildCanvasFont(11, { scale: fontScale });
     ctx.textAlign = 'center';
     ctx.fillText('Latitude (°)', 0, 0);
     ctx.restore();
@@ -160,13 +162,13 @@ export default function HeatmapCanvas({ data, year, h = 300 }) {
     ctx.lineWidth = 0.5;
     ctx.strokeRect(cbX, MT, cbW, plotH);
     ctx.fillStyle = cbLabelColor;
-    ctx.font = '10px sans-serif';
+    ctx.font = buildCanvasFont(10, { scale: fontScale });
     ctx.textAlign = 'left';
     ctx.fillText(fmtNum(convertOzone(dMax, ozoneUnit), precision), cbX + cbW + 4, MT + 5);
     ctx.fillText(fmtNum(convertOzone((dMax + dMin) / 2, ozoneUnit), precision), cbX + cbW + 4, MT + plotH / 2 + 4);
     ctx.fillText(fmtNum(convertOzone(dMin, ozoneUnit), precision), cbX + cbW + 4, MT + plotH + 4);
     ctx.fillStyle = cbTitleColor;
-    ctx.font = '10px sans-serif';
+    ctx.font = buildCanvasFont(10, { scale: fontScale });
     ctx.textAlign = 'center';
     ctx.fillText(ozoneLabel(ozoneUnit), cbX + cbW / 2, MT + plotH + 20);
 
@@ -213,7 +215,7 @@ export default function HeatmapCanvas({ data, year, h = 300 }) {
       ratio,
       unit: ozoneLabel(ozoneUnit),
     }));
-  }, [data, year, t, colormapName, ozoneUnit, precision, isLight]);
+  }, [data, year, t, colormapName, ozoneUnit, precision, isLight, fontScale]);
 
   if (!data || !data.z) return <LoadingBox h={h} />;
 

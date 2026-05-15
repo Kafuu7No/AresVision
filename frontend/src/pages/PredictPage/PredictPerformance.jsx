@@ -44,7 +44,7 @@ export default function PredictPerformance({
     <GlowCard style={{ padding: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
             {t('predict.perfTitle')}
           </div>
 
@@ -60,7 +60,7 @@ export default function PredictPerformance({
                       background: activePerfMetric === m.key ? 'rgba(74,158,255,0.12)' : 'transparent',
                       border: 'none',
                       borderRadius: 6,
-                      fontSize: 10,
+                      fontSize: 'calc(10px * var(--font-scale, 1))',
                       fontWeight: 700,
                       color: activePerfMetric === m.key ? C.blue : C.ice30,
                       cursor: 'pointer',
@@ -84,7 +84,7 @@ export default function PredictPerformance({
           style={{
             padding: '6px 12px', background: 'rgba(74,158,255,0.1)',
             border: `1px solid ${C.blue}`, borderRadius: 6,
-            color: C.blue, fontSize: 10, cursor: 'pointer',
+            color: C.blue, fontSize: 'calc(10px * var(--font-scale, 1))', cursor: 'pointer',
             fontFamily: "'Orbitron', sans-serif", transition: 'all 0.2s'
           }}
         >
@@ -206,7 +206,7 @@ export default function PredictPerformance({
                         const label = config?.label || key;
                         return (
                           <button key={key} onClick={() => setActiveCompareId(key)} style={{
-                            padding: '4px 12px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                            padding: '4px 12px', borderRadius: 6, fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700,
                             background: activeCompareId === key ? (isLight ? 'rgba(74,207,172,0.15)' : 'rgba(74,207,172,0.1)') : (isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)'),
                             border: `1px solid ${activeCompareId === key ? '#4acfac' : C.border}`,
                             color: activeCompareId === key ? (isLight ? '#2d8c72' : '#4acfac') : plotText60,
@@ -221,7 +221,7 @@ export default function PredictPerformance({
                     {(() => {
                       const effectiveId = activeCompareId || Object.keys(performanceData.results || {})[0];
                       const activeItem = performanceData.results?.[effectiveId];
-                      if (!activeItem || !activeItem.items) return <div style={{ color: C.mars, fontSize: 12 }}>No Data for {effectiveId}</div>;
+                      if (!activeItem || !activeItem.items) return <div style={{ color: C.mars, fontSize: 'calc(12px * var(--font-scale, 1))' }}>No Data for {effectiveId}</div>;
 
                       return (
                         <>
@@ -233,8 +233,8 @@ export default function PredictPerformance({
                               { label: t('predict.globalSSIM'), val: activeItem.global_ssim, color: '#4acfac' }
                             ].map((m, idx) => (
                               <div key={idx} style={{ padding: '12px 16px', background: `${m.color}15`, borderRadius: 10, border: `1px solid ${m.color}40`, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span style={{ fontSize: 10, color: C.ice30, fontWeight: 600 }}>{m.label}</span>
-                                <span style={{ fontSize: 18, color: m.color, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
+                                <span style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30, fontWeight: 600 }}>{m.label}</span>
+                                <span style={{ fontSize: 'calc(18px * var(--font-scale, 1))', color: m.color, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>
                                   {fmtNum(m.val || 0, precision)}
                                 </span>
                               </div>
@@ -254,7 +254,7 @@ export default function PredictPerformance({
           })()}
         </div>
       ) : (
-        <div style={{ padding: '40px 0', textAlign: 'center', color: C.ice30, fontSize: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: `1px dashed ${C.border}` }}>
+        <div style={{ padding: '40px 0', textAlign: 'center', color: C.ice30, fontSize: 'calc(12px * var(--font-scale, 1))', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: `1px dashed ${C.border}` }}>
           {perfLoading ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 20, height: 20, border: '2px solid rgba(74,207,172,0.2)', borderTop: '2px solid #4acfac', borderRadius: '50%', animation: 'spin-slow 0.8s linear infinite' }} />
@@ -263,7 +263,7 @@ export default function PredictPerformance({
           ) : t('predict.perfEmptyHint')}
         </div>
       )}
-      <div style={{ marginTop: 12, fontSize: 10, color: C.ice30, fontStyle: 'italic' }}>
+      <div style={{ marginTop: 12, fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30, fontStyle: 'italic' }}>
         {t('predict.testSetNote')}
       </div>
     </GlowCard>

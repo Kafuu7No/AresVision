@@ -35,11 +35,11 @@ export default function PermutationImportanceChart({
   return (
     <GlowCard style={{ padding: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
           {t('predict.pfi.title')}
         </div>
         {data && (
-          <div style={{ fontSize: 10, color: C.ice30, fontFamily: "'Orbitron', sans-serif" }}>
+          <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30, fontFamily: "'Orbitron', sans-serif" }}>
             {t('predict.pfi.baselineR2')}<span style={{ color: '#4acfac', fontWeight: 800 }}>{data.baseline_value?.toFixed(4)}</span>
           </div>
         )}
@@ -48,7 +48,7 @@ export default function PermutationImportanceChart({
       {loading ? (
         <div style={{ height: 300, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, background: 'rgba(255,255,255,0.01)', borderRadius: 12 }}>
           <div style={{ width: 24, height: 24, border: '2px solid rgba(74,207,172,0.2)', borderTop: '2px solid #4acfac', borderRadius: '50%', animation: 'spin-slow 0.8s linear infinite' }} />
-          <div style={{ fontSize: 10, color: C.ice30 }}>{t('predict.generatingHint')}...</div>
+          <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30 }}>{t('predict.generatingHint')}...</div>
         </div>
       ) : chartData.length > 0 ? (
         <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: `1px solid ${C.border}`, padding: '10px' }}>
@@ -80,12 +80,12 @@ export default function PermutationImportanceChart({
           />
         </div>
       ) : (
-        <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.ice30, fontSize: 11, border: `1px dashed ${C.border}`, borderRadius: 12 }}>
+        <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.ice30, fontSize: 'calc(11px * var(--font-scale, 1))', border: `1px dashed ${C.border}`, borderRadius: 12 }}>
           {t('predict.pfi.noData')}
         </div>
       )}
 
-      <div style={{ marginTop: 12, fontSize: 10, color: C.ice30, lineHeight: 1.5 }}>
+      <div style={{ marginTop: 12, fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.5 }}>
         <span style={{ color: C.blue, fontWeight: 700 }}>{t('predict.pfi.helpTitle')}</span> {t('predict.pfi.helpDesc')}
       </div>
     </GlowCard>

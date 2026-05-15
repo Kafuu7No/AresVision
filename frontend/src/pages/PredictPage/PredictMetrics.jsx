@@ -15,7 +15,7 @@ export default function PredictMetrics({
 
   return (
     <GlowCard style={{ padding: 20 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
+      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
         {t('predict.evalTitle')}
       </div>
 
@@ -29,14 +29,14 @@ export default function PredictMetrics({
               background: 'rgba(255,255,255,0.03)',
               border: `1px solid ${C.border}`, textAlign: 'center',
             }}>
-              <div style={{ fontSize: 10, color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>{m.name}</div>
+              <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>{m.name}</div>
               <div style={{
-                fontSize: 26, fontWeight: 800, color: C.ice,
+                fontSize: 'calc(26px * var(--font-scale, 1))', fontWeight: 800, color: C.ice,
                 fontFamily: "'Orbitron', sans-serif", marginTop: 8,
               }}>
                 {loading ? '…' : val != null ? fmtNum(val, precision) : '—'}
               </div>
-              <div style={{ fontSize: 10, color: m.color, marginTop: 4 }}>
+              <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: m.color, marginTop: 4 }}>
                 {m.better} {m.key === 'rmse' || m.key === 'mae' ? ozoneLabel(ozoneUnit) : m.unit}
               </div>
             </div>

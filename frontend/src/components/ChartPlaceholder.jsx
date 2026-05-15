@@ -82,10 +82,10 @@ function FakeCorrelation() {
       <div style={{ display: 'grid', gridTemplateColumns: `30px repeat(7,1fr)`, gridTemplateRows: `24px repeat(7,1fr)`, gap: 2, width: '85%', maxWidth: 320, aspectRatio: '1' }}>
         <div />
         {vars.map((v, i) => (
-          <div key={i} style={{ fontSize: 9, color: C.ice60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{v}</div>
+          <div key={i} style={{ fontSize: 'calc(9px * var(--font-scale, 1))', color: C.ice60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{v}</div>
         ))}
         {vars.map((v, ri) => [
-          <div key={`l${ri}`} style={{ fontSize: 9, color: C.ice60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{v}</div>,
+          <div key={`l${ri}`} style={{ fontSize: 'calc(9px * var(--font-scale, 1))', color: C.ice60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{v}</div>,
           ...vars.map((_, ci) => {
             const val = ri === ci ? 1 : Math.sin(ri * ci * 0.5) * 0.7 + (ri * 3 + ci * 7) % 10 / 30 - 0.15;
             const r = val > 0 ? Math.round(val * 180) : 0;
@@ -97,7 +97,7 @@ function FakeCorrelation() {
                   background: ri === ci ? C.mars : `rgba(${r + 40},${40 + Math.abs(val) * 20},${b + 60},${0.3 + Math.abs(val) * 0.5})`,
                   borderRadius: 2,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 8, color: 'rgba(255,255,255,0.5)',
+                  fontSize: 'calc(8px * var(--font-scale, 1))', color: 'rgba(255,255,255,0.5)',
                 }}
               >
                 {val.toFixed(1)}
@@ -153,7 +153,7 @@ export default function ChartPlaceholder({ title, type = 'heatmap', h = 300 }) {
         <div
           style={{
             padding: '12px 16px',
-            fontSize: 13,
+            fontSize: 'calc(13px * var(--font-scale, 1))',
             fontWeight: 600,
             color: C.ice60,
             fontFamily: "'Exo 2', sans-serif",

@@ -67,7 +67,7 @@ function ViewTab({ active, label, desc, accent, onClick }) {
     >
       <div
         style={{
-          fontSize: 10,
+          fontSize: 'calc(10px * var(--font-scale, 1))',
           color: active ? accent : C.ice30,
           fontWeight: 700,
           letterSpacing: 1.8,
@@ -77,7 +77,7 @@ function ViewTab({ active, label, desc, accent, onClick }) {
       >
         {label}
       </div>
-      <div style={{ fontSize: 12, color: C.ice60, lineHeight: 1.7 }}>{desc}</div>
+      <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.7 }}>{desc}</div>
     </button>
   );
 }
@@ -87,7 +87,7 @@ function IntroCard({ eyebrow, title, body, accent = C.blue, action = null }) {
     <GlowCard style={{ padding: '18px 20px' }}>
       <div
         style={{
-          fontSize: 11,
+          fontSize: 'calc(11px * var(--font-scale, 1))',
           fontWeight: 700,
           color: accent,
           fontFamily: "'Orbitron', sans-serif",
@@ -97,8 +97,8 @@ function IntroCard({ eyebrow, title, body, accent = C.blue, action = null }) {
       >
         {eyebrow}
       </div>
-      <div style={{ fontSize: 15, color: C.ice, fontWeight: 700, marginBottom: 8 }}>{title}</div>
-      <div style={{ fontSize: 13, color: C.ice60, lineHeight: 1.85, maxWidth: 1040 }}>{body}</div>
+      <div style={{ fontSize: 'calc(15px * var(--font-scale, 1))', color: C.ice, fontWeight: 700, marginBottom: 8 }}>{title}</div>
+      <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.85, maxWidth: 1040 }}>{body}</div>
       {action ? <div style={{ marginTop: 14 }}>{action}</div> : null}
     </GlowCard>
   );
@@ -122,7 +122,7 @@ function AdminWorkspace({ onOpenAdmin, isAdmin, copy, isZh }) {
                 border: '1px solid rgba(199,91,57,0.35)',
                 background: 'rgba(199,91,57,0.12)',
                 color: C.mars,
-                fontSize: 12,
+                fontSize: 'calc(12px * var(--font-scale, 1))',
                 fontWeight: 700,
                 cursor: 'pointer',
                 fontFamily: 'inherit',
@@ -136,10 +136,10 @@ function AdminWorkspace({ onOpenAdmin, isAdmin, copy, isZh }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
         <GlowCard style={{ padding: '18px 20px' }}>
-          <div style={{ fontSize: 12, color: C.ice, fontWeight: 700, marginBottom: 8 }}>
+          <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice, fontWeight: 700, marginBottom: 8 }}>
             {isZh ? '这里负责什么' : 'What This View Owns'}
           </div>
-          <div style={{ fontSize: 12, color: C.ice60, lineHeight: 1.8 }}>
+          <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8 }}>
             {isZh
               ? '处理用户贡献数据的待审核、通过、撤销三类动作，并决定哪些数据正式进入平台官方资产。'
               : 'It handles pending review, approval, and revoke actions for user-contributed datasets, and decides what formally enters official platform assets.'}
@@ -147,10 +147,10 @@ function AdminWorkspace({ onOpenAdmin, isAdmin, copy, isZh }) {
         </GlowCard>
 
         <GlowCard style={{ padding: '18px 20px' }}>
-          <div style={{ fontSize: 12, color: C.ice, fontWeight: 700, marginBottom: 8 }}>
+          <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice, fontWeight: 700, marginBottom: 8 }}>
             {isZh ? '为什么单独成页' : 'Why It Is Separate'}
           </div>
-          <div style={{ fontSize: 12, color: C.ice60, lineHeight: 1.8 }}>
+          <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8 }}>
             {isZh
               ? '管理员并入流程和普通用户的上传接入目标不同，分开后普通用户不会被后台概念打扰，管理员也能更直接进入审核工作。'
               : 'Admin merge work is different from ordinary upload ingestion. Separating it keeps regular users focused and gives admins a cleaner review entry point.'}
@@ -158,10 +158,10 @@ function AdminWorkspace({ onOpenAdmin, isAdmin, copy, isZh }) {
         </GlowCard>
 
         <GlowCard style={{ padding: '18px 20px' }}>
-          <div style={{ fontSize: 12, color: C.ice, fontWeight: 700, marginBottom: 8 }}>
+          <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice, fontWeight: 700, marginBottom: 8 }}>
             {isZh ? '当前权限' : 'Current Access'}
           </div>
-          <div style={{ fontSize: 12, color: C.ice60, lineHeight: 1.8 }}>
+          <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8 }}>
             {isAdmin ? copy.adminOpen : copy.adminNoAccess}
           </div>
         </GlowCard>
@@ -196,7 +196,7 @@ export default function ExplorePage({ onOpenAdmin, reviewSignal = 0 }) {
           <div>
             <div
               style={{
-                fontSize: 11,
+                fontSize: 'calc(11px * var(--font-scale, 1))',
                 fontWeight: 700,
                 color: C.blue,
                 fontFamily: "'Orbitron', sans-serif",
@@ -206,7 +206,7 @@ export default function ExplorePage({ onOpenAdmin, reviewSignal = 0 }) {
             >
               {copy.quickTitle}
             </div>
-            <div style={{ fontSize: 12, color: C.ice30, lineHeight: 1.8 }}>{copy.quickDesc}</div>
+            <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.8 }}>{copy.quickDesc}</div>
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 12 }}>

@@ -71,7 +71,7 @@ function FeedbackTypeTag({ type, t, isLight }) {
 
   return (
     <span style={{
-      fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 5,
+      fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, padding: '2px 8px', borderRadius: 5,
       background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color,
       letterSpacing: '0.04em', flexShrink: 0,
     }}>
@@ -99,21 +99,21 @@ function FeedbackCard({ record, t, isLight, onResolve, loading }) {
       {/* Top row: type + status + time */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <FeedbackTypeTag type={record.type} t={t} isLight={isLight} />
-        <span style={{ fontSize: 10, fontWeight: 600, color: resolved ? '#22c55e' : 'var(--text-30)' }}>
+        <span style={{ fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 600, color: resolved ? '#22c55e' : 'var(--text-30)' }}>
           {resolved ? t('feedback.statusResolved') : t('feedback.statusPending')}
         </span>
-        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-30)' }}>
+        <span style={{ marginLeft: 'auto', fontSize: 'calc(11px * var(--font-scale, 1))', color: 'var(--text-30)' }}>
           {formatDate(record.created_at)}
         </span>
       </div>
 
       {/* Content */}
-      <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6, wordBreak: 'break-word' }}>
+      <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: 'var(--text)', lineHeight: 1.6, wordBreak: 'break-word' }}>
         {record.content}
       </div>
 
       {/* Submitter info */}
-      <div style={{ fontSize: 11, color: 'var(--text-30)' }}>
+      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: 'var(--text-30)' }}>
         {record.user
           ? <>{record.user.username} <span style={{ opacity: 0.7 }}>({record.user.email})</span></>
           : record.contact_email
@@ -131,7 +131,7 @@ function FeedbackCard({ record, t, isLight, onResolve, loading }) {
             padding: '7px 0', borderRadius: 8,
             background: 'rgba(34,197,94,0.10)',
             border: '1px solid rgba(34,197,94,0.30)',
-            color: '#22c55e', fontSize: 12, fontWeight: 600,
+            color: '#22c55e', fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 600,
             cursor: loading ? 'not-allowed' : 'pointer',
             opacity: loading ? 0.6 : 1, fontFamily: 'inherit',
             transition: 'opacity 0.15s',
@@ -197,13 +197,13 @@ function PanelContent({ t, isLight, onClose }) {
         }}>
           <div>
             <div style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: 2.5,
+              fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, letterSpacing: 2.5,
               fontFamily: "'Orbitron', sans-serif",
               color: C.blue, textTransform: 'uppercase', marginBottom: 3,
             }}>
               {t('feedback.manageSubtitle')}
             </div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
+            <div style={{ fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
               {t('feedback.manageTitle')}
             </div>
           </div>
@@ -242,7 +242,7 @@ function PanelContent({ t, isLight, onClose }) {
       {/* List */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         {loading && (
-          <div style={{ textAlign: 'center', color: subColor, paddingTop: 60, fontSize: 13 }}>
+          <div style={{ textAlign: 'center', color: subColor, paddingTop: 60, fontSize: 'calc(13px * var(--font-scale, 1))' }}>
             {t('admin.loading')}
           </div>
         )}
@@ -254,10 +254,10 @@ function PanelContent({ t, isLight, onClose }) {
             <div style={{ color: subColor, opacity: 0.5 }}>
               <InboxIcon size={48} color="currentColor" />
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
+            <div style={{ fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
               {t('feedback.manageEmpty')}
             </div>
-            <div style={{ fontSize: 12, color: subColor }}>{t('feedback.manageEmptySub')}</div>
+            <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: subColor }}>{t('feedback.manageEmptySub')}</div>
           </div>
         )}
         {!loading && records.map(record => (

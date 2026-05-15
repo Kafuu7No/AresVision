@@ -84,7 +84,7 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
             background: 'none', border: 'none',
             cursor: 'pointer', padding: '4px 0',
             color: hovLogin ? '#fff' : C.blue,
-            fontSize: 13, fontWeight: 500,
+            fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 500,
             textDecoration: hovLogin ? 'underline' : 'none',
             textUnderlineOffset: 3,
             transition: 'color 0.18s, text-decoration 0.18s',
@@ -120,12 +120,12 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{initial}</span>
+            <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: '#fff' }}>{initial}</span>
           </div>
           {/* Username */}
           <div style={{ textAlign: 'left', maxWidth: 76, overflow: 'hidden' }}>
             <div style={{
-              fontSize: 11, fontWeight: 600, color: C.ice,
+              fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 600, color: C.ice,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               lineHeight: 1.2,
             }}>
@@ -133,7 +133,7 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
             </div>
             {isAdmin && (
               <div style={{
-                display: 'inline-block', fontSize: 9, fontWeight: 700,
+                display: 'inline-block', fontSize: 'calc(9px * var(--font-scale, 1))', fontWeight: 700,
                 color: C.mars, letterSpacing: '0.06em',
                 background: 'rgba(199,91,57,0.12)',
                 borderRadius: 4, padding: '1px 5px', marginTop: 1,
@@ -160,7 +160,7 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
           }}>
             {/* Email display */}
             <div style={{ padding: '8px 16px 10px' }}>
-              <div style={{ fontSize: 11, color: dimClr, wordBreak: 'break-all' }}>{user.email}</div>
+              <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: dimClr, wordBreak: 'break-all' }}>{user.email}</div>
             </div>
             <div style={{ height: 1, background: divClr, margin: '0 10px 4px' }} />
 
@@ -178,14 +178,14 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   }}
                 >
-                  <span style={{ fontSize: 13, fontWeight: 500, color: labelClr, userSelect: 'none' }}>
+                  <span style={{ fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 500, color: labelClr, userSelect: 'none' }}>
                     {t('admin.menuItem')}
                   </span>
                   {pendingCount > 0 && (
                     <span style={{
                       minWidth: 18, height: 18,
                       background: C.mars, borderRadius: 9,
-                      fontSize: 10, fontWeight: 700, color: '#fff',
+                      fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, color: '#fff',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       padding: '0 5px', lineHeight: 1, flexShrink: 0,
                     }}>
@@ -203,7 +203,7 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
                     transition: 'background 0.1s',
                   }}
                 >
-                  <span style={{ fontSize: 13, fontWeight: 500, color: labelClr, userSelect: 'none' }}>
+                  <span style={{ fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 500, color: labelClr, userSelect: 'none' }}>
                     {t('feedback.adminMenuItem')}
                   </span>
                 </div>
@@ -265,7 +265,7 @@ function DropItem({ label, onClick, hoverBg, color }) {
         transition: 'background 0.1s',
       }}
     >
-      <span style={{ fontSize: 13, fontWeight: 500, color, userSelect: 'none' }}>{label}</span>
+      <span style={{ fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 500, color, userSelect: 'none' }}>{label}</span>
     </div>
   );
 }
@@ -322,7 +322,7 @@ export default function Navbar({ current, onChange, onOpenAdmin, onOpenFeedback,
   }, [fetchUnreadCount, user]);
 
   const navLabelStyle = (isActive) => ({
-    fontSize: 10,
+    fontSize: 'calc(10px * var(--font-scale, 1))',
     fontWeight: 700,
     letterSpacing: 2,
     fontFamily: "'Orbitron', sans-serif",
@@ -364,7 +364,7 @@ export default function Navbar({ current, onChange, onOpenAdmin, onOpenFeedback,
         <MarsLogoIcon />
         <div>
           <div style={{
-            fontSize: 15,
+            fontSize: 'calc(15px * var(--font-scale, 1))',
             fontWeight: 700,
             fontFamily: "'Orbitron', sans-serif",
             color: C.ice,
@@ -373,7 +373,7 @@ export default function Navbar({ current, onChange, onOpenAdmin, onOpenFeedback,
           }}>
             ARESVISION
           </div>
-          <div style={{ fontSize: 10, color: C.ice60, letterSpacing: 2 }}>
+          <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice60, letterSpacing: 2 }}>
             {t('nav.subtitle')}
           </div>
         </div>

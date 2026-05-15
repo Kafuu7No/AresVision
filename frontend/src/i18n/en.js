@@ -108,8 +108,8 @@ const en = {
       dpi150Sub: 'Screen', dpi300Sub: 'Print', dpi600Sub: 'Ultra HD',
     },
     appearance: {
-      label: 'APPEARANCE',
-      desc: 'Adjust global UI and font scale',
+      label: 'TYPOGRAPHY',
+      desc: 'Adjust text size only. This will not zoom the page or stretch component layouts.',
       scaleSmall: 'Small',
       scaleMedium: 'Default',
       scaleLarge: 'Large',

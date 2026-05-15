@@ -322,7 +322,7 @@ export default function SeasonalChart({ marsYear, dataSourceMode = 'default' }) 
               color: variable === item.id ? C.blue : C.ice60,
               borderRadius: 999,
               padding: '6px 10px',
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               cursor: 'pointer',
               fontFamily: "'Orbitron', sans-serif",
             }}
@@ -332,7 +332,7 @@ export default function SeasonalChart({ marsYear, dataSourceMode = 'default' }) 
         ))}
       </div>
 
-      <div style={{ color: C.ice60, fontSize: 11 }}>
+      <div style={{ color: C.ice60, fontSize: 'calc(11px * var(--font-scale, 1))' }}>
         {copy.currentVar}: <span style={{ color: C.blue, fontWeight: 700 }}>{currentVariableLabel}</span>
       </div>
 

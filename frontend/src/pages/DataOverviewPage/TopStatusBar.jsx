@@ -50,23 +50,23 @@ export default function TopStatusBar() {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: C.mars, fontSize: 14 }}>●</span>
-          <span style={{ color: C.ice, fontSize: 12, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, fontWeight: 'bold' }}>ARES VISION</span>
+          <span style={{ color: C.mars, fontSize: 'calc(14px * var(--font-scale, 1))' }}>●</span>
+          <span style={{ color: C.ice, fontSize: 'calc(12px * var(--font-scale, 1))', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, fontWeight: 'bold' }}>ARES VISION</span>
         </div>
         <div style={{ width: 1, height: 16, background: isLight ? 'rgba(15,23,42,0.2)' : 'rgba(255,255,255,0.2)' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ color: C.ice60, fontSize: 10, fontFamily: "'Exo 2', sans-serif" }}>
+          <span style={{ color: C.ice60, fontSize: 'calc(10px * var(--font-scale, 1))', fontFamily: "'Exo 2', sans-serif" }}>
             {isZh ? '太阳黄经:' : 'SOLAR LONGITUDE:'}
           </span>
-          <span style={{ color: C.mars, fontSize: 12, fontFamily: "'Orbitron', sans-serif", fontWeight: 'bold' }}>
+          <span style={{ color: C.mars, fontSize: 'calc(12px * var(--font-scale, 1))', fontFamily: "'Orbitron', sans-serif", fontWeight: 'bold' }}>
             {globalTimeLs}°
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ color: C.ice60, fontSize: 10, fontFamily: "'Exo 2', sans-serif" }}>
+          <span style={{ color: C.ice60, fontSize: 'calc(10px * var(--font-scale, 1))', fontFamily: "'Exo 2', sans-serif" }}>
             {isZh ? '季节:' : 'SEASON:'}
           </span>
-          <span style={{ color: '#4acfac', fontSize: 12, fontFamily: "'Exo 2', sans-serif", fontWeight: 'bold' }}>
+          <span style={{ color: '#4acfac', fontSize: 'calc(12px * var(--font-scale, 1))', fontFamily: "'Exo 2', sans-serif", fontWeight: 'bold' }}>
             {seasonName}
           </span>
         </div>
@@ -74,28 +74,28 @@ export default function TopStatusBar() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: C.ice60, fontSize: 10, fontFamily: "'Exo 2', sans-serif" }}>
+          <span style={{ color: C.ice60, fontSize: 'calc(10px * var(--font-scale, 1))', fontFamily: "'Exo 2', sans-serif" }}>
             {isZh ? '焦点:' : 'FOCUS:'}
           </span>
-          <span style={{ color: selectedCoordinate ? C.mars : C.blue, fontSize: 12, fontFamily: "'Orbitron', sans-serif", fontWeight: 'bold' }}>
+          <span style={{ color: selectedCoordinate ? C.mars : C.blue, fontSize: 'calc(12px * var(--font-scale, 1))', fontFamily: "'Orbitron', sans-serif", fontWeight: 'bold' }}>
             {selectedCoordinate
               ? `LAT ${selectedCoordinate.lat.toFixed(1)}° / LNG ${selectedCoordinate.lng.toFixed(1)}°`
               : (isZh ? '全球视图' : 'GLOBAL VIEW')}
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ color: C.ice60, fontSize: 10, fontFamily: "'Exo 2', sans-serif" }}>
+          <span style={{ color: C.ice60, fontSize: 'calc(10px * var(--font-scale, 1))', fontFamily: "'Exo 2', sans-serif" }}>
             {isZh ? '高度:' : 'ALTITUDE:'}
           </span>
-          <span style={{ color: C.ice, fontSize: 12, fontFamily: "'Orbitron', sans-serif" }}>
+          <span style={{ color: C.ice, fontSize: 'calc(12px * var(--font-scale, 1))', fontFamily: "'Orbitron', sans-serif" }}>
             {isZh ? '柱平均' : 'COLUMN AVG'}
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ color: C.ice60, fontSize: 10, fontFamily: "'Exo 2', sans-serif" }}>
+          <span style={{ color: C.ice60, fontSize: 'calc(10px * var(--font-scale, 1))', fontFamily: "'Exo 2', sans-serif" }}>
             {isZh ? '数据源:' : 'SOURCE:'}
           </span>
-          <span style={{ color: isEffectivePersonal ? C.blue : C.ice, fontSize: 12, fontFamily: "'Orbitron', sans-serif", fontWeight: 'bold' }}>
+          <span style={{ color: isEffectivePersonal ? C.blue : C.ice, fontSize: 'calc(12px * var(--font-scale, 1))', fontFamily: "'Orbitron', sans-serif", fontWeight: 'bold' }}>
             {sourceLabel}
           </span>
         </div>

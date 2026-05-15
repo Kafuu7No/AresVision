@@ -35,7 +35,7 @@ function SectionLabel({ children, color = C.ice30 }) {
     <div
       style={{
         color,
-        fontSize: 10,
+        fontSize: 'calc(10px * var(--font-scale, 1))',
         fontFamily: "'Orbitron', sans-serif",
         letterSpacing: 1.2,
         marginBottom: 10,
@@ -56,7 +56,7 @@ function SelectField({ label, value, onChange, options, disabled = false, isLigh
 
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <span style={{ color: C.ice60, fontSize: 11, fontFamily: "'Exo 2', sans-serif" }}>{label}</span>
+      <span style={{ color: C.ice60, fontSize: 'calc(11px * var(--font-scale, 1))', fontFamily: "'Exo 2', sans-serif" }}>{label}</span>
       <div style={{ position: 'relative' }}>
         <select
           value={value}
@@ -72,7 +72,7 @@ function SelectField({ label, value, onChange, options, disabled = false, isLigh
               ? 'inset 0 1px 0 rgba(255,255,255,0.75), 0 8px 18px rgba(74,158,255,0.08)'
               : 'inset 0 1px 0 rgba(255,255,255,0.05), 0 10px 20px rgba(0,0,0,0.18)',
             color: selectText,
-            fontSize: 12,
+            fontSize: 'calc(12px * var(--font-scale, 1))',
             fontFamily: "'Exo 2', sans-serif",
             fontWeight: 600,
             outline: 'none',
@@ -106,7 +106,7 @@ function SelectField({ label, value, onChange, options, disabled = false, isLigh
             transform: 'translateY(-50%)',
             pointerEvents: 'none',
             color: caretColor,
-            fontSize: 10,
+            fontSize: 'calc(10px * var(--font-scale, 1))',
             fontFamily: "'Orbitron', sans-serif",
             letterSpacing: 1,
             opacity: disabled ? 0.5 : 0.9,
@@ -144,7 +144,7 @@ function SegmentedToggle({ value, onChange, options, isLight = false }) {
               padding: '9px 10px',
               background: active ? option.activeBg : 'transparent',
               color: active ? option.activeColor : C.ice60,
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               fontWeight: active ? 700 : 500,
               cursor: 'pointer',
               fontFamily: "'Exo 2', sans-serif",
@@ -196,7 +196,7 @@ function RadioModeCard({ mode, selected, onSelect, isZh, isLight }) {
               justifyContent: 'center',
               background: selected ? `${mode.color}20` : (isLight ? 'rgba(15,23,42,0.06)' : 'rgba(255,255,255,0.05)'),
               color: selected ? mode.color : C.ice40,
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               fontWeight: 700,
               fontFamily: "'Orbitron', sans-serif",
               flexShrink: 0,
@@ -207,7 +207,7 @@ function RadioModeCard({ mode, selected, onSelect, isZh, isLight }) {
           <div
             style={{
               color: selected ? mode.color : C.ice,
-              fontSize: 12,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
               fontWeight: 700,
               fontFamily: "'Exo 2', sans-serif",
               lineHeight: 1.35,
@@ -216,7 +216,7 @@ function RadioModeCard({ mode, selected, onSelect, isZh, isLight }) {
             {isZh ? mode.title.zh : mode.title.en}
           </div>
         </div>
-        <div style={{ color: selected ? C.ice70 : C.ice40, fontSize: 10, lineHeight: 1.55 }}>
+        <div style={{ color: selected ? C.ice70 : C.ice40, fontSize: 'calc(10px * var(--font-scale, 1))', lineHeight: 1.55 }}>
           {isZh ? mode.desc.zh : mode.desc.en}
         </div>
       </div>
@@ -239,7 +239,7 @@ function InlineSwitch({ label, checked, onChange, accent = C.blue, isLight = fal
         cursor: 'pointer',
       }}
     >
-      <span style={{ color: C.ice, fontSize: 11, fontFamily: "'Exo 2', sans-serif", lineHeight: 1.45 }}>{label}</span>
+      <span style={{ color: C.ice, fontSize: 'calc(11px * var(--font-scale, 1))', fontFamily: "'Exo 2', sans-serif", lineHeight: 1.45 }}>{label}</span>
       <span style={{ position: 'relative', width: 34, height: 18, flexShrink: 0 }}>
         <input
           type="checkbox"
@@ -297,14 +297,14 @@ function AdvancedToggleGroup({ title, children, open, onToggle, isLight = false 
           background: 'transparent',
           color: C.ice,
           cursor: 'pointer',
-          fontSize: 12,
+          fontSize: 'calc(12px * var(--font-scale, 1))',
           fontWeight: 700,
           fontFamily: "'Exo 2', sans-serif",
           textAlign: 'left',
         }}
       >
         <span>{title}</span>
-        <span style={{ color: C.ice40, fontSize: 12 }}>{open ? 'Hide' : 'Show'}</span>
+        <span style={{ color: C.ice40, fontSize: 'calc(12px * var(--font-scale, 1))' }}>{open ? 'Hide' : 'Show'}</span>
       </button>
       {open && (
         <div style={{ display: 'grid', gap: 8, padding: '0 12px 12px' }}>
@@ -424,7 +424,7 @@ export default function SidebarMenu() {
         <div style={{ color: C.ice, fontFamily: "'Orbitron', sans-serif", fontSize: leftPanelWidth <= 300 ? 14 : 16, fontWeight: 700, letterSpacing: 1.6, marginBottom: 6 }}>
           {isZh ? '分析控制台' : 'Analysis Console'}
         </div>
-        <div style={{ color: C.ice50, fontSize: 11, lineHeight: 1.55 }}>
+        <div style={{ color: C.ice50, fontSize: 'calc(11px * var(--font-scale, 1))', lineHeight: 1.55 }}>
           {isZh ? '先选分析视角，再调整数据与显示参数。' : 'Pick an analysis lens first, then tune dataset and display settings.'}
         </div>
       </div>
@@ -462,7 +462,7 @@ export default function SidebarMenu() {
           <SectionLabel>{isZh ? '数据范围' : 'DATA SCOPE'}</SectionLabel>
           <div style={{ display: 'grid', gap: 12 }}>
             <div>
-              <div style={{ color: C.ice60, fontSize: 11, fontFamily: "'Exo 2', sans-serif", marginBottom: 8 }}>
+              <div style={{ color: C.ice60, fontSize: 'calc(11px * var(--font-scale, 1))', fontFamily: "'Exo 2', sans-serif", marginBottom: 8 }}>
                 {isZh ? '数据源' : 'Data Source'}
               </div>
               <SegmentedToggle
@@ -485,12 +485,12 @@ export default function SidebarMenu() {
                 ]}
               />
               {isSwitchingSource ? (
-                <div style={{ marginTop: 8, color: C.ice50, fontSize: 10, lineHeight: 1.5 }}>
+                <div style={{ marginTop: 8, color: C.ice50, fontSize: 'calc(10px * var(--font-scale, 1))', lineHeight: 1.5 }}>
                   {isZh ? '正在切换数据源，请稍候...' : 'Switching data source, please wait...'}
                 </div>
               ) : null}
               {!isSwitchingSource && sourceMessage ? (
-                <div style={{ marginTop: 8, color: isPersonalMode ? C.blue : C.ice50, fontSize: 10, lineHeight: 1.55 }}>
+                <div style={{ marginTop: 8, color: isPersonalMode ? C.blue : C.ice50, fontSize: 'calc(10px * var(--font-scale, 1))', lineHeight: 1.55 }}>
                   {sourceMessage}
                 </div>
               ) : null}

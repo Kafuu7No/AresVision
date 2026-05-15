@@ -95,7 +95,7 @@ function FeedbackModalInner({ open, onClose }) {
   };
 
   const labelStyle = {
-    fontSize: 11, fontWeight: 600,
+    fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 600,
     letterSpacing: '0.08em', textTransform: 'uppercase',
     color: labelClr, marginBottom: 6, display: 'block',
   };
@@ -104,7 +104,7 @@ function FeedbackModalInner({ open, onClose }) {
     width: '100%', boxSizing: 'border-box',
     background: inputBg, border: `1px solid ${inputBorder}`,
     borderRadius: 8, padding: '9px 12px',
-    color: inputClr, fontSize: 13, fontFamily: 'inherit',
+    color: inputClr, fontSize: 'calc(13px * var(--font-scale, 1))', fontFamily: 'inherit',
     outline: 'none', lineHeight: 1.5,
     transition: 'border-color 0.15s',
   };
@@ -137,20 +137,20 @@ function FeedbackModalInner({ open, onClose }) {
         {/* Header */}
         <div>
           <div style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: 3,
+            fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, letterSpacing: 3,
             fontFamily: "'Orbitron', sans-serif",
             color: C.blue, textTransform: 'uppercase', marginBottom: 6,
           }}>
             ARESVISION
           </div>
           <div style={{
-            fontSize: 20, fontWeight: 700,
+            fontSize: 'calc(20px * var(--font-scale, 1))', fontWeight: 700,
             fontFamily: "'Orbitron', sans-serif",
             color: titleClr, marginBottom: 4,
           }}>
             {t('feedback.title')}
           </div>
-          <div style={{ fontSize: 12, color: labelClr }}>
+          <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: labelClr }}>
             {t('feedback.subtitle')}
           </div>
         </div>
@@ -171,7 +171,7 @@ function FeedbackModalInner({ open, onClose }) {
                     background: sel ? clr.activeBg : inputBg,
                     border: `1px solid ${sel ? clr.activeBorder : inputBorder}`,
                     color: sel ? clr.active : labelClr,
-                    fontSize: 12, fontWeight: sel ? 700 : 500,
+                    fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: sel ? 700 : 500,
                     fontFamily: 'inherit', transition: 'all 0.15s',
                   }}
                 >
@@ -198,8 +198,8 @@ function FeedbackModalInner({ open, onClose }) {
             }}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-            <span style={{ fontSize: 11, color: C.mars }}>{contentErr}</span>
-            <span style={{ fontSize: 11, color: labelClr }}>{content.length}/2000</span>
+            <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.mars }}>{contentErr}</span>
+            <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: labelClr }}>{content.length}/2000</span>
           </div>
         </div>
 
@@ -218,7 +218,7 @@ function FeedbackModalInner({ open, onClose }) {
                 style={{
                   position: 'absolute', top: 6, right: 6,
                   background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: 4,
-                  color: '#fff', fontSize: 11, cursor: 'pointer', padding: '2px 8px',
+                  color: '#fff', fontSize: 'calc(11px * var(--font-scale, 1))', cursor: 'pointer', padding: '2px 8px',
                   fontFamily: 'inherit',
                 }}
               >
@@ -233,7 +233,7 @@ function FeedbackModalInner({ open, onClose }) {
               style={{
                 border: `1.5px dashed ${inputBorder}`, borderRadius: 8,
                 padding: '18px 12px', textAlign: 'center', cursor: 'pointer',
-                background: inputBg, color: labelClr, fontSize: 12,
+                background: inputBg, color: labelClr, fontSize: 'calc(12px * var(--font-scale, 1))',
                 transition: 'border-color 0.15s',
               }}
             >
@@ -268,7 +268,7 @@ function FeedbackModalInner({ open, onClose }) {
             style={{
               padding: '9px 20px', borderRadius: 8,
               background: cancelBg, border: 'none',
-              color: cancelClr, fontSize: 13, fontWeight: 500,
+              color: cancelClr, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 500,
               cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
@@ -281,7 +281,7 @@ function FeedbackModalInner({ open, onClose }) {
               padding: '9px 22px', borderRadius: 8,
               background: submitting ? 'rgba(74,158,255,0.5)' : C.blue,
               border: 'none', color: '#fff',
-              fontSize: 13, fontWeight: 600,
+              fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 600,
               cursor: submitting ? 'not-allowed' : 'pointer',
               fontFamily: 'inherit', transition: 'background 0.15s',
             }}

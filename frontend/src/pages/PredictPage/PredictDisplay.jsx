@@ -33,7 +33,7 @@ export default function PredictDisplay({
               padding: '8px 16px',
               background: viewMode === m.id ? 'rgba(74,158,255,0.12)' : 'rgba(255,255,255,0.03)',
               border: `1px solid ${viewMode === m.id ? C.blue : C.border}`,
-              borderRadius: 8, fontSize: 12, fontWeight: 600,
+              borderRadius: 8, fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 600,
               color: viewMode === m.id ? C.blue : C.ice30,
               cursor: 'pointer', transition: 'all 0.2s',
             }}
@@ -46,13 +46,13 @@ export default function PredictDisplay({
       {/* 预测步骤选择（有多步结果时显示） */}
       {results && results.horizon > 1 && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: C.ice30, marginRight: 4 }}>{t('predict.showStep')}</span>
+          <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, marginRight: 4 }}>{t('predict.showStep')}</span>
           {Array.from({ length: results.horizon }, (_, i) => (
             <button key={i} onClick={() => setActiveHorizon(i)} style={{
               padding: '6px 16px',
               background: activeHorizon === i ? 'rgba(74,158,255,0.12)' : 'rgba(255,255,255,0.03)',
               border: `1px solid ${activeHorizon === i ? C.blue : C.border}`,
-              borderRadius: 8, fontSize: 12, fontWeight: 600,
+              borderRadius: 8, fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 600,
               color: activeHorizon === i ? C.blue : C.ice30, cursor: 'pointer',
             }}>
               {t('predict.display.stepLabelFunc', { step: i + 1 })}{results.ls_values?.[i] != null ? ` (Ls=${results.ls_values[i].toFixed(3)}°)` : ''}
@@ -69,13 +69,13 @@ export default function PredictDisplay({
             return (
               <GlowCard key={i} breathe style={{ padding: 16 }}>
                 <div style={{
-                  fontSize: 10, fontWeight: 700, color: panel.color,
+                  fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, color: panel.color,
                   fontFamily: "'Orbitron', sans-serif", letterSpacing: 1,
                   marginBottom: 8, textAlign: 'center',
                 }}>
                   {panel.title}
                   {stepLs != null && (
-                    <span style={{ fontSize: 9, color: C.ice30, marginLeft: 6 }}>
+                    <span style={{ fontSize: 'calc(9px * var(--font-scale, 1))', color: C.ice30, marginLeft: 6 }}>
                       Ls={stepLs.toFixed(3)}°
                     </span>
                   )}
@@ -91,7 +91,7 @@ export default function PredictDisplay({
                         width: '100%', padding: '8px 0',
                         background: 'rgba(74,158,255,0.06)',
                         border: `1px solid rgba(74,158,255,0.2)`, borderRadius: 6,
-                        color: '#4acfac', fontSize: 11, cursor: 'pointer',
+                        color: '#4acfac', fontSize: 'calc(11px * var(--font-scale, 1))', cursor: 'pointer',
                         fontFamily: "'Orbitron', sans-serif", letterSpacing: 1,
                         transition: 'all 0.2s',
                       }}
@@ -123,7 +123,7 @@ export default function PredictDisplay({
         return (
           <GlowCard breathe style={{ padding: 20 }}>
             <div style={{
-              fontSize: 11, fontWeight: 700, color: panelColor,
+              fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: panelColor,
               fontFamily: "'Orbitron', sans-serif", letterSpacing: 1,
               marginBottom: 12, textAlign: 'center',
             }}>
@@ -140,7 +140,7 @@ export default function PredictDisplay({
                     width: '100%', padding: '12px 0',
                     background: 'rgba(74,158,255,0.06)',
                     border: `1px dashed rgba(74,158,255,0.3)`, borderRadius: 8,
-                    color: '#4acfac', fontSize: 13, cursor: 'pointer',
+                    color: '#4acfac', fontSize: 'calc(13px * var(--font-scale, 1))', cursor: 'pointer',
                     fontFamily: "'Orbitron', sans-serif", letterSpacing: 1.5,
                     transition: 'all 0.2s',
                   }}
@@ -162,11 +162,11 @@ export default function PredictDisplay({
       {/* 初始提示（无结果时） */}
       {!results && !loading && (
         <GlowCard style={{ padding: 28, textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🔭</div>
-          <div style={{ fontSize: 14, color: C.ice60, marginBottom: 8 }}>
+          <div style={{ fontSize: 'calc(32px * var(--font-scale, 1))', marginBottom: 12 }}>🔭</div>
+          <div style={{ fontSize: 'calc(14px * var(--font-scale, 1))', color: C.ice60, marginBottom: 8 }}>
             {t('predict.initPrompt')}
           </div>
-          <div style={{ fontSize: 12, color: C.ice30, lineHeight: 1.7, whiteSpace: 'pre-line' }}>
+          <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.7, whiteSpace: 'pre-line' }}>
             {t('predict.initDesc')}
           </div>
         </GlowCard>

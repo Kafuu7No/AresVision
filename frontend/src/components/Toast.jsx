@@ -88,7 +88,7 @@ function ToastContent() {
         <span style={{ color: accentColor, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
           {isSuccess ? <CheckIcon /> : <XIcon />}
         </span>
-        <span style={{ fontSize: 13.5, color: textColor, fontWeight: 500 }}>{message}</span>
+        <span style={{ fontSize: 'calc(13.5px * var(--font-scale, 1))', color: textColor, fontWeight: 500 }}>{message}</span>
       </div>
     </>
   );

@@ -42,14 +42,14 @@ export default function PredictBarChart({
     return (
       <GlowCard style={{ padding: 20, background: 'linear-gradient(135deg, rgba(156,123,234,0.08), rgba(156,123,234,0.04))' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#9c7bea', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: '#9c7bea', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
             {t('predict.barChartTitle')}
           </div>
         </div>
 
         <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-          <div style={{ fontSize: 24, marginBottom: 12 }}>📈</div>
-          <div style={{ fontSize: 13, color: C.ice, marginBottom: 8, fontWeight: 600 }}>
+          <div style={{ fontSize: 'calc(24px * var(--font-scale, 1))', marginBottom: 12 }}>📈</div>
+          <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice, marginBottom: 8, fontWeight: 600 }}>
             {selectedCompareIds.length === 0
               ? t('predict.selectModelsToCompare')
               : t('predict.readyToGenerate')}
@@ -66,7 +66,7 @@ export default function PredictBarChart({
               border: `2px solid ${selectedCompareIds.length === 0 || perfLoading ? 'rgba(156,123,234,0.3)' : '#9c7bea'}`,
               borderRadius: 10,
               color: selectedCompareIds.length === 0 || perfLoading ? 'rgba(156,123,234,0.5)' : '#fff',
-              fontSize: 12,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
               fontWeight: 700,
               cursor: selectedCompareIds.length === 0 || perfLoading ? 'not-allowed' : 'pointer',
               fontFamily: "'Orbitron', sans-serif",
@@ -128,13 +128,13 @@ export default function PredictBarChart({
             border: '1px solid rgba(156,123,234,0.3)',
             boxShadow: '0 0 20px rgba(156,123,234,0.2)'
           }}>
-            <span style={{ fontSize: 20, animation: 'pulse 2s infinite' }}>🛰️</span>
+            <span style={{ fontSize: 'calc(20px * var(--font-scale, 1))', animation: 'pulse 2s infinite' }}>🛰️</span>
           </div>
           <div>
-            <div style={{ fontSize: 9, color: '#9c7bea', fontWeight: 900, fontFamily: "'Orbitron', sans-serif", letterSpacing: 4, opacity: 0.8 }}>
+            <div style={{ fontSize: 'calc(9px * var(--font-scale, 1))', color: '#9c7bea', fontWeight: 900, fontFamily: "'Orbitron', sans-serif", letterSpacing: 4, opacity: 0.8 }}>
               {t('predict.barChart.analytics').toUpperCase()}
             </div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: C.ice, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, textShadow: '0 0 15px rgba(156,123,234,0.4)' }}>
+            <div style={{ fontSize: 'calc(16px * var(--font-scale, 1))', fontWeight: 800, color: C.ice, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, textShadow: '0 0 15px rgba(156,123,234,0.4)' }}>
               {t('predict.barChart.spectrum').toUpperCase()}
             </div>
 
@@ -156,7 +156,7 @@ export default function PredictBarChart({
               color: showShapley.visible && showShapley.mode === 'marginal' 
                 ? (isLight ? '#2d8c72' : '#4acfac') 
                 : (isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)'),
-              fontSize: 10,
+              fontSize: 'calc(10px * var(--font-scale, 1))',
               fontWeight: 800,
               fontFamily: "'Orbitron', sans-serif",
               cursor: 'pointer',
@@ -169,7 +169,7 @@ export default function PredictBarChart({
                 : (isLight ? 'none' : 'inset 0 0 10px rgba(0,0,0,0.5)'),
             }}
           >
-            <span style={{ fontSize: 14 }}>{showShapley.visible && showShapley.mode === 'marginal' ? '👁️' : '🧬'}</span>
+            <span style={{ fontSize: 'calc(14px * var(--font-scale, 1))' }}>{showShapley.visible && showShapley.mode === 'marginal' ? '👁️' : '🧬'}</span>
             {t('predict.shapleyMarginalBtn', '🧬 组合边际分析 (SEED 32)').replace('🧬 ', '')}
           </button>
 
@@ -189,7 +189,7 @@ export default function PredictBarChart({
                   background: activeMetric === m.key ? (isLight ? 'rgba(156,123,234,0.15)' : 'rgba(156,123,234,0.3)') : 'transparent',
                   border: 'none',
                   borderRadius: 12,
-                  fontSize: 10,
+                  fontSize: 'calc(10px * var(--font-scale, 1))',
                   fontWeight: 900,
                   color: activeMetric === m.key ? (isLight ? '#7a5bb8' : '#fff') : (isLight ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.3)'),
                   cursor: 'pointer',
@@ -218,14 +218,14 @@ export default function PredictBarChart({
               boxShadow: perfLoading ? 'none' : (isLight ? '0 0 10px rgba(156,123,234,0.15)' : '0 0 15px rgba(156,123,234,0.3)')
             }}
           >
-            <span style={{ fontSize: 18 }}>🔄</span>
+            <span style={{ fontSize: 'calc(18px * var(--font-scale, 1))' }}>🔄</span>
           </button>
         </div>
       </div>
 
       {sortedData.length === 0 ? (
-        <div style={{ fontSize: 13, color: 'rgba(156,123,234,0.5)', textAlign: 'center', padding: '100px 20px', border: `1px dashed rgba(156,123,234,0.2)`, borderRadius: 24, background: 'rgba(0,0,0,0.2)' }}>
-          <div style={{ fontSize: 50, marginBottom: 24, opacity: 0.15, filter: 'hue-rotate(280deg)' }}>📡</div>
+        <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: 'rgba(156,123,234,0.5)', textAlign: 'center', padding: '100px 20px', border: `1px dashed rgba(156,123,234,0.2)`, borderRadius: 24, background: 'rgba(0,0,0,0.2)' }}>
+          <div style={{ fontSize: 'calc(50px * var(--font-scale, 1))', marginBottom: 24, opacity: 0.15, filter: 'hue-rotate(280deg)' }}>📡</div>
           {t('predict.noDataAvailable')}
         </div>
       ) : (
@@ -246,11 +246,11 @@ export default function PredictBarChart({
             zIndex: 1,
             pointerEvents: 'none'
           }}>
-            <div style={{ fontSize: 10, color: isLight ? '#9c7bea' : '#9c7bea60', fontWeight: 900, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>{t('predict.barChart.topModel').toUpperCase()}</div>
-            <div style={{ fontSize: 24, color: isLight ? '#000' : '#fff', fontWeight: 800, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, margin: '4px 0' }}>
+            <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: isLight ? '#9c7bea' : '#9c7bea60', fontWeight: 900, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>{t('predict.barChart.topModel').toUpperCase()}</div>
+            <div style={{ fontSize: 'calc(24px * var(--font-scale, 1))', color: isLight ? '#000' : '#fff', fontWeight: 800, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1, margin: '4px 0' }}>
               {sortedData[0]?.label.replace('🧪 ', '')}
             </div>
-            <div style={{ fontSize: 14, color: isLight ? '#2d8c72' : '#4acfac', fontWeight: 900, fontFamily: "'Orbitron', sans-serif" }}>
+            <div style={{ fontSize: 'calc(14px * var(--font-scale, 1))', color: isLight ? '#2d8c72' : '#4acfac', fontWeight: 900, fontFamily: "'Orbitron', sans-serif" }}>
               {fmtNum(sortedData[0]?.value, precision)}
             </div>
 
@@ -304,10 +304,10 @@ export default function PredictBarChart({
             style={{ width: '100%', height: 600 }}
           />
 
-          <div style={{ position: 'absolute', bottom: 15, left: 15, fontSize: 8, color: isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)', fontFamily: "'Orbitron', sans-serif" }}>
+          <div style={{ position: 'absolute', bottom: 15, left: 15, fontSize: 'calc(8px * var(--font-scale, 1))', color: isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)', fontFamily: "'Orbitron', sans-serif" }}>
             {t('predict.barChart.coord').toUpperCase()}
           </div>
-          <div style={{ position: 'absolute', bottom: 15, right: 15, fontSize: 8, color: isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)', fontFamily: "'Orbitron', sans-serif" }}>
+          <div style={{ position: 'absolute', bottom: 15, right: 15, fontSize: 'calc(8px * var(--font-scale, 1))', color: isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)', fontFamily: "'Orbitron', sans-serif" }}>
             {t('predict.barChart.reliability').toUpperCase()}
           </div>
 

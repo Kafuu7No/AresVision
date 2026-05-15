@@ -53,7 +53,7 @@ export default function TimelineController() {
               background: isPlayingTimeline ? 'rgba(199,91,57,0.2)' : `linear-gradient(135deg, ${C.mars}, #ff8e53)`,
               border: isPlayingTimeline ? `1px solid ${C.mars}` : 'none',
               color: isPlayingTimeline ? C.mars : '#fff',
-              fontSize: 13,
+              fontSize: 'calc(13px * var(--font-scale, 1))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -68,10 +68,10 @@ export default function TimelineController() {
 
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <div style={{ fontSize: 10, color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>
+              <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>
                 {isZh ? '太阳黄经' : 'SOLAR LONGITUDE'}
               </div>
-              <div style={{ fontSize: 12, color: C.mars, fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif" }}>
+              <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.mars, fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif" }}>
                 {globalTimeLs}°
               </div>
             </div>
@@ -96,7 +96,7 @@ export default function TimelineController() {
               width: 28,
               height: 28,
               color: C.ice60,
-              fontSize: 12,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -113,7 +113,7 @@ export default function TimelineController() {
               borderRadius: '999px',
               border: `1px solid ${C.border}`,
               color: C.ice60,
-              fontSize: 10,
+              fontSize: 'calc(10px * var(--font-scale, 1))',
               fontFamily: "'Exo 2', sans-serif",
               whiteSpace: 'nowrap',
               flexShrink: 0,

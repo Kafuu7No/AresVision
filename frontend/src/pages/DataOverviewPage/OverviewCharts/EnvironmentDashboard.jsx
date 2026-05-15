@@ -95,25 +95,25 @@ function EnvCard({ meta, dataset, copy, plotText, plotGrid }) {
     <div style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, display: 'grid', gridTemplateRows: 'auto auto 1fr', gap: 12, minHeight: 280 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ color: meta.color, fontSize: 14, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>{meta.label}</div>
-          <div style={{ color: C.ice30, fontSize: 11 }}>{copy.summary}</div>
+          <div style={{ color: meta.color, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>{meta.label}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{copy.summary}</div>
         </div>
         <div style={{ minWidth: 58, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, textAlign: 'right' }}>
-          <div style={{ color: C.ice30, fontSize: 10 }}>{copy.mean}</div>
-          <div style={{ color: meta.color, fontSize: 15, fontWeight: 800 }}>{fmtNum(convertedMean, 2)}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))' }}>{copy.mean}</div>
+          <div style={{ color: meta.color, fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 800 }}>{fmtNum(convertedMean, 2)}</div>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
         <div style={{ padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.border}` }}>
-          <div style={{ color: C.ice30, fontSize: 10 }}>{copy.peakLs}</div>
-          <div style={{ color: C.ice, fontSize: 15, fontWeight: 800, marginTop: 4 }}>{fmtNum(dataset.ls?.[summary.peakIndex] ?? NaN, 0)} deg</div>
-          <div style={{ color: C.ice30, fontSize: 10, marginTop: 2 }}>{fmtNum(convertedPeak, 2)} {label}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))' }}>{copy.peakLs}</div>
+          <div style={{ color: C.ice, fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 800, marginTop: 4 }}>{fmtNum(dataset.ls?.[summary.peakIndex] ?? NaN, 0)} deg</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', marginTop: 2 }}>{fmtNum(convertedPeak, 2)} {label}</div>
         </div>
         <div style={{ padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.border}` }}>
-          <div style={{ color: C.ice30, fontSize: 10 }}>{copy.spread}</div>
-          <div style={{ color: C.ice, fontSize: 15, fontWeight: 800, marginTop: 4 }}>{fmtNum(convertedSpread, 2)}</div>
-          <div style={{ color: C.ice30, fontSize: 10, marginTop: 2 }}>{label}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))' }}>{copy.spread}</div>
+          <div style={{ color: C.ice, fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 800, marginTop: 4 }}>{fmtNum(convertedSpread, 2)}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', marginTop: 2 }}>{label}</div>
         </div>
       </div>
 
@@ -310,7 +310,7 @@ export default function EnvironmentDashboard({ marsYear, dataSourceMode = 'defau
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
         <div style={{ padding: 16, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, minHeight: 320, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
-          <div style={{ color: C.ice, fontSize: 14, fontWeight: 800, marginBottom: 10, fontFamily: "'Orbitron', sans-serif" }}>{copy.influence}</div>
+          <div style={{ color: C.ice, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 10, fontFamily: "'Orbitron', sans-serif" }}>{copy.influence}</div>
           <div style={{ minHeight: 0 }}>
             <Plot
               data={[{
@@ -338,7 +338,7 @@ export default function EnvironmentDashboard({ marsYear, dataSourceMode = 'defau
 
         <div style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr) auto', gap: 16, minHeight: 0 }}>
           <div style={{ padding: 16, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, minHeight: 320, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
-            <div style={{ color: C.ice, fontSize: 14, fontWeight: 800, marginBottom: 10, fontFamily: "'Orbitron', sans-serif" }}>{copy.dominant}</div>
+            <div style={{ color: C.ice, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 10, fontFamily: "'Orbitron', sans-serif" }}>{copy.dominant}</div>
             <div style={{ minHeight: 0 }}>
               <Plot
                 data={[{
@@ -357,7 +357,7 @@ export default function EnvironmentDashboard({ marsYear, dataSourceMode = 'defau
               />
             </div>
           </div>
-          <div style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, lineHeight: 1.7, fontSize: 12, color: C.ice60 }}>
+          <div style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, lineHeight: 1.7, fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60 }}>
             {copy.note}
           </div>
         </div>
