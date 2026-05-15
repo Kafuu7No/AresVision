@@ -104,14 +104,6 @@ function IntroCard({ eyebrow, title, body, accent = C.blue, action = null }) {
   );
 }
 
-function ContributionWorkspace({ reviewSignal }) {
-  return <MyDataTab reviewSignal={reviewSignal} showContributionSection showContributionDetails />;
-}
-
-function PersonalSourceWorkspace({ reviewSignal }) {
-  return <MyDataTab reviewSignal={reviewSignal} showContributionSection={false} showContributionDetails={false} />;
-}
-
 function AdminWorkspace({ onOpenAdmin, isAdmin, copy, isZh }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -188,37 +180,35 @@ export default function ExplorePage({ onOpenAdmin, reviewSignal = 0 }) {
   const [activeView, setActiveView] = useState('official');
 
   const views = useMemo(() => {
-    const base = [
+    return [
       { key: 'official', label: copy.tabAsset, desc: copy.tabAssetDesc, accent: C.blue },
       { key: 'personal', label: copy.tabMySource, desc: copy.tabMySourceDesc, accent: C.green },
-      { key: 'contribution', label: copy.tabContribute, desc: copy.tabContributeDesc, accent: C.mars },
       { key: 'admin', label: copy.tabAdmin, desc: copy.tabAdminDesc, accent: '#f59e0b' },
     ];
-    return base;
   }, [copy]);
-
-  const currentView = views.find((view) => view.key === activeView) || views[0];
 
   return (
     <div className="page-enter" style={{ padding: '100px 40px 60px', maxWidth: 1400, margin: '0 auto' }}>
       <SectionTitle title={t('explore.title')} subtitle={t('explore.subtitle')} />
 
-      <IntroCard eyebrow="DATA MANAGEMENT IA" title={copy.quickTitle} body={copy.lead} accent={C.blue} />
-
       <GlowCard style={{ padding: '18px 20px', marginTop: 18 }}>
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            color: C.blue,
-            fontFamily: "'Orbitron', sans-serif",
-            letterSpacing: 2,
-            marginBottom: 12,
-          }}
-        >
-          {copy.quickTitle}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+          <div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: C.blue,
+                fontFamily: "'Orbitron', sans-serif",
+                letterSpacing: 2,
+                marginBottom: 8,
+              }}
+            >
+              {copy.quickTitle}
+            </div>
+            <div style={{ fontSize: 12, color: C.ice30, lineHeight: 1.8 }}>{copy.quickDesc}</div>
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: C.ice30, lineHeight: 1.8, marginBottom: 14 }}>{copy.quickDesc}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 12 }}>
           {views.map((view) => (
             <ViewTab
@@ -234,74 +224,9 @@ export default function ExplorePage({ onOpenAdmin, reviewSignal = 0 }) {
       </GlowCard>
 
       <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <GlowCard style={{ padding: '16px 20px' }}>
-          <div
-            style={{
-              fontSize: 10,
-              color: currentView.accent,
-              fontWeight: 700,
-              letterSpacing: 2,
-              fontFamily: "'Orbitron', sans-serif",
-              marginBottom: 8,
-            }}
-          >
-            CURRENT VIEW
-          </div>
-          <div style={{ fontSize: 18, color: C.ice, fontWeight: 700, marginBottom: 6 }}>{currentView.label}</div>
-          <div style={{ fontSize: 12, color: C.ice60, lineHeight: 1.8 }}>{currentView.desc}</div>
-        </GlowCard>
+        {activeView === 'official' && <DefaultDatasetTab />}
 
-        {activeView === 'official' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <IntroCard
-              eyebrow="OFFICIAL ASSETS"
-              title={copy.assetIntroTitle}
-              body={copy.assetIntroBody}
-              accent={C.blue}
-            />
-            <DefaultDatasetTab />
-          </div>
-        )}
-
-        {activeView === 'personal' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <IntroCard
-              eyebrow="PERSONAL SOURCE"
-              title={copy.mySourceIntroTitle}
-              body={copy.mySourceIntroBody}
-              accent={C.green}
-            />
-            <PersonalSourceWorkspace reviewSignal={reviewSignal} />
-          </div>
-        )}
-
-        {activeView === 'contribution' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <IntroCard
-              eyebrow="PLATFORM CONTRIBUTION"
-              title={copy.contributeIntroTitle}
-              body={copy.contributeIntroBody}
-              accent={C.mars}
-            />
-            <GlowCard style={{ padding: '16px 20px' }}>
-              <div
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: C.mars,
-                  fontFamily: "'Orbitron', sans-serif",
-                  letterSpacing: 2,
-                  marginBottom: 10,
-                }}
-              >
-                CONTRIBUTION RULE
-              </div>
-              <div style={{ fontSize: 15, color: C.ice, fontWeight: 700, marginBottom: 8 }}>{copy.contributeTipTitle}</div>
-              <div style={{ fontSize: 13, color: C.ice60, lineHeight: 1.85 }}>{copy.contributeTipBody}</div>
-            </GlowCard>
-            <ContributionWorkspace reviewSignal={reviewSignal} />
-          </div>
-        )}
+        {activeView === 'personal' && <MyDataTab reviewSignal={reviewSignal} />}
 
         {activeView === 'admin' && (
           <AdminWorkspace onOpenAdmin={onOpenAdmin} isAdmin={isAdmin} copy={copy} isZh={isZh} />
