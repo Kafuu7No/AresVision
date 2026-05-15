@@ -11,8 +11,8 @@ export default {
         'ice': '#e8edf3',
       },
       fontFamily: {
-        display: ['Orbitron', 'sans-serif'],
-        body: ['Exo 2', 'sans-serif'],
+        display: ['Manrope', 'Inter', 'sans-serif'],
+        body: ['Inter', 'sans-serif'],
       },
     },
   },

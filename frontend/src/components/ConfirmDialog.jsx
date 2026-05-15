@@ -9,15 +9,15 @@ function ConfirmContent({ title, message, confirmLabel, cancelLabel, onConfirm, 
   useScrollLock();
 
   const overlayBg  = L ? 'rgba(210,215,235,0.70)' : 'rgba(0,0,8,0.78)';
-  const cardBg     = L ? 'rgba(255,255,255,0.97)'  : 'rgba(13,13,28,0.95)';
-  const cardBorder = L ? 'rgba(0,0,0,0.09)'        : 'rgba(255,255,255,0.10)';
+  const cardBg     = 'var(--bg-card-strong)';
+  const cardBorder = 'var(--border)';
   const cardShadow = L
-    ? '0 12px 36px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)'
-    : '0 12px 36px rgba(0,0,0,0.70), 0 2px 8px rgba(0,0,0,0.38)';
-  const titleColor = L ? '#000000' : '#ffffff';
-  const msgColor   = L ? '#000000' : '#ffffff';
-  const cancelBg   = L ? 'rgba(0,0,0,0.07)'     : 'rgba(255,255,255,0.08)';
-  const cancelClr  = L ? '#000000' : '#ffffff';
+    ? '0 12px 36px rgba(15,23,42,0.10), 0 2px 8px rgba(15,23,42,0.06)'
+    : '0 12px 36px rgba(0,0,0,0.40), 0 2px 8px rgba(0,0,0,0.22)';
+  const titleColor = 'var(--text)';
+  const msgColor   = 'var(--text-80)';
+  const cancelBg   = 'var(--bg-muted)';
+  const cancelClr  = 'var(--text)';
   const color      = confirmColor ?? C.mars;
 
   return (
@@ -41,14 +41,14 @@ function ConfirmContent({ title, message, confirmLabel, cancelLabel, onConfirm, 
           border: `1px solid ${cardBorder}`,
           borderRadius: 14,
           boxShadow: cardShadow,
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
+          backdropFilter: 'blur(18px)',
+          WebkitBackdropFilter: 'blur(18px)',
           padding: '24px 24px 20px',
         }}
       >
         <div style={{
           fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, marginBottom: 10,
-          fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.02em',
+          fontFamily: 'var(--font-display)', letterSpacing: '0.01em',
         }}>
           {title}
         </div>

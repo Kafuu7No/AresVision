@@ -35,11 +35,11 @@ export default function PermutationImportanceChart({
   return (
     <GlowCard style={{ padding: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
+        <div style={{ fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 700, color: C.ice, fontFamily: 'var(--font-display)' }}>
           {t('predict.pfi.title')}
         </div>
         {data && (
-          <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30, fontFamily: "'Orbitron', sans-serif" }}>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice50 }}>
             {t('predict.pfi.baselineR2')}<span style={{ color: '#4acfac', fontWeight: 800 }}>{data.baseline_value?.toFixed(4)}</span>
           </div>
         )}

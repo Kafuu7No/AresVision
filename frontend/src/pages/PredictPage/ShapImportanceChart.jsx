@@ -72,7 +72,7 @@ const ShapImportanceChart = ({ data, loading }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice50 }}>
             <span>{t('predict.shap.baseValue') || 'Base (E[f(x)])'}</span>
-            <span style={{ fontFamily: "'Orbitron', sans-serif" }}>{baseValue.toFixed(4)}</span>
+            <span style={{ fontFamily: 'var(--font-display)' }}>{baseValue.toFixed(4)}</span>
           </div>
           <div style={{ height: 10, width: '100%', position: 'relative' }}>
             <div style={{ 
@@ -120,7 +120,7 @@ const ShapImportanceChart = ({ data, loading }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice80, fontWeight: 700 }}>
             <span>{t('predict.shap.totalValue') || 'Prediction (f(x))'}</span>
-            <span style={{ color: C.ice, fontFamily: "'Orbitron', sans-serif" }}>{finalValue.toFixed(4)}</span>
+            <span style={{ color: C.ice, fontFamily: 'var(--font-display)' }}>{finalValue.toFixed(4)}</span>
           </div>
           <div style={{ height: 10, width: '100%', position: 'relative' }}>
             <div style={{ 
@@ -136,7 +136,7 @@ const ShapImportanceChart = ({ data, loading }) => {
       <div style={{ 
         position: 'relative', height: 20, marginTop: 12, 
         borderTop: `1px solid ${C.border}`, fontSize: 'calc(9px * var(--font-scale, 1))', color: C.ice30,
-        fontFamily: "'Orbitron', sans-serif"
+        fontFamily: 'var(--font-body)'
       }}>
         <div style={{ position: 'absolute', left: `${getX(axisMin)}%`, top: 4 }}>{axisMin.toFixed(3)}</div>
         <div style={{ position: 'absolute', left: `${getX(baseValue)}%`, top: 4, transform: 'translateX(-50%)' }}>{baseValue.toFixed(3)}</div>

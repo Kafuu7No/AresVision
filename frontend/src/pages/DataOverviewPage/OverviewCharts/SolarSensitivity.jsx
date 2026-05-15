@@ -128,7 +128,7 @@ export default function SolarSensitivity({ marsYear, dataSourceMode = 'default' 
             padding: '4px 8px',
             borderRadius: '4px',
             fontSize: 'calc(11px * var(--font-scale, 1))',
-            fontFamily: "'Exo 2', sans-serif",
+            fontFamily: 'var(--font-body)',
             outline: 'none',
             cursor: 'pointer'
           }}

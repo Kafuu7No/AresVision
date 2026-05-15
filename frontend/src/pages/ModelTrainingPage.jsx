@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import C from '../constants/colors';
 import { useT } from '../i18n';
 import { useSettings } from '../contexts/SettingsContext';
@@ -6,8 +6,6 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   fetchScripts,
   startTrainingTask,
-  fetchTasks,
-  fetchLogs,
   stopTrainingTask,
   deleteTrainingTask,
   fetchDataInfo,
@@ -16,13 +14,384 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import ModelTestModal from '../components/ModelTestModal';
 import TrainingProgressMonitor from '../components/TrainingProgressMonitor';
 import LossEvolutionChart from '../components/LossEvolutionChart';
+import SectionTitle from '../components/SectionTitle';
 import { useTraining } from '../contexts/TrainingContext';
+
+const MONO_FONT = "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace";
+
+function getStatusMeta(status, t) {
+  if (status === 'completed') {
+    return {
+      label: t('modelTraining.statusCompleted'),
+      color: C.green,
+      tint: 'rgba(74, 207, 172, 0.12)',
+      border: 'rgba(74, 207, 172, 0.22)',
+    };
+  }
+  if (status === 'failed') {
+    return {
+      label: t('modelTraining.statusFailed'),
+      color: '#d95c5c',
+      tint: 'rgba(217, 92, 92, 0.12)',
+      border: 'rgba(217, 92, 92, 0.22)',
+    };
+  }
+  if (status === 'running') {
+    return {
+      label: t('modelTraining.statusRunning'),
+      color: C.mars,
+      tint: 'rgba(199, 91, 57, 0.12)',
+      border: 'rgba(199, 91, 57, 0.20)',
+    };
+  }
+  if (status === 'pending') {
+    return {
+      label: t('modelTraining.statusPending'),
+      color: '#c89448',
+      tint: 'rgba(200, 148, 72, 0.12)',
+      border: 'rgba(200, 148, 72, 0.22)',
+    };
+  }
+  return {
+    label: t('modelTraining.idle'),
+    color: C.ice60,
+    tint: 'rgba(255, 255, 255, 0.04)',
+    border: 'rgba(255, 255, 255, 0.08)',
+  };
+}
+
+function formatHyperValue(key, value, t) {
+  if (Array.isArray(value)) return value.join(', ');
+  if (key === 'learning_rate' && typeof value === 'number') return value.toFixed(5);
+  if (value === 0) return t('modelTraining.hypers.disabled');
+  return value ?? '--';
+}
+
+function formatTaskDate(value, locale) {
+  if (!value) return '--';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '--';
+  return date.toLocaleString(locale, {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function getScriptSummary(modelScript, channelMap, fallbackLabel) {
+  const suffix = (modelScript || '').replace('demo3-', '').replace('.py', '');
+  if (!suffix) return fallbackLabel;
+  return suffix.split('').map((char) => channelMap[char]?.name || char).join(', ');
+}
+
+function SummaryMetric({ label, value, accent = C.ice }) {
+  return (
+    <div
+      style={{
+        padding: '14px 16px',
+        borderRadius: 14,
+        background: C.bgMuted,
+        border: `1px solid ${C.border}`,
+        minWidth: 0,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 'calc(11px * var(--font-scale, 1))',
+          color: C.ice50,
+          marginBottom: 6,
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: 'calc(14px * var(--font-scale, 1))',
+          fontWeight: 700,
+          color: accent,
+          minHeight: 20,
+          lineHeight: 1.45,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function TrainingTaskCard({
+  task,
+  t,
+  locale,
+  channelMap,
+  baselineLabel,
+  copy,
+  isLight,
+  isActive,
+  isProcessing,
+  onSelect,
+  onStop,
+  onDelete,
+  onTest,
+}) {
+  const statusMeta = getStatusMeta(task.status, t);
+  const hyperparameters = useMemo(() => {
+    try {
+      return JSON.parse(task.hyperparameters || '{}');
+    } catch {
+      return {};
+    }
+  }, [task.hyperparameters]);
+
+  const modelName = task.custom_model_name || t('modelTraining.unnamedModel');
+  const scriptSummary = getScriptSummary(task.model_script, channelMap, baselineLabel);
+  const actionBaseStyle = {
+    padding: '8px 14px',
+    borderRadius: 10,
+    fontSize: 'calc(12px * var(--font-scale, 1))',
+    fontWeight: 600,
+    cursor: isProcessing ? 'not-allowed' : 'pointer',
+    transition: 'background 0.18s ease, border-color 0.18s ease, color 0.18s ease',
+    fontFamily: 'var(--font-body)',
+  };
+
+  return (
+    <div
+      onClick={() => onSelect(task.id)}
+      style={{
+        padding: '18px 20px',
+        borderRadius: 18,
+        border: `1px solid ${isActive ? C.borderStrong : C.border}`,
+        background: isActive ? (isLight ? 'rgba(255,255,255,0.96)' : 'rgba(28,35,46,0.98)') : C.bgCard,
+        boxShadow: isActive ? '0 0 0 1px rgba(74,158,255,0.12), var(--card-shadow)' : 'var(--card-shadow)',
+        cursor: 'pointer',
+        transition: 'border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 16,
+          flexWrap: 'wrap',
+          marginBottom: 16,
+        }}
+      >
+        <div style={{ minWidth: 0, flex: '1 1 420px' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              flexWrap: 'wrap',
+              marginBottom: 8,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 'calc(17px * var(--font-scale, 1))',
+                fontWeight: 700,
+                color: C.ice,
+                fontFamily: 'var(--font-display)',
+                minWidth: 0,
+              }}
+            >
+              {modelName}
+            </div>
+            <span
+              style={{
+                padding: '4px 8px',
+                borderRadius: 999,
+                background: C.bgMuted,
+                border: `1px solid ${C.border}`,
+                color: C.ice50,
+                fontSize: 'calc(11px * var(--font-scale, 1))',
+                fontWeight: 600,
+                fontFamily: MONO_FONT,
+              }}
+            >
+              #{task.id}
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              gap: 16,
+              flexWrap: 'wrap',
+              color: C.ice60,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
+              lineHeight: 1.55,
+            }}
+          >
+            <span>{scriptSummary}</span>
+            <span>{formatTaskDate(task.start_time, locale)}</span>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '7px 12px',
+            borderRadius: 999,
+            background: statusMeta.tint,
+            border: `1px solid ${statusMeta.border}`,
+          }}
+        >
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: statusMeta.color,
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              fontSize: 'calc(12px * var(--font-scale, 1))',
+              fontWeight: 700,
+              color: statusMeta.color,
+            }}
+          >
+            {statusMeta.label}
+          </span>
+        </div>
+      </div>
+
+      <div className="training-history-metrics">
+        {Object.entries(hyperparameters).map(([key, value]) => (
+          <div
+            key={key}
+            style={{
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: isLight ? 'rgba(15,23,42,0.03)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${C.border}`,
+              minWidth: 0,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 'calc(10px * var(--font-scale, 1))',
+                color: C.ice50,
+                marginBottom: 5,
+                lineHeight: 1.4,
+              }}
+            >
+              {t(`modelTraining.hypers.${key}`)}
+            </div>
+            <div
+              style={{
+                fontSize: 'calc(13px * var(--font-scale, 1))',
+                fontWeight: 700,
+                color: C.ice,
+                lineHeight: 1.45,
+                wordBreak: 'break-word',
+              }}
+            >
+              {formatHyperValue(key, value, t)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          gap: 10,
+          flexWrap: 'wrap',
+          marginTop: 16,
+          paddingTop: 16,
+          borderTop: `1px solid ${C.border}`,
+        }}
+      >
+        <button
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelect(task.id);
+          }}
+          style={{
+            ...actionBaseStyle,
+            background: isActive ? 'rgba(74,158,255,0.14)' : C.bgMuted,
+            border: `1px solid ${isActive ? 'rgba(74,158,255,0.22)' : C.border}`,
+            color: isActive ? C.blue : C.ice,
+          }}
+        >
+          {copy.viewLogs}
+        </button>
+
+        {(task.status === 'running' || task.status === 'pending') && (
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              onStop(task.id);
+            }}
+            disabled={isProcessing}
+            style={{
+              ...actionBaseStyle,
+              background: 'rgba(217,92,92,0.08)',
+              border: '1px solid rgba(217,92,92,0.18)',
+              color: '#d95c5c',
+              opacity: isProcessing ? 0.6 : 1,
+            }}
+          >
+            {copy.stopTraining}
+          </button>
+        )}
+
+        {task.status === 'completed' && (
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              onTest(task.id);
+            }}
+            style={{
+              ...actionBaseStyle,
+              background: 'rgba(199,91,57,0.10)',
+              border: '1px solid rgba(199,91,57,0.18)',
+              color: C.mars,
+            }}
+          >
+            {copy.testModel}
+          </button>
+        )}
+
+        <button
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete(task.id);
+          }}
+          disabled={isProcessing}
+          style={{
+            ...actionBaseStyle,
+            background: 'transparent',
+            border: `1px solid ${C.border}`,
+            color: C.ice60,
+            opacity: isProcessing ? 0.6 : 1,
+          }}
+        >
+          {copy.deleteRecord}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function ModelTrainingPage() {
   const t = useT();
   const { settings } = useSettings();
   const { user, openAuthModal } = useAuth();
   const isLight = settings.theme === 'light';
+  const isZh = settings.language !== 'en';
+  const locale = isZh ? 'zh-CN' : 'en-US';
 
   const {
     tasks,
@@ -32,35 +401,91 @@ export default function ModelTrainingPage() {
     progressData,
     logs,
     setLogs,
-    loadTasks
+    loadTasks,
   } = useTraining();
 
   const [scripts, setScripts] = useState([]);
+  const [scriptsLoading, setScriptsLoading] = useState(false);
+  const [scriptsError, setScriptsError] = useState('');
   const [dataSourceMode, setDataSourceMode] = useState('default');
   const [sourceMeta, setSourceMeta] = useState(null);
-  
-  const logsEndRef = useRef(null);
+
   const logContainerRef = useRef(null);
   const autoScrollRef = useRef(true);
 
-  // Script Selection & Channel Mapping
-  const CHANNELS = React.useMemo(() => ['U', 'V', 'D', 'S', 'T'], []);
-  const CHANNEL_MAP = {
-    U: { name: t('predict.variables.U_Wind'), icon: '🌬️' },
-    V: { name: t('predict.variables.V_Wind'), icon: '💨' },
-    D: { name: t('predict.variables.Dust_Optical_Depth'), icon: '🌪️' },
-    S: { name: t('predict.variables.Solar_Flux_DN'), icon: '☀️' },
-    T: { name: t('predict.variables.Temperature'), icon: '🌡️' }
-  };
+  const channelOrder = useMemo(() => ['U', 'V', 'D', 'S', 'T'], []);
+  const channelMap = useMemo(
+    () => ({
+      U: { name: t('predict.variables.U_Wind'), short: 'U' },
+      V: { name: t('predict.variables.V_Wind'), short: 'V' },
+      D: { name: t('predict.variables.Dust_Optical_Depth'), short: 'D' },
+      S: { name: t('predict.variables.Solar_Flux_DN'), short: 'S' },
+      T: { name: t('predict.variables.Temperature'), short: 'T' },
+    }),
+    [t]
+  );
+
+  const copy = useMemo(
+    () => ({
+      dataSource: isZh ? '数据源' : 'Data source',
+      sourceDefault: isZh ? '默认系统数据' : 'Default source',
+      sourcePersonal: isZh ? '个人 / 混合数据' : 'Personal / mixed source',
+      sourceHintDefault: isZh
+        ? '训练将使用平台默认数据源。'
+        : 'Training will run against the platform default data source.',
+      sourceHintPersonal: isZh
+        ? '训练将使用你的个人或混合数据源。'
+        : 'Training will run against your personal or mixed data source.',
+      trainingPreset: isZh ? '训练预设' : 'Training preset',
+      presetLoading: isZh ? '正在加载训练脚本...' : 'Loading training presets...',
+      presetUnavailable: isZh
+        ? '当前通道组合暂无可用训练脚本。'
+        : 'No training preset is available for the current channel selection.',
+      presetError: isZh
+        ? '训练脚本加载失败，请稍后重试。'
+        : 'Training presets failed to load. Please try again later.',
+      presetMatched: isZh ? '已匹配可用脚本' : 'Matched to an available script',
+      selectionUnavailable: isZh ? '当前组合不可训练' : 'This selection cannot be trained',
+      currentSelection: isZh ? '当前选择' : 'Current selection',
+      coreParameters: isZh ? '核心参数' : 'Core parameters',
+      modelArchitecture: isZh ? '模型结构' : 'Model architecture',
+      liveLogs: isZh ? '实时日志' : 'Live logs',
+      liveLogsHint: isZh
+        ? '选择历史任务即可切换当前查看的日志和进度。'
+        : 'Select a training record to switch the active logs and progress view.',
+      progressHint: isZh
+        ? '进度、损失和日志会在这里持续刷新。'
+        : 'Progress, loss, and logs refresh here while a task is active.',
+      historyHint: isZh
+        ? '训练记录会保留在这里，方便回看日志或继续测试。'
+        : 'Training records stay here so you can revisit logs or run tests later.',
+      channelSummaryEmpty: isZh ? '仅使用 O3 基线输入' : 'O3 baseline only',
+      noTaskSelectedHint: isZh
+        ? '还没有选中训练任务。你可以先启动新任务，或在下方历史记录中查看已有结果。'
+        : 'No training task is selected yet. Start a new run or pick a record from the history below.',
+      noLogsYet: isZh ? '等待训练日志输出...' : 'Waiting for training logs...',
+      selectedTask: isZh ? '当前查看' : 'Selected task',
+      currentModel: isZh ? '当前模型' : 'Current model',
+      sourceMode: isZh ? '训练来源' : 'Source mode',
+      scriptFile: isZh ? '脚本文件' : 'Script file',
+      startTraining: isZh ? '开始训练' : 'Start training',
+      loginToStart: isZh ? '登录后开始训练' : 'Sign in to start',
+      starting: isZh ? '正在启动...' : 'Starting...',
+      stopTraining: isZh ? '停止训练' : 'Stop training',
+      testModel: isZh ? '模型测试' : 'Test model',
+      deleteRecord: isZh ? '删除记录' : 'Delete record',
+      viewLogs: isZh ? '查看日志' : 'View logs',
+      modelNameAvailable: isZh ? '名称可用' : 'Name available',
+      presetLoginHint: isZh ? '登录后会自动加载训练脚本。' : 'Training presets load automatically after sign-in.',
+      historyCount: (count) => (isZh ? `${count} 条记录` : `${count} records`),
+      noHistoryIcon: '[]',
+      activeModelFallback: '--',
+    }),
+    [isZh]
+  );
+
   const [selectedChannels, setSelectedChannels] = useState([]);
   const [selectedScript, setSelectedScript] = useState('demo3-.py');
-
-  useEffect(() => {
-    const suffix = CHANNELS.filter(c => selectedChannels.includes(c)).join('');
-    setSelectedScript(`demo3-${suffix}.py`);
-  }, [selectedChannels, CHANNELS]);
-
-  // Form State
   const [epochs, setEpochs] = useState(10);
   const [batchSize, setBatchSize] = useState(32);
   const [learningRate, setLearningRate] = useState(0.001);
@@ -75,38 +500,135 @@ export default function ModelTrainingPage() {
   const [testTaskId, setTestTaskId] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleLayersChange = (e) => {
-    const val = e.target.value;
-    setStlstmLayers(val);
+  const isPersonalMode = dataSourceMode === 'personal';
+  const modelNameLabel = String(t('modelTraining.modelName') || '')
+    .replace(':', '')
+    .replace('：', '')
+    .trim();
+  const baselineLabel = t('modelTraining.baselineO3');
 
-    if (val === '') return;
+  const preferredScript = useMemo(() => {
+    const suffix = channelOrder.filter((channel) => selectedChannels.includes(channel)).join('');
+    return `demo3-${suffix}.py`;
+  }, [channelOrder, selectedChannels]);
 
-    let newLayers = parseInt(val, 10);
-    if (isNaN(newLayers) || newLayers < 1) newLayers = 1;
-    if (newLayers > 10) newLayers = 10;
+  const selectedChannelsSummary = useMemo(() => {
+    if (selectedChannels.length === 0) return copy.channelSummaryEmpty;
+    return selectedChannels.map((channel) => channelMap[channel]?.name || channel).join(', ');
+  }, [channelMap, copy.channelSummaryEmpty, selectedChannels]);
 
-    setHiddenDims(prev => {
-      const next = [...prev];
-      if (newLayers > next.length) {
-        for (let i = next.length; i < newLayers; i++) next.push(64);
+  const activeTask = useMemo(
+    () => tasks.find((task) => task.id === activeTaskId) || null,
+    [activeTaskId, tasks]
+  );
+
+  const activeStatusMeta = getStatusMeta(activeTask?.status || 'idle', t);
+
+  const sourceMessage =
+    sourceMeta?.message ||
+    (sourceMeta?.effective_source === 'personal_mcd_plus_system_openmars'
+      ? (isZh
+          ? '个人 OpenMARS 数据不完整，系统会自动补充默认 OpenMARS 与个人 MCD。'
+          : 'Personal OpenMARS is incomplete. The system will use default OpenMARS with personal MCD.')
+      : '');
+
+  const selectedScriptAvailable = !!selectedScript && scripts.includes(selectedScript);
+  const startDisabled = user
+    ? !selectedScriptAvailable || !!modelNameError || !customModelName.trim() || isProcessing
+    : false;
+
+  const summaryCardStyle = {
+    padding: '14px 16px',
+    borderRadius: 14,
+    background: C.bgMuted,
+    border: `1px solid ${C.border}`,
+  };
+
+  const sectionTitleStyle = {
+    fontSize: 'calc(13px * var(--font-scale, 1))',
+    fontWeight: 700,
+    color: C.ice,
+    marginBottom: 10,
+    fontFamily: 'var(--font-display)',
+  };
+
+  const fieldLabelStyle = {
+    fontSize: 'calc(12px * var(--font-scale, 1))',
+    fontWeight: 600,
+    color: C.ice80,
+    marginBottom: 7,
+    lineHeight: 1.45,
+  };
+
+  const fieldHintStyle = {
+    fontSize: 'calc(11px * var(--font-scale, 1))',
+    color: C.ice50,
+    lineHeight: 1.6,
+    marginTop: 6,
+  };
+
+  const inputStyle = {
+    width: '100%',
+    borderRadius: 12,
+    border: `1px solid ${C.border}`,
+    background: isLight ? 'rgba(255,255,255,0.96)' : 'rgba(15,20,28,0.78)',
+    color: C.ice,
+    padding: '10px 12px',
+    fontSize: 'calc(13px * var(--font-scale, 1))',
+    lineHeight: 1.4,
+    outline: 'none',
+    transition: 'border-color 0.18s ease, box-shadow 0.18s ease',
+    fontFamily: 'var(--font-body)',
+  };
+
+  const headerMetaTextStyle = {
+    fontSize: 'calc(12px * var(--font-scale, 1))',
+    color: C.ice60,
+    lineHeight: 1.7,
+  };
+
+  const panelTitleStyle = {
+    fontSize: 'calc(19px * var(--font-scale, 1))',
+    fontWeight: 700,
+    color: C.ice,
+    fontFamily: 'var(--font-display)',
+    marginBottom: 6,
+  };
+
+  const validateModelName = (name) => {
+    if (!name || !name.trim()) return t('modelTraining.nameRequired');
+    const existingNames = tasks.map((task) => task.custom_model_name).filter(Boolean);
+    if (existingNames.includes(name.trim())) {
+      return t('modelTraining.nameUsed', { name: name.trim() });
+    }
+    return '';
+  };
+
+  const handleLayersChange = (event) => {
+    const value = event.target.value;
+    setStlstmLayers(value);
+
+    if (value === '') return;
+
+    let nextLayerCount = parseInt(value, 10);
+    if (Number.isNaN(nextLayerCount) || nextLayerCount < 1) nextLayerCount = 1;
+    if (nextLayerCount > 10) nextLayerCount = 10;
+
+    setHiddenDims((previous) => {
+      const next = [...previous];
+      if (nextLayerCount > next.length) {
+        for (let index = next.length; index < nextLayerCount; index += 1) next.push(64);
       } else {
-        next.length = newLayers;
+        next.length = nextLayerCount;
       }
       return next;
     });
   };
 
-  const validateModelName = (name) => {
-    if (!name || !name.trim()) return t('modelTraining.nameRequired');
-    const existingNames = tasks.map(tk => tk.custom_model_name).filter(Boolean);
-    if (existingNames.includes(name.trim())) return t('modelTraining.nameUsed', { name: name.trim() });
-    return '';
-  };
-
-  const handleModelNameChange = (e) => {
-    const val = e.target.value;
-    setCustomModelName(val);
-    setModelNameError(validateModelName(val));
+  const handleModelNameChange = (event) => {
+    const value = event.target.value;
+    setCustomModelName(value);
+    setModelNameError(validateModelName(value));
   };
 
   const handleDimChange = (index, value) => {
@@ -115,16 +637,60 @@ export default function ModelTrainingPage() {
     setHiddenDims(next);
   };
 
-  // Load scripts on mount
   useEffect(() => {
-    fetchScripts().then(data => {
-      setScripts(data);
-      if (data.length > 0) setSelectedScript(data[0]);
-    }).catch(console.error);
-  }, []);
+    if (!user) {
+      setScripts([]);
+      setScriptsLoading(false);
+      setScriptsError('');
+      return undefined;
+    }
+
+    let active = true;
+    setScriptsLoading(true);
+    setScriptsError('');
+
+    fetchScripts()
+      .then((data) => {
+        if (!active) return;
+        setScripts(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setScripts([]);
+        setScriptsError(copy.presetError);
+      })
+      .finally(() => {
+        if (!active) return;
+        setScriptsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [copy.presetError, user]);
+
+  useEffect(() => {
+    if (!user) {
+      setSelectedScript(preferredScript);
+      return;
+    }
+
+    if (scripts.length === 0) {
+      setSelectedScript('');
+      return;
+    }
+
+    if (scripts.includes(preferredScript)) {
+      setSelectedScript(preferredScript);
+      return;
+    }
+
+    setSelectedScript('');
+  }, [preferredScript, scripts, user]);
 
   useEffect(() => {
     let active = true;
+
     fetchDataInfo({ dataSource: dataSourceMode })
       .then((info) => {
         if (!active) return;
@@ -134,24 +700,21 @@ export default function ModelTrainingPage() {
         if (!active) return;
         setSourceMeta(null);
       });
+
     return () => {
       active = false;
     };
   }, [dataSourceMode, user?.id]);
 
-
-  // Scroll to bottom of logs (internal only)
   useEffect(() => {
     if (autoScrollRef.current && logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
   }, [logs]);
 
-  const handleScroll = (e) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.target;
-    // If user is within 50px of bottom, stick to bottom
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
-    autoScrollRef.current = isAtBottom;
+  const handleScroll = (event) => {
+    const { scrollTop, scrollHeight, clientHeight } = event.target;
+    autoScrollRef.current = scrollHeight - scrollTop - clientHeight < 50;
   };
 
   const handleStartTraining = async () => {
@@ -159,41 +722,47 @@ export default function ModelTrainingPage() {
       openAuthModal('login');
       return;
     }
-    if (!selectedScript) return;
 
-    // 显式校验模型名称并弹出提示
-    const nameErr = validateModelName(customModelName);
-    if (nameErr) {
-      if (!customModelName.trim()) {
-        alert(t('modelTraining.namePrompt'));
-      } else {
-        alert(nameErr);
-      }
-      setModelNameError(nameErr);
+    const nameError = validateModelName(customModelName);
+    if (nameError) {
+      alert(!customModelName.trim() ? t('modelTraining.namePrompt') : nameError);
+      setModelNameError(nameError);
       return;
     }
+
+    if (!selectedScriptAvailable) {
+      alert(copy.presetUnavailable);
+      return;
+    }
+
     try {
       setIsProcessing(true);
-      const hypers = {
+      const hyperparameters = {
         epochs: Number(epochs) || 10,
         batch_size: Number(batchSize) || 32,
         learning_rate: Number(learningRate) || 0.001,
-        stlstm_hidden_dims: hiddenDims.map(d => Number(d) || 64),
+        stlstm_hidden_dims: hiddenDims.map((dim) => Number(dim) || 64),
         window: Number(window_) || 3,
         horizon: Number(horizon) || 3,
         early_stopping_patience: Number(earlyStoppingPatience) || 0,
       };
-      const task = await startTrainingTask(selectedScript, hypers, customModelName, dataSourceMode);
-      // 先同步到本地，确保渲染能找到该任务
-      setTasks(prev => {
-        const exists = prev.find(t => t.id === task.id);
-        if (exists) return prev;
-        return [task, ...prev];
+
+      const task = await startTrainingTask(
+        selectedScript,
+        hyperparameters,
+        customModelName.trim(),
+        dataSourceMode
+      );
+
+      setTasks((previous) => {
+        const exists = previous.find((item) => item.id === task.id);
+        if (exists) return previous;
+        return [task, ...previous];
       });
       setActiveTaskId(task.id);
-      loadTasks(); // refresh list
-    } catch (e) {
-      alert(t('modelTraining.startError') + e.message);
+      loadTasks();
+    } catch (error) {
+      alert(t('modelTraining.startError') + error.message);
     } finally {
       setIsProcessing(false);
     }
@@ -205,8 +774,8 @@ export default function ModelTrainingPage() {
       setIsProcessing(true);
       await stopTrainingTask(taskId);
       loadTasks();
-    } catch (e) {
-      alert(t('modelTraining.stopError') + e.message);
+    } catch (error) {
+      alert(t('modelTraining.stopError') + error.message);
     } finally {
       setIsProcessing(false);
     }
@@ -223,565 +792,711 @@ export default function ModelTrainingPage() {
       }
       setConfirmDeleteId(null);
       loadTasks();
-    } catch (e) {
-      alert(t('modelTraining.deleteError') + e.message);
+    } catch (error) {
+      alert(t('modelTraining.deleteError') + error.message);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // --- STYLES ---
-  const cardStyle = {
-    background: isLight ? 'rgba(255,255,255,0.8)' : 'rgba(15,20,35,0.7)',
-    backdropFilter: 'blur(10px)',
-    border: `1px solid ${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
-    borderRadius: 12,
-    padding: 24,
-    boxShadow: isLight ? '0 4px 12px rgba(0,0,0,0.05)' : '0 4px 12px rgba(0,0,0,0.3)',
-  };
+  const presetStatusText = !user
+    ? copy.presetLoginHint
+    : scriptsLoading
+      ? copy.presetLoading
+      : scriptsError || (selectedScriptAvailable ? copy.presetMatched : copy.presetUnavailable);
 
-  const titleStyle = {
-    fontSize: 'calc(24px * var(--font-scale, 1))',
-    fontWeight: 700,
-    letterSpacing: 1,
-    marginBottom: 8,
-    color: C.mars,
-  };
-
-  const inputStyle = {
-    background: isLight ? '#fff' : 'rgba(0,0,0,0.3)',
-    border: `1px solid ${isLight ? '#ccc' : '#444'}`,
-    color: isLight ? '#000' : '#fff',
-    padding: '8px 12px',
-    borderRadius: 6,
-    width: '100%',
-    fontFamily: 'inherit',
-    marginTop: 4,
-  };
-
-  const labelStyle = {
-    fontSize: 'calc(13px * var(--font-scale, 1))',
-    fontWeight: 600,
-    opacity: 0.8,
-  };
-  const isPersonalMode = dataSourceMode === 'personal';
-  const sourceMessage = sourceMeta?.message || '';
-
-  // --- SUB-COMPONENTS for cleaner UI ---
-  const TrainingTaskCard = ({ tk, onLog, onStop, onDelete, onTest, isLight, isProcessing, C }) => {
-    const { settings } = useSettings();
-    const lang = settings.language;
-    const [isHovered, setIsHovered] = useState(false);
-    const hypers = React.useMemo(() => {
-      try { return JSON.parse(tk.hyperparameters || '{}'); } catch { return {}; }
-    }, [tk.hyperparameters]);
-
-    const statusColor = tk.status === 'completed' ? '#4CAF50' : tk.status === 'failed' ? '#F44336' : '#FF9800';
-    const statusLabel = tk.status === 'completed' ? t('modelTraining.statusCompleted') :
-      tk.status === 'failed' ? t('modelTraining.statusFailed') :
-        tk.status === 'running' ? t('modelTraining.statusRunning') : t('modelTraining.statusPending');
-
-    const cardStyles = {
-      position: 'relative',
-      borderRadius: 12,
-      marginBottom: 16,
-      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      border: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)'}`,
-      borderLeft: `6px solid ${statusColor}`,
-      background: isLight ? 'rgba(255,255,255,0.7)' : 'rgba(30,30,45,0.4)',
-      backdropFilter: 'blur(12px)',
-      boxShadow: isHovered
-        ? (isLight ? '0 10px 40px rgba(0,0,0,0.1)' : '0 15px 50px rgba(0,0,0,0.5)')
-        : (isLight ? '0 4px 15px rgba(0,0,0,0.03)' : '0 4px 20px rgba(0,0,0,0.2)'),
-      transform: isHovered ? 'scale(1.01) translateY(-2px)' : 'scale(1)',
-      overflow: 'hidden',
-      cursor: 'default'
-    };
-
-    const ghostButtonStyle = (color, filled) => ({
-      background: filled ? color : 'transparent',
-      border: `1.5px solid ${color}`,
-      color: filled ? '#fff' : color,
-      padding: '7px 16px',
-      borderRadius: 20,
-      fontSize: 'calc(13px * var(--font-scale, 1))',
-      fontWeight: 600,
-      cursor: 'pointer',
-      transition: 'all 0.2s ease',
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6
-    });
-
-    const dotStyle = {
-      width: 8, height: 8, borderRadius: '50%',
-      backgroundColor: statusColor,
-      boxShadow: `0 0 10px ${statusColor}`,
-      animation: tk.status === 'running' ? 'pulse 2s infinite' : 'none'
-    };
-
-    return (
-      <div
-        style={cardStyles}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        <div style={{ padding: '20px 24px' }}>
-          {/* Header Row: ID + Info + Status */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <span style={{
-                fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 800, opacity: isLight ? 0.6 : 0.3, letterSpacing: 1,
-                padding: '2px 8px', borderRadius: 6, background: 'rgba(128,128,128,0.1)'
-              }}>{t('modelTraining.taskId')}: {tk.id}</span>
-
-              <h3 style={{ margin: 0, fontSize: 'calc(18px * var(--font-scale, 1))', fontWeight: 700, color: isLight ? '#1a1a1a' : '#efefef', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span>{t('modelTraining.modelName')}</span>
-                {tk.custom_model_name || <span style={{ opacity: isLight ? 0.5 : 0.3, fontStyle: 'italic' }}>{t('modelTraining.unnamedModel')}</span>}
-              </h3>
-
-              {/* Metadata Cluster: Script first, then Date */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 15, fontSize: 'calc(13px * var(--font-scale, 1))', opacity: isLight ? 0.7 : 0.45, fontWeight: 600 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span>📄</span>
-                  <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 700, color: isLight ? '#555' : '#ccc' }}>
-                    {(() => {
-                      const suffix = tk.model_script.replace('demo3-', '').replace('.py', '');
-                      if (!suffix) return t('modelTraining.baselineO3');
-                      return suffix.split('').map(char => CHANNEL_MAP[char]?.name || char).join(', ');
-                    })()}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span>📅</span>
-                  <span>{new Date(tk.start_time).toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US', {
-                    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
-                  })}</span>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', borderRadius: 20,
-                background: statusColor + '12', border: `1px solid ${statusColor + '30'}`
-              }}>
-                <div style={dotStyle} />
-                <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 700, color: statusColor, letterSpacing: 0.5 }}>{statusLabel}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Hyperparameters Grid (Always Visible) */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12,
-              padding: '16px 18px', borderRadius: 10,
-              background: isLight ? '#fafafa' : 'rgba(0,0,0,0.18)',
-              border: `1px solid ${isLight ? '#eee' : 'rgba(255,255,255,0.04)'}`
-            }}>
-              {Object.entries(hypers).map(([k, v]) => (
-                <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 800, opacity: isLight ? 0.6 : 0.4, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                    {t(`modelTraining.hypers.${k}`)}
-                  </span>
-                  <span style={{ fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700, color: statusColor }}>
-                    {Array.isArray(v) ? `[${v.join(', ')}]` : (k === 'learning_rate' ? v.toFixed(5) : (v === 0 ? t('modelTraining.hypers.disabled') : v))}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Action Row */}
-          <div style={{ display: 'flex', gap: 10, borderTop: `1px dashed ${isLight ? '#eee' : '#333'}`, paddingTop: 16 }}>
-            <button
-              onClick={() => onLog(tk.id)}
-              style={ghostButtonStyle(C.blue, false)}
-              onMouseEnter={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(C.blue, true))}
-              onMouseLeave={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(C.blue, false))}
-            >
-              {t('modelTraining.viewLogs')}
-            </button>
-
-            {(tk.status === 'running' || tk.status === 'pending') && (
-              <button
-                onClick={() => onStop(tk.id)}
-                disabled={isProcessing}
-                style={ghostButtonStyle('#F44336', false)}
-                onMouseEnter={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle('#F44336', true))}
-                onMouseLeave={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle('#F44336', false))}
-              >
-                {t('modelTraining.stopTraining')}
-              </button>
-            )}
-
-            {tk.status === 'completed' && (
-              <button
-                onClick={() => onTest(tk.id)}
-                style={ghostButtonStyle(C.mars, false)}
-                onMouseEnter={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(C.mars, true))}
-                onMouseLeave={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(C.mars, false))}
-              >
-                {t('modelTraining.actionTest')}
-              </button>
-            )}
-
-            <button
-              onClick={() => onDelete(tk.id)}
-              disabled={isProcessing}
-              style={ghostButtonStyle(isLight ? '#777' : '#999', false)}
-              onMouseEnter={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(isLight ? '#777' : '#999', true))}
-              onMouseLeave={(e) => Object.assign(e.currentTarget.style, ghostButtonStyle(isLight ? '#777' : '#999', false))}
-            >
-              {t('modelTraining.deleteRecord')}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const startButtonLabel = !user
+    ? copy.loginToStart
+    : isProcessing
+      ? copy.starting
+      : copy.startTraining;
 
   return (
-    <div style={{ padding: '110px 48px 48px 48px', maxWidth: 1400, margin: '0 auto', minHeight: '100vh', background: isLight ? '#f9f9f9' : '#0a0a0f', color: isLight ? '#333' : '#eee' }}>
+    <div
+      style={{
+        position: 'relative',
+        padding: '104px 36px 40px',
+        maxWidth: 1460,
+        margin: '0 auto',
+        minHeight: '100vh',
+      }}
+    >
       <style>{`
-        @keyframes pulse {
-          0% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(1.2); }
-          100% { opacity: 1; transform: scale(1); }
+        .model-training-grid {
+          display: grid;
+          grid-template-columns: minmax(340px, 410px) minmax(0, 1fr);
+          gap: 24px;
+          align-items: start;
         }
-        input[type="number"]::-webkit-inner-spin-button { opacity: 0.3; }
+        .model-training-section + .model-training-section {
+          margin-top: 20px;
+          padding-top: 20px;
+          border-top: 1px solid var(--border);
+        }
+        .model-training-summary-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+        }
+        .model-training-field-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+        }
+        .model-training-chip-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .model-training-dim-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+          gap: 12px;
+          margin-top: 12px;
+        }
+        .training-history-metrics {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+          gap: 10px;
+        }
+        @media (max-width: 1180px) {
+          .model-training-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 760px) {
+          .model-training-summary-grid,
+          .model-training-field-grid,
+          .model-training-chip-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 640px) {
+          .training-history-metrics {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
+        @media (max-width: 520px) {
+          .training-history-metrics {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 640px) {
+          .model-training-page {
+            padding-left: 18px;
+            padding-right: 18px;
+          }
+        }
+        input[type="number"]::-webkit-inner-spin-button {
+          opacity: 0.35;
+        }
       `}</style>
-      <header>
-        <h1 style={{ fontSize: 'calc(32px * var(--font-scale, 1))', fontWeight: 800, margin: 0, color: isLight ? '#111' : '#fff' }}>
-          {t('modelTraining.title')}
-        </h1>
-        <p style={{ fontSize: 'calc(14px * var(--font-scale, 1))', color: isLight ? '#666' : C.ice60, letterSpacing: 2 }}>
-          {t('modelTraining.subtitle')}
-        </p>
-      </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 2fr', gap: 24 }}>
+      <div
+        style={{
+          position: 'absolute',
+          inset: '48px 0 auto',
+          height: 320,
+          pointerEvents: 'none',
+          background: isLight
+            ? 'radial-gradient(circle at 12% 10%, rgba(74,158,255,0.12), transparent 32%), radial-gradient(circle at 84% 0%, rgba(199,91,57,0.10), transparent 28%)'
+            : 'radial-gradient(circle at 12% 10%, rgba(74,158,255,0.10), transparent 32%), radial-gradient(circle at 84% 0%, rgba(199,91,57,0.10), transparent 28%)',
+        }}
+      />
 
-        {/* Left Col: Config Form */}
-        <div style={cardStyle}>
-          <div style={titleStyle}>{t('modelTraining.parameters')}</div>
-          <p style={{ fontSize: 'calc(13px * var(--font-scale, 1))', opacity: 0.7, marginBottom: 20 }}>
+      <div className="model-training-page" style={{ position: 'relative', zIndex: 1 }}>
+        <header style={{ marginBottom: 28 }}>
+          <SectionTitle title={t('modelTraining.title')} subtitle={t('modelTraining.subtitle')} />
+          <div style={{ ...headerMetaTextStyle, maxWidth: 760, marginTop: -10 }}>
             {t('modelTraining.newTrainingInfo')}
-          </p>
+          </div>
+        </header>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div>
-              <div style={{ ...labelStyle, marginBottom: 6 }}>数据源</div>
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '10px 12px',
-                borderRadius: 8,
-                background: isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${isLight ? '#ddd' : '#444'}`,
-              }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: isLight ? '#333' : C.ice }}>Default / Personal</span>
-                  <span style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: isPersonalMode ? C.blue : C.ice60, fontWeight: 700 }}>
-                    {isPersonalMode ? '当前：Personal' : '当前：Default'}
-                  </span>
-                </div>
-                <label style={{ position: 'relative', display: 'inline-block', width: 32, height: 18 }}>
-                  <input
-                    type="checkbox"
-                    checked={isPersonalMode}
-                    onChange={() => setDataSourceMode(isPersonalMode ? 'default' : 'personal')}
-                    style={{ opacity: 0, width: 0, height: 0 }}
-                  />
-                  <span style={{
-                    position: 'absolute', inset: 0, cursor: 'pointer', borderRadius: 34,
-                    transition: '.3s',
-                    backgroundColor: isPersonalMode ? 'rgba(74,158,255,0.3)' : 'rgba(0,0,0,0.08)',
-                    border: `1px solid ${isPersonalMode ? C.blue : (isLight ? '#ccc' : '#555')}`,
-                  }}>
-                    <span style={{
-                      position: 'absolute', width: 12, height: 12, bottom: 2,
-                      left: isPersonalMode ? 16 : 2,
-                      borderRadius: '50%', transition: '.3s',
-                      backgroundColor: isPersonalMode ? C.blue : (isLight ? '#666' : C.ice60),
-                    }} />
-                  </span>
-                </label>
+        <div className="model-training-grid">
+          <section className="glass-card" style={{ padding: 26 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: 16,
+                flexWrap: 'wrap',
+                marginBottom: 18,
+              }}
+            >
+              <div>
+                <div style={panelTitleStyle}>{t('modelTraining.parameters')}</div>
+                <div style={headerMetaTextStyle}>{copy.sourceHintDefault}</div>
               </div>
-              {sourceMessage ? (
-                <div style={{ marginTop: 8, fontSize: 'calc(11px * var(--font-scale, 1))', color: isLight ? '#666' : C.ice60, lineHeight: 1.5 }}>
-                  {sourceMessage}
-                </div>
-              ) : null}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
+                  borderRadius: 999,
+                  background: selectedScriptAvailable ? 'rgba(74,158,255,0.12)' : 'rgba(217,92,92,0.10)',
+                  border: `1px solid ${selectedScriptAvailable ? 'rgba(74,158,255,0.20)' : 'rgba(217,92,92,0.16)'}`,
+                  color: selectedScriptAvailable ? C.blue : '#d95c5c',
+                  fontSize: 'calc(11px * var(--font-scale, 1))',
+                  fontWeight: 700,
+                }}
+              >
+                {selectedScriptAvailable ? copy.presetMatched : copy.selectionUnavailable}
+              </div>
             </div>
-            <div style={{ marginBottom: 4 }}>
-              <div style={{ ...labelStyle, marginBottom: 12 }}>{t('modelTraining.inputChannels')}</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                {CHANNELS.map(c => {
-                  const active = selectedChannels.includes(c);
-                  const info = CHANNEL_MAP[c];
+
+            <div className="model-training-summary-grid">
+              <SummaryMetric
+                label={copy.dataSource}
+                value={isPersonalMode ? copy.sourcePersonal : copy.sourceDefault}
+                accent={isPersonalMode ? C.blue : C.ice}
+              />
+              <SummaryMetric
+                label={t('modelTraining.inputChannels')}
+                value={selectedChannels.length > 0 ? selectedChannels.join(' + ') : 'O3'}
+                accent={C.mars}
+              />
+              <SummaryMetric
+                label={modelNameLabel}
+                value={customModelName.trim() || copy.activeModelFallback}
+                accent={customModelName.trim() ? C.ice : C.ice60}
+              />
+            </div>
+
+            <div className="model-training-section">
+              <div style={sectionTitleStyle}>{copy.dataSource}</div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: 8,
+                  padding: 5,
+                  borderRadius: 16,
+                  background: C.bgMuted,
+                  border: `1px solid ${C.border}`,
+                }}
+              >
+                {[
+                  { value: 'default', label: copy.sourceDefault },
+                  { value: 'personal', label: copy.sourcePersonal },
+                ].map((option) => {
+                  const active = dataSourceMode === option.value;
                   return (
                     <button
-                      key={c}
-                      onClick={() => {
-                        setSelectedChannels(prev => active ? prev.filter(x => x !== c) : [...prev, c]);
-                      }}
+                      key={option.value}
+                      onClick={() => setDataSourceMode(option.value)}
                       style={{
-                        flex: '1 1 80px',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                        padding: '12px 8px', borderRadius: 10,
-                        cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        border: `1.5px solid ${active ? C.mars : (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)')}`,
-                        background: active ? `${C.mars}22` : (isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)'),
-                        color: active ? C.mars : (isLight ? '#666' : '#999'),
-                        boxShadow: active ? `0 0 15px ${C.mars}33` : 'none',
-                        transform: active ? 'scale(1.05)' : 'scale(1)',
+                        padding: '10px 12px',
+                        borderRadius: 12,
+                        border: 'none',
+                        background: active ? 'rgba(74,158,255,0.14)' : 'transparent',
+                        color: active ? C.blue : C.ice60,
+                        fontSize: 'calc(12px * var(--font-scale, 1))',
+                        fontWeight: active ? 700 : 600,
+                        cursor: 'pointer',
                       }}
                     >
-                      <span style={{ fontSize: 'calc(18px * var(--font-scale, 1))' }}>{info.icon}</span>
-                      <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700 }}>{info.name}</span>
+                      {option.label}
                     </button>
                   );
                 })}
               </div>
+              <div style={fieldHintStyle}>
+                {isPersonalMode ? copy.sourceHintPersonal : copy.sourceHintDefault}
+              </div>
+              {sourceMessage ? (
+                <div style={{ ...fieldHintStyle, color: isPersonalMode ? C.blue : C.ice50 }}>
+                  {sourceMessage}
+                </div>
+              ) : null}
             </div>
 
-            <div>
-              <div style={labelStyle}>
-                {t('modelTraining.modelNaming')}
-                <span style={{ color: '#F44336', marginLeft: 4 }}>*</span>
+            <div className="model-training-section">
+              <div style={sectionTitleStyle}>{t('modelTraining.inputChannels')}</div>
+              <div className="model-training-chip-grid">
+                {channelOrder.map((channel) => {
+                  const active = selectedChannels.includes(channel);
+                  return (
+                    <button
+                      key={channel}
+                      onClick={() => {
+                        setSelectedChannels((previous) =>
+                          active
+                            ? previous.filter((item) => item !== channel)
+                            : [...previous, channel]
+                        );
+                      }}
+                      style={{
+                        textAlign: 'left',
+                        padding: '12px 14px',
+                        borderRadius: 14,
+                        border: `1px solid ${active ? 'rgba(199,91,57,0.22)' : C.border}`,
+                        background: active ? 'rgba(199,91,57,0.10)' : C.bgMuted,
+                        color: active ? C.mars : C.ice,
+                        cursor: 'pointer',
+                        transition: 'border-color 0.18s ease, background 0.18s ease, color 0.18s ease',
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 'calc(11px * var(--font-scale, 1))',
+                          color: active ? C.mars : C.ice50,
+                          marginBottom: 4,
+                          fontFamily: MONO_FONT,
+                        }}
+                      >
+                        {channelMap[channel]?.short}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 'calc(13px * var(--font-scale, 1))',
+                          fontWeight: 600,
+                          lineHeight: 1.45,
+                        }}
+                      >
+                        {channelMap[channel]?.name}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div style={{ ...summaryCardStyle, marginTop: 14 }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                    gap: 12,
+                  }}
+                >
+                  <div>
+                    <div style={{ ...fieldLabelStyle, marginBottom: 4 }}>{copy.currentSelection}</div>
+                    <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice, lineHeight: 1.55 }}>
+                      {selectedChannelsSummary}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ ...fieldLabelStyle, marginBottom: 4 }}>{copy.trainingPreset}</div>
+                    <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: selectedScriptAvailable ? C.ice : '#d95c5c', lineHeight: 1.55 }}>
+                      {selectedScriptAvailable ? selectedScript : presetStatusText}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="model-training-section">
+              <div style={sectionTitleStyle}>{t('modelTraining.modelNaming')}</div>
+              <div style={fieldLabelStyle}>
+                {modelNameLabel}
+                <span style={{ color: '#d95c5c', marginLeft: 4 }}>*</span>
               </div>
               <input
-                type="text" style={{
+                type="text"
+                style={{
                   ...inputStyle,
-                  borderColor: modelNameError ? '#F44336' : (customModelName.trim() ? '#4CAF50' : (isLight ? '#ccc' : '#444'))
+                  borderColor: modelNameError
+                    ? '#d95c5c'
+                    : customModelName.trim()
+                      ? 'rgba(74,207,172,0.36)'
+                      : C.border,
                 }}
                 placeholder={t('modelTraining.modelNamingPlaceholder')}
                 value={customModelName}
                 onChange={handleModelNameChange}
               />
-              {modelNameError && (
-                <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: '#F44336', marginTop: 4 }}>⚠ {modelNameError}</div>
-              )}
-              {!modelNameError && customModelName.trim() && (
-                <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: '#4CAF50', marginTop: 4 }}>{t('modelTraining.nameAvailable')}</div>
-              )}
+              {modelNameError ? (
+                <div style={{ ...fieldHintStyle, color: '#d95c5c' }}>{modelNameError}</div>
+              ) : null}
+              {!modelNameError && customModelName.trim() ? (
+                <div style={{ ...fieldHintStyle, color: C.green }}>{copy.modelNameAvailable}</div>
+              ) : null}
             </div>
 
-            <div>
-              <div style={labelStyle}>{t('modelTraining.epochs')}</div>
-              <input
-                type="number" style={inputStyle}
-                value={epochs} onChange={e => setEpochs(e.target.value === '' ? '' : Number(e.target.value))}
-              />
-            </div>
-
-            <div>
-              <div style={labelStyle}>{t('modelTraining.batchSize')}</div>
-              <input
-                type="number" style={inputStyle}
-                value={batchSize} onChange={e => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-              />
-            </div>
-
-            <div>
-              <div style={labelStyle}>{t('modelTraining.learningRate')}</div>
-              <input
-                type="number" step="0.0001" style={inputStyle}
-                value={learningRate} onChange={e => setLearningRate(e.target.value === '' ? '' : Number(e.target.value))}
-              />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
-                <div style={labelStyle}>{t('modelTraining.window')}</div>
-                <input
-                  type="number" style={inputStyle}
-                  value={window_} min="1" max="30"
-                  onChange={e => setWindow(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
-                />
+            <div className="model-training-section">
+              <div style={sectionTitleStyle}>{copy.coreParameters}</div>
+              <div className="model-training-field-grid">
+                <div>
+                  <div style={fieldLabelStyle}>{t('modelTraining.epochs')}</div>
+                  <input
+                    type="number"
+                    style={inputStyle}
+                    value={epochs}
+                    onChange={(event) => setEpochs(event.target.value === '' ? '' : Number(event.target.value))}
+                  />
+                </div>
+                <div>
+                  <div style={fieldLabelStyle}>{t('modelTraining.batchSize')}</div>
+                  <input
+                    type="number"
+                    style={inputStyle}
+                    value={batchSize}
+                    onChange={(event) => setBatchSize(event.target.value === '' ? '' : Number(event.target.value))}
+                  />
+                </div>
+                <div>
+                  <div style={fieldLabelStyle}>{t('modelTraining.learningRate')}</div>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    style={inputStyle}
+                    value={learningRate}
+                    onChange={(event) => setLearningRate(event.target.value === '' ? '' : Number(event.target.value))}
+                  />
+                </div>
+                <div>
+                  <div style={fieldLabelStyle}>{t('modelTraining.earlyStopPatience')}</div>
+                  <input
+                    type="number"
+                    style={inputStyle}
+                    value={earlyStoppingPatience}
+                    min="0"
+                    max="200"
+                    onChange={(event) =>
+                      setEarlyStoppingPatience(
+                        event.target.value === '' ? '' : Math.max(0, Number(event.target.value))
+                      )
+                    }
+                  />
+                  <div style={fieldHintStyle}>{t('modelTraining.earlyStopNote')}</div>
+                </div>
+                <div>
+                  <div style={fieldLabelStyle}>{t('modelTraining.window')}</div>
+                  <input
+                    type="number"
+                    style={inputStyle}
+                    value={window_}
+                    min="1"
+                    max="30"
+                    onChange={(event) =>
+                      setWindow(event.target.value === '' ? '' : Math.max(1, Number(event.target.value)))
+                    }
+                  />
+                </div>
+                <div>
+                  <div style={fieldLabelStyle}>{t('modelTraining.horizon')}</div>
+                  <input
+                    type="number"
+                    style={inputStyle}
+                    value={horizon}
+                    min="1"
+                    max="30"
+                    onChange={(event) =>
+                      setHorizon(event.target.value === '' ? '' : Math.max(1, Number(event.target.value)))
+                    }
+                  />
+                </div>
               </div>
-              <div>
-                <div style={labelStyle}>{t('modelTraining.horizon')}</div>
-                <input
-                  type="number" style={inputStyle}
-                  value={horizon} min="1" max="30"
-                  onChange={e => setHorizon(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
-                />
-              </div>
             </div>
 
-            <div>
-              <div style={labelStyle}>{t('modelTraining.earlyStopPatience')}</div>
-              <input
-                type="number" style={inputStyle}
-                value={earlyStoppingPatience} min="0" max="200"
-                onChange={e => setEarlyStoppingPatience(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
-              />
-              <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', opacity: 0.5, marginTop: 4 }}>
-                {t('modelTraining.earlyStopNote')}
-              </div>
-            </div>
-
-            <div>
-              <div style={labelStyle}>{t('modelTraining.stlstmLayers')}</div>
-              <input
-                type="number" style={inputStyle}
-                value={stlstmLayers} onChange={handleLayersChange}
-                min="1" max="10"
-              />
-            </div>
-
-            {hiddenDims.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 12, marginTop: -4 }}>
-                {hiddenDims.map((dim, i) => (
-                  <div key={i}>
-                    <div style={{ ...labelStyle, fontSize: 'calc(11px * var(--font-scale, 1))', opacity: 0.6 }}>{t('modelTraining.layer')} {i + 1} {t('modelTraining.layerDim')}</div>
-                    <input
-                      type="number" style={{ ...inputStyle, padding: '4px 8px', fontSize: 'calc(13px * var(--font-scale, 1))' }}
-                      value={dim} onChange={e => handleDimChange(i, e.target.value)}
-                      min="1"
-                    />
+            <div className="model-training-section">
+              <div style={sectionTitleStyle}>{copy.modelArchitecture}</div>
+              <div className="model-training-field-grid">
+                <div>
+                  <div style={fieldLabelStyle}>{t('modelTraining.stlstmLayers')}</div>
+                  <input
+                    type="number"
+                    style={inputStyle}
+                    value={stlstmLayers}
+                    onChange={handleLayersChange}
+                    min="1"
+                    max="10"
+                  />
+                </div>
+                <div>
+                  <div style={fieldLabelStyle}>{copy.scriptFile}</div>
+                  <div style={{ ...summaryCardStyle, minHeight: 44, display: 'flex', alignItems: 'center' }}>
+                    <span
+                      style={{
+                        fontSize: 'calc(12px * var(--font-scale, 1))',
+                        color: selectedScriptAvailable ? C.ice : C.ice50,
+                        fontFamily: MONO_FONT,
+                        lineHeight: 1.5,
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {selectedScript || '--'}
+                    </span>
                   </div>
-                ))}
+                </div>
               </div>
-            )}
+
+              {hiddenDims.length > 0 ? (
+                <div className="model-training-dim-grid">
+                  {hiddenDims.map((dim, index) => (
+                    <div key={`${index}`}>
+                      <div style={fieldLabelStyle}>
+                        {t('modelTraining.layer')} {index + 1} {t('modelTraining.layerDim')}
+                      </div>
+                      <input
+                        type="number"
+                        style={inputStyle}
+                        value={dim}
+                        onChange={(event) => handleDimChange(index, event.target.value)}
+                        min="1"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
 
             <button
               onClick={handleStartTraining}
-              disabled={user ? (!selectedScript || !!modelNameError) : false}
+              disabled={startDisabled}
               style={{
-                marginTop: 8,
+                marginTop: 24,
+                width: '100%',
+                border: 'none',
+                borderRadius: 14,
                 background: !user ? C.blue : C.mars,
                 color: '#fff',
-                border: 'none',
-                padding: '12px',
-                borderRadius: 8,
+                padding: '14px 16px',
                 fontSize: 'calc(15px * var(--font-scale, 1))',
                 fontWeight: 700,
-                cursor: (user && !selectedScript) ? 'not-allowed' : 'pointer',
-                opacity: (user && !selectedScript) ? 0.5 : 1,
-                transition: 'background 0.2s'
+                cursor: startDisabled ? 'not-allowed' : 'pointer',
+                opacity: startDisabled ? 0.55 : 1,
+                transition: 'opacity 0.18s ease, transform 0.18s ease',
+                fontFamily: 'var(--font-body)',
               }}
             >
-              {!user ? t('modelTraining.loginToStart') : t('modelTraining.startBtn')}
+              {startButtonLabel}
             </button>
-          </div>
+          </section>
+
+          <section className="glass-card" style={{ padding: 26 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: 16,
+                flexWrap: 'wrap',
+                marginBottom: 18,
+              }}
+            >
+              <div>
+                <div style={panelTitleStyle}>{t('modelTraining.trainingStatus')}</div>
+                <div style={headerMetaTextStyle}>{copy.progressHint}</div>
+              </div>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
+                  borderRadius: 999,
+                  background: activeStatusMeta.tint,
+                  border: `1px solid ${activeStatusMeta.border}`,
+                  color: activeStatusMeta.color,
+                  fontSize: 'calc(11px * var(--font-scale, 1))',
+                  fontWeight: 700,
+                }}
+              >
+                {activeStatusMeta.label}
+              </div>
+            </div>
+
+            <div className="model-training-summary-grid">
+              <SummaryMetric
+                label={copy.selectedTask}
+                value={activeTaskId ? `#${activeTaskId}` : '--'}
+                accent={activeTaskId ? C.blue : C.ice60}
+              />
+              <SummaryMetric
+                label={copy.currentModel}
+                value={activeTask?.custom_model_name || copy.activeModelFallback}
+                accent={activeTask?.custom_model_name ? C.ice : C.ice60}
+              />
+              <SummaryMetric
+                label={copy.sourceMode}
+                value={isPersonalMode ? copy.sourcePersonal : copy.sourceDefault}
+                accent={isPersonalMode ? C.blue : C.ice}
+              />
+            </div>
+
+            <TrainingProgressMonitor
+              progress={progressData?.progress || 0}
+              currentEpoch={progressData?.current_epoch || 0}
+              totalEpochs={progressData?.total_epochs || 0}
+              loss={progressData?.current_loss}
+              eta={progressData?.eta || '--:--'}
+              isLight={isLight}
+              status={activeTask ? activeTask.status || 'running' : 'idle'}
+            />
+
+            <LossEvolutionChart lossHistory={progressData?.loss_history} isLight={isLight} />
+
+            <div className="model-training-section">
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                  marginBottom: 12,
+                }}
+              >
+                <div>
+                  <div style={sectionTitleStyle}>{copy.liveLogs}</div>
+                  <div style={{ ...fieldHintStyle, marginTop: 0 }}>{copy.liveLogsHint}</div>
+                </div>
+
+                {activeTask && (activeTask.status === 'running' || activeTask.status === 'pending') ? (
+                  <button
+                    onClick={() => handleStopTask(activeTask.id)}
+                    disabled={isProcessing}
+                    style={{
+                      padding: '9px 14px',
+                      borderRadius: 10,
+                      border: '1px solid rgba(217,92,92,0.18)',
+                      background: 'rgba(217,92,92,0.08)',
+                      color: '#d95c5c',
+                      fontSize: 'calc(12px * var(--font-scale, 1))',
+                      fontWeight: 700,
+                      cursor: isProcessing ? 'not-allowed' : 'pointer',
+                      opacity: isProcessing ? 0.65 : 1,
+                    }}
+                  >
+                    {copy.stopTraining}
+                  </button>
+                ) : null}
+              </div>
+
+              <div
+                ref={logContainerRef}
+                onScroll={handleScroll}
+                style={{
+                  minHeight: 240,
+                  maxHeight: 360,
+                  overflowY: 'auto',
+                  borderRadius: 16,
+                  padding: 16,
+                  background: isLight ? 'rgba(246,248,252,0.98)' : 'rgba(11,15,21,0.94)',
+                  border: `1px solid ${C.border}`,
+                  color: isLight ? 'rgba(23,33,47,0.90)' : C.ice80,
+                  fontFamily: MONO_FONT,
+                  fontSize: 'calc(12px * var(--font-scale, 1))',
+                  lineHeight: 1.7,
+                  whiteSpace: 'pre-wrap',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {!activeTaskId ? (
+                  <div style={{ color: C.ice50, fontStyle: 'italic', fontFamily: 'var(--font-body)' }}>
+                    {copy.noTaskSelectedHint}
+                  </div>
+                ) : logs.length > 0 ? (
+                  logs.map((line, index) => (
+                    <div key={`${index}`} style={{ marginBottom: 2 }}>
+                      {line}
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ color: C.ice50, fontStyle: 'italic', fontFamily: 'var(--font-body)' }}>
+                    {copy.noLogsYet}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
         </div>
 
-        {/* Right Col: Logs */}
-        <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div style={titleStyle}>{t('modelTraining.trainingStatus')}</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {activeTaskId && (
-                <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', padding: '4px 8px', background: C.blue, color: '#fff', borderRadius: 4 }}>
-                  {t('modelTraining.taskId')}: {activeTaskId}
-                </span>
-              )}
-              {activeTaskId && tasks.find(t => t.id === activeTaskId)?.status === 'running' && (
-                <button
-                  onClick={() => handleStopTask(activeTaskId)}
-                  disabled={isProcessing}
-                  style={{
-                    fontSize: 'calc(11px * var(--font-scale, 1))', padding: '4px 8px', background: 'rgba(244,67,54,0.15)',
-                    color: '#F44336', border: '1px solid #F44336', borderRadius: 4, cursor: 'pointer'
-                  }}>
-                  {isProcessing ? '...' : t('modelTraining.stopTraining')}
-                </button>
-              )}
+        <section className="glass-card" style={{ padding: 26, marginTop: 24 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: 16,
+              flexWrap: 'wrap',
+              marginBottom: 18,
+            }}
+          >
+            <div>
+              <div style={panelTitleStyle}>{t('modelTraining.historyTitle')}</div>
+              <div style={headerMetaTextStyle}>{copy.historyHint}</div>
+            </div>
+            <div
+              style={{
+                padding: '8px 12px',
+                borderRadius: 999,
+                background: C.bgMuted,
+                border: `1px solid ${C.border}`,
+                color: C.ice60,
+                fontSize: 'calc(11px * var(--font-scale, 1))',
+                fontWeight: 700,
+              }}
+            >
+              {copy.historyCount(tasks.length)}
             </div>
           </div>
 
-          <div
-            ref={logContainerRef}
-            onScroll={handleScroll}
-            style={{
-              flexGrow: 1,
-              background: isLight ? '#f5f5f5' : '#000',
-              borderRadius: 8,
-              padding: 16,
-              overflowY: 'auto',
-              fontFamily: 'monospace',
-              fontSize: 'calc(13px * var(--font-scale, 1))',
-              lineHeight: 1.5,
-              color: isLight ? '#333' : '#aeea00',
-              border: `1px solid ${isLight ? '#ddd' : '#333'}`,
-              maxHeight: 400
-            }}
-          >
-            {!activeTaskId ? (
-              <div style={{ opacity: 0.5, fontStyle: 'italic' }}>{t('modelTraining.noActiveTask')}</div>
-            ) : (
-              logs.length > 0 ? logs.map((line, i) => (
-                <div key={i} style={{ whiteSpace: 'pre-wrap' }}>{line}</div>
-              )) : <div style={{ opacity: 0.5 }}>{t('modelTraining.logsFetchError')}...</div>
-            )}
-            <div ref={logsEndRef} />
-          </div>
+          {tasks.length === 0 ? (
+            <div
+              style={{
+                padding: '52px 20px',
+                textAlign: 'center',
+                borderRadius: 18,
+                background: C.bgMuted,
+                border: `1px dashed ${C.borderStrong}`,
+                color: C.ice50,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 'calc(15px * var(--font-scale, 1))',
+                  fontWeight: 600,
+                  color: C.ice60,
+                  marginBottom: 8,
+                }}
+              >
+                {t('modelTraining.historyEmpty')}
+              </div>
+              <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', lineHeight: 1.65 }}>
+                {copy.noTaskSelectedHint}
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: 14 }}>
+              {tasks.map((task) => (
+                <TrainingTaskCard
+                  key={task.id}
+                  task={task}
+                  t={t}
+                  locale={locale}
+                  channelMap={channelMap}
+                  baselineLabel={baselineLabel}
+                  copy={copy}
+                  isLight={isLight}
+                  isActive={task.id === activeTaskId}
+                  isProcessing={isProcessing}
+                  onSelect={setActiveTaskId}
+                  onStop={handleStopTask}
+                  onDelete={setConfirmDeleteId}
+                  onTest={setTestTaskId}
+                />
+              ))}
+            </div>
+          )}
+        </section>
 
-          {/* 实时进度监控组件 - 始终常驻显示 */}
-          <TrainingProgressMonitor
-            progress={progressData?.progress || 0}
-            currentEpoch={progressData?.current_epoch || 0}
-            totalEpochs={progressData?.total_epochs || 0}
-            loss={progressData?.current_loss}
-            eta={progressData?.eta || '--:--'}
-            isLight={isLight}
-            status={activeTaskId ? (tasks.find(t => t.id === activeTaskId)?.status || 'running') : 'idle'}
+        {confirmDeleteId && (
+          <ConfirmDialog
+            title={t('modelTraining.confirmDelete')}
+            message={t('modelTraining.confirmDeleteMsg', { id: confirmDeleteId })}
+            confirmLabel={isProcessing ? t('modelTraining.deleting') : t('modelTraining.confirmDelete')}
+            cancelLabel={t('modelTraining.cancel')}
+            onConfirm={handleDeleteTask}
+            onCancel={() => setConfirmDeleteId(null)}
+            confirmColor="#d95c5c"
           />
-
-          {/* 实时 Loss 演变图表 */}
-          <LossEvolutionChart 
-            lossHistory={progressData?.loss_history} 
-            isLight={isLight} 
-          />
-        </div>
-
-      </div>
-
-      {/* Bottom: Training History */}
-      <div style={{ ...cardStyle, background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 }}>
-        <div style={{ ...titleStyle, fontSize: 'calc(24px * var(--font-scale, 1))', marginBottom: 24 }}>{t('modelTraining.historyTitle')}</div>
-
-        {tasks.length === 0 ? (
-          <div style={{
-            textAlign: 'center', padding: '60px 0', opacity: 0.4, fontSize: 'calc(16px * var(--font-scale, 1))',
-            background: isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px dashed rgba(128,128,128,0.2)'
-          }}>
-            📭 {t('modelTraining.historyEmpty')}
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100%, 1fr))', gap: 10 }}>
-            {tasks.map(tk => (
-              <TrainingTaskCard
-                key={tk.id} tk={tk} isLight={isLight} isProcessing={isProcessing} C={C}
-                onLog={setActiveTaskId} onStop={handleStopTask} onDelete={setConfirmDeleteId}
-                onTest={setTestTaskId}
-              />
-            ))}
-          </div>
         )}
-      </div>
 
-      {confirmDeleteId && (
-        <ConfirmDialog
-          title={t('modelTraining.confirmDelete')}
-          message={t('modelTraining.confirmDeleteMsg', { id: confirmDeleteId })}
-          confirmLabel={isProcessing ? t('modelTraining.deleting') : t('modelTraining.confirmDelete')}
-          cancelLabel={t('modelTraining.cancel')}
-          onConfirm={handleDeleteTask}
-          onCancel={() => setConfirmDeleteId(null)}
-          confirmColor="#F44336"
-        />
-      )}
-      {testTaskId && (
-        <ModelTestModal
-          taskId={testTaskId}
-          onClose={() => setTestTaskId(null)}
-        />
-      )}
+        {testTaskId && <ModelTestModal taskId={testTaskId} onClose={() => setTestTaskId(null)} />}
+      </div>
     </div>
   );
 }

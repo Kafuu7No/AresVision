@@ -11,33 +11,34 @@ export const MODE_DEFS = [
     id: 'temporal',
     icon: 'T',
     color: C.mars,
-    title: { zh: '时序气候演化', en: 'Temporal Evolution' },
-    desc: { zh: '适合看昼夜变化、季节推进与长期趋势。', en: 'Best for diurnal change, seasonal progression, and long-term trends.' },
+    title: { zh: '时序气候演化', en: 'Temporal evolution' },
+    desc: { zh: '适合观察昼夜变化、季节推进与长期趋势。', en: 'Best for diurnal change, seasonal progression, and long-term trends.' },
   },
   {
     id: 'drivers',
     icon: 'D',
-    color: '#4acfac',
-    title: { zh: '环境归因与驱动', en: 'Environmental Drivers' },
-    desc: { zh: '适合看多变量关系、环境因子和太阳辐照响应。', en: 'Best for multivariate relationships, environmental factors, and solar response.' },
+    color: C.green,
+    title: { zh: '环境归因与驱动', en: 'Environmental drivers' },
+    desc: { zh: '适合查看多变量关系、环境因子和太阳响应。', en: 'Best for multivariate relationships, environmental factors, and solar response.' },
   },
   {
     id: 'dynamics',
     icon: 'R',
-    color: '#ffd700',
-    title: { zh: '动力与区域变率', en: 'Regional Dynamics' },
-    desc: { zh: '适合看极区行为、波动结构和区域异常。', en: 'Best for polar behavior, wave structures, and regional anomalies.' },
+    color: '#d9a441',
+    title: { zh: '区域动力过程', en: 'Regional dynamics' },
+    desc: { zh: '适合分析极区活动、波动结构和区域异常。', en: 'Best for polar behavior, wave structures, and regional anomalies.' },
   },
 ];
 
-function SectionLabel({ children, color = C.ice30 }) {
+function SectionLabel({ children }) {
   return (
     <div
       style={{
-        color,
+        color: C.ice50,
         fontSize: 'calc(10px * var(--font-scale, 1))',
-        fontFamily: "'Orbitron', sans-serif",
-        letterSpacing: 1.2,
+        fontWeight: 700,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
         marginBottom: 10,
       }}
     >
@@ -47,16 +48,12 @@ function SectionLabel({ children, color = C.ice30 }) {
 }
 
 function SelectField({ label, value, onChange, options, disabled = false, isLight = false }) {
-  const selectBg = isLight
-    ? 'linear-gradient(180deg, rgba(255,255,255,0.96), rgba(240,244,255,0.88))'
-    : 'linear-gradient(180deg, rgba(19,26,38,0.88), rgba(9,14,24,0.92))';
-  const selectBorder = isLight ? 'rgba(74,158,255,0.18)' : 'rgba(74,158,255,0.22)';
-  const selectText = isLight ? '#0f172a' : C.ice;
-  const caretColor = isLight ? '#3b82f6' : C.blue;
+  const optionBg = isLight ? '#ffffff' : '#111827';
+  const optionColor = isLight ? '#17212f' : '#f5f7fb';
 
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <span style={{ color: C.ice60, fontSize: 'calc(11px * var(--font-scale, 1))', fontFamily: "'Exo 2', sans-serif" }}>{label}</span>
+      <span style={{ color: C.ice60, fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 600 }}>{label}</span>
       <div style={{ position: 'relative' }}>
         <select
           value={value}
@@ -66,14 +63,10 @@ function SelectField({ label, value, onChange, options, disabled = false, isLigh
             width: '100%',
             padding: '11px 40px 11px 12px',
             borderRadius: 12,
-            border: `1px solid ${selectBorder}`,
-            background: selectBg,
-            boxShadow: isLight
-              ? 'inset 0 1px 0 rgba(255,255,255,0.75), 0 8px 18px rgba(74,158,255,0.08)'
-              : 'inset 0 1px 0 rgba(255,255,255,0.05), 0 10px 20px rgba(0,0,0,0.18)',
-            color: selectText,
+            border: `1px solid ${C.borderStrong}`,
+            background: isLight ? 'rgba(255,255,255,0.94)' : C.bgCardStrong,
+            color: C.ice,
             fontSize: 'calc(12px * var(--font-scale, 1))',
-            fontFamily: "'Exo 2', sans-serif",
             fontWeight: 600,
             outline: 'none',
             cursor: disabled ? 'not-allowed' : 'pointer',
@@ -81,18 +74,14 @@ function SelectField({ label, value, onChange, options, disabled = false, isLigh
             appearance: 'none',
             WebkitAppearance: 'none',
             MozAppearance: 'none',
-            transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
+            boxShadow: isLight ? '0 8px 18px rgba(15,23,42,0.05)' : '0 10px 20px rgba(0,0,0,0.16)',
           }}
         >
           {options.map((option) => (
             <option
               key={option.value}
               value={option.value}
-              style={{
-                color: '#e5eefc',
-                background: '#0f172a',
-                fontFamily: "'Exo 2', sans-serif",
-              }}
+              style={{ color: optionColor, background: optionBg }}
             >
               {option.label}
             </option>
@@ -105,21 +94,19 @@ function SelectField({ label, value, onChange, options, disabled = false, isLigh
             top: '50%',
             transform: 'translateY(-50%)',
             pointerEvents: 'none',
-            color: caretColor,
-            fontSize: 'calc(10px * var(--font-scale, 1))',
-            fontFamily: "'Orbitron', sans-serif",
-            letterSpacing: 1,
-            opacity: disabled ? 0.5 : 0.9,
+            color: C.ice40,
+            fontSize: 'calc(14px * var(--font-scale, 1))',
+            lineHeight: 1,
           }}
         >
-          V
+          ▾
         </span>
       </div>
     </label>
   );
 }
 
-function SegmentedToggle({ value, onChange, options, isLight = false }) {
+function SegmentedToggle({ value, onChange, options, disabled = false, isLight = false }) {
   return (
     <div
       style={{
@@ -128,8 +115,8 @@ function SegmentedToggle({ value, onChange, options, isLight = false }) {
         gap: 6,
         padding: 4,
         borderRadius: 12,
-        background: isLight ? 'rgba(15,23,42,0.06)' : 'rgba(255,255,255,0.04)',
-        border: `1px solid ${isLight ? 'rgba(15,23,42,0.10)' : 'rgba(255,255,255,0.08)'}`,
+        background: isLight ? 'rgba(15,23,42,0.05)' : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${isLight ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.08)'}`,
       }}
     >
       {options.map((option) => {
@@ -137,17 +124,18 @@ function SegmentedToggle({ value, onChange, options, isLight = false }) {
         return (
           <button
             key={option.value}
-            onClick={() => onChange(option.value)}
+            onClick={() => !disabled && onChange(option.value)}
+            disabled={disabled}
             style={{
               border: 'none',
-              borderRadius: 9,
+              borderRadius: 10,
               padding: '9px 10px',
               background: active ? option.activeBg : 'transparent',
               color: active ? option.activeColor : C.ice60,
               fontSize: 'calc(11px * var(--font-scale, 1))',
-              fontWeight: active ? 700 : 500,
-              cursor: 'pointer',
-              fontFamily: "'Exo 2', sans-serif",
+              fontWeight: active ? 700 : 600,
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              opacity: disabled ? 0.72 : 1,
               transition: 'all 0.2s ease',
             }}
           >
@@ -164,15 +152,15 @@ function RadioModeCard({ mode, selected, onSelect, isZh, isLight }) {
     <label
       style={{
         display: 'grid',
-        gridTemplateColumns: '18px minmax(0, 1fr)',
+        gridTemplateColumns: '20px minmax(0, 1fr)',
         gap: 10,
         alignItems: 'start',
-        padding: '12px 12px 12px 10px',
-        borderRadius: 12,
-        border: `1px solid ${selected ? `${mode.color}55` : isLight ? 'rgba(15,23,42,0.10)' : 'rgba(255,255,255,0.07)'}`,
+        padding: '13px 12px',
+        borderRadius: 14,
+        border: `1px solid ${selected ? `${mode.color}55` : isLight ? 'rgba(15,23,42,0.10)' : 'rgba(255,255,255,0.08)'}`,
         background: selected
           ? (isLight ? `${mode.color}10` : 'rgba(255,255,255,0.05)')
-          : (isLight ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.02)'),
+          : (isLight ? 'rgba(255,255,255,0.82)' : 'rgba(255,255,255,0.02)'),
         cursor: 'pointer',
         transition: 'all 0.2s ease',
       }}
@@ -182,23 +170,22 @@ function RadioModeCard({ mode, selected, onSelect, isZh, isLight }) {
         name="overview-mode"
         checked={selected}
         onChange={() => onSelect(mode.id)}
-        style={{ marginTop: 2, accentColor: mode.color }}
+        style={{ marginTop: 3, accentColor: mode.color }}
       />
       <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           <span
             style={{
-              width: 20,
-              height: 20,
+              width: 22,
+              height: 22,
               borderRadius: 999,
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: selected ? `${mode.color}20` : (isLight ? 'rgba(15,23,42,0.06)' : 'rgba(255,255,255,0.05)'),
+              background: selected ? `${mode.color}1a` : C.bgMuted,
               color: selected ? mode.color : C.ice40,
               fontSize: 'calc(11px * var(--font-scale, 1))',
-              fontWeight: 700,
-              fontFamily: "'Orbitron', sans-serif",
+              fontWeight: 800,
               flexShrink: 0,
             }}
           >
@@ -207,16 +194,17 @@ function RadioModeCard({ mode, selected, onSelect, isZh, isLight }) {
           <div
             style={{
               color: selected ? mode.color : C.ice,
-              fontSize: 'calc(12px * var(--font-scale, 1))',
+              fontSize: 'calc(13px * var(--font-scale, 1))',
               fontWeight: 700,
-              fontFamily: "'Exo 2', sans-serif",
+              fontFamily: 'var(--font-display)',
               lineHeight: 1.35,
+              letterSpacing: '-0.01em',
             }}
           >
             {isZh ? mode.title.zh : mode.title.en}
           </div>
         </div>
-        <div style={{ color: selected ? C.ice70 : C.ice40, fontSize: 'calc(10px * var(--font-scale, 1))', lineHeight: 1.55 }}>
+        <div style={{ color: selected ? C.ice70 : C.ice40, fontSize: 'calc(11px * var(--font-scale, 1))', lineHeight: 1.55 }}>
           {isZh ? mode.desc.zh : mode.desc.en}
         </div>
       </div>
@@ -232,15 +220,15 @@ function InlineSwitch({ label, checked, onChange, accent = C.blue, isLight = fal
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 10,
-        padding: '10px 12px',
-        borderRadius: 10,
-        border: `1px solid ${isLight ? 'rgba(15,23,42,0.10)' : 'rgba(255,255,255,0.07)'}`,
-        background: isLight ? 'rgba(255,255,255,0.65)' : 'rgba(255,255,255,0.03)',
+        padding: '11px 12px',
+        borderRadius: 12,
+        border: `1px solid ${isLight ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.07)'}`,
+        background: isLight ? 'rgba(255,255,255,0.78)' : 'rgba(255,255,255,0.03)',
         cursor: 'pointer',
       }}
     >
-      <span style={{ color: C.ice, fontSize: 'calc(11px * var(--font-scale, 1))', fontFamily: "'Exo 2', sans-serif", lineHeight: 1.45 }}>{label}</span>
-      <span style={{ position: 'relative', width: 34, height: 18, flexShrink: 0 }}>
+      <span style={{ color: C.ice, fontSize: 'calc(12px * var(--font-scale, 1))', lineHeight: 1.45 }}>{label}</span>
+      <span style={{ position: 'relative', width: 36, height: 20, flexShrink: 0 }}>
         <input
           type="checkbox"
           checked={checked}
@@ -252,20 +240,20 @@ function InlineSwitch({ label, checked, onChange, accent = C.blue, isLight = fal
             position: 'absolute',
             inset: 0,
             borderRadius: 999,
-            background: checked ? `${accent}33` : (isLight ? 'rgba(15,23,42,0.16)' : 'rgba(255,255,255,0.10)'),
-            border: `1px solid ${checked ? accent : isLight ? 'rgba(15,23,42,0.14)' : 'rgba(255,255,255,0.10)'}`,
+            background: checked ? `${accent}33` : (isLight ? 'rgba(15,23,42,0.12)' : 'rgba(255,255,255,0.10)'),
+            border: `1px solid ${checked ? accent : isLight ? 'rgba(15,23,42,0.12)' : 'rgba(255,255,255,0.10)'}`,
             transition: 'all 0.2s ease',
           }}
         />
         <span
           style={{
             position: 'absolute',
-            width: 12,
-            height: 12,
+            width: 14,
+            height: 14,
             left: checked ? 18 : 3,
             top: 3,
             borderRadius: '50%',
-            background: checked ? accent : (isLight ? 'rgba(15,23,42,0.48)' : 'rgba(255,255,255,0.55)'),
+            background: checked ? accent : (isLight ? 'rgba(15,23,42,0.45)' : 'rgba(255,255,255,0.60)'),
             transition: 'all 0.2s ease',
           }}
         />
@@ -274,13 +262,13 @@ function InlineSwitch({ label, checked, onChange, accent = C.blue, isLight = fal
   );
 }
 
-function AdvancedToggleGroup({ title, children, open, onToggle, isLight = false }) {
+function AdvancedToggleGroup({ title, open, onToggle, children, isLight = false, isZh = false }) {
   return (
     <div
       style={{
-        borderRadius: 12,
-        border: `1px solid ${isLight ? 'rgba(15,23,42,0.10)' : 'rgba(255,255,255,0.08)'}`,
-        background: isLight ? 'rgba(255,255,255,0.58)' : 'rgba(255,255,255,0.03)',
+        borderRadius: 14,
+        border: `1px solid ${isLight ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.08)'}`,
+        background: isLight ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.03)',
         overflow: 'hidden',
       }}
     >
@@ -292,25 +280,22 @@ function AdvancedToggleGroup({ title, children, open, onToggle, isLight = false 
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 12,
-          padding: '12px 14px',
+          padding: '13px 14px',
           border: 'none',
           background: 'transparent',
           color: C.ice,
           cursor: 'pointer',
           fontSize: 'calc(12px * var(--font-scale, 1))',
           fontWeight: 700,
-          fontFamily: "'Exo 2', sans-serif",
           textAlign: 'left',
         }}
       >
         <span>{title}</span>
-        <span style={{ color: C.ice40, fontSize: 'calc(12px * var(--font-scale, 1))' }}>{open ? 'Hide' : 'Show'}</span>
+        <span style={{ color: C.ice40, fontSize: 'calc(11px * var(--font-scale, 1))' }}>
+          {open ? (isZh ? '收起' : 'Hide') : (isZh ? '展开' : 'Show')}
+        </span>
       </button>
-      {open && (
-        <div style={{ display: 'grid', gap: 8, padding: '0 12px 12px' }}>
-          {children}
-        </div>
-      )}
+      {open && <div style={{ display: 'grid', gap: 8, padding: '0 12px 12px' }}>{children}</div>}
     </div>
   );
 }
@@ -346,30 +331,29 @@ export default function SidebarMenu() {
   } = useDataOverview();
 
   const [displayOpen, setDisplayOpen] = React.useState(true);
-  const [interactionOpen, setInteractionOpen] = React.useState(false);
-  const panelBg = isLight ? 'rgba(255,255,255,0.80)' : 'rgba(10,12,18,0.46)';
-  const borderSoft = isLight ? 'rgba(15,23,42,0.14)' : 'rgba(255,255,255,0.08)';
+  const [interactionOpen, setInteractionOpen] = React.useState(true);
+
+  const panelBg = isLight ? 'rgba(255,255,255,0.82)' : 'rgba(10,12,18,0.54)';
+  const borderSoft = isLight ? 'rgba(15,23,42,0.10)' : 'rgba(255,255,255,0.08)';
   const contentGap = leftPanelWidth <= 300 ? 14 : 16;
   const isPersonalMode = dataSourceMode === 'personal';
 
   const sourceMessage = React.useMemo(() => {
     const rawMessage = sourceMeta?.message;
-    if (!rawMessage) return '';
-    if (isZh) return rawMessage;
-
+    if (isZh) return rawMessage || '';
+    if (!rawMessage) {
+      if (sourceMeta?.effective_source === 'personal_mcd_plus_system_openmars') {
+        return 'Personal OpenMARS coverage is incomplete. Using system OpenMARS with personal MCD.';
+      }
+      return '';
+    }
     if (/[a-zA-Z]/.test(rawMessage) && !/[\u4e00-\u9fff]/.test(rawMessage)) {
       return rawMessage;
     }
-
-    const yearFallbackMatch = rawMessage.match(/MY\s*(\d+)\s*不可用.*?MY\s*(\d+)/i);
-    if (yearFallbackMatch) {
-      const [, fromYear, toYear] = yearFallbackMatch;
-      return `MY${fromYear} is unavailable. Switched to system source MY${toYear}.`;
+    if (sourceMeta?.effective_source === 'personal_mcd_plus_system_openmars') {
+      return 'Personal OpenMARS coverage is incomplete. Using system OpenMARS with personal MCD.';
     }
-    if (rawMessage.includes('未登录')) return 'Not signed in. Switched to the system default data source.';
-    if (rawMessage.includes('个人 OpenMARS 不足完整一年')) return 'Personal OpenMARS is incomplete. Using system OpenMARS + personal MCD.';
-    if (rawMessage.includes('个人数据源不足')) return 'Personal data source is insufficient. Switched to the system default data source.';
-    return rawMessage;
+    return '';
   }, [isZh, sourceMeta]);
 
   const globeVariableOptions = React.useMemo(
@@ -414,18 +398,18 @@ export default function SidebarMenu() {
         WebkitBackdropFilter: 'blur(20px)',
         borderRight: `1px solid ${borderSoft}`,
         zIndex: 1000,
-        padding: leftPanelWidth <= 300 ? '20px 14px' : '24px 18px',
+        padding: leftPanelWidth <= 300 ? '18px 14px' : '22px 18px',
         display: 'flex',
         flexDirection: 'column',
         gap: 16,
       }}
     >
       <div style={{ paddingBottom: 14, borderBottom: `1px solid ${borderSoft}`, flexShrink: 0 }}>
-        <div style={{ color: C.ice, fontFamily: "'Orbitron', sans-serif", fontSize: leftPanelWidth <= 300 ? 14 : 16, fontWeight: 700, letterSpacing: 1.6, marginBottom: 6 }}>
-          {isZh ? '分析控制台' : 'Analysis Console'}
+        <div style={{ color: C.ice, fontFamily: 'var(--font-display)', fontSize: leftPanelWidth <= 300 ? 16 : 18, fontWeight: 800, marginBottom: 6, letterSpacing: '-0.02em' }}>
+          {isZh ? '分析工作台' : 'Analysis workspace'}
         </div>
-        <div style={{ color: C.ice50, fontSize: 'calc(11px * var(--font-scale, 1))', lineHeight: 1.55 }}>
-          {isZh ? '先选分析视角，再调整数据与显示参数。' : 'Pick an analysis lens first, then tune dataset and display settings.'}
+        <div style={{ color: C.ice50, fontSize: 'calc(11px * var(--font-scale, 1))', lineHeight: 1.6 }}>
+          {isZh ? '先选择分析视角，再调整数据范围、显示图层和交互方式。' : 'Choose an analysis lens first, then tune the dataset, visible layers, and interaction behavior.'}
         </div>
       </div>
 
@@ -443,7 +427,7 @@ export default function SidebarMenu() {
         }}
       >
         <section>
-          <SectionLabel>{isZh ? '分析模式' : 'ANALYSIS MODE'}</SectionLabel>
+          <SectionLabel>{isZh ? '分析模式' : 'Analysis mode'}</SectionLabel>
           <div style={{ display: 'grid', gap: 8 }}>
             {MODE_DEFS.map((mode) => (
               <RadioModeCard
@@ -459,15 +443,16 @@ export default function SidebarMenu() {
         </section>
 
         <section>
-          <SectionLabel>{isZh ? '数据范围' : 'DATA SCOPE'}</SectionLabel>
+          <SectionLabel>{isZh ? '数据范围' : 'Data scope'}</SectionLabel>
           <div style={{ display: 'grid', gap: 12 }}>
             <div>
-              <div style={{ color: C.ice60, fontSize: 'calc(11px * var(--font-scale, 1))', fontFamily: "'Exo 2', sans-serif", marginBottom: 8 }}>
-                {isZh ? '数据源' : 'Data Source'}
+              <div style={{ color: C.ice60, fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 600, marginBottom: 8 }}>
+                {isZh ? '数据源' : 'Data source'}
               </div>
               <SegmentedToggle
                 value={dataSourceMode}
                 onChange={setDataSourceMode}
+                disabled={isSwitchingSource}
                 isLight={isLight}
                 options={[
                   {
@@ -486,7 +471,7 @@ export default function SidebarMenu() {
               />
               {isSwitchingSource ? (
                 <div style={{ marginTop: 8, color: C.ice50, fontSize: 'calc(10px * var(--font-scale, 1))', lineHeight: 1.5 }}>
-                  {isZh ? '正在切换数据源，请稍候...' : 'Switching data source, please wait...'}
+                  {isZh ? '正在切换数据源，请稍候…' : 'Switching data source, please wait...'}
                 </div>
               ) : null}
               {!isSwitchingSource && sourceMessage ? (
@@ -497,7 +482,7 @@ export default function SidebarMenu() {
             </div>
 
             <SelectField
-              label={isZh ? '火星年' : 'Mars Year'}
+              label={isZh ? '火星年' : 'Mars year'}
               value={String(marsYear)}
               onChange={(value) => setMarsYear(Number(value))}
               options={yearOptions}
@@ -506,7 +491,7 @@ export default function SidebarMenu() {
             />
 
             <SelectField
-              label={isZh ? '球体主变量' : 'Globe Variable'}
+              label={isZh ? '球体变量' : 'Globe variable'}
               value={globeVariable}
               onChange={setGlobeVariable}
               options={globeVariableOptions}
@@ -516,15 +501,16 @@ export default function SidebarMenu() {
         </section>
 
         <section>
-          <SectionLabel>{isZh ? '显示控制' : 'DISPLAY CONTROLS'}</SectionLabel>
+          <SectionLabel>{isZh ? '显示控制' : 'Display controls'}</SectionLabel>
           <AdvancedToggleGroup
-            title={isZh ? '球体显示图层与外观' : 'Globe layers and visual appearance'}
+            title={isZh ? '球体图层与辅助标记' : 'Globe layers and visual markers'}
             open={displayOpen}
             onToggle={() => setDisplayOpen((value) => !value)}
             isLight={isLight}
+            isZh={isZh}
           >
             <InlineSwitch
-              label={isZh ? '显示 3D 浓度体' : 'Show 3D concentration'}
+              label={isZh ? '显示 3D 浓度' : 'Show 3D concentration'}
               checked={showConcentration3D}
               onChange={() => setShowConcentration3D((value) => !value)}
               accent={C.blue}
@@ -548,12 +534,13 @@ export default function SidebarMenu() {
         </section>
 
         <section>
-          <SectionLabel>{isZh ? '动态交互' : 'INTERACTION CONTROLS'}</SectionLabel>
+          <SectionLabel>{isZh ? '动态交互' : 'Motion and interaction'}</SectionLabel>
           <AdvancedToggleGroup
-            title={isZh ? '球体运动与交互方式' : 'Globe motion and interaction behavior'}
+            title={isZh ? '旋转与手势控制' : 'Rotation and gesture controls'}
             open={interactionOpen}
             onToggle={() => setInteractionOpen((value) => !value)}
             isLight={isLight}
+            isZh={isZh}
           >
             <InlineSwitch
               label={isZh ? '自动旋转球体' : 'Auto-rotate globe'}

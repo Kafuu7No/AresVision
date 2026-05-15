@@ -95,7 +95,7 @@ function EnvCard({ meta, dataset, copy, plotText, plotGrid }) {
     <div style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, display: 'grid', gridTemplateRows: 'auto auto 1fr', gap: 12, minHeight: 280 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ color: meta.color, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>{meta.label}</div>
+          <div style={{ color: meta.color, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800, fontFamily: 'var(--font-display)' }}>{meta.label}</div>
           <div style={{ color: C.ice30, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{copy.summary}</div>
         </div>
         <div style={{ minWidth: 58, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, textAlign: 'right' }}>
@@ -288,7 +288,7 @@ export default function EnvironmentDashboard({ marsYear, dataSourceMode = 'defau
   if (loading) {
     return (
       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: C.ice, fontFamily: "'Orbitron', sans-serif", display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ color: C.ice, fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 16, height: 16, border: `2px solid rgba(74,207,172,0.2)`, borderTop: '2px solid #4acfac', borderRadius: '50%', animation: 'spin-slow 1s linear infinite' }} />
           {copy.loading}
         </div>
@@ -310,7 +310,7 @@ export default function EnvironmentDashboard({ marsYear, dataSourceMode = 'defau
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
         <div style={{ padding: 16, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, minHeight: 320, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
-          <div style={{ color: C.ice, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 10, fontFamily: "'Orbitron', sans-serif" }}>{copy.influence}</div>
+          <div style={{ color: C.ice, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 10, fontFamily: 'var(--font-display)' }}>{copy.influence}</div>
           <div style={{ minHeight: 0 }}>
             <Plot
               data={[{
@@ -338,7 +338,7 @@ export default function EnvironmentDashboard({ marsYear, dataSourceMode = 'defau
 
         <div style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr) auto', gap: 16, minHeight: 0 }}>
           <div style={{ padding: 16, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, minHeight: 320, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
-            <div style={{ color: C.ice, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 10, fontFamily: "'Orbitron', sans-serif" }}>{copy.dominant}</div>
+            <div style={{ color: C.ice, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 10, fontFamily: 'var(--font-display)' }}>{copy.dominant}</div>
             <div style={{ minHeight: 0 }}>
               <Plot
                 data={[{

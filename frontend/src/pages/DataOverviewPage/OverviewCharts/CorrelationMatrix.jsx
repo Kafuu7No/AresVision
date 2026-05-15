@@ -316,7 +316,7 @@ export default function CorrelationMatrix({ marsYear, dataSourceMode = 'default'
   if (loading) {
     return (
       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: C.ice, fontFamily: "'Orbitron', sans-serif", display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ color: C.ice, fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 16, height: 16, border: `2px solid rgba(74,158,255,0.2)`, borderTop: `2px solid ${C.blue}`, borderRadius: '50%', animation: 'spin-slow 1s linear infinite' }} />
           {copy.loading}
         </div>
@@ -337,7 +337,7 @@ export default function CorrelationMatrix({ marsYear, dataSourceMode = 'default'
             <button
               key={meta.id}
               onClick={() => setSelectedVariable(meta.id)}
-              style={{ padding: '8px 12px', borderRadius: 999, border: `1px solid ${active ? meta.color : C.border}`, background: active ? `${meta.color}20` : 'rgba(255,255,255,0.03)', color: active ? meta.color : C.ice60, fontSize: 'calc(11px * var(--font-scale, 1))', cursor: 'pointer', fontFamily: "'Orbitron', sans-serif" }}
+              style={{ padding: '8px 12px', borderRadius: 999, border: `1px solid ${active ? meta.color : C.border}`, background: active ? `${meta.color}20` : 'rgba(255,255,255,0.03)', color: active ? meta.color : C.ice60, fontSize: 'calc(11px * var(--font-scale, 1))', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
             >
               {meta.label}
             </button>
@@ -347,24 +347,24 @@ export default function CorrelationMatrix({ marsYear, dataSourceMode = 'default'
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(74,158,255,0.08)', border: '1px solid rgba(74,158,255,0.18)' }}>
-          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.strongest}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1 }}>{copy.strongest}</div>
           <div style={{ marginTop: 6, color: C.blue, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800 }}>
             {strongest ? `${corrLabels[strongest.a] || strongest.a} -> ${corrLabels[strongest.b] || strongest.b}` : '--'}
           </div>
           <div style={{ color: C.ice30, fontSize: 'calc(11px * var(--font-scale, 1))', marginTop: 4 }}>r = {strongest ? fmtNum(strongest.value, 3) : '--'}</div>
         </div>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: `${selectedMeta.color}14`, border: `1px solid ${selectedMeta.color}55` }}>
-          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.scatterR2}</div>
-          <div style={{ marginTop: 6, color: selectedMeta.color, fontSize: 'calc(20px * var(--font-scale, 1))', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>{fmtNum(derived.regression.r2, 4)}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1 }}>{copy.scatterR2}</div>
+          <div style={{ marginTop: 6, color: selectedMeta.color, fontSize: 'calc(20px * var(--font-scale, 1))', fontWeight: 800, fontFamily: 'var(--font-display)' }}>{fmtNum(derived.regression.r2, 4)}</div>
           <div style={{ color: C.ice30, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{copy.ozoneVs} {selectedMeta.label}</div>
         </div>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}` }}>
-          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.lagPeak}</div>
-          <div style={{ marginTop: 6, color: C.ice, fontSize: 'calc(18px * var(--font-scale, 1))', fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>{strongestLag ? `${strongestLag.lag > 0 ? '+' : ''}${strongestLag.lag}` : '--'}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1 }}>{copy.lagPeak}</div>
+          <div style={{ marginTop: 6, color: C.ice, fontSize: 'calc(18px * var(--font-scale, 1))', fontWeight: 800, fontFamily: 'var(--font-display)' }}>{strongestLag ? `${strongestLag.lag > 0 ? '+' : ''}${strongestLag.lag}` : '--'}</div>
           <div style={{ color: C.ice30, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{copy.lagStep}</div>
         </div>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}` }}>
-          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.ozoneRange}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1 }}>{copy.ozoneRange}</div>
           <div style={{ marginTop: 6, color: C.ice, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800 }}>
             {fmtNum(convertOzone(Math.min(...derived.ozoneSeries.filter(Number.isFinite)), ozoneUnit), precision)}
             {' - '}
@@ -376,7 +376,7 @@ export default function CorrelationMatrix({ marsYear, dataSourceMode = 'default'
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
         <div style={{ padding: 14, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, minHeight: 340, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
-          <div style={{ color: C.ice, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 8, fontFamily: "'Orbitron', sans-serif" }}>{copy.scatter}</div>
+          <div style={{ color: C.ice, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 8, fontFamily: 'var(--font-display)' }}>{copy.scatter}</div>
           <div style={{ minHeight: 0 }}>
             <Plot
             data={[
@@ -392,7 +392,7 @@ export default function CorrelationMatrix({ marsYear, dataSourceMode = 'default'
         </div>
 
         <div style={{ padding: 14, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, minHeight: 340, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
-          <div style={{ color: C.ice, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 8, fontFamily: "'Orbitron', sans-serif" }}>{copy.evolution}</div>
+          <div style={{ color: C.ice, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 8, fontFamily: 'var(--font-display)' }}>{copy.evolution}</div>
           <div style={{ minHeight: 0 }}>
             <Plot
             data={[
@@ -408,7 +408,7 @@ export default function CorrelationMatrix({ marsYear, dataSourceMode = 'default'
         </div>
 
         <div style={{ padding: 14, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, minHeight: 340, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
-          <div style={{ color: C.ice, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 8, fontFamily: "'Orbitron', sans-serif" }}>{copy.lagCorr}</div>
+          <div style={{ color: C.ice, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 8, fontFamily: 'var(--font-display)' }}>{copy.lagCorr}</div>
           <div style={{ minHeight: 0 }}>
             <Plot
             data={[{ x: derived.lagCurve.map((item) => item.lag), y: derived.lagCurve.map((item) => item.corr), mode: 'lines+markers', type: 'scatter', line: { color: C.blue, width: 2.5, shape: 'spline' }, marker: { size: 7, color: selectedMeta.color }, hovertemplate: `${copy.lagHover} %{x:+d}<br>${copy.corrHover} %{y:.3f}<extra></extra>` }]}
@@ -421,7 +421,7 @@ export default function CorrelationMatrix({ marsYear, dataSourceMode = 'default'
         </div>
 
         <div style={{ padding: '16px 18px', borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, lineHeight: 1.75, color: C.ice60, fontSize: 'calc(12px * var(--font-scale, 1))', minHeight: 340 }}>
-          <div style={{ color: C.ice, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 10, fontFamily: "'Orbitron', sans-serif" }}>{copy.guide}</div>
+          <div style={{ color: C.ice, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 10, fontFamily: 'var(--font-display)' }}>{copy.guide}</div>
           <div>{copy.guide1}</div>
           <div>{copy.guide2}</div>
           <div>{copy.guide3}</div>

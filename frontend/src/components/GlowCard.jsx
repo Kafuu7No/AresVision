@@ -43,7 +43,7 @@ export default function GlowCard({ children, className = '', style = {}, breathe
             height: 240,
             borderRadius: '50%',
             background:
-              'radial-gradient(circle, rgba(74,158,255,0.12) 0%, transparent 70%)',
+              'radial-gradient(circle, rgba(74,158,255,0.08) 0%, transparent 70%)',
             pointerEvents: 'none',
             zIndex: 0,
             transition: 'left 0.05s, top 0.05s',

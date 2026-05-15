@@ -290,7 +290,7 @@ Requirements:
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
             <span style={{ fontSize: 'calc(20px * var(--font-scale, 1))' }}>🧠</span>
-            <span style={{ color: C.blue, fontFamily: "'Orbitron', sans-serif", fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 'bold' }}>
+            <span style={{ color: C.blue, fontFamily: 'var(--font-display)', fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700 }}>
               {copy.title}
             </span>
             {hasResult && !isAnalyzing && (
@@ -304,7 +304,7 @@ Requirements:
             style={{
               color: C.ice80,
               fontSize: 'calc(12px * var(--font-scale, 1))',
-              fontFamily: "'Exo 2', sans-serif",
+              fontFamily: 'var(--font-body)',
               lineHeight: 1.6,
               marginBottom: 16,
               maxHeight: 300,
@@ -346,9 +346,9 @@ Requirements:
                   border: `1px solid ${C.blue}`,
                   borderRadius: 6,
                   color: C.blue,
-                  fontFamily: "'Orbitron', sans-serif",
+                  fontFamily: 'var(--font-body)',
                   fontSize: 'calc(12px * var(--font-scale, 1))',
-                  fontWeight: 'bold',
+                  fontWeight: 700,
                   cursor: 'pointer',
                   transition: '0.3s',
                 }}
@@ -366,9 +366,9 @@ Requirements:
                   border: 'none',
                   borderRadius: 6,
                   color: '#000',
-                  fontFamily: "'Orbitron', sans-serif",
+                  fontFamily: 'var(--font-body)',
                   fontSize: 'calc(12px * var(--font-scale, 1))',
-                  fontWeight: 'bold',
+                  fontWeight: 700,
                   cursor: 'pointer',
                   boxShadow: '0 0 12px rgba(199,91,57,0.4)',
                 }}

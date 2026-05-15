@@ -205,7 +205,7 @@ export default function WaveBandDiagnosticsChart({ marsYear, dataSourceMode = 'd
               padding: '6px 10px',
               fontSize: 'calc(11px * var(--font-scale, 1))',
               cursor: 'pointer',
-              fontFamily: "'Orbitron', sans-serif",
+              fontFamily: 'var(--font-body)',
             }}
             title={`${copy.selectLabel}: ${option.label}`}
           >

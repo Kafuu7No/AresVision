@@ -76,16 +76,16 @@ function typeIcon(type) {
 
 function NotificationCard({ notif, t, isLight, onMarkRead }) {
   const { icon, color, bg, border } = typeIcon(notif.type);
-  const cardBg = isLight ? 'rgba(248,248,254,0.9)' : 'rgba(16,16,32,0.7)';
+  const cardBg = 'var(--bg-muted)';
   const cardBorder = notif.is_read
-    ? (isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)')
+    ? 'var(--border)'
     : C.blue;
 
   return (
     <div style={{
       background: cardBg,
       border: `1px solid ${cardBorder}`,
-      borderLeft: `3px solid ${notif.is_read ? (isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)') : C.blue}`,
+      borderLeft: `3px solid ${notif.is_read ? 'var(--border)' : C.blue}`,
       borderRadius: 10,
       padding: '12px 14px',
       display: 'flex', gap: 12, alignItems: 'flex-start',
@@ -147,10 +147,10 @@ function PanelContent({ t, isLight, onClose, onReadCountChange }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const titleColor  = isLight ? '#000000' : '#ffffff';
-  const subColor    = isLight ? '#000000' : '#ffffff';
-  const borderColor = isLight ? '#000000' : '#ffffff';
-  const hoverBg     = isLight ? 'rgba(0,0,0,0.04)'     : 'rgba(255,255,255,0.06)';
+  const titleColor  = 'var(--text)';
+  const subColor    = 'var(--text-60)';
+  const borderColor = 'var(--border)';
+  const hoverBg     = 'var(--bg-muted)';
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -198,13 +198,13 @@ function PanelContent({ t, isLight, onClose, onReadCountChange }) {
       }}>
         <div>
           <div style={{
-            fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, letterSpacing: 2.5,
-            fontFamily: "'Orbitron', sans-serif",
-            color: C.blue, textTransform: 'uppercase', marginBottom: 3,
+            fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, letterSpacing: 0.6,
+            fontFamily: 'var(--font-display)',
+            color: C.blue, marginBottom: 3,
           }}>
             {t('notification.titleEn')}
           </div>
-          <div style={{ fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
+          <div style={{ fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: 'var(--font-display)' }}>
             {t('notification.title')}
           </div>
         </div>
@@ -256,7 +256,7 @@ function PanelContent({ t, isLight, onClose, onReadCountChange }) {
             <div style={{ color: subColor, opacity: 0.5 }}>
               <BellEmptyIcon size={48} color="currentColor" />
             </div>
-            <div style={{ fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
+            <div style={{ fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: 'var(--font-display)' }}>
               {t('notification.empty')}
             </div>
             <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: subColor }}>{t('notification.emptySub')}</div>
@@ -292,10 +292,6 @@ function NotificationPanelInner({ open, onClose, onReadCountChange }) {
     return () => document.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
-  const panelVars = isLight
-    ? { '--text': '#2a2a3a', '--text-60': 'rgba(42,42,58,0.65)', '--text-30': 'rgba(42,42,58,0.35)', '--border': 'rgba(26,26,46,0.12)' }
-    : { '--text': '#ffffff', '--text-60': '#ffffff', '--text-30': '#ffffff',  '--border': 'rgba(232,237,243,0.08)' };
-
   return (
     <>
       <div
@@ -314,14 +310,13 @@ function NotificationPanelInner({ open, onClose, onReadCountChange }) {
         style={{
           position: 'fixed', top: 0, right: 0, bottom: 0, width: 420,
           zIndex: 3000,
-          background: isLight ? 'rgba(248,248,254,0.98)' : 'rgba(8,8,18,0.97)',
-          backdropFilter: 'blur(32px)',
-          borderLeft: isLight ? '1px solid rgba(26,26,46,0.1)' : '1px solid rgba(232,237,243,0.1)',
+          background: 'var(--bg-card-strong)',
+          backdropFilter: 'blur(18px)',
+          borderLeft: '1px solid var(--border)',
           display: 'flex', flexDirection: 'column',
           transform: open ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
-          boxShadow: isLight ? '-20px 0 60px rgba(0,0,0,0.12)' : '-20px 0 60px rgba(0,0,0,0.5)',
-          ...panelVars,
+          boxShadow: isLight ? '-20px 0 60px rgba(15,23,42,0.10)' : '-20px 0 60px rgba(0,0,0,0.32)',
         }}
       >
         {open && (

@@ -234,7 +234,7 @@ export default function SeasonalExtremesChart({ marsYear, dataSourceMode = 'defa
               padding: '6px 10px',
               fontSize: 'calc(11px * var(--font-scale, 1))',
               cursor: 'pointer',
-              fontFamily: "'Orbitron', sans-serif",
+              fontFamily: 'var(--font-body)',
             }}
           >
             {option.label}

@@ -25,13 +25,13 @@ function Input({ label, type = 'text', value, onChange, placeholder, disabled, e
     ? C.mars
     : focused
       ? C.blue
-      : isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)';
+      : 'var(--border-strong)';
 
   return (
     <div style={{ marginBottom: 16 }}>
       <label style={{
         display: 'block', fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 600, letterSpacing: '0.08em',
-        color: isLight ? '#000000' : '#ffffff',
+        color: 'var(--text-80)',
         marginBottom: 6, textTransform: 'uppercase',
       }}>
         {label}
@@ -49,10 +49,10 @@ function Input({ label, type = 'text', value, onChange, placeholder, disabled, e
         style={{
           width: '100%', boxSizing: 'border-box',
           padding: '10px 14px',
-          background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)',
+          background: 'var(--bg-muted)',
           border: `1px solid ${borderColor}`,
           borderRadius: 8,
-          color: isLight ? '#000000' : '#ffffff',
+          color: 'var(--text)',
           fontSize: 'calc(14px * var(--font-scale, 1))',
           outline: 'none',
           transition: 'border-color 0.15s',
@@ -68,8 +68,8 @@ function Input({ label, type = 'text', value, onChange, placeholder, disabled, e
 
 function TabBar({ tab, setTab, t, isLight }) {
   const activeColor = C.blue;
-  const inactiveColor = isLight ? '#000000' : '#ffffff';
-  const borderBase = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+  const inactiveColor = 'var(--text-60)';
+  const borderBase = 'var(--border)';
 
   return (
     <div style={{ display: 'flex', borderBottom: `1px solid ${borderBase}`, marginBottom: 24 }}>
@@ -171,20 +171,20 @@ export default function AuthModal() {
 
   const L = isLight;
   const overlayBg    = L ? 'rgba(220,224,240,0.72)' : 'rgba(0,0,8,0.75)';
-  const cardBg       = L ? '#ffffff'                : '#0d0d20';
-  const cardBorder   = L ? 'rgba(0,0,0,0.09)'      : 'rgba(255,255,255,0.1)';
+  const cardBg       = 'var(--bg-card-strong)';
+  const cardBorder   = 'var(--border)';
   const cardShadow   = L
-    ? '0 16px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.07)'
-    : '0 16px 48px rgba(0,0,0,0.75), 0 4px 12px rgba(0,0,0,0.4)';
-  const titleColor   = L ? '#000000' : '#ffffff';
-  const subtitleClr  = L ? '#000000' : '#ffffff';
-  const closeColor   = L ? '#000000' : '#ffffff';
-  const switchColor  = L ? '#000000' : '#ffffff';
-  const hintColor    = L ? '#000000' : '#ffffff';
-  const inputBg      = L ? 'rgba(0,0,0,0.04)'      : 'rgba(255,255,255,0.05)';
-  const inputBorder  = L ? 'rgba(0,0,0,0.15)'      : 'rgba(255,255,255,0.15)';
-  const inputText    = L ? '#000000' : '#ffffff';
-  const labelColor   = L ? '#000000' : '#ffffff';
+    ? '0 16px 48px rgba(15,23,42,0.14), 0 4px 12px rgba(15,23,42,0.07)'
+    : '0 16px 48px rgba(0,0,0,0.40), 0 4px 12px rgba(0,0,0,0.24)';
+  const titleColor   = 'var(--text)';
+  const subtitleClr  = 'var(--text-60)';
+  const closeColor   = 'var(--text-60)';
+  const switchColor  = 'var(--text-60)';
+  const hintColor    = 'var(--text-60)';
+  const inputBg      = 'var(--bg-muted)';
+  const inputBorder  = 'var(--border-strong)';
+  const inputText    = 'var(--text)';
+  const labelColor   = 'var(--text-80)';
 
   // ── 注册/登录校验 ──
   const validate = () => {

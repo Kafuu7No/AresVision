@@ -9,12 +9,12 @@ export default function SectionTitle({ title, subtitle, align = 'left' }) {
     <div style={{ textAlign: align, marginBottom: 32 }}>
       <div
         style={{
-          fontSize: 'calc(11px * var(--font-scale, 1))',
+          fontSize: 'calc(12px * var(--font-scale, 1))',
           fontWeight: 700,
-          letterSpacing: 4,
+          letterSpacing: '0.12em',
           color: C.mars,
           textTransform: 'uppercase',
-          fontFamily: "'Orbitron', sans-serif",
+          fontFamily: 'var(--font-body)',
           marginBottom: 8,
         }}
       >
@@ -23,11 +23,12 @@ export default function SectionTitle({ title, subtitle, align = 'left' }) {
       <h2
         style={{
           fontSize: 'calc(32px * var(--font-scale, 1))',
-          fontWeight: 700,
-          fontFamily: "'Orbitron', sans-serif",
+          fontWeight: 800,
+          fontFamily: 'var(--font-display)',
           color: C.ice,
           margin: 0,
-          lineHeight: 1.3,
+          lineHeight: 1.2,
+          letterSpacing: '-0.02em',
         }}
       >
         {title}

@@ -1,13 +1,16 @@
 import React from 'react';
-import { useT } from '../i18n';
 import Plot from 'react-plotly.js';
+import { useT } from '../i18n';
 import C from '../constants/colors';
 
 const LossEvolutionChart = ({ lossHistory, isLight }) => {
   const t = useT();
   const trainLoss = lossHistory?.train || [];
   const valLoss = lossHistory?.val || [];
-  const epochs = trainLoss.map((_, i) => i + 1);
+  const epochs = trainLoss.map((_, index) => index + 1);
+  const plotText = isLight ? 'rgba(23,33,47,0.88)' : C.ice80;
+  const plotTextMuted = isLight ? 'rgba(23,33,47,0.56)' : C.ice50;
+  const plotGrid = isLight ? 'rgba(23,33,47,0.08)' : 'rgba(255,255,255,0.08)';
 
   const data = [
     {
@@ -16,8 +19,9 @@ const LossEvolutionChart = ({ lossHistory, isLight }) => {
       type: 'scatter',
       mode: 'lines+markers',
       name: t('modelTraining.charts.trainLoss'),
-      line: { color: C.mars, width: 3 },
-      marker: { size: 6, color: C.mars },
+      line: { color: C.mars, width: 2.5, shape: 'spline' },
+      marker: { size: 5, color: C.mars },
+      hovertemplate: `%{x}: %{y:.4f}<extra>${t('modelTraining.charts.trainLoss')}</extra>`,
     },
     {
       x: epochs,
@@ -25,83 +29,113 @@ const LossEvolutionChart = ({ lossHistory, isLight }) => {
       type: 'scatter',
       mode: 'lines+markers',
       name: t('modelTraining.charts.valLoss'),
-      line: { color: C.blue, width: 3 },
-      marker: { size: 6, color: C.blue },
-    }
+      line: { color: C.blue, width: 2.5, shape: 'spline' },
+      marker: { size: 5, color: C.blue },
+      hovertemplate: `%{x}: %{y:.4f}<extra>${t('modelTraining.charts.valLoss')}</extra>`,
+    },
   ];
 
   const layout = {
-    paper_bgcolor: 'transparent',
-    plot_bgcolor: 'transparent',
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
     autosize: true,
-    height: 300,
-    margin: { l: 40, r: 20, t: 40, b: 40 },
+    height: 286,
+    margin: { l: 46, r: 18, t: 18, b: 42 },
     showlegend: true,
     legend: {
       orientation: 'h',
       x: 0,
-      y: 1.1,
-      font: { color: isLight ? '#333' : '#eee', size: 10 }
+      y: 1.08,
+      font: { color: plotTextMuted, size: 10 },
     },
     xaxis: {
-      title: t('modelTraining.charts.epoch'),
-      gridcolor: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)',
-      tickfont: { color: isLight ? '#666' : '#aaa' },
-      titlefont: { color: isLight ? '#333' : '#eee', size: 12 },
+      title: { text: t('modelTraining.charts.epoch'), font: { color: plotTextMuted, size: 11 } },
+      gridcolor: plotGrid,
+      tickfont: { color: plotTextMuted, size: 10 },
+      color: plotText,
       zeroline: false,
       dtick: 1,
-      tickformat: ',d'
+      tickformat: ',d',
     },
     yaxis: {
-      title: t('modelTraining.charts.loss'),
-      gridcolor: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)',
-      tickfont: { color: isLight ? '#666' : '#aaa' },
-      titlefont: { color: isLight ? '#333' : '#eee', size: 12 },
+      title: { text: t('modelTraining.charts.loss'), font: { color: plotTextMuted, size: 11 } },
+      gridcolor: plotGrid,
+      tickfont: { color: plotTextMuted, size: 10 },
+      color: plotText,
       zeroline: false,
-      rangemode: 'nonnegative'
+      rangemode: 'nonnegative',
     },
-    hovermode: 'closest'
-  };
-
-  const config = {
-    displayModeBar: false,
-    responsive: true
-  };
-
-  const containerStyle = {
-    marginTop: 16,
-    padding: '16px',
-    borderRadius: 12,
-    background: isLight ? 'rgba(255,255,255,0.5)' : 'rgba(15,20,35,0.4)',
-    border: `1px solid ${isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'}`,
-    backdropFilter: 'blur(8px)',
-  };
-
-  const titleStyle = {
-    fontSize: 'calc(12px * var(--font-scale, 1))',
-    fontWeight: 700,
-    opacity: 0.6,
-    marginBottom: 8,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-    letterSpacing: '0.1em'
+    hovermode: 'closest',
+    font: { family: 'var(--font-body)' },
   };
 
   return (
-    <div style={containerStyle}>
-      <div style={titleStyle}>{t('modelTraining.charts.lossTitle')}</div>
+    <div
+      style={{
+        marginTop: 18,
+        padding: '18px 18px 12px',
+        borderRadius: 18,
+        background: C.bgMuted,
+        border: `1px solid ${C.border}`,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+          marginBottom: 8,
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: 'calc(13px * var(--font-scale, 1))',
+              fontWeight: 700,
+              color: C.ice,
+              fontFamily: 'var(--font-display)',
+              marginBottom: 4,
+            }}
+          >
+            {t('modelTraining.charts.lossTitle')}
+          </div>
+          <div
+            style={{
+              fontSize: 'calc(11px * var(--font-scale, 1))',
+              color: C.ice50,
+              lineHeight: 1.55,
+            }}
+          >
+            {trainLoss.length > 0
+              ? t('modelTraining.charts.noMetrics').replace('...', '').replace('…', '')
+              : t('modelTraining.charts.noMetrics')}
+          </div>
+        </div>
+      </div>
+
       {trainLoss.length === 0 ? (
-        <div style={{ 
-          height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          opacity: 0.3, fontSize: 'calc(13px * var(--font-scale, 1))', fontStyle: 'italic'
-        }}>
+        <div
+          style={{
+            height: 210,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: C.ice50,
+            fontSize: 'calc(12px * var(--font-scale, 1))',
+            fontStyle: 'italic',
+            textAlign: 'center',
+            padding: '0 12px',
+          }}
+        >
           {t('modelTraining.charts.noMetrics')}
         </div>
       ) : (
         <Plot
           data={data}
           layout={layout}
-          config={config}
+          config={{ displayModeBar: false, responsive: true }}
           style={{ width: '100%' }}
         />
       )}
