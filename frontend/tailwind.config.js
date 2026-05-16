@@ -4,15 +4,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        'deep-space': '#0a0a0f',
-        'mars': '#c75b39',
-        'mars-light': '#e8845a',
-        'tech-blue': '#4a9eff',
-        'ice': '#e8edf3',
+        'deep-space': '#02050b',
+        'mars': '#ff8f68',
+        'mars-light': '#ffb08e',
+        'tech-blue': '#79bbff',
+        'ice': '#f5fbff',
       },
       fontFamily: {
-        display: ['Manrope', 'Inter', 'sans-serif'],
-        body: ['Inter', 'sans-serif'],
+        display: ['Sora', 'Space Grotesk', 'sans-serif'],
+        body: ['Space Grotesk', 'sans-serif'],
       },
     },
   },

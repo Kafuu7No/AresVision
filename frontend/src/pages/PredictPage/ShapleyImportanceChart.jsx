@@ -52,29 +52,29 @@ export default function ShapleyImportanceChart({
   const marginalData = marginalDataCache[activeMetric] || null;
 
   const theme = useMemo(() => ({
-    overlay: isLight ? 'rgba(243,246,250,0.72)' : 'rgba(10,14,20,0.76)',
-    card: isLight ? 'rgba(255,255,255,0.98)' : 'rgba(23,29,38,0.96)',
-    panel: isLight ? 'rgba(15,23,42,0.03)' : 'rgba(255,255,255,0.04)',
-    panelStrong: isLight ? 'rgba(15,23,42,0.05)' : 'rgba(255,255,255,0.06)',
-    border: isLight ? 'rgba(23,33,47,0.10)' : 'rgba(255,255,255,0.10)',
-    borderStrong: isLight ? 'rgba(23,33,47,0.16)' : 'rgba(255,255,255,0.16)',
-    text: isLight ? '#17212f' : '#f5f7fb',
-    textSoft: isLight ? 'rgba(23,33,47,0.72)' : 'rgba(245,247,251,0.72)',
-    textMute: isLight ? 'rgba(23,33,47,0.50)' : 'rgba(245,247,251,0.48)',
+    overlay: isLight ? 'rgba(238,244,251,0.76)' : 'rgba(2,5,11,0.84)',
+    card: isLight ? 'rgba(255,255,255,0.98)' : 'rgba(7,14,24,0.96)',
+    panel: isLight ? 'rgba(15,23,42,0.04)' : 'rgba(160,196,240,0.06)',
+    panelStrong: isLight ? 'rgba(15,23,42,0.06)' : 'rgba(160,196,240,0.10)',
+    border: isLight ? 'rgba(23,33,47,0.11)' : 'rgba(163,201,244,0.16)',
+    borderStrong: isLight ? 'rgba(23,33,47,0.17)' : 'rgba(163,201,244,0.24)',
+    text: isLight ? '#17212f' : '#f5fbff',
+    textSoft: isLight ? 'rgba(23,33,47,0.78)' : 'rgba(221,233,246,0.84)',
+    textMute: isLight ? 'rgba(23,33,47,0.58)' : 'rgba(195,210,228,0.72)',
     accent: isLight ? '#2f6fd6' : C.blue,
-    accentSoft: isLight ? 'rgba(47,111,214,0.10)' : 'rgba(74,158,255,0.12)',
-    accentBorder: isLight ? 'rgba(47,111,214,0.22)' : 'rgba(74,158,255,0.24)',
-    purple: '#8b6fe8',
-    purpleSoft: isLight ? 'rgba(139,111,232,0.10)' : 'rgba(139,111,232,0.14)',
+    accentSoft: isLight ? 'rgba(47,111,214,0.12)' : 'rgba(121,187,255,0.16)',
+    accentBorder: isLight ? 'rgba(47,111,214,0.24)' : 'rgba(121,187,255,0.30)',
+    purple: '#b39bff',
+    purpleSoft: isLight ? 'rgba(179,155,255,0.12)' : 'rgba(179,155,255,0.16)',
     warningBg: isLight ? 'rgba(180,126,16,0.08)' : 'rgba(245,158,11,0.10)',
     warningBorder: isLight ? 'rgba(180,126,16,0.18)' : 'rgba(245,158,11,0.24)',
     warningText: isLight ? '#8a5f12' : '#f5c15b',
-    errorBg: isLight ? 'rgba(199,91,57,0.08)' : 'rgba(199,91,57,0.12)',
-    errorBorder: isLight ? 'rgba(199,91,57,0.22)' : 'rgba(199,91,57,0.26)',
+    errorBg: isLight ? 'rgba(255,143,104,0.08)' : 'rgba(255,143,104,0.12)',
+    errorBorder: isLight ? 'rgba(255,143,104,0.24)' : 'rgba(255,143,104,0.28)',
   }), [isLight]);
 
   const resolvedPlotText = plotTextColor ?? theme.textSoft;
-  const resolvedPlotGrid = plotGridColor ?? (isLight ? 'rgba(23,33,47,0.08)' : 'rgba(255,255,255,0.08)');
+  const resolvedPlotGrid = plotGridColor ?? (isLight ? 'rgba(23,33,47,0.12)' : 'rgba(160,196,240,0.14)');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -161,11 +161,11 @@ export default function ShapleyImportanceChart({
   const commonLayout = useMemo(() => ({
     paper_bgcolor: 'rgba(0,0,0,0)',
     plot_bgcolor: 'rgba(0,0,0,0)',
-    font: { family: 'Inter, sans-serif', color: resolvedPlotText },
+    font: { family: 'Space Grotesk, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif', color: resolvedPlotText },
     margin: { t: 32, b: 56, l: 200, r: 40 },
     xaxis: {
       gridcolor: resolvedPlotGrid,
-      zerolinecolor: isLight ? 'rgba(23,33,47,0.10)' : 'rgba(255,255,255,0.10)',
+      zerolinecolor: isLight ? 'rgba(23,33,47,0.12)' : 'rgba(160,196,240,0.16)',
       tickfont: { size: 10, color: resolvedPlotText },
       titlefont: { size: 11, color: resolvedPlotText },
     },

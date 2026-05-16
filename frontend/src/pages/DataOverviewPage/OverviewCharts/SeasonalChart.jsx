@@ -113,8 +113,8 @@ export default function SeasonalChart({ marsYear, dataSourceMode = 'default' }) 
   const { settings } = useSettings();
   const isZh = settings?.language !== 'en';
   const isLight = settings?.theme === 'light';
-  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
-  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+  const plotText = isLight ? 'rgba(23,33,47,0.88)' : 'rgba(236,244,255,0.94)';
+  const plotGrid = isLight ? 'rgba(23,33,47,0.12)' : 'rgba(160,196,240,0.16)';
   const colormapName = settings?.colormap;
   const units = settings?.units || { ozone: 'um-atm', temperature: 'K', wind: 'm/s' };
 
@@ -352,7 +352,7 @@ export default function SeasonalChart({ marsYear, dataSourceMode = 'default' }) 
               colorbar: {
                 title: {
                   text: colorbarTitle,
-                  font: { color: plotText, family: 'Inter, sans-serif', size: 10 },
+                  font: { color: plotText, family: 'Space Grotesk, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif', size: 10 },
                   side: 'top',
                 },
                 orientation: 'h',
@@ -360,14 +360,14 @@ export default function SeasonalChart({ marsYear, dataSourceMode = 'default' }) 
                 yanchor: 'top',
                 len: 0.8,
                 thickness: 10,
-                tickfont: { color: plotText, family: 'Inter, sans-serif' },
+                tickfont: { color: plotText, family: 'Space Grotesk, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif' },
               },
             },
           ]}
           layout={{
             title: {
               text: titleText,
-              font: { color: plotText, family: 'Inter, sans-serif', size: 13 },
+              font: { color: plotText, family: 'Space Grotesk, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif', size: 13 },
             },
             xaxis: {
               title: copy.xAxisTitle,

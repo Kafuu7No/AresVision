@@ -97,7 +97,7 @@ function FakeCorrelation() {
                   background: ri === ci ? C.mars : `rgba(${r + 40},${40 + Math.abs(val) * 20},${b + 60},${0.3 + Math.abs(val) * 0.5})`,
                   borderRadius: 2,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 'calc(8px * var(--font-scale, 1))', color: 'rgba(255,255,255,0.5)',
+                  fontSize: 'calc(8px * var(--font-scale, 1))', color: C.ice40,
                 }}
               >
                 {val.toFixed(1)}
@@ -156,7 +156,7 @@ export default function ChartPlaceholder({ title, type = 'heatmap', h = 300 }) {
             fontSize: 'calc(13px * var(--font-scale, 1))',
             fontWeight: 600,
             color: C.ice60,
-            fontFamily: "'Exo 2', sans-serif",
+            fontFamily: 'var(--font-display)',
             letterSpacing: '0.5px',
             display: 'flex',
             alignItems: 'center',

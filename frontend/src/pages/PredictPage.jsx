@@ -56,9 +56,9 @@ export default function PredictPage() {
   const TRIPTYCH_PANELS = TRIPTYCH_PANEL_DEFS.map(p => ({ ...p, title: t(`predict.panels.${p.key}`) }));
 
   // Style Tokens (for plots)
-  const plotTextColor = isLight ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.9)';
-  const plotText60 = isLight ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)';
-  const plotGridColor = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+  const plotTextColor = isLight ? 'rgba(23,33,47,0.96)' : 'rgba(236,244,255,0.96)';
+  const plotText60 = isLight ? 'rgba(23,33,47,0.76)' : 'rgba(214,228,244,0.78)';
+  const plotGridColor = isLight ? 'rgba(23,33,47,0.12)' : 'rgba(160,196,240,0.16)';
 
   // --- State（从缓存恢复，切换页面后保留预测结果）---
   const _c = getPredictCache();
