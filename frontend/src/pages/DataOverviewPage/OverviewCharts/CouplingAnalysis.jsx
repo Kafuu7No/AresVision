@@ -135,26 +135,35 @@ export default function CouplingAnalysis({ marsYear, dataSourceMode = 'default' 
             autosize: true,
             paper_bgcolor: 'transparent',
             plot_bgcolor: 'transparent',
-            margin: { l: 50, r: 50, t: 30, b: 40 },
+            margin: { l: 50, r: 74, t: 30, b: 40 },
             xaxis: {
               title: copy.lsAxis,
               gridcolor: plotGrid,
               tickfont: { color: plotText, size: 10  },
-              titlefont: { color: plotText, size: 11  }
+              titlefont: { color: plotText, size: 11  },
+              automargin: true,
             },
             yaxis: {
-              title: copy.ozoneAxis,
               gridcolor: plotGrid,
               tickfont: { color: plotText, size: 10  },
-              titlefont: { color: C.blue, size: 11 }
+              automargin: true,
+              title: {
+                text: copy.ozoneAxis,
+                standoff: 10,
+                font: { color: C.blue, size: 11 },
+              },
             },
             yaxis2: {
-              title: copy.dustAxis,
               side: 'right',
               overlaying: 'y',
               gridcolor: 'transparent',
               tickfont: { color: plotText, size: 10  },
-              titlefont: { color: C.mars, size: 11 }
+              automargin: true,
+              title: {
+                text: copy.dustAxis,
+                standoff: 14,
+                font: { color: C.mars, size: 11 },
+              },
             },
             legend: {
               orientation: 'h',
