@@ -61,10 +61,27 @@ function getStatusMeta(status, t) {
 }
 
 function formatHyperValue(key, value, t) {
-  if (Array.isArray(value)) return value.join(', ');
+  if (Array.isArray(value)) return value.join(' / ');
   if (key === 'learning_rate' && typeof value === 'number') return value.toFixed(5);
   if (value === 0) return t('modelTraining.hypers.disabled');
   return value ?? '--';
+}
+
+function parseHyperparameters(raw) {
+  try {
+    return JSON.parse(raw || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function getVisibleHyperparameters(hyperparameters) {
+  return Object.entries(hyperparameters || {}).filter(([key]) => !key.startsWith('_'));
+}
+
+function getSourceModeLabel(source, copy) {
+  if (!source) return '--';
+  return source === 'personal' ? copy.sourcePersonal : copy.sourceDefault;
 }
 
 function formatTaskDate(value, locale) {
@@ -123,6 +140,44 @@ function SummaryMetric({ label, value, accent = C.ice }) {
   );
 }
 
+function CompactField({ label, value, accent = C.ice }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
+        minWidth: 0,
+      }}
+    >
+      <span
+        style={{
+          fontSize: 'calc(11px * var(--font-scale, 1))',
+          color: C.ice50,
+          lineHeight: 1.4,
+          flexShrink: 0,
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: 'calc(12px * var(--font-scale, 1))',
+          fontWeight: 700,
+          color: accent,
+          lineHeight: 1.45,
+          minWidth: 0,
+          textAlign: 'right',
+          wordBreak: 'break-word',
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
 function TrainingTaskCard({
   task,
   t,
@@ -139,16 +194,18 @@ function TrainingTaskCard({
   onTest,
 }) {
   const statusMeta = getStatusMeta(task.status, t);
-  const hyperparameters = useMemo(() => {
-    try {
-      return JSON.parse(task.hyperparameters || '{}');
-    } catch {
-      return {};
-    }
-  }, [task.hyperparameters]);
+  const hyperparameters = useMemo(() => parseHyperparameters(task.hyperparameters), [task.hyperparameters]);
+  const visibleHyperparameters = useMemo(
+    () => getVisibleHyperparameters(hyperparameters),
+    [hyperparameters]
+  );
 
   const modelName = task.custom_model_name || t('modelTraining.unnamedModel');
   const scriptSummary = getScriptSummary(task.model_script, channelMap, baselineLabel);
+  const taskSourceLabel = getSourceModeLabel(
+    hyperparameters._effective_data_source || hyperparameters._data_source || 'default',
+    copy
+  );
   const actionBaseStyle = {
     padding: '8px 14px',
     borderRadius: 10,
@@ -230,6 +287,7 @@ function TrainingTaskCard({
             }}
           >
             <span>{scriptSummary}</span>
+            <span>{taskSourceLabel}</span>
             <span>{formatTaskDate(task.start_time, locale)}</span>
           </div>
         </div>
@@ -267,7 +325,7 @@ function TrainingTaskCard({
       </div>
 
       <div className="training-history-metrics">
-        {Object.entries(hyperparameters).map(([key, value]) => (
+        {visibleHyperparameters.map(([key, value]) => (
           <div
             key={key}
             style={{
@@ -437,6 +495,7 @@ export default function ModelTrainingPage() {
         ? '训练将使用你的个人或混合数据源。'
         : 'Training will run against your personal or mixed data source.',
       trainingPreset: isZh ? '训练预设' : 'Training preset',
+      trainingSummary: isZh ? '训练摘要' : 'Training summary',
       presetLoading: isZh ? '正在加载训练脚本...' : 'Loading training presets...',
       presetUnavailable: isZh
         ? '当前通道组合暂无可用训练脚本。'
@@ -479,6 +538,8 @@ export default function ModelTrainingPage() {
       presetLoginHint: isZh ? '登录后会自动加载训练脚本。' : 'Training presets load automatically after sign-in.',
       historyCount: (count) => (isZh ? `${count} 条记录` : `${count} records`),
       noHistoryIcon: '[]',
+      expand: isZh ? '\u5C55\u5F00' : 'Expand',
+      collapse: isZh ? '\u6536\u8D77' : 'Collapse',
       activeModelFallback: '--',
     }),
     [isZh]
@@ -499,6 +560,7 @@ export default function ModelTrainingPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [testTaskId, setTestTaskId] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const isPersonalMode = dataSourceMode === 'personal';
   const modelNameLabel = String(t('modelTraining.modelName') || '')
@@ -826,11 +888,11 @@ export default function ModelTrainingPage() {
           display: grid;
           grid-template-columns: minmax(340px, 410px) minmax(0, 1fr);
           gap: 24px;
-          align-items: start;
+          align-items: stretch;
         }
         .model-training-section + .model-training-section {
-          margin-top: 20px;
-          padding-top: 20px;
+          margin-top: 16px;
+          padding-top: 16px;
           border-top: 1px solid var(--border);
         }
         .model-training-summary-grid {
@@ -859,6 +921,15 @@ export default function ModelTrainingPage() {
           grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
           gap: 10px;
         }
+        .model-training-stack {
+          display: grid;
+          gap: 12px;
+        }
+        .model-training-channels-compact {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+        }
         @media (max-width: 1180px) {
           .model-training-grid {
             grid-template-columns: 1fr;
@@ -870,6 +941,9 @@ export default function ModelTrainingPage() {
           .model-training-chip-grid {
             grid-template-columns: 1fr;
           }
+          .model-training-channels-compact {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
         }
         @media (max-width: 640px) {
           .training-history-metrics {
@@ -878,6 +952,9 @@ export default function ModelTrainingPage() {
         }
         @media (max-width: 520px) {
           .training-history-metrics {
+            grid-template-columns: 1fr;
+          }
+          .model-training-channels-compact {
             grid-template-columns: 1fr;
           }
         }
@@ -913,356 +990,417 @@ export default function ModelTrainingPage() {
         </header>
 
         <div className="model-training-grid">
-          <section className="glass-card" style={{ padding: 26 }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                gap: 16,
-                flexWrap: 'wrap',
-                marginBottom: 18,
-              }}
-            >
-              <div>
-                <div style={panelTitleStyle}>{t('modelTraining.parameters')}</div>
-                <div style={headerMetaTextStyle}>{copy.sourceHintDefault}</div>
-              </div>
+          <section
+            className="glass-card"
+            style={{ padding: 22, display: 'flex', flexDirection: 'column', height: '100%' }}
+          >
+            <div className="model-training-stack" style={{ flex: 1, minHeight: 0 }}>
               <div
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 12px',
-                  borderRadius: 999,
-                  background: selectedScriptAvailable ? 'rgba(74,158,255,0.12)' : 'rgba(217,92,92,0.10)',
-                  border: `1px solid ${selectedScriptAvailable ? 'rgba(74,158,255,0.20)' : 'rgba(217,92,92,0.16)'}`,
-                  color: selectedScriptAvailable ? C.blue : '#d95c5c',
-                  fontSize: 'calc(11px * var(--font-scale, 1))',
-                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: 16,
+                  flexWrap: 'wrap',
+                  marginBottom: 18,
                 }}
               >
-                {selectedScriptAvailable ? copy.presetMatched : copy.selectionUnavailable}
-              </div>
-            </div>
-
-            <div className="model-training-summary-grid">
-              <SummaryMetric
-                label={copy.dataSource}
-                value={isPersonalMode ? copy.sourcePersonal : copy.sourceDefault}
-                accent={isPersonalMode ? C.blue : C.ice}
-              />
-              <SummaryMetric
-                label={t('modelTraining.inputChannels')}
-                value={selectedChannels.length > 0 ? selectedChannels.join(' + ') : 'O3'}
-                accent={C.mars}
-              />
-              <SummaryMetric
-                label={modelNameLabel}
-                value={customModelName.trim() || copy.activeModelFallback}
-                accent={customModelName.trim() ? C.ice : C.ice60}
-              />
-            </div>
-
-            <div className="model-training-section">
-              <div style={sectionTitleStyle}>{copy.dataSource}</div>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: 8,
-                  padding: 5,
-                  borderRadius: 16,
-                  background: C.bgMuted,
-                  border: `1px solid ${C.border}`,
-                }}
-              >
-                {[
-                  { value: 'default', label: copy.sourceDefault },
-                  { value: 'personal', label: copy.sourcePersonal },
-                ].map((option) => {
-                  const active = dataSourceMode === option.value;
-                  return (
-                    <button
-                      key={option.value}
-                      onClick={() => setDataSourceMode(option.value)}
-                      style={{
-                        padding: '10px 12px',
-                        borderRadius: 12,
-                        border: 'none',
-                        background: active ? 'rgba(74,158,255,0.14)' : 'transparent',
-                        color: active ? C.blue : C.ice60,
-                        fontSize: 'calc(12px * var(--font-scale, 1))',
-                        fontWeight: active ? 700 : 600,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div style={fieldHintStyle}>
-                {isPersonalMode ? copy.sourceHintPersonal : copy.sourceHintDefault}
-              </div>
-              {sourceMessage ? (
-                <div style={{ ...fieldHintStyle, color: isPersonalMode ? C.blue : C.ice50 }}>
-                  {sourceMessage}
+                <div>
+                  <div style={panelTitleStyle}>{t('modelTraining.parameters')}</div>
+                  <div style={headerMetaTextStyle}>{isPersonalMode ? copy.sourceHintPersonal : copy.sourceHintDefault}</div>
                 </div>
-              ) : null}
-            </div>
-
-            <div className="model-training-section">
-              <div style={sectionTitleStyle}>{t('modelTraining.inputChannels')}</div>
-              <div className="model-training-chip-grid">
-                {channelOrder.map((channel) => {
-                  const active = selectedChannels.includes(channel);
-                  return (
-                    <button
-                      key={channel}
-                      onClick={() => {
-                        setSelectedChannels((previous) =>
-                          active
-                            ? previous.filter((item) => item !== channel)
-                            : [...previous, channel]
-                        );
-                      }}
-                      style={{
-                        textAlign: 'left',
-                        padding: '12px 14px',
-                        borderRadius: 14,
-                        border: `1px solid ${active ? 'rgba(199,91,57,0.22)' : C.border}`,
-                        background: active ? 'rgba(199,91,57,0.10)' : C.bgMuted,
-                        color: active ? C.mars : C.ice,
-                        cursor: 'pointer',
-                        transition: 'border-color 0.18s ease, background 0.18s ease, color 0.18s ease',
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 'calc(11px * var(--font-scale, 1))',
-                          color: active ? C.mars : C.ice50,
-                          marginBottom: 4,
-                          fontFamily: MONO_FONT,
-                        }}
-                      >
-                        {channelMap[channel]?.short}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 'calc(13px * var(--font-scale, 1))',
-                          fontWeight: 600,
-                          lineHeight: 1.45,
-                        }}
-                      >
-                        {channelMap[channel]?.name}
-                      </div>
-                    </button>
-                  );
-                })}
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 12px',
+                    borderRadius: 999,
+                    background: selectedScriptAvailable ? 'rgba(74,158,255,0.12)' : 'rgba(217,92,92,0.10)',
+                    border: `1px solid ${selectedScriptAvailable ? 'rgba(74,158,255,0.20)' : 'rgba(217,92,92,0.16)'}`,
+                    color: selectedScriptAvailable ? C.blue : '#d95c5c',
+                    fontSize: 'calc(11px * var(--font-scale, 1))',
+                    fontWeight: 700,
+                  }}
+                >
+                  {selectedScriptAvailable ? copy.presetMatched : copy.selectionUnavailable}
+                </div>
               </div>
 
-              <div style={{ ...summaryCardStyle, marginTop: 14 }}>
+              <div style={{ ...summaryCardStyle, padding: '16px 16px 14px' }}>
+                <div style={{ ...sectionTitleStyle, marginBottom: 12 }}>{copy.dataSource}</div>
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                    gap: 12,
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 8,
+                    padding: 5,
+                    borderRadius: 16,
+                    background: isLight ? 'rgba(255,255,255,0.82)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${C.border}`,
+                    marginBottom: 10,
                   }}
                 >
+                  {[
+                    { value: 'default', label: copy.sourceDefault },
+                    { value: 'personal', label: copy.sourcePersonal },
+                  ].map((option) => {
+                    const active = dataSourceMode === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={() => setDataSourceMode(option.value)}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: 12,
+                          border: 'none',
+                          background: active ? 'rgba(74,158,255,0.14)' : 'transparent',
+                          color: active ? C.blue : C.ice60,
+                          fontSize: 'calc(12px * var(--font-scale, 1))',
+                          fontWeight: active ? 700 : 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {sourceMessage ? (
+                  <div style={{ ...fieldHintStyle, color: isPersonalMode ? C.blue : C.ice50 }}>{sourceMessage}</div>
+                ) : (
+                  <div style={{ ...fieldHintStyle, marginTop: 0 }}>
+                    {isPersonalMode ? copy.sourceHintPersonal : copy.sourceHintDefault}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ ...summaryCardStyle, padding: '16px 16px 14px' }}>
+                <div style={{ ...sectionTitleStyle, marginBottom: 12 }}>{t('modelTraining.modelNaming')}</div>
+                <div style={fieldLabelStyle}>
+                  {modelNameLabel}
+                  <span style={{ color: '#d95c5c', marginLeft: 4 }}>*</span>
+                </div>
+                <input
+                  type="text"
+                  style={{
+                    ...inputStyle,
+                    borderColor: modelNameError
+                      ? '#d95c5c'
+                      : customModelName.trim()
+                        ? 'rgba(74,207,172,0.36)'
+                        : C.border,
+                  }}
+                  placeholder={t('modelTraining.modelNamingPlaceholder')}
+                  value={customModelName}
+                  onChange={handleModelNameChange}
+                />
+                {modelNameError ? (
+                  <div style={{ ...fieldHintStyle, color: '#d95c5c' }}>{modelNameError}</div>
+                ) : null}
+                {!modelNameError && customModelName.trim() ? (
+                  <div style={{ ...fieldHintStyle, color: C.green }}>{copy.modelNameAvailable}</div>
+                ) : null}
+              </div>
+
+              <div style={{ ...summaryCardStyle, padding: '14px 16px' }}>
+                <div style={{ ...sectionTitleStyle, marginBottom: 10 }}>{copy.trainingSummary}</div>
+                <div style={{ display: 'grid', gap: 8 }}>
+                  <CompactField
+                    label={t('modelTraining.inputChannels')}
+                    value={selectedChannels.length > 0 ? selectedChannels.join(' + ') : 'O3'}
+                    accent={C.mars}
+                  />
+                  <CompactField
+                    label={copy.trainingPreset}
+                    value={selectedScriptAvailable ? selectedScript : presetStatusText}
+                    accent={selectedScriptAvailable ? C.ice : '#d95c5c'}
+                  />
+                  <CompactField
+                    label={copy.coreParameters}
+                    value={`${epochs} ep / ${batchSize} bs`}
+                    accent={C.ice}
+                  />
+                </div>
+              </div>
+
+              <div className="model-training-section">
+                <div>
+                  <div style={sectionTitleStyle}>{t('modelTraining.inputChannels')}</div>
+                  <div
+                    className="model-training-channels-compact"
+                  >
+                    {channelOrder.map((channel) => {
+                      const active = selectedChannels.includes(channel);
+                      return (
+                        <button
+                          key={channel}
+                          onClick={() => {
+                            setSelectedChannels((previous) =>
+                              active
+                                ? previous.filter((item) => item !== channel)
+                                : [...previous, channel]
+                            );
+                          }}
+                          style={{
+                            padding: '8px 10px',
+                            borderRadius: 12,
+                            border: `1px solid ${active ? 'rgba(199,91,57,0.22)' : C.border}`,
+                            background: active ? 'rgba(199,91,57,0.10)' : C.bgMuted,
+                            color: active ? C.mars : C.ice,
+                            fontSize: 'calc(11px * var(--font-scale, 1))',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            textAlign: 'center',
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: 'calc(10px * var(--font-scale, 1))',
+                              color: active ? C.mars : C.ice50,
+                              marginBottom: 3,
+                              fontFamily: MONO_FONT,
+                            }}
+                          >
+                            {channelMap[channel]?.short}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 'calc(11px * var(--font-scale, 1))',
+                              fontWeight: 700,
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            {channelMap[channel]?.name}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="model-training-section">
+                <div style={sectionTitleStyle}>{copy.coreParameters}</div>
+                <div className="model-training-field-grid">
                   <div>
-                    <div style={{ ...fieldLabelStyle, marginBottom: 4 }}>{copy.currentSelection}</div>
-                    <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice, lineHeight: 1.55 }}>
-                      {selectedChannelsSummary}
-                    </div>
+                    <div style={fieldLabelStyle}>{t('modelTraining.epochs')}</div>
+                    <input
+                      type="number"
+                      style={inputStyle}
+                      value={epochs}
+                      onChange={(event) => setEpochs(event.target.value === '' ? '' : Number(event.target.value))}
+                    />
                   </div>
                   <div>
-                    <div style={{ ...fieldLabelStyle, marginBottom: 4 }}>{copy.trainingPreset}</div>
-                    <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: selectedScriptAvailable ? C.ice : '#d95c5c', lineHeight: 1.55 }}>
-                      {selectedScriptAvailable ? selectedScript : presetStatusText}
-                    </div>
+                    <div style={fieldLabelStyle}>{t('modelTraining.batchSize')}</div>
+                    <input
+                      type="number"
+                      style={inputStyle}
+                      value={batchSize}
+                      onChange={(event) => setBatchSize(event.target.value === '' ? '' : Number(event.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <div style={fieldLabelStyle}>{t('modelTraining.learningRate')}</div>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      style={inputStyle}
+                      value={learningRate}
+                      onChange={(event) =>
+                        setLearningRate(event.target.value === '' ? '' : Number(event.target.value))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <div style={fieldLabelStyle}>{t('modelTraining.earlyStopPatience')}</div>
+                    <input
+                      type="number"
+                      style={inputStyle}
+                      value={earlyStoppingPatience}
+                      min="0"
+                      max="200"
+                      onChange={(event) =>
+                        setEarlyStoppingPatience(
+                          event.target.value === '' ? '' : Math.max(0, Number(event.target.value))
+                        )
+                      }
+                    />
                   </div>
                 </div>
+                <div style={{ ...fieldHintStyle, marginTop: 4 }}>{t('modelTraining.earlyStopNote')}</div>
               </div>
-            </div>
 
-            <div className="model-training-section">
-              <div style={sectionTitleStyle}>{t('modelTraining.modelNaming')}</div>
-              <div style={fieldLabelStyle}>
-                {modelNameLabel}
-                <span style={{ color: '#d95c5c', marginLeft: 4 }}>*</span>
-              </div>
-              <input
-                type="text"
-                style={{
-                  ...inputStyle,
-                  borderColor: modelNameError
-                    ? '#d95c5c'
-                    : customModelName.trim()
-                      ? 'rgba(74,207,172,0.36)'
-                      : C.border,
-                }}
-                placeholder={t('modelTraining.modelNamingPlaceholder')}
-                value={customModelName}
-                onChange={handleModelNameChange}
-              />
-              {modelNameError ? (
-                <div style={{ ...fieldHintStyle, color: '#d95c5c' }}>{modelNameError}</div>
-              ) : null}
-              {!modelNameError && customModelName.trim() ? (
-                <div style={{ ...fieldHintStyle, color: C.green }}>{copy.modelNameAvailable}</div>
-              ) : null}
-            </div>
-
-            <div className="model-training-section">
-              <div style={sectionTitleStyle}>{copy.coreParameters}</div>
-              <div className="model-training-field-grid">
-                <div>
-                  <div style={fieldLabelStyle}>{t('modelTraining.epochs')}</div>
-                  <input
-                    type="number"
-                    style={inputStyle}
-                    value={epochs}
-                    onChange={(event) => setEpochs(event.target.value === '' ? '' : Number(event.target.value))}
-                  />
-                </div>
-                <div>
-                  <div style={fieldLabelStyle}>{t('modelTraining.batchSize')}</div>
-                  <input
-                    type="number"
-                    style={inputStyle}
-                    value={batchSize}
-                    onChange={(event) => setBatchSize(event.target.value === '' ? '' : Number(event.target.value))}
-                  />
-                </div>
-                <div>
-                  <div style={fieldLabelStyle}>{t('modelTraining.learningRate')}</div>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    style={inputStyle}
-                    value={learningRate}
-                    onChange={(event) => setLearningRate(event.target.value === '' ? '' : Number(event.target.value))}
-                  />
-                </div>
-                <div>
-                  <div style={fieldLabelStyle}>{t('modelTraining.earlyStopPatience')}</div>
-                  <input
-                    type="number"
-                    style={inputStyle}
-                    value={earlyStoppingPatience}
-                    min="0"
-                    max="200"
-                    onChange={(event) =>
-                      setEarlyStoppingPatience(
-                        event.target.value === '' ? '' : Math.max(0, Number(event.target.value))
-                      )
-                    }
-                  />
-                  <div style={fieldHintStyle}>{t('modelTraining.earlyStopNote')}</div>
-                </div>
-                <div>
-                  <div style={fieldLabelStyle}>{t('modelTraining.window')}</div>
-                  <input
-                    type="number"
-                    style={inputStyle}
-                    value={window_}
-                    min="1"
-                    max="30"
-                    onChange={(event) =>
-                      setWindow(event.target.value === '' ? '' : Math.max(1, Number(event.target.value)))
-                    }
-                  />
-                </div>
-                <div>
-                  <div style={fieldLabelStyle}>{t('modelTraining.horizon')}</div>
-                  <input
-                    type="number"
-                    style={inputStyle}
-                    value={horizon}
-                    min="1"
-                    max="30"
-                    onChange={(event) =>
-                      setHorizon(event.target.value === '' ? '' : Math.max(1, Number(event.target.value)))
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="model-training-section">
-              <div style={sectionTitleStyle}>{copy.modelArchitecture}</div>
-              <div className="model-training-field-grid">
-                <div>
-                  <div style={fieldLabelStyle}>{t('modelTraining.stlstmLayers')}</div>
-                  <input
-                    type="number"
-                    style={inputStyle}
-                    value={stlstmLayers}
-                    onChange={handleLayersChange}
-                    min="1"
-                    max="10"
-                  />
-                </div>
-                <div>
-                  <div style={fieldLabelStyle}>{copy.scriptFile}</div>
-                  <div style={{ ...summaryCardStyle, minHeight: 44, display: 'flex', alignItems: 'center' }}>
-                    <span
+              <div className="model-training-section">
+                <div
+                  style={{
+                    borderRadius: 16,
+                    border: `1px solid ${C.border}`,
+                    background: C.bgMuted,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <button
+                    onClick={() => setAdvancedOpen((previous) => !previous)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      border: 'none',
+                      background: 'transparent',
+                      color: C.ice,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-body)',
+                    }}
+                  >
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ ...sectionTitleStyle, marginBottom: 4 }}>{copy.modelArchitecture}</div>
+                      <div style={{ ...fieldHintStyle, marginTop: 0 }}>
+                        {advancedOpen
+                          ? t('modelTraining.window') + ' / ' + t('modelTraining.horizon') + ' / ' + copy.scriptFile
+                          : `${t('modelTraining.stlstmLayers')}: ${stlstmLayers} / ${copy.scriptFile}: ${selectedScript || '--'}`}
+                      </div>
+                    </div>
+                    <div
                       style={{
                         fontSize: 'calc(12px * var(--font-scale, 1))',
-                        color: selectedScriptAvailable ? C.ice : C.ice50,
-                        fontFamily: MONO_FONT,
-                        lineHeight: 1.5,
-                        wordBreak: 'break-word',
+                        color: C.ice60,
+                        fontWeight: 700,
                       }}
                     >
-                      {selectedScript || '--'}
-                    </span>
-                  </div>
+                      {advancedOpen ? copy.collapse : copy.expand}
+                    </div>
+                  </button>
+
+                  {advancedOpen ? (
+                    <div
+                      style={{
+                        padding: '0 14px 14px',
+                        borderTop: `1px solid ${C.border}`,
+                      }}
+                    >
+                      <div className="model-training-field-grid" style={{ marginTop: 16 }}>
+                        <div>
+                          <div style={fieldLabelStyle}>{t('modelTraining.window')}</div>
+                          <input
+                            type="number"
+                            style={inputStyle}
+                            value={window_}
+                            min="1"
+                            max="30"
+                            onChange={(event) =>
+                              setWindow(event.target.value === '' ? '' : Math.max(1, Number(event.target.value)))
+                            }
+                          />
+                        </div>
+                        <div>
+                          <div style={fieldLabelStyle}>{t('modelTraining.horizon')}</div>
+                          <input
+                            type="number"
+                            style={inputStyle}
+                            value={horizon}
+                            min="1"
+                            max="30"
+                            onChange={(event) =>
+                              setHorizon(event.target.value === '' ? '' : Math.max(1, Number(event.target.value)))
+                            }
+                          />
+                        </div>
+                        <div>
+                          <div style={fieldLabelStyle}>{t('modelTraining.stlstmLayers')}</div>
+                          <input
+                            type="number"
+                            style={inputStyle}
+                            value={stlstmLayers}
+                            onChange={handleLayersChange}
+                            min="1"
+                            max="10"
+                          />
+                        </div>
+                        <div>
+                          <div style={fieldLabelStyle}>{copy.scriptFile}</div>
+                          <div style={{ ...summaryCardStyle, minHeight: 44, display: 'flex', alignItems: 'center' }}>
+                            <span
+                              style={{
+                                fontSize: 'calc(12px * var(--font-scale, 1))',
+                                color: selectedScriptAvailable ? C.ice : C.ice50,
+                                fontFamily: MONO_FONT,
+                                lineHeight: 1.5,
+                                wordBreak: 'break-word',
+                              }}
+                            >
+                              {selectedScript || '--'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {hiddenDims.length > 0 ? (
+                        <div className="model-training-dim-grid">
+                          {hiddenDims.map((dim, index) => (
+                            <div key={`${index}`}>
+                              <div style={fieldLabelStyle}>
+                                {t('modelTraining.layer')} {index + 1} {t('modelTraining.layerDim')}
+                              </div>
+                              <input
+                                type="number"
+                                style={inputStyle}
+                                value={dim}
+                                onChange={(event) => handleDimChange(index, event.target.value)}
+                                min="1"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
-              {hiddenDims.length > 0 ? (
-                <div className="model-training-dim-grid">
-                  {hiddenDims.map((dim, index) => (
-                    <div key={`${index}`}>
-                      <div style={fieldLabelStyle}>
-                        {t('modelTraining.layer')} {index + 1} {t('modelTraining.layerDim')}
-                      </div>
-                      <input
-                        type="number"
-                        style={inputStyle}
-                        value={dim}
-                        onChange={(event) => handleDimChange(index, event.target.value)}
-                        min="1"
-                      />
+              <div className="model-training-section" style={{ marginTop: 'auto', paddingTop: 16 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 16,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={sectionTitleStyle}>{copy.trainingPreset}</div>
+                    <div style={fieldHintStyle}>
+                      {selectedScriptAvailable ? presetStatusText : copy.selectionUnavailable}
                     </div>
-                  ))}
+                  </div>
+                  <button
+                    onClick={handleStartTraining}
+                    disabled={startDisabled}
+                    style={{
+                      minWidth: 190,
+                      border: 'none',
+                      borderRadius: 14,
+                      background: !user ? C.blue : C.mars,
+                      color: '#fff',
+                      padding: '14px 18px',
+                      fontSize: 'calc(15px * var(--font-scale, 1))',
+                      fontWeight: 700,
+                      cursor: startDisabled ? 'not-allowed' : 'pointer',
+                      opacity: startDisabled ? 0.55 : 1,
+                      transition: 'opacity 0.18s ease, transform 0.18s ease',
+                      fontFamily: 'var(--font-body)',
+                    }}
+                  >
+                    {startButtonLabel}
+                  </button>
                 </div>
-              ) : null}
+              </div>
             </div>
-
-            <button
-              onClick={handleStartTraining}
-              disabled={startDisabled}
-              style={{
-                marginTop: 24,
-                width: '100%',
-                border: 'none',
-                borderRadius: 14,
-                background: !user ? C.blue : C.mars,
-                color: '#fff',
-                padding: '14px 16px',
-                fontSize: 'calc(15px * var(--font-scale, 1))',
-                fontWeight: 700,
-                cursor: startDisabled ? 'not-allowed' : 'pointer',
-                opacity: startDisabled ? 0.55 : 1,
-                transition: 'opacity 0.18s ease, transform 0.18s ease',
-                fontFamily: 'var(--font-body)',
-              }}
-            >
-              {startButtonLabel}
-            </button>
           </section>
 
           <section className="glass-card" style={{ padding: 26 }}>
