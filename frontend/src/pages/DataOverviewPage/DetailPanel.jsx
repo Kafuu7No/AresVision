@@ -318,7 +318,7 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
                 padding: 0,
                 overflow: 'hidden',
                 flexShrink: 0,
-                transition: 'all 0.5s ease',
+                transition: 'box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease',
               }}
             >
               <div
@@ -362,7 +362,7 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
                   display: 'grid',
                   gridTemplateRows: isExpanded ? '1fr' : '0fr',
                   opacity: isExpanded ? 1 : 0,
-                  transition: 'all 0.5s ease',
+                  transition: 'grid-template-rows 0.35s ease, opacity 0.25s ease',
                 }}
               >
                 <div style={{ overflow: 'hidden' }}>

@@ -14,6 +14,7 @@ export default function CouplingAnalysis({ marsYear, dataSourceMode = 'default' 
   const plotGrid = isLight ? 'rgba(23,33,47,0.12)' : 'rgba(160,196,240,0.16)';
 
   const isZh = settings.language === 'zh';
+  const chartHeight = 360;
   
   const copy = isZh ? {
     title: '沙尘-臭氧耦合分析',
@@ -103,12 +104,12 @@ export default function CouplingAnalysis({ marsYear, dataSourceMode = 'default' 
   }
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', display: 'grid', gridTemplateRows: 'auto auto', gap: 12 }}>
       <div style={{ marginBottom: 12 }}>
         <h3 style={{ color: C.ice, margin: '0 0 4px 0', fontSize: 'calc(16px * var(--font-scale, 1))' }}>{copy.title}</h3>
         <p style={{ color: C.ice60, fontSize: 'calc(12px * var(--font-scale, 1))', margin: 0 }}>{copy.desc}</p>
       </div>
-      <div style={{ flex: 1, minHeight: 300 }}>
+      <div style={{ minHeight: chartHeight, height: chartHeight }}>
         <Plot
           data={[
             {
@@ -163,7 +164,7 @@ export default function CouplingAnalysis({ marsYear, dataSourceMode = 'default' 
           }}
           config={{ displayModeBar: false, responsive: true }}
           useResizeHandler
-          style={{ width: '100%', height: '100%' }}
+          style={{ width: '100%', height: chartHeight }}
         />
       </div>
     </div>
