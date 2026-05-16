@@ -39,7 +39,7 @@ _OPENMARS = "openmars"
 _MCD = "mcd"
 _PERSONAL = "personal"
 _DEFAULT = "default"
-_ALLOWED_STATUSES = ("valid", "pending_review", "approved")
+_ALLOWED_STATUSES = ("valid", "pending_review", "approved", "rejected")
 
 # "Full year" heuristic on Ls:
 # start near 0, end near 360, enough span, and no large holes.

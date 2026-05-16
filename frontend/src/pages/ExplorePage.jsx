@@ -6,6 +6,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import SectionTitle from '../components/SectionTitle';
 import GlowCard from '../components/GlowCard';
 import DefaultDatasetTab from './ExplorePage/DefaultDatasetTab';
+import GovernanceTab from './ExplorePage/GovernanceTab';
 import MyDataTab from './ExplorePage/MyDataTab';
 
 function createCopy(isZh) {
@@ -17,6 +18,8 @@ function createCopy(isZh) {
     tabAssetDesc: isZh ? '查看平台已有系统数据和状态' : 'View platform-owned datasets and readiness',
     tabMySource: isZh ? '我的数据源' : 'My Data Source',
     tabMySourceDesc: isZh ? '上传并接入个人可用数据源' : 'Upload and ingest a personal source',
+    tabGovernance: isZh ? '数据治理' : 'Data Governance',
+    tabGovernanceDesc: isZh ? '查看质量评分、血缘记录和生效资产状态' : 'Inspect quality scores, lineage, and active asset status',
     tabContribute: isZh ? '平台贡献' : 'Platform Contribution',
     tabContributeDesc: isZh ? '把合格数据送审并查看贡献记录' : 'Submit qualified datasets for review',
     tabAdmin: isZh ? '管理员审核' : 'Admin Review',
@@ -183,6 +186,7 @@ export default function ExplorePage({ onOpenAdmin, reviewSignal = 0 }) {
     return [
       { key: 'official', label: copy.tabAsset, desc: copy.tabAssetDesc, accent: C.blue },
       { key: 'personal', label: copy.tabMySource, desc: copy.tabMySourceDesc, accent: C.green },
+      { key: 'governance', label: copy.tabGovernance, desc: copy.tabGovernanceDesc, accent: C.mars },
       { key: 'admin', label: copy.tabAdmin, desc: copy.tabAdminDesc, accent: '#f59e0b' },
     ];
   }, [copy]);
@@ -227,6 +231,8 @@ export default function ExplorePage({ onOpenAdmin, reviewSignal = 0 }) {
         {activeView === 'official' && <DefaultDatasetTab />}
 
         {activeView === 'personal' && <MyDataTab reviewSignal={reviewSignal} />}
+
+        {activeView === 'governance' && <GovernanceTab />}
 
         {activeView === 'admin' && (
           <AdminWorkspace onOpenAdmin={onOpenAdmin} isAdmin={isAdmin} copy={copy} isZh={isZh} />

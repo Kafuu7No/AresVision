@@ -16,12 +16,10 @@ import {
   fetchDataInfo,
 } from '../services/api';
 
-// Sub-components
 import { VARIABLE_DEFS, VIEW_MODE_IDS, TRIPTYCH_PANEL_DEFS } from './PredictPage/PredictComponents';
 import PredictSidebar from './PredictPage/PredictSidebar';
 import PredictDisplay from './PredictPage/PredictDisplay';
 import PredictMetrics from './PredictPage/PredictMetrics';
-import PredictPerformance from './PredictPage/PredictPerformance';
 import PredictBarChart from './PredictPage/PredictBarChart';
 import ShapleyImportanceChart from './PredictPage/ShapleyImportanceChart';
 import PredictFullscreenHUD from './PredictPage/PredictFullscreenHUD';
@@ -29,17 +27,17 @@ import ErrorDistributionChart from './PredictPage/ErrorDistributionChart';
 import PermutationImportanceChart from './PredictPage/PermutationImportanceChart';
 
 const SHORTHAND_MAP = {
-  'Temperature': 'T',
-  'Dust_Optical_Depth': 'D',
-  'Surface_Pressure': 'P',
-  'Solar_Flux_DN': 'S',
-  'U_Wind': 'U',
-  'V_Wind': 'V'
+  Temperature: 'T',
+  Dust_Optical_Depth: 'D',
+  Surface_Pressure: 'P',
+  Solar_Flux_DN: 'S',
+  U_Wind: 'U',
+  V_Wind: 'V',
 };
 
 const getShorthands = (vars) => {
   if (!vars || vars.length === 0) return 'baseline';
-  return vars.map(v => SHORTHAND_MAP[v] || v[0]).sort().join('');
+  return vars.map((v) => SHORTHAND_MAP[v] || v[0]).sort().join('');
 };
 
 export default function PredictPage() {
@@ -50,17 +48,14 @@ export default function PredictPage() {
   const ozoneUnit = settings.units.ozone;
   const isLight = settings.theme === 'light';
 
-  // Constants mapping
-  const VARIABLES = VARIABLE_DEFS.map(v => ({ ...v, label: t(`predict.variables.${v.id}`) }));
-  const VIEW_MODES = VIEW_MODE_IDS.map(id => ({ id, label: t(`predict.viewModes.${id}`) }));
-  const TRIPTYCH_PANELS = TRIPTYCH_PANEL_DEFS.map(p => ({ ...p, title: t(`predict.panels.${p.key}`) }));
+  const VARIABLES = VARIABLE_DEFS.map((v) => ({ ...v, label: t(`predict.variables.${v.id}`) }));
+  const VIEW_MODES = VIEW_MODE_IDS.map((id) => ({ id, label: t(`predict.viewModes.${id}`) }));
+  const TRIPTYCH_PANELS = TRIPTYCH_PANEL_DEFS.map((p) => ({ ...p, title: t(`predict.panels.${p.key}`) }));
 
-  // Style Tokens (for plots)
   const plotTextColor = isLight ? 'rgba(23,33,47,0.96)' : 'rgba(236,244,255,0.96)';
   const plotText60 = isLight ? 'rgba(23,33,47,0.76)' : 'rgba(214,228,244,0.78)';
   const plotGridColor = isLight ? 'rgba(23,33,47,0.12)' : 'rgba(160,196,240,0.16)';
 
-  // --- State（从缓存恢复，切换页面后保留预测结果）---
   const _c = getPredictCache();
 
   const [selectedVars, setSelectedVars] = useState(_c.params?.selectedVars ?? VARIABLE_DEFS.map((v) => v.id));
@@ -81,7 +76,7 @@ export default function PredictPage() {
   const [pfiData, setPfiData] = useState(_c.pfiData);
   const [error, setError] = useState(null);
 
-  const [fullscreen3D, setFullscreen3D] = useState(null); // { fieldData, colorMode }
+  const [fullscreen3D, setFullscreen3D] = useState(null);
 
   const [performanceData, setPerformanceData] = useState(_c.performanceData);
   const [perfLoading, setPerfLoading] = useState(false);
@@ -90,12 +85,8 @@ export default function PredictPage() {
 
   const [compareConfigs, setCompareConfigs] = useState(_c.compareConfigs);
   const [selectedCompareIds, setSelectedCompareIds] = useState(_c.selectedCompareIds);
-  const [activeCompareId, setActiveCompareId] = useState(null);
-  const [hiddenCompareIds, setHiddenCompareIds] = useState([]); // 新增：仅控制图表显隐的状态
-  const [showShapley, setShowShapley] = useState({ visible: false, mode: 'gradient' }); // 控制特征贡献度的显示与隐藏
+  const [showShapley, setShowShapley] = useState({ visible: false, mode: 'gradient' });
 
-
-  // --- Handlers ---
   const toggleVar = (id) => {
     setSelectedVars((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
@@ -103,6 +94,7 @@ export default function PredictPage() {
   useEffect(() => {
     let active = true;
     setIsSwitchingSource(true);
+
     fetchDataInfo({ dataSource: dataSourceMode })
       .then((info) => {
         if (!active) return;
@@ -135,10 +127,11 @@ export default function PredictPage() {
 
   const handlePredict = useCallback(async () => {
     if (isSwitchingSource) return;
+
     setMetrics(null);
     setErrorDistData(null);
     setPfiData(null);
-    setLoading(true); // 注意：由于 PFI 可能较慢，loading 状态可能需要分段显示，这里先统一控制
+    setLoading(true);
     setPfiLoading(true);
 
     const body = {
@@ -153,12 +146,14 @@ export default function PredictPage() {
         runPrediction(body, { dataSource: dataSourceMode }),
         fetchPredictMetrics(body, { dataSource: dataSourceMode }),
       ]);
+
       const [errorDistResult, pfiResult] = dataSourceMode === 'personal'
         ? [null, null]
         : await Promise.all([
             fetchErrorDistribution(selectedVars),
             fetchPermutationImportance(selectedVars),
           ]);
+
       setResults(predResult);
       setMetrics(metricsResult);
       setErrorDistData(errorDistResult);
@@ -180,7 +175,6 @@ export default function PredictPage() {
     }
   }, [selectedVars, predStep, lsStart, marsYear, dataSourceMode, isSwitchingSource, t]);
 
-  // 同步 UI 状态到缓存（用户在页面内的操作也持久化）
   useEffect(() => { setPredictCache({ viewMode }); }, [viewMode]);
   useEffect(() => { setPredictCache({ activeHorizon }); }, [activeHorizon]);
   useEffect(() => { setPredictCache({ performanceData }); }, [performanceData]);
@@ -192,10 +186,9 @@ export default function PredictPage() {
     setPerfLoading(true);
     try {
       if (selectedCompareIds.length > 0) {
-        // 模式 1: 通选模式（只要勾选了任何对比项，就不显示 "current"）
         const configs = compareConfigs
-          .filter(c => selectedCompareIds.includes(c.id))
-          .map(c => c.vars);
+          .filter((c) => selectedCompareIds.includes(c.id))
+          .map((c) => c.vars);
 
         let res = { results: {} };
         if (configs.length > 0) {
@@ -208,7 +201,6 @@ export default function PredictPage() {
 
         setPerformanceData(res);
       } else {
-        // 模式 2: 单个模式（未勾选任何对比项，显示当前所选变量的模型性能）
         const body = {
           selected_variables: selectedVars,
           horizon: predStep,
@@ -227,22 +219,18 @@ export default function PredictPage() {
     }
   }, [selectedVars, predStep, lsStart, marsYear, selectedCompareIds, compareConfigs, dataSourceMode]);
 
-
-
-  // --- Derived ---
   const step = results ? Math.min(activeHorizon, (results.horizon || 1) - 1) : 0;
   const truthField = results?.ground_truth?.[step] ?? null;
   const predField = results?.prediction?.[step] ?? null;
   const residField = results?.residual?.[step] ?? null;
   const stepLs = results?.ls_values?.[step];
 
-  const stepLabel = (ls) => ls != null ? ` · Ls=${ls.toFixed(3)}°` : '';
+  const stepLabel = (ls) => (ls != null ? ` · Ls=${ls.toFixed(3)}°` : '');
 
-  // 提取当前测边栏所选变量对应的性能指标
   const currentSelectionShorthand = getShorthands(selectedVars);
-  const currentSelectionMetrics = performanceData?.results?.[currentSelectionShorthand] 
-    || performanceData?.results?.current 
-    || performanceData?.results?.baseline 
+  const currentSelectionMetrics = performanceData?.results?.[currentSelectionShorthand]
+    || performanceData?.results?.current
+    || performanceData?.results?.baseline
     || null;
 
   return (
@@ -279,7 +267,6 @@ export default function PredictPage() {
           handleFetchPerformance={handleFetchPerformance}
           precision={precision}
         />
-
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <PredictDisplay
@@ -339,26 +326,6 @@ export default function PredictPage() {
             showShapley={showShapley}
             setShowShapley={setShowShapley}
           />
-
-          <PredictPerformance
-            isLight={isLight}
-            performanceData={performanceData}
-            perfLoading={perfLoading}
-            activePerfMetric={activePerfMetric}
-            setActivePerfMetric={setActivePerfMetric}
-            handleFetchPerformance={handleFetchPerformance}
-            compareConfigs={compareConfigs}
-            activeCompareId={activeCompareId}
-            setActiveCompareId={setActiveCompareId}
-            plotTextColor={plotTextColor}
-            plotText60={plotText60}
-            plotGridColor={plotGridColor}
-            precision={precision}
-            selectedCompareIds={selectedCompareIds}
-            setSelectedCompareIds={setSelectedCompareIds}
-            hiddenCompareIds={hiddenCompareIds}
-            setHiddenCompareIds={setHiddenCompareIds}
-          />
         </div>
       </div>
 
@@ -381,7 +348,6 @@ export default function PredictPage() {
           mode={showShapley.mode}
         />
       )}
-
     </div>
   );
 }

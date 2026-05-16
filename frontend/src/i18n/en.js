@@ -381,7 +381,8 @@ const en = {
       },
       datasetStateDesc: {
         invalid: 'This file failed validation and will not be used by downstream pages.',
-        rejected: 'This file is not in the active personal-source path, so Personal mode will not use it.',
+        rejected: 'This file was rejected from the public merge flow, so it cannot enter the platform default dataset. If it has already entered your personal source path, the uploader can still keep using it in Personal mode.',
+        rejectedMixed: 'This file was rejected from the public merge flow, so it cannot enter the platform default dataset. Your personal MCD can still remain in the mixed source for the uploader in Personal mode.',
         failed: 'The backend failed while building the personal source, so pages still fall back to the default system source.',
         building: 'Validation passed and the backend is still building the personal source. Other pages can use it after processing completes.',
         personal: 'This file is part of the personal data source and can be used by overview, analysis, prediction, and training pages in Personal mode.',

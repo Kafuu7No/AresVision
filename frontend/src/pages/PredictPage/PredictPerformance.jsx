@@ -16,11 +16,93 @@ const SHORTHAND_MAP = {
 };
 
 const SERIES_COLORS = [C.mars, C.blue, C.green, C.purple, '#d9a441', '#6fa9ff'];
+const GOOD_METRICS = new Set(['r2', 'ssim']);
 
 const getShorthands = (vars) => {
   if (!vars || vars.length === 0) return 'baseline';
   return vars.map((v) => SHORTHAND_MAP[v] || v[0]).sort().join('');
 };
+
+const cardTitleClampStyle = {
+  display: '-webkit-box',
+  WebkitBoxOrient: 'vertical',
+  WebkitLineClamp: 2,
+  overflow: 'hidden',
+  lineHeight: 1.35,
+  minHeight: '2.7em',
+};
+
+function CompactStatCard({ label, value, hint, color, compact = false, eyebrow, valueClampLines = 3 }) {
+  return (
+    <div
+      style={{
+        padding: compact ? '12px 14px' : '14px 16px',
+        borderRadius: 14,
+        background: C.bgMuted,
+        border: `1px solid ${C.border}`,
+        minWidth: 0,
+      }}
+    >
+      {eyebrow ? (
+        <div
+          style={{
+            fontSize: 'calc(9px * var(--font-scale, 1))',
+            color: C.ice40,
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            marginBottom: 6,
+          }}
+        >
+          {eyebrow}
+        </div>
+      ) : null}
+      <div
+        style={{
+          fontSize: 'calc(10px * var(--font-scale, 1))',
+          color: C.ice40,
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em',
+          ...cardTitleClampStyle,
+        }}
+        title={label}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          marginTop: compact ? 8 : 10,
+          fontSize: compact ? 'calc(17px * var(--font-scale, 1))' : 'calc(18px * var(--font-scale, 1))',
+          fontWeight: 800,
+          color,
+          fontFamily: 'var(--font-display)',
+          letterSpacing: '-0.02em',
+          overflowWrap: 'anywhere',
+          display: '-webkit-box',
+          WebkitBoxOrient: 'vertical',
+          WebkitLineClamp: valueClampLines,
+          overflow: 'hidden',
+        }}
+        title={String(value)}
+      >
+        {value}
+      </div>
+      <div
+        style={{
+          marginTop: 6,
+          fontSize: 'calc(10px * var(--font-scale, 1))',
+          color: C.ice60,
+          overflowWrap: 'anywhere',
+          lineHeight: 1.45,
+        }}
+        title={hint || ''}
+      >
+        {hint}
+      </div>
+    </div>
+  );
+}
 
 function MetricSelector({ activePerfMetric, setActivePerfMetric }) {
   return (
@@ -45,7 +127,7 @@ function MetricSelector({ activePerfMetric, setActivePerfMetric }) {
               padding: '7px 12px',
               border: 'none',
               borderRadius: 10,
-              background: active ? 'rgba(74,158,255,0.12)' : 'transparent',
+              background: active ? 'rgba(121,187,255,0.16)' : 'transparent',
               color: active ? C.blue : C.ice60,
               fontSize: 'calc(11px * var(--font-scale, 1))',
               fontWeight: active ? 700 : 600,
@@ -95,6 +177,9 @@ export default function PredictPerformance({
     mean: isZh ? '平均指标' : 'Average metric',
     globalSummary: isZh ? '全局摘要' : 'Global summary',
     hiddenHint: isZh ? '隐藏组合不会出现在曲线图中。' : 'Hidden configurations are excluded from the chart.',
+    activeModel: isZh ? '当前模型' : 'Active model',
+    activeModelHint: isZh ? '当前详情面板聚焦的模型组合' : 'The model configuration currently highlighted in this panel',
+    globalEyebrow: isZh ? '全局' : 'Global',
   };
 
   const filteredEntries = Object.entries(performanceData?.results || {}).filter(([key]) => {
@@ -129,14 +214,14 @@ export default function PredictPerformance({
     })
     .filter(Boolean);
 
-  const resultKeys = Object.keys(performanceData?.results || {});
-  const effectiveId = activeCompareId || resultKeys[0];
-  const activeItem = performanceData?.results?.[effectiveId];
+  const resultKeys = traces.map((item) => item.key);
+  const effectiveId = resultKeys.includes(activeCompareId) ? activeCompareId : resultKeys[0];
+  const activeItem = effectiveId ? performanceData?.results?.[effectiveId] : null;
 
   const peakItem = activeItem?.items?.reduce((best, current) => {
     const currentValue = current?.[activePerfMetric];
     const bestValue = best?.[activePerfMetric];
-    const maximize = activePerfMetric === 'r2' || activePerfMetric === 'ssim';
+    const maximize = GOOD_METRICS.has(activePerfMetric);
     if (currentValue == null) return best;
     if (!best) return current;
     return maximize ? (currentValue > bestValue ? current : best) : (currentValue < bestValue ? current : best);
@@ -144,26 +229,28 @@ export default function PredictPerformance({
 
   const globalCards = activeItem
     ? [
-        { label: t('predict.globalR2'), value: activeItem.global_r2, color: C.green },
-        { label: t('predict.globalRMSE'), value: activeItem.global_rmse, color: C.mars },
-        { label: t('predict.globalMAE'), value: activeItem.global_mae, color: C.mars },
-        { label: t('predict.globalSSIM'), value: activeItem.global_ssim, color: C.green },
+        { label: 'R²', value: activeItem.global_r2, color: C.green },
+        { label: 'RMSE', value: activeItem.global_rmse, color: C.mars },
+        { label: 'MAE', value: activeItem.global_mae, color: C.mars },
+        { label: 'SSIM', value: activeItem.global_ssim, color: C.green },
       ]
     : [];
+
+  const metricName = METRIC_META.find((item) => item.key === activePerfMetric)?.name || activePerfMetric;
 
   return (
     <GlowCard style={{ padding: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', marginBottom: 18, flexWrap: 'wrap' }}>
-        <div style={{ maxWidth: 560 }}>
+        <div style={{ maxWidth: 560, minWidth: 0 }}>
           <div style={{ fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 700, color: C.ice, fontFamily: 'var(--font-display)' }}>
             {copy.title}
           </div>
-          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice50, marginTop: 6, lineHeight: 1.6 }}>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice60, marginTop: 6, lineHeight: 1.6 }}>
             {copy.subtitle}
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', minWidth: 0 }}>
           <MetricSelector activePerfMetric={activePerfMetric} setActivePerfMetric={setActivePerfMetric} />
           <button
             onClick={handleFetchPerformance}
@@ -173,7 +260,7 @@ export default function PredictPerformance({
               borderRadius: 12,
               border: `1px solid ${C.borderStrong}`,
               background: C.bgMuted,
-              color: perfLoading ? C.ice40 : C.ice60,
+              color: perfLoading ? C.ice40 : C.ice70,
               fontSize: 'calc(11px * var(--font-scale, 1))',
               fontWeight: 700,
               cursor: perfLoading ? 'not-allowed' : 'pointer',
@@ -186,13 +273,15 @@ export default function PredictPerformance({
       </div>
 
       {performanceData ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, minWidth: 0 }}>
           <div
             style={{
               background: isLight ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.02)',
               borderRadius: 18,
               border: `1px solid ${C.border}`,
               padding: 12,
+              minWidth: 0,
+              overflow: 'hidden',
             }}
           >
             {traces.length > 0 ? (
@@ -214,12 +303,12 @@ export default function PredictPerformance({
                     ticktext: ['350', '360', '10', '20', '30', '40', '50', '60', '70'],
                   },
                   yaxis: {
-                    title: { text: METRIC_META.find((item) => item.key === activePerfMetric)?.name || activePerfMetric, font: { size: 11, color: plotTextColor } },
+                    title: { text: metricName, font: { size: 11, color: plotTextColor } },
                     tickfont: { size: 10, color: plotText60 },
                     gridcolor: plotGridColor,
                     zeroline: false,
-                    range: activePerfMetric === 'r2' || activePerfMetric === 'ssim' ? [0.6, 1.0] : undefined,
-                    autorange: !(activePerfMetric === 'r2' || activePerfMetric === 'ssim'),
+                    range: GOOD_METRICS.has(activePerfMetric) ? [0.6, 1.0] : undefined,
+                    autorange: !GOOD_METRICS.has(activePerfMetric),
                   },
                   shapes: [
                     {
@@ -243,26 +332,18 @@ export default function PredictPerformance({
                       font: { size: 9, color: plotText60 },
                     },
                   ],
-                  showlegend: true,
-                  legend: {
-                    orientation: 'h',
-                    yanchor: 'bottom',
-                    y: 1.06,
-                    xanchor: 'left',
-                    x: 0,
-                    font: { size: 10, color: plotText60 },
-                  },
+                  showlegend: false,
                   hovermode: 'closest',
                 }}
                 config={{ displayModeBar: false, responsive: true }}
-                style={{ width: '100%' }}
+                style={{ width: '100%', minWidth: 0 }}
               />
             ) : (
               <div
                 style={{
                   padding: '56px 24px',
                   textAlign: 'center',
-                  color: C.ice50,
+                  color: C.ice60,
                   fontSize: 'calc(12px * var(--font-scale, 1))',
                 }}
               >
@@ -272,12 +353,33 @@ export default function PredictPerformance({
           </div>
 
           {filteredEntries.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 220px) 1fr', gap: 16 }}>
-              <div style={{ padding: 16, borderRadius: 16, background: C.bgMuted, border: `1px solid ${C.border}` }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 220px) minmax(0, 1fr)', gap: 16, minWidth: 0 }}>
+              <div
+                style={{
+                  padding: 16,
+                  borderRadius: 16,
+                  background: C.bgMuted,
+                  border: `1px solid ${C.border}`,
+                  minWidth: 0,
+                  alignSelf: 'start',
+                  maxHeight: 372,
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
                 <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice50, marginBottom: 10 }}>
                   {copy.compare}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                    minWidth: 0,
+                    overflowY: 'auto',
+                    paddingRight: 4,
+                  }}
+                >
                   {traces.map((item) => {
                     const active = item.key === effectiveId;
                     return (
@@ -295,7 +397,12 @@ export default function PredictPerformance({
                           cursor: 'pointer',
                           textAlign: 'left',
                           transition: 'all 0.2s ease',
+                          minWidth: 0,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
                         }}
+                        title={item.label}
                       >
                         {item.label}
                       </button>
@@ -309,20 +416,29 @@ export default function PredictPerformance({
                 ) : null}
               </div>
 
-              <div style={{ display: 'grid', gap: 14 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+              <div style={{ display: 'grid', gap: 14, minWidth: 0 }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(220px, 360px) repeat(auto-fit, minmax(170px, 210px))',
+                    gap: 12,
+                    minWidth: 0,
+                    justifyContent: 'start',
+                  }}
+                >
+                  <CompactStatCard
+                    label={copy.activeModel}
+                    value={traces.find((item) => item.key === effectiveId)?.label || '--'}
+                    hint={copy.activeModelHint}
+                    color={C.blue}
+                    valueClampLines={2}
+                  />
                   {[
                     {
-                      label: copy.overview,
-                      value: traces.find((item) => item.key === effectiveId)?.label || '--',
-                      hint: copy.globalSummary,
-                      color: C.blue,
-                    },
-                    {
                       label: copy.bestSlice,
-                      value: peakItem ? `MY${peakItem.my} · Ls ${fmtNum(peakItem.ls, 1)}` : '--',
+                      value: peakItem ? `MY${peakItem.my} | Ls ${fmtNum(peakItem.ls, 1)}` : '--',
                       hint: peakItem ? fmtNum(peakItem[activePerfMetric], precision) : '--',
-                      color: C.green,
+                      color: GOOD_METRICS.has(activePerfMetric) ? C.green : C.mars,
                     },
                     {
                       label: copy.mean,
@@ -332,51 +448,41 @@ export default function PredictPerformance({
                             precision,
                           )
                         : '--',
-                      hint: METRIC_META.find((item) => item.key === activePerfMetric)?.name || activePerfMetric,
+                      hint: metricName,
                       color: C.purple,
                     },
                   ].map((item) => (
-                    <div
+                    <CompactStatCard
                       key={item.label}
-                      style={{
-                        padding: '14px 16px',
-                        borderRadius: 14,
-                        background: C.bgMuted,
-                        border: `1px solid ${C.border}`,
-                      }}
-                    >
-                      <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice40, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                        {item.label}
-                      </div>
-                      <div style={{ marginTop: 10, fontSize: 'calc(18px * var(--font-scale, 1))', fontWeight: 800, color: item.color, fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
-                        {item.value}
-                      </div>
-                      <div style={{ marginTop: 6, fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice50 }}>
-                        {item.hint}
-                      </div>
-                    </div>
+                      label={item.label}
+                      value={item.value}
+                      hint={item.hint}
+                      color={item.color}
+                    />
                   ))}
                 </div>
 
                 {globalCards.length > 0 ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(148px, 188px))',
+                      gap: 12,
+                      minWidth: 0,
+                      justifyContent: 'start',
+                    }}
+                  >
                     {globalCards.map((metric) => (
-                      <div
+                      <CompactStatCard
                         key={metric.label}
-                        style={{
-                          padding: '12px 14px',
-                          background: `${metric.color}10`,
-                          borderRadius: 14,
-                          border: `1px solid ${metric.color}33`,
-                        }}
-                      >
-                        <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice40, fontWeight: 600 }}>
-                          {metric.label}
-                        </div>
-                        <div style={{ marginTop: 8, fontSize: 'calc(18px * var(--font-scale, 1))', color: metric.color, fontWeight: 800, fontFamily: 'var(--font-display)' }}>
-                          {fmtNum(metric.value || 0, precision)}
-                        </div>
-                      </div>
+                        label={metric.label}
+                        value={fmtNum(metric.value || 0, precision)}
+                        hint={isZh ? copy.globalSummary : copy.globalEyebrow}
+                        color={metric.color}
+                        compact
+                        eyebrow={copy.globalEyebrow}
+                        valueClampLines={1}
+                      />
                     ))}
                   </div>
                 ) : null}
@@ -389,7 +495,7 @@ export default function PredictPerformance({
           style={{
             padding: '42px 0',
             textAlign: 'center',
-            color: C.ice50,
+            color: C.ice60,
             fontSize: 'calc(12px * var(--font-scale, 1))',
             background: C.bgMuted,
             borderRadius: 16,

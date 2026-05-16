@@ -22,7 +22,7 @@ import LineChart from './LineChart';
 import GlobePlot from './GlobePlot';
 import { LoadingBox } from './ExploreComponents';
 
-const ACTIVE_UPLOAD_STATUSES = new Set(['valid', 'pending_review', 'approved']);
+const ACTIVE_UPLOAD_STATUSES = new Set(['valid', 'pending_review', 'approved', 'rejected']);
 
 function createCopy(isZh) {
   return {
@@ -53,7 +53,7 @@ function createCopy(isZh) {
     ruleValid: isZh ? '上传校验通过' : 'Upload validation passed',
     ruleBuildReady: isZh ? '个人数据源构建完成' : 'Personal source build is ready',
     ruleAdopted: isZh ? '已进入个人或混合数据源' : 'Actually adopted into personal or mixed source',
-    ruleRejected: isZh ? '未被驳回且未处理失败' : 'Not rejected and not failed',
+    ruleRejected: isZh ? '个人使用链路稳定可用' : 'Stable for personal use',
     ruleContributeBase: isZh ? '状态仍为 valid，可提交审核' : 'Status is still valid and can be submitted',
     ruleContributePending: isZh ? '已进入管理员审核队列' : 'Already in admin review queue',
     ruleContributeApproved: isZh ? '已并入平台官方数据资产' : 'Already merged into official platform assets',
@@ -395,19 +395,6 @@ function deriveDatasetState(upload, personalInfo, buildStatus, t) {
     };
   }
 
-  if (upload.status === 'rejected') {
-    return {
-      key: 'rejected',
-      usable: false,
-      label: t('explore.myData.datasetState.rejected'),
-      desc: upload.validation_message || t('explore.myData.datasetStateDesc.rejected'),
-      color: C.mars,
-      bg: 'rgba(199,91,57,0.1)',
-      modeMeta: getYearModeMeta(rawMode, t),
-      usagePages: [],
-    };
-  }
-
   if (!ACTIVE_UPLOAD_STATUSES.has(upload.status)) {
     return {
       key: 'inactive',
@@ -449,12 +436,14 @@ function deriveDatasetState(upload, personalInfo, buildStatus, t) {
 
   if (rawMode === 'personal_full_year') {
     return {
-      key: 'personal',
+      key: upload.status === 'rejected' ? 'rejected_personal' : 'personal',
       usable: true,
       label: t('explore.myData.datasetState.personal'),
-      desc: t('explore.myData.datasetStateDesc.personal'),
-      color: C.green,
-      bg: 'rgba(74,207,172,0.1)',
+      desc: upload.status === 'rejected'
+        ? t('explore.myData.datasetStateDesc.rejected')
+        : t('explore.myData.datasetStateDesc.personal'),
+      color: upload.status === 'rejected' ? C.mars : C.green,
+      bg: upload.status === 'rejected' ? 'rgba(199,91,57,0.1)' : 'rgba(74,207,172,0.1)',
       modeMeta: getYearModeMeta(rawMode, t),
       usagePages: [
         t('explore.myData.usage.visual'),
@@ -468,12 +457,14 @@ function deriveDatasetState(upload, personalInfo, buildStatus, t) {
   if (rawMode === 'personal_mcd_plus_system_openmars') {
     if (type === 'mcd') {
       return {
-        key: 'mixed',
+        key: upload.status === 'rejected' ? 'rejected_mixed' : 'mixed',
         usable: true,
         label: t('explore.myData.datasetState.mixed'),
-        desc: t('explore.myData.datasetStateDesc.mixed'),
-        color: C.blue,
-        bg: 'rgba(74,158,255,0.1)',
+        desc: upload.status === 'rejected'
+          ? t('explore.myData.datasetStateDesc.rejectedMixed')
+          : t('explore.myData.datasetStateDesc.mixed'),
+        color: upload.status === 'rejected' ? C.mars : C.blue,
+        bg: upload.status === 'rejected' ? 'rgba(199,91,57,0.1)' : 'rgba(74,158,255,0.1)',
         modeMeta: getYearModeMeta(rawMode, t),
         usagePages: [
           t('explore.myData.usage.visual'),
@@ -511,7 +502,7 @@ function deriveDatasetState(upload, personalInfo, buildStatus, t) {
 }
 
 function deriveAnalysisCondition(datasetState, buildStatus, copy) {
-  const passedValidation = !['invalid', 'rejected'].includes(datasetState.key);
+  const passedValidation = !['invalid'].includes(datasetState.key);
   const buildReady = buildStatus === 'ready';
   const adopted = datasetState.usable;
   const stable = !['failed', 'building', 'inactive', 'fallback'].includes(datasetState.key);
@@ -557,7 +548,7 @@ function deriveLifecycleLabel(upload, datasetState, buildStatus, copy) {
 }
 
 function isAttentionState(ctx) {
-  return ['invalid', 'rejected', 'failed', 'building', 'fallback', 'inactive'].includes(ctx?.datasetState?.key);
+  return ['invalid', 'failed', 'building', 'fallback', 'inactive', 'rejected_personal', 'rejected_mixed'].includes(ctx?.datasetState?.key);
 }
 
 function isContributionFlowItem(ctx) {
