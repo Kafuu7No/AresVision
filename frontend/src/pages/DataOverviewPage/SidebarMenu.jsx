@@ -2,7 +2,13 @@ import React from 'react';
 import C from '../../constants/colors';
 import { useDataOverview } from '../../contexts/DataOverviewContext';
 import { useSettings } from '../../contexts/SettingsContext';
+import { useToast } from '../../contexts/ToastContext';
 import { GLOBE_VARIABLE_OPTIONS } from '../../constants/globeVariables';
+import {
+  getPersonalSourceAvailability,
+  getPersonalSourceBlockedMessage,
+  getPersonalSourceCheckFailedMessage,
+} from '../../utils/personalSourceGuard';
 
 const NAVBAR_HEIGHT = 70;
 
@@ -302,6 +308,7 @@ function AdvancedToggleGroup({ title, open, onToggle, children, isLight = false,
 
 export default function SidebarMenu() {
   const { settings } = useSettings();
+  const { showToast } = useToast();
   const isLight = settings?.theme === 'light';
   const isZh = settings?.language !== 'en';
   const {
@@ -313,6 +320,7 @@ export default function SidebarMenu() {
     dataSourceMode,
     setDataSourceMode,
     isSwitchingSource,
+    setIsSwitchingSource,
     sourceMeta,
     autoRotate,
     setAutoRotate,
@@ -385,6 +393,35 @@ export default function SidebarMenu() {
     document.addEventListener('mouseup', onMouseUp);
   }, [leftPanelWidth, setLeftPanelWidth]);
 
+  const handleDataSourceModeChange = React.useCallback(async (nextMode) => {
+    if (isSwitchingSource || nextMode === dataSourceMode) return;
+    if (nextMode !== 'personal') {
+      setDataSourceMode(nextMode);
+      return;
+    }
+
+    try {
+      setIsSwitchingSource(true);
+      const { blocked } = await getPersonalSourceAvailability();
+      if (blocked) {
+        showToast(getPersonalSourceBlockedMessage(isZh), 'error');
+        setIsSwitchingSource(false);
+        return;
+      }
+      setDataSourceMode('personal');
+    } catch {
+      showToast(getPersonalSourceCheckFailedMessage(isZh), 'error');
+      setIsSwitchingSource(false);
+    }
+  }, [
+    dataSourceMode,
+    isSwitchingSource,
+    isZh,
+    setDataSourceMode,
+    setIsSwitchingSource,
+    showToast,
+  ]);
+
   return (
     <div
       style={{
@@ -451,7 +488,7 @@ export default function SidebarMenu() {
               </div>
               <SegmentedToggle
                 value={dataSourceMode}
-                onChange={setDataSourceMode}
+                onChange={handleDataSourceModeChange}
                 disabled={isSwitchingSource}
                 isLight={isLight}
                 options={[

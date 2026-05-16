@@ -3,6 +3,7 @@ import C from '../constants/colors';
 import { useT } from '../i18n';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import {
   fetchScripts,
   startTrainingTask,
@@ -10,6 +11,11 @@ import {
   deleteTrainingTask,
   fetchDataInfo,
 } from '../services/api';
+import {
+  getPersonalSourceAvailability,
+  getPersonalSourceBlockedMessage,
+  getPersonalSourceCheckFailedMessage,
+} from '../utils/personalSourceGuard';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ModelTestModal from '../components/ModelTestModal';
 import TrainingProgressMonitor from '../components/TrainingProgressMonitor';
@@ -447,6 +453,7 @@ export default function ModelTrainingPage() {
   const t = useT();
   const { settings } = useSettings();
   const { user, openAuthModal } = useAuth();
+  const { showToast } = useToast();
   const isLight = settings.theme === 'light';
   const isZh = settings.language !== 'en';
   const locale = isZh ? 'zh-CN' : 'en-US';
@@ -465,6 +472,7 @@ export default function ModelTrainingPage() {
   const [scripts, setScripts] = useState([]);
   const [scriptsLoading, setScriptsLoading] = useState(false);
   const [scriptsError, setScriptsError] = useState('');
+  const [isSwitchingSource, setIsSwitchingSource] = useState(false);
   const [dataSourceMode, setDataSourceMode] = useState('default');
   const [sourceMeta, setSourceMeta] = useState(null);
 
@@ -752,6 +760,7 @@ export default function ModelTrainingPage() {
 
   useEffect(() => {
     let active = true;
+    setIsSwitchingSource(true);
 
     fetchDataInfo({ dataSource: dataSourceMode })
       .then((info) => {
@@ -761,12 +770,38 @@ export default function ModelTrainingPage() {
       .catch(() => {
         if (!active) return;
         setSourceMeta(null);
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsSwitchingSource(false);
       });
 
     return () => {
       active = false;
     };
   }, [dataSourceMode, user?.id]);
+
+  const handleDataSourceModeChange = async (nextMode) => {
+    if (isSwitchingSource || nextMode === dataSourceMode) return;
+    if (nextMode !== 'personal') {
+      setDataSourceMode(nextMode);
+      return;
+    }
+
+    try {
+      setIsSwitchingSource(true);
+      const { blocked } = await getPersonalSourceAvailability();
+      if (blocked) {
+        showToast(getPersonalSourceBlockedMessage(isZh), 'error');
+        setIsSwitchingSource(false);
+        return;
+      }
+      setDataSourceMode('personal');
+    } catch {
+      showToast(getPersonalSourceCheckFailedMessage(isZh), 'error');
+      setIsSwitchingSource(false);
+    }
+  };
 
   useEffect(() => {
     if (autoScrollRef.current && logContainerRef.current) {
@@ -1049,7 +1084,8 @@ export default function ModelTrainingPage() {
                     return (
                       <button
                         key={option.value}
-                        onClick={() => setDataSourceMode(option.value)}
+                        onClick={() => handleDataSourceModeChange(option.value)}
+                        disabled={isSwitchingSource}
                         style={{
                           padding: '10px 12px',
                           borderRadius: 12,
@@ -1058,7 +1094,8 @@ export default function ModelTrainingPage() {
                           color: active ? C.blue : C.ice60,
                           fontSize: 'calc(12px * var(--font-scale, 1))',
                           fontWeight: active ? 700 : 600,
-                          cursor: 'pointer',
+                          cursor: isSwitchingSource ? 'not-allowed' : 'pointer',
+                          opacity: isSwitchingSource ? 0.72 : 1,
                         }}
                       >
                         {option.label}

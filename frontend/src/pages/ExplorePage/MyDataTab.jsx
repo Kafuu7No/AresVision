@@ -8,9 +8,11 @@ import GlowCard from '../../components/GlowCard';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import ContributeModal from '../../components/ContributeModal';
 import ContributeHistoryPanel from '../../components/ContributeHistoryPanel';
+import PersonalSourceWarmupBar from '../../components/PersonalSourceWarmupBar';
 import {
   deleteUpload,
   fetchDataInfo,
+  fetchPersonalBuildStatus,
   fetchUserBands,
   fetchUserDataSummary,
   fetchUserGlobeData,
@@ -1192,6 +1194,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
   const [uploads, setUploads] = useState([]);
   const [uploadsLoading, setUploadsLoading] = useState(false);
   const [personalSourceInfo, setPersonalSourceInfo] = useState(null);
+  const [personalBuildStatus, setPersonalBuildStatus] = useState(null);
   const [viewingId, setViewingId] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -1237,6 +1240,39 @@ export default function MyDataTab({ reviewSignal = 0 }) {
   useEffect(() => {
     if (user) loadWorkbench();
   }, [user, loadWorkbench, reviewSignal]);
+
+  useEffect(() => {
+    if (!user) {
+      setPersonalBuildStatus(null);
+      return undefined;
+    }
+
+    let active = true;
+    let timerId = null;
+
+    const poll = async () => {
+      try {
+        const status = await fetchPersonalBuildStatus();
+        if (!active) return;
+        setPersonalBuildStatus(status);
+        const stage = status?.stage || 'idle';
+        if (['queued', 'building_cache', 'warming_analysis', 'warming_predict'].includes(stage)) {
+          timerId = window.setTimeout(poll, 1200);
+        } else if (stage === 'ready') {
+          loadWorkbench().catch(() => {});
+        }
+      } catch {
+        if (!active) return;
+        timerId = window.setTimeout(poll, 2400);
+      }
+    };
+
+    poll();
+    return () => {
+      active = false;
+      if (timerId) window.clearTimeout(timerId);
+    };
+  }, [user, reviewSignal, loadWorkbench]);
 
   const loadViewData = useCallback(async (uploadId) => {
     setViewData({ summary: null, globe: null, heatmap: null, bands: null, loading: true, error: null });
@@ -1562,6 +1598,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <CurrentSourcePanel personalInfo={personalSourceInfo} buildStatus={buildStatus} t={t} />
+              <PersonalSourceWarmupBar status={personalBuildStatus || personalSourceInfo?.source_meta} />
 
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.7 }}>

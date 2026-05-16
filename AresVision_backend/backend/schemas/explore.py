@@ -11,6 +11,11 @@ class SourceMeta(BaseModel):
     fallback: bool = False
     message: str | None = None
     mars_year: int | None = None
+    build_status: str | None = None
+    build_stage: str | None = None
+    build_progress: float | None = None
+    build_stage_message: str | None = None
+    signature_hash: str | None = None
 
 
 class GlobePoint(BaseModel):

@@ -47,6 +47,12 @@ def _enqueue_personal_cache_rebuild(request: Request | None, user_id: int | None
         return
 
     enqueue = getattr(request.app.state, "enqueue_personal_cache_rebuild", None)
+    svc = getattr(request.app.state, "personal_data_source_service", None)
+    if svc is not None and hasattr(svc, "mark_build_queued"):
+        try:
+            asyncio.create_task(svc.mark_build_queued(uid))
+        except Exception as exc:
+            logger.warning("mark personal cache queued failed: %s", exc)
     if callable(enqueue):
         try:
             enqueue(uid)
@@ -54,7 +60,6 @@ def _enqueue_personal_cache_rebuild(request: Request | None, user_id: int | None
         except Exception as exc:
             logger.warning("enqueue personal cache rebuild failed: %s", exc)
 
-    svc = getattr(request.app.state, "personal_data_source_service", None)
     if svc is not None and hasattr(svc, "build_user_cache"):
         try:
             asyncio.create_task(svc.build_user_cache(uid))

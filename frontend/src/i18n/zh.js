@@ -49,6 +49,19 @@ const zh = {
     },
     positive: '正相关',
     negative: '负相关',
+    personalWarmup: {
+      title: 'Personal 数据源预热',
+      defaultMessage: '系统正在后台准备 personal 数据源与相关页面缓存。',
+      stage: {
+        idle: '未开始',
+        queued: '已排队',
+        buildingCache: '构建个人源',
+        warmingAnalysis: '预热分析缓存',
+        warmingPredict: '预热预测缓存',
+        ready: '已完成',
+        failed: '预热失败',
+      },
+    },
   },
 
   settings: {

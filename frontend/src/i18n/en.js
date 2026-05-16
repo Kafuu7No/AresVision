@@ -48,6 +48,19 @@ const en = {
     },
     positive: 'positive correlation',
     negative: 'negative correlation',
+    personalWarmup: {
+      title: 'Personal source warmup',
+      defaultMessage: 'The system is preparing the personal source and related page caches in the background.',
+      stage: {
+        idle: 'Idle',
+        queued: 'Queued',
+        buildingCache: 'Building source',
+        warmingAnalysis: 'Warming analysis',
+        warmingPredict: 'Warming prediction',
+        ready: 'Ready',
+        failed: 'Failed',
+      },
+    },
   },
 
   settings: {

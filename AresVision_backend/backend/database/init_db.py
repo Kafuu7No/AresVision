@@ -47,6 +47,25 @@ async def _patch_training_table_columns(conn) -> None:
             )
 
 
+async def _patch_personal_source_build_state_columns(conn) -> None:
+    """Add missing columns for personal source build states on legacy databases."""
+    result = await conn.execute(text("PRAGMA table_info(personal_source_build_states)"))
+    existing_columns = {row[1] for row in result.fetchall()}
+
+    columns_to_add = [
+        ("stage", "VARCHAR(40) DEFAULT 'idle'"),
+        ("progress", "FLOAT DEFAULT 0.0"),
+        ("stage_message", "TEXT"),
+    ]
+
+    for col_name, col_def in columns_to_add:
+        if col_name not in existing_columns:
+            logger.info("Adding missing column personal_source_build_states.%s", col_name)
+            await conn.execute(
+                text(f"ALTER TABLE personal_source_build_states ADD COLUMN {col_name} {col_def}")
+            )
+
+
 async def init_database() -> None:
     from auth.security import hash_password
 
@@ -57,6 +76,10 @@ async def init_database() -> None:
                 await _patch_training_table_columns(conn)
             except Exception as exc:
                 logger.warning("Could not auto-patch model_training_tasks schema: %s", exc)
+            try:
+                await _patch_personal_source_build_state_columns(conn)
+            except Exception as exc:
+                logger.warning("Could not auto-patch personal_source_build_states schema: %s", exc)
 
         logger.info("Database schema initialization complete")
 

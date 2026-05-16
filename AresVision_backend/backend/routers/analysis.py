@@ -220,6 +220,20 @@ async def get_data_info(
         raise HTTPException(status_code=500, detail=f"获取数据源信息失败: {exc}")
 
 
+@router.get("/personal-build-status")
+async def get_personal_build_status(
+    request: Request,
+    current_user: User | None = Depends(get_optional_user),
+):
+    try:
+        resolver = request.app.state.personal_data_source_service
+        return await resolver.get_build_status(current_user.id if current_user else None)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"获取个人数据源预热状态失败: {exc}")
+
+
 @router.get("/coupling")
 async def get_coupling(
     request: Request,

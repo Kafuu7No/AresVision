@@ -218,6 +218,9 @@ class PersonalSourceBuildState(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
     signature_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="idle")  # idle | building | ready | failed
+    stage: Mapped[str] = mapped_column(String(40), nullable=False, default="idle")  # idle | queued | building_cache | warming_analysis | warming_predict | ready | failed
+    progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    stage_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     built_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)

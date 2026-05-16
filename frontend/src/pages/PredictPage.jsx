@@ -4,6 +4,7 @@ import C from '../constants/colors';
 import { useT } from '../i18n';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import SectionTitle from '../components/SectionTitle';
 
 import {
@@ -15,6 +16,11 @@ import {
   fetchPermutationImportance,
   fetchDataInfo,
 } from '../services/api';
+import {
+  getPersonalSourceAvailability,
+  getPersonalSourceBlockedMessage,
+  getPersonalSourceCheckFailedMessage,
+} from '../utils/personalSourceGuard';
 
 import { VARIABLE_DEFS, VIEW_MODE_IDS, TRIPTYCH_PANEL_DEFS } from './PredictPage/PredictComponents';
 import PredictSidebar from './PredictPage/PredictSidebar';
@@ -44,6 +50,7 @@ export default function PredictPage() {
   const t = useT();
   const { settings } = useSettings();
   const { user } = useAuth();
+  const { showToast } = useToast();
   const precision = settings.precision;
   const ozoneUnit = settings.units.ozone;
   const isLight = settings.theme === 'light';
@@ -120,10 +127,27 @@ export default function PredictPage() {
     };
   }, [dataSourceMode, user?.id]);
 
-  const handleDataSourceModeChange = useCallback((nextMode) => {
+  const handleDataSourceModeChange = useCallback(async (nextMode) => {
     if (isSwitchingSource || nextMode === dataSourceMode) return;
-    setDataSourceMode(nextMode);
-  }, [dataSourceMode, isSwitchingSource]);
+    if (nextMode !== 'personal') {
+      setDataSourceMode(nextMode);
+      return;
+    }
+
+    try {
+      setIsSwitchingSource(true);
+      const { blocked } = await getPersonalSourceAvailability();
+      if (blocked) {
+        showToast(getPersonalSourceBlockedMessage(settings?.language !== 'en'), 'error');
+        setIsSwitchingSource(false);
+        return;
+      }
+      setDataSourceMode('personal');
+    } catch {
+      showToast(getPersonalSourceCheckFailedMessage(settings?.language !== 'en'), 'error');
+      setIsSwitchingSource(false);
+    }
+  }, [dataSourceMode, isSwitchingSource, settings?.language, showToast]);
 
   const handlePredict = useCallback(async () => {
     if (isSwitchingSource) return;

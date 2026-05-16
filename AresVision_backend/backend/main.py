@@ -10,6 +10,7 @@ import os
 import time
 import sys
 import asyncio
+from datetime import datetime, timezone
 from pathlib import Path
 from contextlib import asynccontextmanager, suppress
 
@@ -34,6 +35,7 @@ from services.upload_service import UploadService
 from services.user_data_service import UserDataService
 from services.personal_data_source_service import PersonalDataSourceService
 from services.data_governance_service import DataGovernanceService
+from services.personal_data_source_service import SingleYearDataView
 from core.analysis_transforms import AnalysisTransforms
 from core.predict_transforms import PredictTransforms
 from core.predict_inference import PredictInference
@@ -143,11 +145,133 @@ async def lifespan(app: FastAPI):
         personal_cache_pending_users.add(uid)
         personal_cache_rebuild_queue.put_nowait(uid)
 
+    async def warm_personal_runtime_caches(user_id: int) -> None:
+        status = await personal_source_service.get_build_status(user_id)
+        if status.get("status") != "ready":
+            return
+
+        info = await personal_source_service.get_data_info("personal", user_id)
+        years = list(info.get("available_years") or [])
+        if not years:
+            return
+
+        primary_year = int(years[0])
+
+        await personal_source_service._upsert_build_state(
+            user_id=user_id,
+            signature_hash=status.get("signature_hash") or "",
+            status="building",
+            stage="warming_analysis",
+            progress=72.0,
+            stage_message=personal_source_service._build_stage_message("warming_analysis"),
+            error=None,
+            duration_ms=status.get("duration_ms"),
+            built_at=None,
+        )
+
+        resolution = await personal_source_service.resolve_for_year("personal", primary_year, user_id)
+        if resolution.effective_source != "default":
+            analysis_cache = getattr(app.state, "personal_analysis_service_cache", None)
+            if analysis_cache is None:
+                from cachetools import LRUCache
+                analysis_cache = LRUCache(maxsize=16)
+                app.state.personal_analysis_service_cache = analysis_cache
+
+            analysis_key = (
+                int(user_id),
+                int(resolution.mars_year),
+                str(resolution.effective_source),
+                str(getattr(resolution, "signature_hash", "") or ""),
+            )
+            analysis_service_cached = analysis_cache.get(analysis_key)
+            if analysis_service_cached is None:
+                data_view = SingleYearDataView(
+                    mars_year=resolution.mars_year,
+                    openmars_data=resolution.openmars_data,
+                    aligned_mcd_data=resolution.aligned_mcd_data,
+                    mcd_raw_data=resolution.mcd_raw_data,
+                )
+                analysis_service_cached = AnalysisService(data_view)
+                analysis_cache[analysis_key] = analysis_service_cached
+            try:
+                await asyncio.to_thread(
+                    analysis_service_cached.get_seasonal_heatmap,
+                    resolution.mars_year,
+                    variable="o3col",
+                )
+                await asyncio.to_thread(
+                    analysis_service_cached.get_seasonal_bands,
+                    resolution.mars_year,
+                )
+            except Exception:
+                logger.exception("personal analysis cache warm failed for user %s", user_id)
+
+            await personal_source_service._upsert_build_state(
+                user_id=user_id,
+                signature_hash=status.get("signature_hash") or "",
+                status="building",
+                stage="warming_predict",
+                progress=88.0,
+                stage_message=personal_source_service._build_stage_message("warming_predict"),
+                error=None,
+                duration_ms=status.get("duration_ms"),
+                built_at=None,
+            )
+
+            predict_cache = getattr(app.state, "personal_predict_service_cache", None)
+            if predict_cache is None:
+                from cachetools import LRUCache
+                predict_cache = LRUCache(maxsize=16)
+                app.state.personal_predict_service_cache = predict_cache
+
+            predict_key = (
+                int(user_id),
+                int(resolution.mars_year),
+                str(resolution.effective_source),
+                str(getattr(resolution, "signature_hash", "") or ""),
+            )
+            predict_service_cached = predict_cache.get(predict_key)
+            if predict_service_cached is None:
+                data_view = SingleYearDataView(
+                    mars_year=resolution.mars_year,
+                    openmars_data=resolution.openmars_data,
+                    aligned_mcd_data=resolution.aligned_mcd_data,
+                    mcd_raw_data=resolution.mcd_raw_data,
+                )
+                personal_prep = PredictDataService(data_view, use_processed_tensor=False)
+                predict_service_cached = PredictOrchestratorService(
+                    data_service=data_view,
+                    ml_data_prep=personal_prep,
+                    transforms=app.state.predict_transforms,
+                    inference=app.state.predict_inference,
+                )
+                predict_cache[predict_key] = predict_service_cached
+            try:
+                ml_data_prep = getattr(predict_service_cached, "ml_data_prep", None)
+                if ml_data_prep is not None and hasattr(ml_data_prep, "prewarm_for_year"):
+                    await asyncio.to_thread(ml_data_prep.prewarm_for_year, resolution.mars_year)
+            except Exception:
+                logger.exception("personal predict cache warm failed for user %s", user_id)
+
+        final_status = await personal_source_service.get_build_status(user_id)
+        await personal_source_service._upsert_build_state(
+            user_id=user_id,
+            signature_hash=final_status.get("signature_hash") or status.get("signature_hash") or "",
+            status="ready",
+            stage="ready",
+            progress=100.0,
+            stage_message=personal_source_service._build_stage_message("ready"),
+            error=None,
+            duration_ms=final_status.get("duration_ms"),
+            built_at=datetime.now(timezone.utc),
+        )
+
     async def personal_cache_rebuild_worker() -> None:
         while True:
             uid = await personal_cache_rebuild_queue.get()
             try:
                 await personal_source_service.build_user_cache(uid)
+                await warm_personal_runtime_caches(uid)
             except asyncio.CancelledError:
                 raise
             except Exception:

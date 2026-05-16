@@ -15,6 +15,7 @@ import json
 import logging
 import re
 import shutil
+import threading
 import time
 import uuid
 from dataclasses import dataclass
@@ -61,6 +62,9 @@ class SourceResolution:
     message: Optional[str] = None
     build_status: Optional[str] = None
     signature_hash: Optional[str] = None
+    build_stage: Optional[str] = None
+    build_progress: Optional[float] = None
+    build_stage_message: Optional[str] = None
 
     def source_meta(self) -> dict:
         out = {
@@ -74,6 +78,12 @@ class SourceResolution:
             out["build_status"] = self.build_status
         if self.signature_hash:
             out["signature_hash"] = self.signature_hash
+        if self.build_stage:
+            out["build_stage"] = self.build_stage
+        if self.build_progress is not None:
+            out["build_progress"] = self.build_progress
+        if self.build_stage_message:
+            out["build_stage_message"] = self.build_stage_message
         return out
 
 
@@ -112,6 +122,7 @@ class PersonalDataSourceService:
         self._file_cache: LRUCache = LRUCache(maxsize=24)
         self._year_resolution_cache: LRUCache = LRUCache(maxsize=48)
         self._info_cache: LRUCache = LRUCache(maxsize=32)
+        self._cache_lock = threading.RLock()
         self._building_users: set[int] = set()
         PERSONAL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -191,6 +202,9 @@ class PersonalDataSourceService:
         user_id: int,
         signature_hash: str,
         status: str,
+        stage: str | None = None,
+        progress: float | None = None,
+        stage_message: str | None = None,
         error: str | None = None,
         duration_ms: int | None = None,
         built_at: datetime | None = None,
@@ -206,6 +220,9 @@ class PersonalDataSourceService:
                     user_id=user_id,
                     signature_hash=signature_hash,
                     status=status,
+                    stage=stage or status,
+                    progress=float(progress if progress is not None else (100.0 if status == "ready" else 0.0)),
+                    stage_message=stage_message,
                     error=error,
                     duration_ms=duration_ms,
                     built_at=built_at,
@@ -215,6 +232,9 @@ class PersonalDataSourceService:
             else:
                 row.signature_hash = signature_hash
                 row.status = status
+                row.stage = stage or status
+                row.progress = float(progress if progress is not None else row.progress or 0.0)
+                row.stage_message = stage_message
                 row.error = error
                 row.duration_ms = duration_ms
                 row.built_at = built_at
@@ -289,18 +309,42 @@ class PersonalDataSourceService:
             out["build_status"] = build_status
         return out
 
-    async def build_user_cache(self, user_id: int) -> None:
-        if user_id <= 0:
-            return
+    @staticmethod
+    def _build_stage_message(stage: str) -> str:
+        mapping = {
+            "idle": "personal source warmup has not started",
+            "queued": "personal source warmup queued",
+            "building_cache": "building personal source cache",
+            "warming_analysis": "warming personal analysis cache",
+            "warming_predict": "warming personal predict cache",
+            "ready": "personal source warmup ready",
+            "failed": "personal source warmup failed",
+        }
+        return mapping.get(stage, stage or "unknown")
 
-        t0 = time.time()
-        records = await self._fetch_user_records(user_id)
-        signature = self._build_signature(records)
-        signature_hash = self._signature_hash(signature)
-        system_years = self.data_service.get_available_years()
+    @staticmethod
+    def _clamp_progress(progress: float | int | None) -> float:
+        try:
+            value = float(progress if progress is not None else 0.0)
+        except (TypeError, ValueError):
+            value = 0.0
+        return max(0.0, min(100.0, value))
 
-        await self._upsert_build_state(user_id, signature_hash, status="building")
+    def _cache_get(self, cache: LRUCache, key):
+        with self._cache_lock:
+            return cache.get(key)
 
+    def _cache_set(self, cache: LRUCache, key, value) -> None:
+        with self._cache_lock:
+            cache[key] = value
+
+    def _build_user_cache_snapshot_sync(
+        self,
+        user_id: int,
+        signature_hash: str,
+        records: list[UploadRecord],
+        system_years: list[int],
+    ) -> None:
         target_dir = self._cache_build_dir(user_id, signature_hash)
         tmp_dir = self._cache_user_dir(user_id) / f".tmp_{signature_hash}_{uuid.uuid4().hex[:8]}"
         tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -348,7 +392,6 @@ class PersonalDataSourceService:
                 shutil.rmtree(target_dir, ignore_errors=True)
             tmp_dir.replace(target_dir)
 
-            # Keep only the latest two build snapshots to bound disk usage.
             siblings = sorted(
                 [p for p in self._cache_user_dir(user_id).iterdir() if p.is_dir() and p.name != signature_hash],
                 key=lambda p: p.stat().st_mtime,
@@ -356,12 +399,134 @@ class PersonalDataSourceService:
             )
             for old_dir in siblings[2:]:
                 shutil.rmtree(old_dir, ignore_errors=True)
+        except Exception:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            raise
 
+    def _resolve_from_records_sync(self, mars_year: int, records: list[UploadRecord]) -> SourceResolution:
+        user_assets = self._build_user_assets(records)
+        return self._resolve_from_assets(_PERSONAL, mars_year, user_assets)
+
+    def _build_info_from_records_sync(self, system_years: list[int], records: list[UploadRecord]) -> dict:
+        user_assets = self._build_user_assets(records)
+        resolutions = {
+            year: self._resolve_from_assets(_PERSONAL, year, user_assets)
+            for year in system_years
+        }
+        return self._build_personal_info(system_years, resolutions)
+
+    def _build_warming_default_info(self, system_years: list[int]) -> dict:
+        details = {}
+        for year in system_years:
+            ls_min, ls_max = self.data_service.get_ls_range(year)
+            details[f"MY{year}"] = {"ls_range": [ls_min, ls_max], "source_mode": _DEFAULT}
+        return {
+            "available_years": system_years,
+            "details": details,
+            "source_meta": {
+                "requested_source": _PERSONAL,
+                "effective_source": _DEFAULT,
+                "fallback": True,
+                "message": None,
+            },
+        }
+
+    async def mark_build_queued(self, user_id: int) -> None:
+        if user_id <= 0:
+            return
+        records = await self._fetch_user_records(user_id)
+        signature = self._build_signature(records)
+        signature_hash = self._signature_hash(signature)
+        await self._upsert_build_state(
+            user_id=user_id,
+            signature_hash=signature_hash,
+            status="building",
+            stage="queued",
+            progress=4.0,
+            stage_message=self._build_stage_message("queued"),
+            error=None,
+            duration_ms=None,
+            built_at=None,
+        )
+
+    async def get_build_status(self, user_id: int | None) -> dict:
+        if user_id is None or user_id <= 0:
+            return {
+                "status": "idle",
+                "stage": "idle",
+                "progress": 0.0,
+                "message": self._build_stage_message("idle"),
+                "signature_hash": "",
+                "error": None,
+                "duration_ms": None,
+                "built_at": None,
+                "updated_at": None,
+            }
+
+        row = await self._get_build_state(user_id)
+        if row is None:
+            return {
+                "status": "idle",
+                "stage": "idle",
+                "progress": 0.0,
+                "message": self._build_stage_message("idle"),
+                "signature_hash": "",
+                "error": None,
+                "duration_ms": None,
+                "built_at": None,
+                "updated_at": None,
+            }
+
+        return {
+            "status": row.status or "idle",
+            "stage": row.stage or row.status or "idle",
+            "progress": self._clamp_progress(row.progress),
+            "message": row.stage_message or self._build_stage_message(row.stage or row.status or "idle"),
+            "signature_hash": row.signature_hash or "",
+            "error": row.error,
+            "duration_ms": row.duration_ms,
+            "built_at": row.built_at.isoformat() if row.built_at else None,
+            "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+        }
+
+    async def build_user_cache(self, user_id: int) -> None:
+        if user_id <= 0:
+            return
+
+        t0 = time.time()
+        records = await self._fetch_user_records(user_id)
+        signature = self._build_signature(records)
+        signature_hash = self._signature_hash(signature)
+        system_years = self.data_service.get_available_years()
+
+        await self._upsert_build_state(
+            user_id,
+            signature_hash,
+            status="building",
+            stage="building_cache",
+            progress=20.0,
+            stage_message=self._build_stage_message("building_cache"),
+            error=None,
+            duration_ms=None,
+            built_at=None,
+        )
+
+        try:
+            await asyncio.to_thread(
+                self._build_user_cache_snapshot_sync,
+                user_id,
+                signature_hash,
+                records,
+                system_years,
+            )
             duration_ms = int((time.time() - t0) * 1000)
             await self._upsert_build_state(
                 user_id,
                 signature_hash,
                 status="ready",
+                stage="ready",
+                progress=100.0,
+                stage_message=self._build_stage_message("ready"),
                 error=None,
                 duration_ms=duration_ms,
                 built_at=datetime.now(timezone.utc),
@@ -373,12 +538,14 @@ class PersonalDataSourceService:
                 duration_ms,
             )
         except Exception as exc:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
             duration_ms = int((time.time() - t0) * 1000)
             await self._upsert_build_state(
                 user_id,
                 signature_hash,
                 status="failed",
+                stage="failed",
+                progress=100.0,
+                stage_message=self._build_stage_message("failed"),
                 error=str(exc),
                 duration_ms=duration_ms,
                 built_at=None,
@@ -480,11 +647,24 @@ class PersonalDataSourceService:
         signature_hash = self._signature_hash(signature)
         build_state = await self._get_build_state(user_id)
         build_status = None
+        build_stage = None
+        build_progress = None
+        build_stage_message = None
         if build_state and build_state.signature_hash == signature_hash:
             build_status = build_state.status
+            build_stage = build_state.stage
+            build_progress = self._clamp_progress(build_state.progress)
+            build_stage_message = build_state.stage_message or self._build_stage_message(build_stage or build_status or "idle")
 
-        cache_key = (user_id, mars_year, signature_hash, build_status)
-        cached = self._year_resolution_cache.get(cache_key)
+        cache_key = (
+            user_id,
+            mars_year,
+            signature_hash,
+            build_status,
+            build_stage,
+            int(build_progress if build_progress is not None else -1),
+        )
+        cached = self._cache_get(self._year_resolution_cache, cache_key)
         if cached is not None:
             return cached
 
@@ -492,18 +672,33 @@ class PersonalDataSourceService:
         if cached_resolution is not None:
             cached_resolution.build_status = build_status or "ready"
             cached_resolution.signature_hash = signature_hash
-            self._year_resolution_cache[cache_key] = cached_resolution
+            cached_resolution.build_stage = build_stage or cached_resolution.build_status
+            cached_resolution.build_progress = build_progress if build_progress is not None else (100.0 if cached_resolution.build_status == "ready" else None)
+            cached_resolution.build_stage_message = build_stage_message
+            self._cache_set(self._year_resolution_cache, cache_key, cached_resolution)
             return cached_resolution
 
         if build_status != "building":
             self._schedule_build(user_id)
-
-        user_assets = self._build_user_assets(records)
-        resolution = self._resolve_from_assets(_PERSONAL, mars_year, user_assets)
+        if build_status == "building":
+            resolution = self._default_resolution(
+                _PERSONAL,
+                mars_year,
+                message=None,
+                fallback=True,
+            )
+        else:
+            resolution = await asyncio.to_thread(self._resolve_from_records_sync, mars_year, records)
         if build_status:
             resolution.build_status = build_status
+        if build_stage:
+            resolution.build_stage = build_stage
+        if build_progress is not None:
+            resolution.build_progress = build_progress
+        if build_stage_message:
+            resolution.build_stage_message = build_stage_message
         resolution.signature_hash = signature_hash
-        self._year_resolution_cache[cache_key] = resolution
+        self._cache_set(self._year_resolution_cache, cache_key, resolution)
         return resolution
 
     async def get_data_info(self, requested_source: str, user_id: Optional[int]) -> dict:
@@ -554,11 +749,23 @@ class PersonalDataSourceService:
         signature_hash = self._signature_hash(signature)
         build_state = await self._get_build_state(user_id)
         build_status = None
+        build_stage = None
+        build_progress = None
+        build_stage_message = None
         if build_state and build_state.signature_hash == signature_hash:
             build_status = build_state.status
+            build_stage = build_state.stage
+            build_progress = self._clamp_progress(build_state.progress)
+            build_stage_message = build_state.stage_message or self._build_stage_message(build_stage or build_status or "idle")
 
-        cache_key = (user_id, signature_hash, build_status)
-        cached = self._info_cache.get(cache_key)
+        cache_key = (
+            user_id,
+            signature_hash,
+            build_status,
+            build_stage,
+            int(build_progress if build_progress is not None else -1),
+        )
+        cached = self._cache_get(self._info_cache, cache_key)
         if cached is not None:
             return cached
 
@@ -566,16 +773,20 @@ class PersonalDataSourceService:
         if info is None:
             if build_status != "building":
                 self._schedule_build(user_id)
-            user_assets = self._build_user_assets(records)
-            resolutions = {
-                year: self._resolve_from_assets(_PERSONAL, year, user_assets)
-                for year in system_years
-            }
-            info = self._build_personal_info(system_years, resolutions)
+                info = await asyncio.to_thread(self._build_info_from_records_sync, system_years, records)
+            else:
+                info = self._build_warming_default_info(system_years)
 
         info = dict(info)
         info["source_meta"] = self._build_source_meta_with_status(info.get("source_meta", {}), build_status)
-        self._info_cache[cache_key] = info
+        if build_stage:
+            info["source_meta"]["build_stage"] = build_stage
+        if build_progress is not None:
+            info["source_meta"]["build_progress"] = build_progress
+        if build_stage_message:
+            info["source_meta"]["build_stage_message"] = build_stage_message
+        info["source_meta"]["signature_hash"] = signature_hash
+        self._cache_set(self._info_cache, cache_key, info)
         return info
 
     # ---------------- core resolution ----------------
@@ -747,7 +958,7 @@ class PersonalDataSourceService:
             return None
 
         cache_key = (str(file_path), mtime, data_type, mars_year_hint)
-        cached = self._file_cache.get(cache_key)
+        cached = self._cache_get(self._file_cache, cache_key)
         if cached is not None:
             return cached
 
@@ -763,7 +974,7 @@ class PersonalDataSourceService:
             parsed = None
 
         if parsed is not None:
-            self._file_cache[cache_key] = parsed
+            self._cache_set(self._file_cache, cache_key, parsed)
         return parsed
 
     @staticmethod
