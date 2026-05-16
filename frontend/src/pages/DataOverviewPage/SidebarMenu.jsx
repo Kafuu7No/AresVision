@@ -5,11 +5,13 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { GLOBE_VARIABLE_OPTIONS } from '../../constants/globeVariables';
+import { fetchDataInfo } from '../../services/api';
 import {
   getPersonalSourceAvailability,
   getPersonalSourceBlockedMessage,
   getPersonalSourceCheckFailedMessage,
   getPersonalSourceLoginRequiredMessage,
+  isPersonalSourceInsufficient,
 } from '../../utils/personalSourceGuard';
 
 const NAVBAR_HEIGHT = 70;
@@ -37,6 +39,8 @@ export const MODE_DEFS = [
     desc: { zh: '适合分析极区活动、波动结构和区域异常。', en: 'Best for polar behavior, wave structures, and regional anomalies.' },
   },
 ];
+
+const PERSONAL_BOUNCE_MS = 720;
 
 function SectionLabel({ children }) {
   return (
@@ -145,7 +149,7 @@ function SegmentedToggle({ value, onChange, options, disabled = false, isLight =
               fontWeight: active ? 700 : 600,
               cursor: optionDisabled ? 'not-allowed' : 'pointer',
               opacity: optionDisabled ? 0.5 : 1,
-              transition: 'all 0.2s ease',
+              transition: 'all 0.36s ease',
             }}
           >
             {option.label}
@@ -344,12 +348,20 @@ export default function SidebarMenu() {
 
   const [displayOpen, setDisplayOpen] = React.useState(true);
   const [interactionOpen, setInteractionOpen] = React.useState(true);
+  const [switchPreviewMode, setSwitchPreviewMode] = React.useState(null);
 
   const panelBg = isLight ? 'rgba(255,255,255,0.82)' : 'rgba(10,12,18,0.54)';
   const borderSoft = isLight ? 'rgba(15,23,42,0.10)' : 'rgba(255,255,255,0.08)';
   const contentGap = leftPanelWidth <= 300 ? 14 : 16;
-  const isPersonalMode = dataSourceMode === 'personal';
+  const displayDataSourceMode = switchPreviewMode || dataSourceMode;
+  const isPersonalMode = displayDataSourceMode === 'personal';
   const personalSourceDisabled = !user;
+
+  React.useEffect(() => {
+    if (switchPreviewMode && dataSourceMode !== switchPreviewMode) {
+      setSwitchPreviewMode(null);
+    }
+  }, [dataSourceMode, switchPreviewMode]);
 
   const sourceMessage = React.useMemo(() => {
     const rawMessage = sourceMeta?.message;
@@ -401,6 +413,7 @@ export default function SidebarMenu() {
   const handleDataSourceModeChange = React.useCallback(async (nextMode) => {
     if (isSwitchingSource || nextMode === dataSourceMode) return;
     if (nextMode !== 'personal') {
+      setSwitchPreviewMode(null);
       setDataSourceMode(nextMode);
       return;
     }
@@ -417,6 +430,17 @@ export default function SidebarMenu() {
         setIsSwitchingSource(false);
         return;
       }
+      const info = await fetchDataInfo({ dataSource: 'personal' });
+      if (isPersonalSourceInsufficient(info?.source_meta)) {
+        setSwitchPreviewMode('personal');
+        window.setTimeout(() => {
+          setSwitchPreviewMode(null);
+        }, PERSONAL_BOUNCE_MS);
+        showToast(info?.source_meta?.message || getPersonalSourceCheckFailedMessage(isZh), 'error');
+        setIsSwitchingSource(false);
+        return;
+      }
+      setSwitchPreviewMode(null);
       setDataSourceMode('personal');
     } catch {
       showToast(getPersonalSourceCheckFailedMessage(isZh), 'error');
@@ -497,7 +521,7 @@ export default function SidebarMenu() {
                 {isZh ? '数据源' : 'Data source'}
               </div>
               <SegmentedToggle
-                value={dataSourceMode}
+                value={displayDataSourceMode}
                 onChange={handleDataSourceModeChange}
                 disabled={isSwitchingSource}
                 isLight={isLight}

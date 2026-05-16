@@ -16,6 +16,7 @@ import {
   getPersonalSourceBlockedMessage,
   getPersonalSourceCheckFailedMessage,
   getPersonalSourceLoginRequiredMessage,
+  isPersonalSourceInsufficient,
 } from '../utils/personalSourceGuard';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ModelTestModal from '../components/ModelTestModal';
@@ -25,6 +26,7 @@ import SectionTitle from '../components/SectionTitle';
 import { useTraining } from '../contexts/TrainingContext';
 
 const MONO_FONT = "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace";
+const PERSONAL_BOUNCE_MS = 720;
 
 function getStatusMeta(status, t) {
   if (status === 'completed') {
@@ -475,6 +477,7 @@ export default function ModelTrainingPage() {
   const [scriptsError, setScriptsError] = useState('');
   const [isSwitchingSource, setIsSwitchingSource] = useState(false);
   const [dataSourceMode, setDataSourceMode] = useState('default');
+  const [switchPreviewMode, setSwitchPreviewMode] = useState(null);
   const [sourceMeta, setSourceMeta] = useState(null);
 
   const logContainerRef = useRef(null);
@@ -572,7 +575,8 @@ export default function ModelTrainingPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
-  const isPersonalMode = dataSourceMode === 'personal';
+  const displayDataSourceMode = switchPreviewMode || dataSourceMode;
+  const isPersonalMode = displayDataSourceMode === 'personal';
   const modelNameLabel = String(t('modelTraining.modelName') || '')
     .replace(':', '')
     .replace('：', '')
@@ -716,6 +720,12 @@ export default function ModelTrainingPage() {
   }, [dataSourceMode, isLoading, user]);
 
   useEffect(() => {
+    if (switchPreviewMode && dataSourceMode !== switchPreviewMode) {
+      setSwitchPreviewMode(null);
+    }
+  }, [dataSourceMode, switchPreviewMode]);
+
+  useEffect(() => {
     if (!user) {
       setScripts([]);
       setScriptsLoading(false);
@@ -792,6 +802,7 @@ export default function ModelTrainingPage() {
   const handleDataSourceModeChange = async (nextMode) => {
     if (isSwitchingSource || nextMode === dataSourceMode) return;
     if (nextMode !== 'personal') {
+      setSwitchPreviewMode(null);
       setDataSourceMode(nextMode);
       return;
     }
@@ -808,6 +819,17 @@ export default function ModelTrainingPage() {
         setIsSwitchingSource(false);
         return;
       }
+      const info = await fetchDataInfo({ dataSource: 'personal' });
+      if (isPersonalSourceInsufficient(info?.source_meta)) {
+        setSwitchPreviewMode('personal');
+        window.setTimeout(() => {
+          setSwitchPreviewMode(null);
+        }, PERSONAL_BOUNCE_MS);
+        showToast(info?.source_meta?.message || getPersonalSourceCheckFailedMessage(isZh), 'error');
+        setIsSwitchingSource(false);
+        return;
+      }
+      setSwitchPreviewMode(null);
       setDataSourceMode('personal');
     } catch {
       showToast(getPersonalSourceCheckFailedMessage(isZh), 'error');
@@ -1092,7 +1114,7 @@ export default function ModelTrainingPage() {
                     { value: 'default', label: copy.sourceDefault },
                     { value: 'personal', label: copy.sourcePersonal },
                   ].map((option) => {
-                    const active = dataSourceMode === option.value;
+                    const active = displayDataSourceMode === option.value;
                     const optionDisabled = isSwitchingSource || (!user && option.value === 'personal');
                     return (
                       <button
@@ -1109,6 +1131,7 @@ export default function ModelTrainingPage() {
                           fontWeight: active ? 700 : 600,
                           cursor: optionDisabled ? 'not-allowed' : 'pointer',
                           opacity: optionDisabled ? 0.5 : 1,
+                          transition: 'all 0.36s ease',
                         }}
                       >
                         {option.label}

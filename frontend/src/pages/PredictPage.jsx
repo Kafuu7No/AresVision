@@ -21,6 +21,7 @@ import {
   getPersonalSourceBlockedMessage,
   getPersonalSourceCheckFailedMessage,
   getPersonalSourceLoginRequiredMessage,
+  isPersonalSourceInsufficient,
 } from '../utils/personalSourceGuard';
 
 import { VARIABLE_DEFS, VIEW_MODE_IDS, TRIPTYCH_PANEL_DEFS } from './PredictPage/PredictComponents';
@@ -41,6 +42,8 @@ const SHORTHAND_MAP = {
   U_Wind: 'U',
   V_Wind: 'V',
 };
+
+const PERSONAL_BOUNCE_MS = 720;
 
 const getShorthands = (vars) => {
   if (!vars || vars.length === 0) return 'baseline';
@@ -71,6 +74,7 @@ export default function PredictPage() {
   const [lsStart, setLsStart] = useState(_c.params?.lsStart ?? 90);
   const [marsYear, setMarsYear] = useState(_c.params?.marsYear ?? 27);
   const [dataSourceMode, setDataSourceMode] = useState(_c.params?.dataSource ?? 'default');
+  const [switchPreviewMode, setSwitchPreviewMode] = useState(null);
   const [sourceMeta, setSourceMeta] = useState(null);
   const [availableMarsYears, setAvailableMarsYears] = useState([27, 28]);
   const [activeHorizon, setActiveHorizon] = useState(_c.activeHorizon);
@@ -106,6 +110,12 @@ export default function PredictPage() {
   }, [dataSourceMode, isLoading, user]);
 
   useEffect(() => {
+    if (switchPreviewMode && dataSourceMode !== switchPreviewMode) {
+      setSwitchPreviewMode(null);
+    }
+  }, [dataSourceMode, switchPreviewMode]);
+
+  useEffect(() => {
     let active = true;
     setIsSwitchingSource(true);
 
@@ -137,6 +147,7 @@ export default function PredictPage() {
   const handleDataSourceModeChange = useCallback(async (nextMode) => {
     if (isSwitchingSource || nextMode === dataSourceMode) return;
     if (nextMode !== 'personal') {
+      setSwitchPreviewMode(null);
       setDataSourceMode(nextMode);
       return;
     }
@@ -153,6 +164,17 @@ export default function PredictPage() {
         setIsSwitchingSource(false);
         return;
       }
+      const info = await fetchDataInfo({ dataSource: 'personal' });
+      if (isPersonalSourceInsufficient(info?.source_meta)) {
+        setSwitchPreviewMode('personal');
+        window.setTimeout(() => {
+          setSwitchPreviewMode(null);
+        }, PERSONAL_BOUNCE_MS);
+        showToast(info?.source_meta?.message || getPersonalSourceCheckFailedMessage(settings?.language !== 'en'), 'error');
+        setIsSwitchingSource(false);
+        return;
+      }
+      setSwitchPreviewMode(null);
       setDataSourceMode('personal');
     } catch {
       showToast(getPersonalSourceCheckFailedMessage(settings?.language !== 'en'), 'error');
@@ -278,7 +300,7 @@ export default function PredictPage() {
           loading={loading}
           isSwitchingSource={isSwitchingSource}
           error={error}
-          dataSourceMode={dataSourceMode}
+          dataSourceMode={switchPreviewMode || dataSourceMode}
           setDataSourceMode={handleDataSourceModeChange}
           sourceMeta={sourceMeta}
           personalSourceDisabled={!user}

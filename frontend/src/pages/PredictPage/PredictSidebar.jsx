@@ -48,7 +48,7 @@ function OptionChips({ items, activeValue, onChange, disabled = false }) {
               fontWeight: active ? 700 : 600,
               cursor: disabled ? 'not-allowed' : 'pointer',
               opacity: disabled ? 0.72 : 1,
-              transition: 'all 0.2s ease',
+              transition: 'all 0.36s ease',
             }}
           >
             {item.label}

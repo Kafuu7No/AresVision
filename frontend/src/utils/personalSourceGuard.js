@@ -36,3 +36,7 @@ export function getPersonalSourceLoginRequiredMessage(isZh) {
     ? '\u767b\u5f55\u540e\u624d\u80fd\u5207\u6362\u5230\u4e2a\u4eba\u6570\u636e\u6e90\u3002'
     : 'Please sign in before switching to the personal data source.';
 }
+
+export function isPersonalSourceInsufficient(sourceMeta) {
+  return sourceMeta?.requested_source === 'personal' && sourceMeta?.effective_source === 'default';
+}
