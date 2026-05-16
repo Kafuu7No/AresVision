@@ -72,7 +72,7 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
 
     const onMouseMove = (moveEvent) => {
       const nextWidth = startWidth - (moveEvent.clientX - startX);
-      const clamped = Math.max(400, Math.min(nextWidth, 900));
+      const clamped = Math.max(400, Math.min(nextWidth, 1240));
       setRightPanelWidth(clamped);
 
       if (!dragFrameRef.current) {
