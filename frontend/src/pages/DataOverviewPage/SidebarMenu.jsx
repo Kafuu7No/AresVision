@@ -2,12 +2,14 @@ import React from 'react';
 import C from '../../constants/colors';
 import { useDataOverview } from '../../contexts/DataOverviewContext';
 import { useSettings } from '../../contexts/SettingsContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { GLOBE_VARIABLE_OPTIONS } from '../../constants/globeVariables';
 import {
   getPersonalSourceAvailability,
   getPersonalSourceBlockedMessage,
   getPersonalSourceCheckFailedMessage,
+  getPersonalSourceLoginRequiredMessage,
 } from '../../utils/personalSourceGuard';
 
 const NAVBAR_HEIGHT = 70;
@@ -127,11 +129,12 @@ function SegmentedToggle({ value, onChange, options, disabled = false, isLight =
     >
       {options.map((option) => {
         const active = value === option.value;
+        const optionDisabled = disabled || option.disabled;
         return (
           <button
             key={option.value}
-            onClick={() => !disabled && onChange(option.value)}
-            disabled={disabled}
+            onClick={() => !optionDisabled && onChange(option.value)}
+            disabled={optionDisabled}
             style={{
               border: 'none',
               borderRadius: 10,
@@ -140,8 +143,8 @@ function SegmentedToggle({ value, onChange, options, disabled = false, isLight =
               color: active ? option.activeColor : C.ice60,
               fontSize: 'calc(11px * var(--font-scale, 1))',
               fontWeight: active ? 700 : 600,
-              cursor: disabled ? 'not-allowed' : 'pointer',
-              opacity: disabled ? 0.72 : 1,
+              cursor: optionDisabled ? 'not-allowed' : 'pointer',
+              opacity: optionDisabled ? 0.5 : 1,
               transition: 'all 0.2s ease',
             }}
           >
@@ -308,6 +311,7 @@ function AdvancedToggleGroup({ title, open, onToggle, children, isLight = false,
 
 export default function SidebarMenu() {
   const { settings } = useSettings();
+  const { user } = useAuth();
   const { showToast } = useToast();
   const isLight = settings?.theme === 'light';
   const isZh = settings?.language !== 'en';
@@ -345,6 +349,7 @@ export default function SidebarMenu() {
   const borderSoft = isLight ? 'rgba(15,23,42,0.10)' : 'rgba(255,255,255,0.08)';
   const contentGap = leftPanelWidth <= 300 ? 14 : 16;
   const isPersonalMode = dataSourceMode === 'personal';
+  const personalSourceDisabled = !user;
 
   const sourceMessage = React.useMemo(() => {
     const rawMessage = sourceMeta?.message;
@@ -399,6 +404,10 @@ export default function SidebarMenu() {
       setDataSourceMode(nextMode);
       return;
     }
+    if (!user) {
+      showToast(getPersonalSourceLoginRequiredMessage(isZh), 'error');
+      return;
+    }
 
     try {
       setIsSwitchingSource(true);
@@ -417,6 +426,7 @@ export default function SidebarMenu() {
     dataSourceMode,
     isSwitchingSource,
     isZh,
+    user,
     setDataSourceMode,
     setIsSwitchingSource,
     showToast,
@@ -503,9 +513,15 @@ export default function SidebarMenu() {
                     label: isZh ? '个人' : 'Personal',
                     activeBg: 'rgba(74,158,255,0.14)',
                     activeColor: C.blue,
+                    disabled: personalSourceDisabled,
                   },
                 ]}
               />
+              {personalSourceDisabled ? (
+                <div style={{ marginTop: 8, color: C.ice40, fontSize: 'calc(10px * var(--font-scale, 1))', lineHeight: 1.5 }}>
+                  {getPersonalSourceLoginRequiredMessage(isZh)}
+                </div>
+              ) : null}
               {isSwitchingSource ? (
                 <div style={{ marginTop: 8, color: C.ice50, fontSize: 'calc(10px * var(--font-scale, 1))', lineHeight: 1.5 }}>
                   {isZh ? '正在切换数据源，请稍候…' : 'Switching data source, please wait...'}

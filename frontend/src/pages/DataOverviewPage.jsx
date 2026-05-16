@@ -18,13 +18,14 @@ import GlobeLegend from './DataOverviewPage/GlobeLegend';
 
 const DataOverviewPageContent = () => {
   const t = useT();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { settings } = useSettings();
   const isLight = settings?.theme === 'light';
   const { 
     marsYear, 
     setMarsYear,
     dataSourceMode,
+    setDataSourceMode,
     setAvailableMarsYears,
     setSourceMeta,
     setIsSwitchingSource,
@@ -54,6 +55,12 @@ const DataOverviewPageContent = () => {
   // Keep gesture capture window compact to reduce scene occlusion.
   const GESTURE_WINDOW_WIDTH = 190;
   const GESTURE_WINDOW_HEIGHT = 142;
+
+  useEffect(() => {
+    if (!isLoading && !user && dataSourceMode === 'personal') {
+      setDataSourceMode('default');
+    }
+  }, [dataSourceMode, isLoading, setDataSourceMode, user]);
 
   useEffect(() => {
     setOnGesture((gesture) => {

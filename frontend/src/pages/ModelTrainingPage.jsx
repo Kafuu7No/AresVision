@@ -15,6 +15,7 @@ import {
   getPersonalSourceAvailability,
   getPersonalSourceBlockedMessage,
   getPersonalSourceCheckFailedMessage,
+  getPersonalSourceLoginRequiredMessage,
 } from '../utils/personalSourceGuard';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ModelTestModal from '../components/ModelTestModal';
@@ -452,7 +453,7 @@ function TrainingTaskCard({
 export default function ModelTrainingPage() {
   const t = useT();
   const { settings } = useSettings();
-  const { user, openAuthModal } = useAuth();
+  const { user, isLoading, openAuthModal } = useAuth();
   const { showToast } = useToast();
   const isLight = settings.theme === 'light';
   const isZh = settings.language !== 'en';
@@ -513,6 +514,7 @@ export default function ModelTrainingPage() {
         : 'Training presets failed to load. Please try again later.',
       presetMatched: isZh ? '已匹配可用脚本' : 'Matched to an available script',
       selectionUnavailable: isZh ? '当前组合不可训练' : 'This selection cannot be trained',
+      loginRequiredToUse: isZh ? '登录后才可使用' : 'Sign in to use this feature',
       currentSelection: isZh ? '当前选择' : 'Current selection',
       coreParameters: isZh ? '核心参数' : 'Core parameters',
       modelArchitecture: isZh ? '模型结构' : 'Model architecture',
@@ -708,6 +710,12 @@ export default function ModelTrainingPage() {
   };
 
   useEffect(() => {
+    if (!isLoading && !user && dataSourceMode === 'personal') {
+      setDataSourceMode('default');
+    }
+  }, [dataSourceMode, isLoading, user]);
+
+  useEffect(() => {
     if (!user) {
       setScripts([]);
       setScriptsLoading(false);
@@ -785,6 +793,10 @@ export default function ModelTrainingPage() {
     if (isSwitchingSource || nextMode === dataSourceMode) return;
     if (nextMode !== 'personal') {
       setDataSourceMode(nextMode);
+      return;
+    }
+    if (!user) {
+      showToast(getPersonalSourceLoginRequiredMessage(isZh), 'error');
       return;
     }
 
@@ -1058,7 +1070,7 @@ export default function ModelTrainingPage() {
                     fontWeight: 700,
                   }}
                 >
-                  {selectedScriptAvailable ? copy.presetMatched : copy.selectionUnavailable}
+                  {!user ? copy.loginRequiredToUse : (selectedScriptAvailable ? copy.presetMatched : copy.selectionUnavailable)}
                 </div>
               </div>
 
@@ -1081,11 +1093,12 @@ export default function ModelTrainingPage() {
                     { value: 'personal', label: copy.sourcePersonal },
                   ].map((option) => {
                     const active = dataSourceMode === option.value;
+                    const optionDisabled = isSwitchingSource || (!user && option.value === 'personal');
                     return (
                       <button
                         key={option.value}
                         onClick={() => handleDataSourceModeChange(option.value)}
-                        disabled={isSwitchingSource}
+                        disabled={optionDisabled}
                         style={{
                           padding: '10px 12px',
                           borderRadius: 12,
@@ -1094,8 +1107,8 @@ export default function ModelTrainingPage() {
                           color: active ? C.blue : C.ice60,
                           fontSize: 'calc(12px * var(--font-scale, 1))',
                           fontWeight: active ? 700 : 600,
-                          cursor: isSwitchingSource ? 'not-allowed' : 'pointer',
-                          opacity: isSwitchingSource ? 0.72 : 1,
+                          cursor: optionDisabled ? 'not-allowed' : 'pointer',
+                          opacity: optionDisabled ? 0.5 : 1,
                         }}
                       >
                         {option.label}
@@ -1110,6 +1123,11 @@ export default function ModelTrainingPage() {
                     {isPersonalMode ? copy.sourceHintPersonal : copy.sourceHintDefault}
                   </div>
                 )}
+                {!user ? (
+                  <div style={{ ...fieldHintStyle, color: C.ice40 }}>
+                    {getPersonalSourceLoginRequiredMessage(isZh)}
+                  </div>
+                ) : null}
               </div>
 
               <div style={{ ...summaryCardStyle, padding: '16px 16px 14px' }}>
@@ -1412,7 +1430,7 @@ export default function ModelTrainingPage() {
                   <div style={{ minWidth: 0 }}>
                     <div style={sectionTitleStyle}>{copy.trainingPreset}</div>
                     <div style={fieldHintStyle}>
-                      {selectedScriptAvailable ? presetStatusText : copy.selectionUnavailable}
+                      {!user ? copy.loginRequiredToUse : (selectedScriptAvailable ? presetStatusText : copy.selectionUnavailable)}
                     </div>
                   </div>
                   <button

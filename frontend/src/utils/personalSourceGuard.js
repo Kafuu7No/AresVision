@@ -30,3 +30,9 @@ export function getPersonalSourceCheckFailedMessage(isZh) {
     ? '\u6682\u65f6\u65e0\u6cd5\u786e\u8ba4\u4e2a\u4eba\u6570\u636e\u6e90\u72b6\u6001\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002'
     : 'Unable to confirm the personal source status right now. Please try again later.';
 }
+
+export function getPersonalSourceLoginRequiredMessage(isZh) {
+  return isZh
+    ? '\u767b\u5f55\u540e\u624d\u80fd\u5207\u6362\u5230\u4e2a\u4eba\u6570\u636e\u6e90\u3002'
+    : 'Please sign in before switching to the personal data source.';
+}

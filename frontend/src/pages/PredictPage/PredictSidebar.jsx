@@ -59,40 +59,59 @@ function OptionChips({ items, activeValue, onChange, disabled = false }) {
   );
 }
 
-function ToggleSwitch({ checked, onChange, disabled = false }) {
+function ToggleSwitch({ checked, onChange, disabled = false, personalDisabled = false, isLight = false }) {
+  const { settings } = useSettings();
+  const isZh = settings?.language !== 'en';
+  const options = [
+    { value: 'default', label: isZh ? '\u9ed8\u8ba4' : 'Default', active: !checked },
+    { value: 'personal', label: isZh ? '\u4e2a\u4eba' : 'Personal', active: checked },
+  ];
+
   return (
-    <label style={{ position: 'relative', display: 'inline-block', width: 38, height: 22, pointerEvents: disabled ? 'none' : 'auto' }}>
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={onChange}
-        style={{ opacity: 0, width: 0, height: 0 }}
-      />
-      <span
-        style={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: 999,
-          backgroundColor: checked ? 'rgba(74,158,255,0.24)' : 'rgba(255,255,255,0.10)',
-          border: `1px solid ${checked ? C.blue : C.border}`,
-          transition: '.2s',
-        }}
-      >
-        <span
-          style={{
-            position: 'absolute',
-            width: 14,
-            height: 14,
-            top: 3,
-            left: checked ? 19 : 3,
-            borderRadius: '50%',
-            transition: '.2s',
-            backgroundColor: checked ? C.blue : C.ice60,
-          }}
-        />
-      </span>
-    </label>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 8,
+        padding: 5,
+        width: '100%',
+        minWidth: 0,
+        borderRadius: 16,
+        background: isLight ? 'rgba(255,255,255,0.82)' : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${C.border}`,
+        boxSizing: 'border-box',
+      }}
+    >
+      {options.map((option) => {
+        const optionDisabled = disabled || (personalDisabled && option.value === 'personal');
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => {
+              if (!optionDisabled && !option.active) {
+                onChange(option.value === 'personal');
+              }
+            }}
+            disabled={optionDisabled}
+            style={{
+              padding: '10px 12px',
+              borderRadius: 12,
+              border: 'none',
+              background: option.active ? 'rgba(74,158,255,0.14)' : 'transparent',
+              color: option.active ? C.blue : C.ice60,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
+              fontWeight: option.active ? 700 : 600,
+              cursor: optionDisabled ? 'not-allowed' : 'pointer',
+              opacity: optionDisabled ? 0.5 : 1,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -211,6 +230,8 @@ export default function PredictSidebar({
   dataSourceMode,
   setDataSourceMode,
   sourceMeta,
+  personalSourceDisabled = false,
+  personalSourceHint = '',
   marsYear,
   setMarsYear,
   availableMarsYears,
@@ -325,7 +346,7 @@ export default function PredictSidebar({
 
         <div style={{ display: 'grid', gap: 16 }}>
           <div style={{ padding: '12px 14px', borderRadius: 14, border: `1px solid ${C.border}`, background: C.bgMuted }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'grid', gap: 10 }}>
               <div>
                 <div style={{ color: C.ice, fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 600 }}>
                   {isZh ? '数据源' : 'Data source'}
@@ -337,9 +358,17 @@ export default function PredictSidebar({
               <ToggleSwitch
                 checked={isPersonalMode}
                 disabled={isSwitchingSource}
+                personalDisabled={personalSourceDisabled}
+                isLight={isLight}
                 onChange={() => setDataSourceMode(isPersonalMode ? 'default' : 'personal')}
               />
             </div>
+
+            {personalSourceDisabled ? (
+              <div style={{ marginTop: 8, fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice40, lineHeight: 1.5 }}>
+                {personalSourceHint}
+              </div>
+            ) : null}
 
             {isSwitchingSource ? (
               <div style={{ marginTop: 8, fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice50, lineHeight: 1.5 }}>

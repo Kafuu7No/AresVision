@@ -20,6 +20,7 @@ import {
   getPersonalSourceAvailability,
   getPersonalSourceBlockedMessage,
   getPersonalSourceCheckFailedMessage,
+  getPersonalSourceLoginRequiredMessage,
 } from '../utils/personalSourceGuard';
 
 import { VARIABLE_DEFS, VIEW_MODE_IDS, TRIPTYCH_PANEL_DEFS } from './PredictPage/PredictComponents';
@@ -49,7 +50,7 @@ const getShorthands = (vars) => {
 export default function PredictPage() {
   const t = useT();
   const { settings } = useSettings();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { showToast } = useToast();
   const precision = settings.precision;
   const ozoneUnit = settings.units.ozone;
@@ -99,6 +100,12 @@ export default function PredictPage() {
   };
 
   useEffect(() => {
+    if (!isLoading && !user && dataSourceMode === 'personal') {
+      setDataSourceMode('default');
+    }
+  }, [dataSourceMode, isLoading, user]);
+
+  useEffect(() => {
     let active = true;
     setIsSwitchingSource(true);
 
@@ -133,6 +140,10 @@ export default function PredictPage() {
       setDataSourceMode(nextMode);
       return;
     }
+    if (!user) {
+      showToast(getPersonalSourceLoginRequiredMessage(settings?.language !== 'en'), 'error');
+      return;
+    }
 
     try {
       setIsSwitchingSource(true);
@@ -147,7 +158,7 @@ export default function PredictPage() {
       showToast(getPersonalSourceCheckFailedMessage(settings?.language !== 'en'), 'error');
       setIsSwitchingSource(false);
     }
-  }, [dataSourceMode, isSwitchingSource, settings?.language, showToast]);
+  }, [dataSourceMode, isSwitchingSource, settings?.language, showToast, user]);
 
   const handlePredict = useCallback(async () => {
     if (isSwitchingSource) return;
@@ -270,6 +281,8 @@ export default function PredictPage() {
           dataSourceMode={dataSourceMode}
           setDataSourceMode={handleDataSourceModeChange}
           sourceMeta={sourceMeta}
+          personalSourceDisabled={!user}
+          personalSourceHint={!user ? getPersonalSourceLoginRequiredMessage(settings?.language !== 'en') : ''}
           marsYear={marsYear}
           setMarsYear={setMarsYear}
           availableMarsYears={availableMarsYears}
