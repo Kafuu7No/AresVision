@@ -11,6 +11,10 @@ import MyDataTab from './ExplorePage/MyDataTab';
 
 function createCopy(isZh) {
   return {
+    adminEyebrow: isZh ? '管理员审核' : 'Admin Review',
+    adminScopeTitle: isZh ? '这里负责什么' : 'What This View Owns',
+    adminSplitTitle: isZh ? '为什么单独成页' : 'Why It Is Separate',
+    adminAccessTitle: isZh ? '当前权限' : 'Current Access',
     lead: isZh
       ? '数据管理页应该先回答“我要做什么”，而不是先把所有能力堆出来。这里按真实任务拆成多个视图：了解平台官方资产、接入个人数据源、把合格数据贡献给平台，以及管理员审核并入。'
       : 'This page should answer "what am I here to do?" before showing every capability at once. The content is split by real user tasks: understand official assets, ingest a personal source, contribute qualified datasets, and review merges as an admin.',
@@ -111,7 +115,7 @@ function AdminWorkspace({ onOpenAdmin, isAdmin, copy, isZh }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <IntroCard
-        eyebrow="ADMIN MERGE"
+        eyebrow={copy.adminEyebrow}
         title={copy.adminIntroTitle}
         body={copy.adminIntroBody}
         accent={C.mars}
@@ -140,7 +144,7 @@ function AdminWorkspace({ onOpenAdmin, isAdmin, copy, isZh }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
         <GlowCard style={{ padding: '18px 20px' }}>
           <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice, fontWeight: 700, marginBottom: 8 }}>
-            {isZh ? '这里负责什么' : 'What This View Owns'}
+            {copy.adminScopeTitle}
           </div>
           <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8 }}>
             {isZh
@@ -151,7 +155,7 @@ function AdminWorkspace({ onOpenAdmin, isAdmin, copy, isZh }) {
 
         <GlowCard style={{ padding: '18px 20px' }}>
           <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice, fontWeight: 700, marginBottom: 8 }}>
-            {isZh ? '为什么单独成页' : 'Why It Is Separate'}
+            {copy.adminSplitTitle}
           </div>
           <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8 }}>
             {isZh
@@ -162,7 +166,7 @@ function AdminWorkspace({ onOpenAdmin, isAdmin, copy, isZh }) {
 
         <GlowCard style={{ padding: '18px 20px' }}>
           <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice, fontWeight: 700, marginBottom: 8 }}>
-            {isZh ? '当前权限' : 'Current Access'}
+            {copy.adminAccessTitle}
           </div>
           <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8 }}>
             {isAdmin ? copy.adminOpen : copy.adminNoAccess}

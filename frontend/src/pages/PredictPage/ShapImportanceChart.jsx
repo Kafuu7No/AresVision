@@ -60,10 +60,10 @@ const ShapImportanceChart = ({ data, loading }) => {
     <div className="shap-chart-container" style={{ padding: '16px 8px' }}>
       <div style={{ marginBottom: 20 }}>
         <h4 style={{ margin: '0 0 8px 0', fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice60, letterSpacing: 0.5 }}>
-          {t('predict.shap.waterfallTitle') || 'WATERFALL ATTRIBUTION / 瀑布归因分析'}
+          {t('predict.shap.waterfallTitle')}
         </h4>
         <p style={{ margin: 0, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.5 }}>
-          {t('predict.shap.waterfallDesc') || '从基准值到预测值的逐级演化过程 (O₃ μm-atm)'}
+          {t('predict.shap.waterfallDesc')}
         </p>
       </div>
 
@@ -71,7 +71,7 @@ const ShapImportanceChart = ({ data, loading }) => {
         {/* 1. 基准值条 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice50 }}>
-            <span>{t('predict.shap.baseValue') || 'Base (E[f(x)])'}</span>
+            <span>{t('predict.shap.baseValue')}</span>
             <span style={{ fontFamily: 'var(--font-display)' }}>{baseValue.toFixed(4)}</span>
           </div>
           <div style={{ height: 10, width: '100%', position: 'relative' }}>
@@ -119,7 +119,7 @@ const ShapImportanceChart = ({ data, loading }) => {
         {/* 3. 最终预测值条 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice80, fontWeight: 700 }}>
-            <span>{t('predict.shap.totalValue') || 'Prediction (f(x))'}</span>
+            <span>{t('predict.shap.totalValue')}</span>
             <span style={{ color: C.ice, fontFamily: 'var(--font-display)' }}>{finalValue.toFixed(4)}</span>
           </div>
           <div style={{ height: 10, width: '100%', position: 'relative' }}>
@@ -149,10 +149,10 @@ const ShapImportanceChart = ({ data, loading }) => {
         fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice20
       }}>
         <div style={{ display: 'flex', gap: 8 }}>
-          <span style={{ color: C.blue }}>← {t('predict.shap.inhibitory') || 'Inhibitory'}</span>
-          <span style={{ color: C.mars }}>{t('predict.shap.promotional') || 'Facilitating'} →</span>
+          <span style={{ color: C.blue }}>← {t('predict.shap.inhibitory')}</span>
+          <span style={{ color: C.mars }}>{t('predict.shap.promotional')} →</span>
         </div>
-        <span>{t('predict.shap.method') || 'GradientExplainer'}</span>
+        <span>{t('predict.shap.method')}</span>
       </div>
     </div>
   );

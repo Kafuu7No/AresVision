@@ -18,6 +18,7 @@ export default function HomePage({ onNavigate }) {
   const t = useT();
   const { settings } = useSettings();
   const isLight = settings.theme === 'light';
+  const isZh = settings?.language !== 'en';
 
   const [showTitle, setShowTitle] = useState(false);
   const [showSub, setShowSub] = useState(false);
@@ -148,10 +149,6 @@ export default function HomePage({ onNavigate }) {
           transition: 'all 0.8s cubic-bezier(0.22,1,0.36,1)',
         }}>
           {t('home.desc')}
-          <br />
-          <span style={{ color: isLight ? 'rgba(23,33,47,0.52)' : C.ice40, fontSize: 'calc(13px * var(--font-scale, 1))' }}>
-            {t('home.descEn')}
-          </span>
         </p>
 
         {/* CTA 按钮 */}
@@ -194,7 +191,7 @@ export default function HomePage({ onNavigate }) {
         animation: 'float 3s ease-in-out infinite',
       }}>
         <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', letterSpacing: '0.08em', color: C.ice60, fontFamily: 'var(--font-body)' }}>
-          Scroll
+          {isZh ? '下滑' : 'Scroll'}
         </div>
         <div style={{ width: 1, height: 30, background: `linear-gradient(180deg, ${C.ice30}, transparent)` }} />
       </div>

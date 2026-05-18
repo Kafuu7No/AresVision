@@ -7,39 +7,52 @@ import { LoadingBox } from './ExploreComponents';
 
 const OFFICIAL_VARIABLE_GROUPS = [
   {
-    name: 'Ozone Core',
+    key: 'ozoneCore',
     coverage: 100,
     variables: ['o3col'],
     color: C.mars,
   },
   {
-    name: 'Atmospheric Drivers',
+    key: 'drivers',
     coverage: 100,
     variables: ['Temperature', 'Pressure', 'Dust_Optical_Depth'],
     color: C.blue,
   },
   {
-    name: 'Radiative Forcing',
+    key: 'radiative',
     coverage: 100,
     variables: ['Solar_Flux_DN'],
     color: C.green,
   },
   {
-    name: 'Circulation Field',
+    key: 'circulation',
     coverage: 100,
     variables: ['U_Wind', 'V_Wind'],
     color: '#9bd2ff',
   },
 ];
 
-const OFFICIAL_CAPABILITY_TAGS = [
-  'Ozone seasonal diagnosis',
-  'Environmental driver coupling',
-  'Prediction model training',
-  'Cross-year comparative analysis',
-  'Feature engineering baseline',
-  'Spatial-temporal unified ingestion',
+const OFFICIAL_CAPABILITY_TAG_KEYS = [
+  'ozoneDiagnosis',
+  'driverCoupling',
+  'predictionTraining',
+  'crossYearAnalysis',
+  'featureBaseline',
+  'unifiedIngestion',
 ];
+
+const HERO_TAG_KEYS = ['openmars', 'mcd', 'officialBenchmark', 'unifiedGrid', 'featureSpace'];
+const OPENMARS_TAG_KEYS = ['o3Column', 'globalField', 'lsTime', 'planetaryBaseline'];
+const MCD_TAG_KEYS = ['temperature', 'pressure', 'wind', 'dust', 'solarFlux'];
+
+function getSourceModeLabel(mode, t) {
+  const map = {
+    default: t('explore.defaultDataset.sourceMode.default'),
+    personal_full_year: t('explore.defaultDataset.sourceMode.personal_full_year'),
+    personal_mcd_plus_system_openmars: t('explore.defaultDataset.sourceMode.personal_mcd_plus_system_openmars'),
+  };
+  return map[mode] || mode || '--';
+}
 
 function toYearRows(info) {
   const years = Array.isArray(info?.available_years) ? info.available_years : [];
@@ -132,7 +145,7 @@ function YearCoverageCard({ row, t }) {
       <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8 }}>
         <div>{`${t('explore.defaultDataset.metaLsRange')}: ${formatLs(row.lsStart)} - ${formatLs(row.lsEnd)}`}</div>
         <div>{`${t('explore.defaultDataset.metaGrid')}: 5° x 5°`}</div>
-        <div>{`${t('explore.defaultDataset.metaSourceMode')}: ${row.sourceMode}`}</div>
+        <div>{`${t('explore.defaultDataset.metaSourceMode')}: ${getSourceModeLabel(row.sourceMode, t)}`}</div>
       </div>
     </div>
   );
@@ -219,7 +232,7 @@ function SourceCard({ title, subtitle, tags, body }) {
   );
 }
 
-function VariableGroupCard({ group }) {
+function VariableGroupCard({ group, t }) {
   return (
     <div
       style={{
@@ -230,7 +243,7 @@ function VariableGroupCard({ group }) {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice, fontWeight: 700 }}>{group.name}</div>
+        <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice, fontWeight: 700 }}>{t(`explore.defaultDataset.variableGroups.${group.key}`)}</div>
         <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: group.color, fontWeight: 700 }}>{pct(group.coverage)}</div>
       </div>
       <div style={{ marginTop: 10, height: 7, borderRadius: 999, overflow: 'hidden', background: 'rgba(255,255,255,0.08)' }}>
@@ -267,7 +280,7 @@ export default function DefaultDatasetTab() {
     setLoading(true);
     setError('');
     try {
-      const info = await fetchDataInfo();
+      const info = await fetchDataInfo({ dataSource: 'default' });
       setDataInfo(info);
     } catch (e) {
       setError(e?.message || t('common.error'));
@@ -298,6 +311,7 @@ export default function DefaultDatasetTab() {
   const sourceMeta = dataInfo?.source_meta || {};
   const officialYearCount = yearRows.length;
   const variableCount = OFFICIAL_VARIABLE_GROUPS.reduce((sum, group) => sum + group.variables.length, 0);
+  const readinessValue = sourceMeta.effective_source === 'default' ? '100%' : t('explore.defaultDataset.readinessFallback');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -318,9 +332,9 @@ export default function DefaultDatasetTab() {
           {t('explore.defaultDataset.headerDesc')}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
-          {['OpenMARS', 'MCD 6.1', 'Official Benchmark', 'Unified Grid', 'Cross-module Feature Space'].map((tag) => (
+          {HERO_TAG_KEYS.map((tagKey) => (
             <span
-              key={tag}
+              key={tagKey}
               style={{
                 fontSize: 'calc(10px * var(--font-scale, 1))',
                 color: C.blue,
@@ -330,7 +344,7 @@ export default function DefaultDatasetTab() {
                 background: 'rgba(74,158,255,0.08)',
               }}
             >
-              {tag}
+              {t(`explore.defaultDataset.heroTags.${tagKey}`)}
             </span>
           ))}
         </div>
@@ -360,7 +374,7 @@ export default function DefaultDatasetTab() {
         />
         <MetricCard
           eyebrow={t('explore.defaultDataset.metricReadinessEyebrow')}
-          value={sourceMeta.effective_source === 'default' ? '100%' : 'Fallback'}
+          value={readinessValue}
           label={t('explore.defaultDataset.metricReadinessLabel')}
           desc={t('explore.defaultDataset.metricReadinessDesc')}
           accent="#f59e0b"
@@ -384,13 +398,13 @@ export default function DefaultDatasetTab() {
           <SourceCard
             title="OpenMARS"
             subtitle={t('explore.defaultDataset.openmarsSubtitle')}
-            tags={['O3 Column', 'Global Field', 'Ls-Time', 'Planetary Baseline']}
+            tags={OPENMARS_TAG_KEYS.map((tagKey) => t(`explore.defaultDataset.openmarsTags.${tagKey}`))}
             body={t('explore.defaultDataset.openmarsBody')}
           />
           <SourceCard
             title="MCD 6.1"
             subtitle={t('explore.defaultDataset.mcdSubtitle')}
-            tags={['Temperature', 'Pressure', 'Wind', 'Dust', 'Solar Flux']}
+            tags={MCD_TAG_KEYS.map((tagKey) => t(`explore.defaultDataset.mcdTags.${tagKey}`))}
             body={t('explore.defaultDataset.mcdBody')}
           />
         </div>
@@ -503,7 +517,7 @@ export default function DefaultDatasetTab() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
             {OFFICIAL_VARIABLE_GROUPS.map((group) => (
-              <VariableGroupCard key={group.name} group={group} />
+              <VariableGroupCard key={group.key} group={group} t={t} />
             ))}
           </div>
           <div style={{ marginTop: 12, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.8 }}>
@@ -525,7 +539,7 @@ export default function DefaultDatasetTab() {
             {t('explore.defaultDataset.capabilityTitle')}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-            {OFFICIAL_CAPABILITY_TAGS.map((name) => (
+            {OFFICIAL_CAPABILITY_TAG_KEYS.map((name) => (
               <span
                 key={name}
                 style={{
@@ -537,7 +551,7 @@ export default function DefaultDatasetTab() {
                   background: 'rgba(255,255,255,0.03)',
                 }}
               >
-                {name}
+                {t(`explore.defaultDataset.capabilityTags.${name}`)}
               </span>
             ))}
           </div>

@@ -124,11 +124,11 @@ function NotificationCard({ notif, t, isLight, onMarkRead }) {
       </div>
 
       {/* Mark read button (only for unread) */}
-      {!notif.is_read && (
-        <button
-          onClick={() => onMarkRead(notif.id)}
-          title="标记已读"
-          style={{
+        {!notif.is_read && (
+          <button
+            onClick={() => onMarkRead(notif.id)}
+            title={t('notification.markAllRead')}
+            style={{
             background: 'none', border: 'none', cursor: 'pointer',
             color: 'var(--text-30)', padding: 2, flexShrink: 0,
             display: 'flex', alignItems: 'center',
@@ -198,13 +198,11 @@ function PanelContent({ t, isLight, onClose, onReadCountChange }) {
       }}>
         <div>
           <div style={{
-            fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, letterSpacing: 0.6,
+            fontSize: 'calc(15px * var(--font-scale, 1))',
+            fontWeight: 700,
+            color: titleColor,
             fontFamily: 'var(--font-display)',
-            color: C.blue, marginBottom: 3,
           }}>
-            {t('notification.titleEn')}
-          </div>
-          <div style={{ fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: 'var(--font-display)' }}>
             {t('notification.title')}
           </div>
         </div>

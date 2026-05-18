@@ -16,6 +16,9 @@ const STATUS_COLORS = {
   pending_review: '#f59e0b',
   approved: '#10b981',
   rejected: '#fb7185',
+  uploaded: C.blue,
+  submitted_for_review: '#f59e0b',
+  reviewed: C.ice60,
 };
 
 function fmtNum(v, digits = 1) {
@@ -52,6 +55,83 @@ function gradeColor(grade) {
   return C.mars;
 }
 
+function getStatusLabel(status, t) {
+  const keyMap = {
+    valid: 'valid',
+    invalid: 'invalid',
+    pending_review: 'pending_review',
+    approved: 'approved',
+    rejected: 'rejected',
+    unknown: 'unknown',
+  };
+  const key = keyMap[status];
+  return key ? t(`explore.governance.statusLabel.${key}`) : (status || '--');
+}
+
+function getDataTypeLabel(type, t) {
+  const normalized = String(type || '').trim().toLowerCase();
+  const map = {
+    openmars: t('explore.governance.dataType.openmars'),
+    mcd: t('explore.governance.dataType.mcd'),
+    unknown: t('explore.governance.dataType.unknown'),
+  };
+  return map[normalized] || type || map.unknown;
+}
+
+function getSourceDistributionLabel(source, t) {
+  const normalized = String(source || '').trim().toLowerCase();
+  const map = {
+    openmars: t('explore.governance.dataType.openmars'),
+    mcd: t('explore.governance.dataType.mcd'),
+    unknown: t('explore.governance.dataType.unknown'),
+  };
+  return map[normalized] || source || map.unknown;
+}
+
+function getStorageZoneLabel(zone, t) {
+  const normalized = String(zone || '').trim().toLowerCase();
+  const map = {
+    approved: t('explore.governance.storageZone.approved'),
+    user_uploads: t('explore.governance.storageZone.user_uploads'),
+    missing: t('explore.governance.storageZone.missing'),
+  };
+  return map[normalized] || zone || '--';
+}
+
+function getEffectiveStatusLabel(status, t) {
+  const map = {
+    active: t('explore.governance.effectiveStatus.active'),
+    active_fallback_user_uploads: t('explore.governance.effectiveStatus.active_fallback_user_uploads'),
+    approved_but_missing: t('explore.governance.effectiveStatus.approved_but_missing'),
+    inactive: t('explore.governance.effectiveStatus.inactive'),
+    missing: t('explore.governance.effectiveStatus.missing'),
+  };
+  return map[status] || status || '--';
+}
+
+function getLineageEventLabel(type, t) {
+  const map = {
+    uploaded: t('explore.governance.lineageEvent.uploaded'),
+    submitted_for_review: t('explore.governance.lineageEvent.submitted_for_review'),
+    reviewed: t('explore.governance.lineageEvent.reviewed'),
+    approved: t('explore.governance.lineageEvent.approved'),
+    rejected: t('explore.governance.lineageEvent.rejected'),
+  };
+  return map[type] || type || '--';
+}
+
+function localizeQualityIssue(issue, t) {
+  if (!issue) return '--';
+  if (issue === 'No primary variable found for quality scoring') return t('explore.governance.qualityIssue.noPrimaryVariable');
+  if (issue === 'Time continuity is weak for full-season analysis') return t('explore.governance.qualityIssue.timeContinuityWeak');
+  if (issue === 'Grid is incompatible with native 36x72 resolution') return t('explore.governance.qualityIssue.gridIncompatible');
+  const missingRateMatch = issue.match(/^Missing rate is high \((.+)\)$/);
+  if (missingRateMatch) return t('explore.governance.qualityIssue.missingRateHigh', { value: missingRateMatch[1] });
+  const requiredVariablesMatch = issue.match(/^Required variables missing: (.+)$/);
+  if (requiredVariablesMatch) return t('explore.governance.qualityIssue.requiredVariablesMissing', { value: requiredVariablesMatch[1] });
+  return issue;
+}
+
 function SourceModeBadge({ label, color = C.ice60 }) {
   return (
     <span
@@ -69,7 +149,7 @@ function SourceModeBadge({ label, color = C.ice60 }) {
   );
 }
 
-function StatusDistributionChart({ distribution }) {
+function StatusDistributionChart({ distribution, t }) {
   const entries = Object.entries(distribution || {});
   const total = entries.reduce((sum, [, n]) => sum + Number(n || 0), 0);
   if (!entries.length || total <= 0) return null;
@@ -79,9 +159,10 @@ function StatusDistributionChart({ distribution }) {
       {entries.map(([status, count]) => {
         const safeCount = Number(count || 0);
         const pct = total > 0 ? (safeCount / total) * 100 : 0;
+        const label = getStatusLabel(status, t);
         return (
           <div key={`status-bar-${status}`} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 72px', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: STATUS_COLORS[status] || C.ice60 }}>{status}</span>
+            <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: STATUS_COLORS[status] || C.ice60 }}>{label}</span>
             <div style={{ height: 8, borderRadius: 999, overflow: 'hidden', background: 'rgba(255,255,255,0.08)' }}>
               <div
                 style={{
@@ -145,6 +226,8 @@ function StatCard({ eyebrow, label, value, desc, accent = C.blue }) {
 
 function AssetOverviewCard({ asset, active, onClick, t }) {
   const statusColor = STATUS_COLORS[asset.dominantStatus] || C.ice60;
+  const statusLabel = getStatusLabel(asset.dominantStatus, t);
+  const dataTypeLabel = getDataTypeLabel(asset.dataType, t);
   return (
     <button
       onClick={onClick}
@@ -162,7 +245,7 @@ function AssetOverviewCard({ asset, active, onClick, t }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div>
           <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice, fontWeight: 700 }}>
-            {asset.yearLabel} · {asset.dataType}
+            {asset.yearLabel} · {dataTypeLabel}
           </div>
           <div style={{ marginTop: 4, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>
             {`${asset.datasetCount} ${t('explore.governance.datasetUnit')} · ${asset.grids.length ? asset.grids.join(' / ') : '--'}`}
@@ -176,7 +259,7 @@ function AssetOverviewCard({ asset, active, onClick, t }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
         <SourceModeBadge label={`${t('explore.governance.assetCoverage')}: ${fmtLsCoverage(asset.lsCoverage)}`} />
         <SourceModeBadge label={`${t('explore.governance.assetRange')}: ${fmtLsRange(asset.lsRange)}`} />
-        <SourceModeBadge label={`${t('explore.governance.assetStatus')}: ${asset.dominantStatus}`} color={statusColor} />
+        <SourceModeBadge label={`${t('explore.governance.assetStatus')}: ${statusLabel}`} color={statusColor} />
       </div>
 
       <div style={{ marginTop: 12, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.7 }}>
@@ -360,7 +443,7 @@ export default function GovernanceTab() {
     return [
       {
         key: 'total',
-        eyebrow: 'ASSETS',
+        eyebrow: t('explore.governance.eyebrow.total'),
         label: t('explore.governance.totalDatasets'),
         value: summary.total_datasets ?? 0,
         desc: t('explore.governance.totalDatasetsDesc'),
@@ -368,7 +451,7 @@ export default function GovernanceTab() {
       },
       {
         key: 'effective',
-        eyebrow: 'ACTIVE',
+        eyebrow: t('explore.governance.eyebrow.effective'),
         label: t('explore.governance.effectiveDatasets'),
         value: summary.effective_datasets ?? 0,
         desc: t('explore.governance.effectiveDatasetsDesc'),
@@ -376,7 +459,7 @@ export default function GovernanceTab() {
       },
       {
         key: 'approved',
-        eyebrow: 'APPROVED',
+        eyebrow: t('explore.governance.eyebrow.approved'),
         label: t('explore.governance.approvedCount'),
         value: dist.approved ?? 0,
         desc: t('explore.governance.approvedCountDesc'),
@@ -384,7 +467,7 @@ export default function GovernanceTab() {
       },
       {
         key: 'pending',
-        eyebrow: 'PENDING',
+        eyebrow: t('explore.governance.eyebrow.pending'),
         label: t('explore.governance.pendingCount'),
         value: dist.pending_review ?? 0,
         desc: t('explore.governance.pendingCountDesc'),
@@ -392,7 +475,7 @@ export default function GovernanceTab() {
       },
       {
         key: 'quality',
-        eyebrow: 'QUALITY',
+        eyebrow: t('explore.governance.eyebrow.quality'),
         label: t('explore.governance.avgQuality'),
         value: summary.average_quality_score != null ? fmtNum(summary.average_quality_score, 1) : '--',
         desc: t('explore.governance.avgQualityDesc'),
@@ -468,7 +551,7 @@ export default function GovernanceTab() {
 
             <div style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {Object.entries(summary?.data_source_distribution || {}).map(([k, n]) => (
-                <SourceModeBadge key={`src-${k}`} label={`${k}: ${n}`} />
+                <SourceModeBadge key={`src-${k}`} label={`${getSourceDistributionLabel(k, t)}: ${n}`} />
               ))}
             </div>
             <div style={{ marginTop: 10, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -476,7 +559,7 @@ export default function GovernanceTab() {
                 <SourceModeBadge key={`year-${k}`} label={`${k}: ${n}`} />
               ))}
             </div>
-            <StatusDistributionChart distribution={summary?.status_distribution} />
+            <StatusDistributionChart distribution={summary?.status_distribution} t={t} />
           </GlowCard>
 
           <GlowCard style={{ padding: '16px 18px' }}>
@@ -504,8 +587,8 @@ export default function GovernanceTab() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
                   {selectedGroup && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      <SourceModeBadge label={`${selectedGroup.yearLabel} · ${selectedGroup.dataType}`} />
-                      <SourceModeBadge label={`${t('explore.governance.assetStatus')}: ${selectedGroup.dominantStatus}`} color={STATUS_COLORS[selectedGroup.dominantStatus] || C.ice60} />
+                      <SourceModeBadge label={`${selectedGroup.yearLabel} · ${getDataTypeLabel(selectedGroup.dataType, t)}`} />
+                      <SourceModeBadge label={`${t('explore.governance.assetStatus')}: ${getStatusLabel(selectedGroup.dominantStatus, t)}`} color={STATUS_COLORS[selectedGroup.dominantStatus] || C.ice60} />
                       <SourceModeBadge label={`${t('explore.governance.assetCoverage')}: ${fmtLsCoverage(selectedGroup.lsCoverage)}`} />
                     </div>
                   )}
@@ -540,7 +623,7 @@ export default function GovernanceTab() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {quality.issues.slice(0, 5).map((issue, idx) => (
                           <div key={`${issue}-${idx}`} style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice60 }}>
-                            {issue}
+                            {localizeQualityIssue(issue, t)}
                           </div>
                         ))}
                       </div>
@@ -560,15 +643,15 @@ export default function GovernanceTab() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
                     <SourceModeBadge label={`${t('explore.governance.hash')}: ${lineage.file_hash || '--'}`} />
-                    <SourceModeBadge label={`${t('explore.governance.sourceZone')}: ${lineage?.current_effective_data_source?.storage_zone || '--'}`} />
-                    <SourceModeBadge label={`effective_status: ${lineage?.current_effective_data_source?.effective_status || '--'}`} />
+                    <SourceModeBadge label={`${t('explore.governance.sourceZone')}: ${getStorageZoneLabel(lineage?.current_effective_data_source?.storage_zone, t)}`} />
+                    <SourceModeBadge label={`${t('explore.governance.effectiveStatusLabel')}: ${getEffectiveStatusLabel(lineage?.current_effective_data_source?.effective_status, t)}`} />
                   </div>
 
                   <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60 }}>{`${t('explore.governance.uploader')}: ${lineage?.uploader?.username || lineage?.uploader?.email || '--'}`}</div>
                   <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60 }}>{`${t('explore.governance.reviewer')}: ${lineage?.reviewer?.username || lineage?.reviewer?.email || '--'}`}</div>
                   <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60 }}>{`${t('explore.governance.createdAt')}: ${lineage?.timestamps?.uploaded_at || '--'}`}</div>
                   <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60 }}>{`${t('explore.governance.reviewedAt')}: ${lineage?.timestamps?.reviewed_at || '--'}`}</div>
-                  <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, wordBreak: 'break-all' }}>{`effective_path: ${lineage?.current_effective_data_source?.effective_path || '--'}`}</div>
+                  <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, wordBreak: 'break-all' }}>{`${t('explore.governance.effectivePathLabel')}: ${lineage?.current_effective_data_source?.effective_path || '--'}`}</div>
 
                   <div style={{ marginTop: 6, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>{t('explore.governance.eventTimeline')}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -582,7 +665,7 @@ export default function GovernanceTab() {
                           background: 'rgba(255,255,255,0.02)',
                         }}
                       >
-                        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: STATUS_COLORS[evt.type] || C.ice60 }}>{`${evt.type}${evt.at ? ` | ${evt.at}` : ''}`}</div>
+                        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: STATUS_COLORS[evt.type] || C.ice60 }}>{`${getLineageEventLabel(evt.type, t)}${evt.at ? ` | ${evt.at}` : ''}`}</div>
                         <div style={{ marginTop: 3, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>
                           {(() => {
                             const actor = [evt.actor || '', evt.actor_role ? `[${evt.actor_role}]` : '', evt.actor_email ? `<${evt.actor_email}>` : '']

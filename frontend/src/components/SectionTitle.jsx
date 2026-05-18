@@ -1,25 +1,30 @@
 import C from '../constants/colors';
+import { useSettings } from '../contexts/SettingsContext';
 
 /**
  * 页面区块标题组件
- * Props: title (中文), subtitle (英文/标签), align
+ * Props: title, subtitle, align
  */
 export default function SectionTitle({ title, subtitle, align = 'left' }) {
+  const { settings } = useSettings();
+  const isZh = settings?.language !== 'en';
+  const subtitleStyle = {
+    fontSize: 'calc(12px * var(--font-scale, 1))',
+    fontWeight: 700,
+    letterSpacing: isZh ? '0.06em' : '0.12em',
+    color: C.mars,
+    textTransform: isZh ? 'none' : 'uppercase',
+    fontFamily: 'var(--font-body)',
+    marginBottom: 8,
+  };
+
   return (
     <div style={{ textAlign: align, marginBottom: 32 }}>
-      <div
-        style={{
-          fontSize: 'calc(12px * var(--font-scale, 1))',
-          fontWeight: 700,
-          letterSpacing: '0.12em',
-          color: C.mars,
-          textTransform: 'uppercase',
-          fontFamily: 'var(--font-body)',
-          marginBottom: 8,
-        }}
-      >
-        {subtitle}
-      </div>
+      {subtitle ? (
+        <div style={subtitleStyle}>
+          {subtitle}
+        </div>
+      ) : null}
       <h2
         style={{
           fontSize: 'calc(32px * var(--font-scale, 1))',

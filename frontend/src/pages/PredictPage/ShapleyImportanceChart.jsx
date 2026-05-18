@@ -50,6 +50,25 @@ export default function ShapleyImportanceChart({
   const [error, setError] = useState(null);
 
   const marginalData = marginalDataCache[activeMetric] || null;
+  const isZh = t('settings.language.label') === '语言';
+  const copy = useMemo(() => ({
+    loadingDesc: isZh
+      ? '正在加载特征贡献数据并准备分析视图。'
+      : 'Loading feature contribution data and preparing the analysis view.',
+    unavailableTitle: isZh ? '特征归因分析暂不可用' : 'Feature attribution is unavailable',
+    close: isZh ? '关闭' : 'Close',
+    retry: isZh ? '重试' : 'Retry',
+    eyebrow: isZh ? '可解释性分析' : 'Explainability',
+    headerDesc: isZh
+      ? '在同一个分析工作区中，对比全局重要性与指标级贡献模式。'
+      : 'Compare global importance and metric-level contribution patterns in one focused analysis workspace.',
+    refreshAria: isZh ? '刷新特征归因图表' : 'Refresh feature attribution charts',
+    closeAria: isZh ? '关闭特征归因图表' : 'Close feature attribution charts',
+    gradientDesc: isZh ? '按变量查看平均绝对归因强度。' : 'Mean absolute attribution strength by variable.',
+    swarmDesc: isZh ? '查看样本层面的局部影响值分布。' : 'Distribution of local impact values across samples.',
+    marginalDesc: isZh ? '查看各变量相对于当前评估指标的平均贡献。' : 'Average variable contribution against the selected evaluation metric.',
+    metricTag: isZh ? '指标' : 'Metric',
+  }), [isZh]);
 
   const theme = useMemo(() => ({
     overlay: isLight ? 'rgba(238,244,251,0.76)' : 'rgba(2,5,11,0.84)',
@@ -245,7 +264,7 @@ export default function ShapleyImportanceChart({
               lineHeight: 1.6,
             }}
           >
-            Loading feature contribution data and preparing the analysis view.
+            {copy.loadingDesc}
           </div>
         </div>
         <style>{`
@@ -295,7 +314,7 @@ export default function ShapleyImportanceChart({
               marginBottom: 8,
             }}
           >
-            SHAP analysis unavailable
+            {copy.unavailableTitle}
           </div>
           <div
             style={{
@@ -320,7 +339,7 @@ export default function ShapleyImportanceChart({
                 cursor: 'pointer',
               }}
             >
-              Close
+              {copy.close}
             </button>
             <button
               onClick={fetchData}
@@ -335,7 +354,7 @@ export default function ShapleyImportanceChart({
                 cursor: 'pointer',
               }}
             >
-              Retry
+              {copy.retry}
             </button>
           </div>
         </div>
@@ -396,7 +415,7 @@ export default function ShapleyImportanceChart({
                 marginBottom: 8,
               }}
             >
-              Explainability
+              {copy.eyebrow}
             </div>
             <div
               style={{
@@ -440,7 +459,7 @@ export default function ShapleyImportanceChart({
                 lineHeight: 1.6,
               }}
             >
-              Compare global importance and metric-level contribution patterns in one focused analysis workspace.
+              {copy.headerDesc}
             </div>
             {!mode && (
               <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
@@ -516,7 +535,7 @@ export default function ShapleyImportanceChart({
 
             <button
               onClick={handleRefresh}
-              aria-label="Refresh shap charts"
+              aria-label={copy.refreshAria}
               style={{
                 width: 40,
                 height: 40,
@@ -534,7 +553,7 @@ export default function ShapleyImportanceChart({
             </button>
             <button
               onClick={onClose}
-              aria-label="Close shap charts"
+              aria-label={copy.closeAria}
               style={{
                 width: 40,
                 height: 40,
@@ -626,7 +645,7 @@ export default function ShapleyImportanceChart({
                       color: theme.textMute,
                     }}
                   >
-                    Mean absolute SHAP contribution by variable.
+                    {copy.gradientDesc}
                   </div>
                 </div>
                 <Plot
@@ -683,7 +702,7 @@ export default function ShapleyImportanceChart({
                       color: theme.textMute,
                     }}
                   >
-                    Distribution of local impact values across samples.
+                    {copy.swarmDesc}
                   </div>
                 </div>
                 <Plot
@@ -746,7 +765,7 @@ export default function ShapleyImportanceChart({
                       color: theme.textMute,
                     }}
                   >
-                    Average variable contribution against the selected evaluation metric.
+                    {copy.marginalDesc}
                   </div>
                 </div>
                 <div
@@ -760,7 +779,7 @@ export default function ShapleyImportanceChart({
                     fontWeight: 700,
                   }}
                 >
-                  METRIC · {activeMetric.toUpperCase()}
+                  {copy.metricTag} · {activeMetric.toUpperCase()}
                 </div>
               </div>
 

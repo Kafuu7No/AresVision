@@ -326,7 +326,7 @@ export default function PredictSidebar({
           </ActionButton>
 
           <ActionButton secondary onClick={() => onShapleyClick('gradient')}>
-            {isZh ? '查看全局 SHAP 归因' : 'View global SHAP attribution'}
+            {t('predict.shapleyBtn')}
           </ActionButton>
         </div>
 

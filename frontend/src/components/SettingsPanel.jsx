@@ -243,15 +243,13 @@ export default function SettingsPanel({ open, onClose }) {
         }}>
           <div>
             <div style={{
-              fontSize: 'calc(11px * var(--font-scale, 1))',
+              fontSize: 'calc(16px * var(--font-scale, 1))',
               fontWeight: 700,
-              letterSpacing: 0.8,
-              fontFamily: 'var(--font-display)',
-              color: 'var(--text)',
+              color: C.mars,
+              fontFamily: 'var(--font-body)',
             }}>
-              {t('settings.titleEn')}
+              {t('settings.title')}
             </div>
-            <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: 'var(--text-30)', marginTop: 2 }}>{t('settings.title')}</div>
           </div>
           <button
             onClick={onClose}

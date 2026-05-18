@@ -41,7 +41,7 @@ function createCopy(isZh) {
     contributionNone: isZh ? '当前没有可提交贡献的数据集。' : 'No datasets are currently eligible for contribution.',
     canUseTitle: isZh ? '分析使用条件' : 'Analysis Usage Conditions',
     canUseDesc: isZh
-      ? '能否被数据概览、分析、预测和训练页面真正当作 Personal 数据源调用。'
+      ? '能否被数据概览、分析、预测和训练页面真正当作个人数据源调用。'
       : 'Whether overview, analysis, prediction, and training pages can truly consume it through the Personal source path.',
     canContributeTitle: isZh ? '公共贡献条件' : 'Contribution Conditions',
     canContributeDesc: isZh
@@ -50,7 +50,7 @@ function createCopy(isZh) {
     lifeCycleTitle: isZh ? '生命周期状态' : 'Lifecycle Status',
     sourceModeTitle: isZh ? '进入的数据源模式' : 'Source Mode',
     sourceModeDesc: isZh
-      ? '当其他页面切换到 Personal 时，系统最终会使用哪一种数据源组合。'
+      ? '当其他页面切换到个人模式时，系统最终会使用哪一种数据源组合。'
       : 'What source combination the system ultimately uses when other pages switch to Personal mode.',
     ruleValid: isZh ? '上传校验通过' : 'Upload validation passed',
     ruleBuildReady: isZh ? '个人数据源构建完成' : 'Personal source build is ready',
@@ -99,12 +99,17 @@ function createCopy(isZh) {
     approvedDesc: isZh ? '已经进入平台官方数据资产层的数据。' : 'Datasets already merged into official platform assets.',
     buildPendingStat: isZh ? '处理中' : 'Building',
     buildPendingDesc: isZh ? '后台仍在构建个人数据源或等待系统处理的数据。' : 'Datasets still building into the personal source or awaiting processing.',
-    readySignal: isZh ? '当前可直接用于 Personal 模式' : 'Ready for Personal mode now',
+    readySignal: isZh ? '当前可直接用于个人模式' : 'Ready for Personal mode now',
     attentionSignal: isZh ? '建议优先关注这条数据的状态' : 'This item likely needs attention first',
     contributionSignal: isZh ? '满足公共贡献基础条件' : 'Eligible for public contribution',
     reviewSignalLabel: isZh ? '已进入平台审核流程' : 'Already in platform review',
     approvedSignalLabel: isZh ? '已并入官方数据资产' : 'Already merged into official assets',
     officialCenterLink: isZh ? '官方数据中心会显示已并入的平台数据状态。' : 'Approved platform datasets are reflected in the official dataset center above.',
+    yes: isZh ? '是' : 'YES',
+    no: isZh ? '否' : 'NO',
+    unknownError: isZh ? '未知错误' : 'Unknown error',
+    autoClose: isZh ? '后自动关闭' : 'auto close',
+    uploadNetworkError: isZh ? '网络异常，请检查连接。' : 'Network error, please check your connection.',
   };
 }
 
@@ -805,11 +810,11 @@ function UploadZone({
               }}
             >
               <span style={{ fontWeight: 700 }}>{t('explore.upload.errorDetail')}: </span>
-              {uploadResult.data?.error || uploadResult.data?.detail || 'Unknown error'}
+              {uploadResult.data?.error || uploadResult.data?.detail || copy.unknownError}
             </div>
           )}
 
-          <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30, textAlign: 'right' }}>{resultOk ? '5s' : '8s'} auto close</div>
+          <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30, textAlign: 'right' }}>{`${resultOk ? '5s' : '8s'} ${copy.autoClose}`}</div>
         </div>
       )}
     </div>
@@ -892,7 +897,7 @@ function RuleList({ title, ok, desc, rules }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice, fontWeight: 700 }}>{title}</div>
         <Badge
-          label={ok ? 'YES' : 'NO'}
+          label={ok ? copy.yes : copy.no}
           color={ok ? C.green : C.mars}
           bg={ok ? 'rgba(74,207,172,0.1)' : 'rgba(199,91,57,0.1)'}
         />
@@ -1472,7 +1477,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
     });
 
     xhr.addEventListener('error', () => {
-      setUploadResult({ ok: false, data: { detail: 'Network error, please check your connection.' }, status: 0 });
+      setUploadResult({ ok: false, data: { detail: copy.uploadNetworkError }, status: 0 });
       setUploadState('result');
     });
 
@@ -1561,8 +1566,8 @@ export default function MyDataTab({ reviewSignal = 0 }) {
             </div>
             <div style={{ fontSize: 'calc(20px * var(--font-scale, 1))', color: C.ice, fontWeight: 700, lineHeight: 1.4 }}>{copy.myHubTitle}</div>
             <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <Badge label="OpenMARS (.nc)" color={C.blue} bg="rgba(74,158,255,0.1)" />
-              <Badge label="MCD (.nc)" color={C.mars} bg="rgba(199,91,57,0.1)" />
+              <Badge label={t('explore.defaultDataset.heroTags.openmars')} color={C.blue} bg="rgba(74,158,255,0.1)" />
+              <Badge label={t('explore.defaultDataset.heroTags.mcd')} color={C.mars} bg="rgba(199,91,57,0.1)" />
               <Badge label={t('explore.myData.ingestCheck1')} color={C.ice60} bg="rgba(255,255,255,0.05)" />
               <Badge label={t('explore.myData.ingestCheck2')} color={C.ice60} bg="rgba(255,255,255,0.05)" />
               <Badge label={t('explore.myData.ingestCheck3')} color={C.ice60} bg="rgba(255,255,255,0.05)" />
