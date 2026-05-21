@@ -601,6 +601,7 @@ function deriveSignalMeta(ctx, copy) {
 
 function UploadZone({
   t,
+  copy,
   uploadState,
   uploadProgress,
   uploadPhase,
@@ -884,7 +885,7 @@ function CurrentSourcePanel({ personalInfo, buildStatus, t }) {
   );
 }
 
-function RuleList({ title, ok, desc, rules }) {
+function RuleList({ title, ok, desc, rules, copy }) {
   return (
     <div
       style={{
@@ -1584,6 +1585,7 @@ export default function MyDataTab({ reviewSignal = 0 }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18, alignItems: 'start' }}>
             <UploadZone
               t={t}
+              copy={copy}
               uploadState={uploadState}
               uploadProgress={uploadProgress}
               uploadPhase={uploadPhase}
@@ -1845,12 +1847,14 @@ export default function MyDataTab({ reviewSignal = 0 }) {
                   ok={viewingCtx.analysisCondition.ok}
                   desc={copy.canUseDesc}
                   rules={viewingCtx.analysisCondition.rules}
+                  copy={copy}
                 />
                 <RuleList
                   title={copy.canContributeTitle}
                   ok={viewingCtx.contributionCondition.ok}
                   desc={copy.canContributeDesc}
                   rules={viewingCtx.contributionCondition.rules}
+                  copy={copy}
                 />
               </div>
 
