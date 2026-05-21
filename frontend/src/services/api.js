@@ -147,6 +147,12 @@ export async function fetchDataInfo(options = {}) {
   return res.json();
 }
 
+export async function fetchPersonalBuildStatus() {
+  const res = await authedFetch(`${BASE}/explore/personal-build-status`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 export async function fetchCouplingData(marsYear = 27, var1 = 'o3col', var2 = 'Dust_Optical_Depth', options = {}) {
   const res = await authedFetch(appendDataSource(`${BASE}/explore/coupling?my=${marsYear}&var1=${var1}&var2=${var2}`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
@@ -338,6 +344,33 @@ export async function getApprovedDatasets() {
 
 export async function revokeDataset(uploadId) {
   const res = await authedFetch(`${BASE}/upload/${uploadId}/revoke`, { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getDataGovernanceOverview(scope = 'mine') {
+  const res = await authedFetch(`${BASE}/upload/governance/overview?scope=${encodeURIComponent(scope)}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getDataGovernanceQuality(uploadId) {
+  const res = await authedFetch(`${BASE}/upload/governance/quality/${uploadId}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getDataGovernanceLineage(uploadId) {
+  const res = await authedFetch(`${BASE}/upload/governance/lineage/${uploadId}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || `${res.status}`);

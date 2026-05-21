@@ -57,8 +57,8 @@ export default function WaveBandDiagnosticsChart({ marsYear, dataSourceMode = 'd
   const { settings } = useSettings();
   const isLight = settings?.theme === 'light';
   const isZh = settings?.language !== 'en';
-  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
-  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.14)';
+  const plotText = isLight ? 'rgba(23,33,47,0.88)' : 'rgba(236,244,255,0.94)';
+  const plotGrid = isLight ? 'rgba(23,33,47,0.12)' : 'rgba(160,196,240,0.15)';
 
   const [variable, setVariable] = useState('o3col');
   const [rawData, setRawData] = useState(null);
@@ -187,8 +187,8 @@ export default function WaveBandDiagnosticsChart({ marsYear, dataSourceMode = 'd
 
   useAiInsightRegistration('waveDiag', aiInsightProvider);
 
-  if (loading) return <div style={{ color: C.ice60, fontSize: 12 }}>{copy.loading}</div>;
-  if (!diagnostics?.bands?.length) return <div style={{ color: C.mars, fontSize: 12 }}>{copy.noData}</div>;
+  if (loading) return <div style={{ color: C.ice60, fontSize: 'calc(12px * var(--font-scale, 1))' }}>{copy.loading}</div>;
+  if (!diagnostics?.bands?.length) return <div style={{ color: C.mars, fontSize: 'calc(12px * var(--font-scale, 1))' }}>{copy.noData}</div>;
 
   return (
     <div style={{ width: '100%', display: 'grid', gap: 10 }}>
@@ -203,9 +203,9 @@ export default function WaveBandDiagnosticsChart({ marsYear, dataSourceMode = 'd
               color: variable === option.id ? C.blue : C.ice60,
               borderRadius: 999,
               padding: '6px 10px',
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               cursor: 'pointer',
-              fontFamily: "'Orbitron', sans-serif",
+              fontFamily: 'var(--font-body)',
             }}
             title={`${copy.selectLabel}: ${option.label}`}
           >
@@ -214,7 +214,7 @@ export default function WaveBandDiagnosticsChart({ marsYear, dataSourceMode = 'd
         ))}
       </div>
 
-      <div style={{ color: C.ice60, fontSize: 11 }}>
+      <div style={{ color: C.ice60, fontSize: 'calc(11px * var(--font-scale, 1))' }}>
         {copy.variableLabel}: <span style={{ color: C.blue, fontWeight: 700 }}>{currentVariableLabel}</span>
       </div>
 
@@ -265,7 +265,7 @@ export default function WaveBandDiagnosticsChart({ marsYear, dataSourceMode = 'd
           border: `1px solid ${C.border}`,
           background: 'rgba(255,255,255,0.03)',
           color: C.ice60,
-          fontSize: 12,
+          fontSize: 'calc(12px * var(--font-scale, 1))',
           lineHeight: 1.65,
         }}
       >

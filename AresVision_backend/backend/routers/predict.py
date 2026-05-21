@@ -2,6 +2,7 @@
 棰勬祴鍒嗘瀽椤?鈥?API 璺敱
 """
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, Body
@@ -43,6 +44,15 @@ def _get_personal_predict_service_cache(request: Request) -> LRUCache:
     return cache
 
 
+def _personal_cache_key(current_user: User | None, resolution) -> tuple:
+    return (
+        int(current_user.id if current_user else 0),
+        int(resolution.mars_year),
+        str(resolution.effective_source),
+        str(getattr(resolution, "signature_hash", "") or ""),
+    )
+
+
 async def _resolve_predict_context(
     request: Request,
     my: int,
@@ -72,14 +82,7 @@ async def _resolve_predict_context(
         return _get_predict_service(request), resolution.source_meta(), resolution.mars_year
 
     service_cache = _get_personal_predict_service_cache(request)
-    cache_key = (
-        int(current_user.id if current_user else 0),
-        int(resolution.mars_year),
-        str(resolution.effective_source),
-        id(resolution.openmars_data),
-        id(resolution.aligned_mcd_data),
-        id(resolution.mcd_raw_data),
-    )
+    cache_key = _personal_cache_key(current_user, resolution)
     cached_service = service_cache.get(cache_key)
     if cached_service is not None:
         logger.info(
@@ -229,6 +232,27 @@ async def prewarm_personal_source(
     Used by frontend after login to reduce first interactive switch latency.
     """
     try:
+        requested = (data_source or "default").strip().lower()
+        if requested == "personal" and current_user is not None:
+            enqueue = getattr(request.app.state, "enqueue_personal_cache_rebuild", None)
+            if callable(enqueue):
+                enqueue(current_user.id)
+            else:
+                resolver = request.app.state.personal_data_source_service
+                asyncio.create_task(resolver.build_user_cache(current_user.id))
+            return {
+                "ok": True,
+                "queued": True,
+                "warmed": False,
+                "mars_year": my,
+                "source_meta": {
+                    "requested_source": "personal",
+                    "effective_source": "personal",
+                    "fallback": False,
+                    "message": "personal cache rebuild queued",
+                },
+            }
+
         ps, source_meta, resolved_year = await _resolve_predict_context(
             request, my, data_source, current_user
         )

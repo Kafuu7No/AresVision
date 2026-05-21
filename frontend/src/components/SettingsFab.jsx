@@ -53,7 +53,7 @@ function SubOption({ label, selected, onClick, hoverBg, labelColor, activeClr })
       }}
     >
       <span style={{
-        fontSize: 13, userSelect: 'none',
+        fontSize: 'calc(13px * var(--font-scale, 1))', userSelect: 'none',
         color: selected ? activeClr : labelColor,
         fontWeight: selected ? 600 : 400,
       }}>
@@ -80,11 +80,11 @@ function PerfToggleItem({ label, active, onClick, hoverBg, labelClr, valueClr })
         transition: 'background 0.1s',
       }}
     >
-      <span style={{ fontSize: 14, fontWeight: 500, color: labelClr, userSelect: 'none' }}>
+      <span style={{ fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 500, color: labelClr, userSelect: 'none' }}>
         {label}
       </span>
       <span style={{
-        fontSize: 11, fontWeight: 600,
+        fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 600,
         color: active ? '#22c55e' : valueClr,
         userSelect: 'none',
       }}>
@@ -107,7 +107,7 @@ function UserActionItem({ label, onClick, hoverBg, color }) {
         transition: 'background 0.1s',
       }}
     >
-      <span style={{ fontSize: 14, fontWeight: 500, color, userSelect: 'none' }}>
+      <span style={{ fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 500, color, userSelect: 'none' }}>
         {label}
       </span>
     </div>
@@ -270,13 +270,13 @@ export default function SettingsFab({ onOpenSettings, onOpenAdmin }) {
                     }}
                   >
                     <span style={{
-                      fontSize: 14, fontWeight: 500,
+                      fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 500,
                       color: labelClr, userSelect: 'none',
                     }}>
                       {item.label}
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: valueClr }}>
-                      <span style={{ fontSize: 13, userSelect: 'none' }}>{item.value}</span>
+                      <span style={{ fontSize: 'calc(13px * var(--font-scale, 1))', userSelect: 'none' }}>{item.value}</span>
                       <ChevronRight />
                     </div>
                   </div>
@@ -297,7 +297,7 @@ export default function SettingsFab({ onOpenSettings, onOpenAdmin }) {
                 }}
               >
                 <span style={{
-                  fontSize: 14, fontWeight: 500,
+                  fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 500,
                   color: labelClr, userSelect: 'none',
                 }}>
                   {moreLabel}
@@ -336,18 +336,18 @@ export default function SettingsFab({ onOpenSettings, onOpenAdmin }) {
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         flexShrink: 0,
                       }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>
+                        <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: '#fff' }}>
                           {(user?.username || user?.email || "?")[0]?.toUpperCase() || "?"}
                         </span>
                       </div>
                       <div style={{ minWidth: 0 }}>
                         <div style={{
-                          fontSize: 13, fontWeight: 600, color: labelClr,
+                          fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 600, color: labelClr,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>
                           {user.username || user.email}
                         </div>
-                        <div style={{ fontSize: 11, color: valueClr }}>{roleLabel}</div>
+                        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: valueClr }}>{roleLabel}</div>
                       </div>
                     </div>
                   </div>
@@ -421,7 +421,7 @@ export default function SettingsFab({ onOpenSettings, onOpenAdmin }) {
         <div style={{
           position: 'absolute', bottom: 50, left: 0,
           background: L ? 'rgba(28,28,48,0.9)' : 'rgba(10,10,22,0.92)',
-          color: '#fff', fontSize: 12, fontWeight: 500,
+          color: '#fff', fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 500,
           padding: '5px 10px', borderRadius: 7,
           whiteSpace: 'nowrap', pointerEvents: 'none',
           boxShadow: '0 2px 8px rgba(0,0,0,0.22)',

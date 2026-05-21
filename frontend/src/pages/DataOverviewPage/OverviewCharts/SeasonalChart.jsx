@@ -113,8 +113,8 @@ export default function SeasonalChart({ marsYear, dataSourceMode = 'default' }) 
   const { settings } = useSettings();
   const isZh = settings?.language !== 'en';
   const isLight = settings?.theme === 'light';
-  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
-  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+  const plotText = isLight ? 'rgba(23,33,47,0.88)' : 'rgba(236,244,255,0.94)';
+  const plotGrid = isLight ? 'rgba(23,33,47,0.12)' : 'rgba(160,196,240,0.16)';
   const colormapName = settings?.colormap;
   const units = settings?.units || { ozone: 'um-atm', temperature: 'K', wind: 'm/s' };
 
@@ -246,12 +246,12 @@ export default function SeasonalChart({ marsYear, dataSourceMode = 'default' }) 
   if (loading) {
     return (
       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: C.ice, fontFamily: "'Orbitron', sans-serif", display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ color: C.ice, fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div
             style={{
               width: 16,
               height: 16,
-              border: '2px solid rgba(0,240,255,0.2)',
+              border: '2px solid rgba(148,163,184,0.24)',
               borderTop: `2px solid ${C.ice}`,
               borderRadius: '50%',
               animation: 'spin-slow 1s linear infinite',
@@ -293,7 +293,7 @@ export default function SeasonalChart({ marsYear, dataSourceMode = 'default' }) 
           bottom: 0px !important;
           right: 20px !important;
           left: auto !important;
-          border: 1px solid rgba(0, 240, 255, 0.2);
+          border: 1px solid rgba(148, 163, 184, 0.24);
           border-radius: 8px;
           padding: 2px 4px;
           display: flex !important;
@@ -303,7 +303,7 @@ export default function SeasonalChart({ marsYear, dataSourceMode = 'default' }) 
           margin-bottom: 0 !important;
         }
         .seasonal-chart-container .modebar-btn svg {
-          fill: rgba(0, 240, 255, 0.6) !important;
+          fill: rgba(148, 163, 184, 0.78) !important;
         }
         .seasonal-chart-container .modebar-btn:hover svg,
         .seasonal-chart-container .modebar-btn.active svg {
@@ -322,9 +322,9 @@ export default function SeasonalChart({ marsYear, dataSourceMode = 'default' }) 
               color: variable === item.id ? C.blue : C.ice60,
               borderRadius: 999,
               padding: '6px 10px',
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               cursor: 'pointer',
-              fontFamily: "'Orbitron', sans-serif",
+              fontFamily: 'var(--font-body)',
             }}
           >
             {item.label}
@@ -332,7 +332,7 @@ export default function SeasonalChart({ marsYear, dataSourceMode = 'default' }) 
         ))}
       </div>
 
-      <div style={{ color: C.ice60, fontSize: 11 }}>
+      <div style={{ color: C.ice60, fontSize: 'calc(11px * var(--font-scale, 1))' }}>
         {copy.currentVar}: <span style={{ color: C.blue, fontWeight: 700 }}>{currentVariableLabel}</span>
       </div>
 
@@ -352,7 +352,7 @@ export default function SeasonalChart({ marsYear, dataSourceMode = 'default' }) 
               colorbar: {
                 title: {
                   text: colorbarTitle,
-                  font: { color: plotText, family: "'Orbitron', sans-serif", size: 10 },
+                  font: { color: plotText, family: 'Space Grotesk, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif', size: 10 },
                   side: 'top',
                 },
                 orientation: 'h',
@@ -360,14 +360,14 @@ export default function SeasonalChart({ marsYear, dataSourceMode = 'default' }) 
                 yanchor: 'top',
                 len: 0.8,
                 thickness: 10,
-                tickfont: { color: plotText, family: "'Exo 2', sans-serif" },
+                tickfont: { color: plotText, family: 'Space Grotesk, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif' },
               },
             },
           ]}
           layout={{
             title: {
               text: titleText,
-              font: { color: plotText, family: "'Orbitron', sans-serif", size: 13 },
+              font: { color: plotText, family: 'Space Grotesk, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif', size: 13 },
             },
             xaxis: {
               title: copy.xAxisTitle,

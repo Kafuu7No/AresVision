@@ -5,6 +5,7 @@ import { SettingsProvider } from './contexts/SettingsContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import AuthModal from './components/AuthModal';
+import FontScaleRuntime from './components/FontScaleRuntime';
 import Toast from './components/Toast';
 import './index.css';
 
@@ -13,6 +14,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <SettingsProvider>
       <ToastProvider>
         <AuthProvider>
+          <FontScaleRuntime />
           <App />
           <AuthModal />
           <Toast />

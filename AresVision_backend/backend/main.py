@@ -10,8 +10,9 @@ import os
 import time
 import sys
 import asyncio
+from datetime import datetime, timezone
 from pathlib import Path
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 # Windows 下异步子进程必须使用 ProactorEventLoop
 if sys.platform == 'win32':
@@ -33,12 +34,15 @@ from services.copilot_service import CopilotService
 from services.upload_service import UploadService
 from services.user_data_service import UserDataService
 from services.personal_data_source_service import PersonalDataSourceService
+from services.data_governance_service import DataGovernanceService
+from services.personal_data_source_service import SingleYearDataView
 from core.analysis_transforms import AnalysisTransforms
 from core.predict_transforms import PredictTransforms
 from core.predict_inference import PredictInference
 from routers import analysis, predict, ai, copilot
 from routers import auth
 from routers import upload as upload_router_module
+from routers import governance as governance_router_module
 from routers import notification as notification_router_module
 from routers import user_data as user_data_router_module
 from routers import feedback as feedback_router_module
@@ -126,6 +130,164 @@ async def lifespan(app: FastAPI):
     # 数据源解析服务（默认/个人数据源切换 + 自动降级）
     personal_source_service = PersonalDataSourceService(data_service)
     app.state.personal_data_source_service = personal_source_service
+    personal_cache_rebuild_queue: asyncio.Queue[int] = asyncio.Queue()
+    personal_cache_pending_users: set[int] = set()
+
+    def enqueue_personal_cache_rebuild(user_id: int) -> None:
+        try:
+            uid = int(user_id)
+        except (TypeError, ValueError):
+            return
+        if uid <= 0:
+            return
+        if uid in personal_cache_pending_users:
+            return
+        personal_cache_pending_users.add(uid)
+        personal_cache_rebuild_queue.put_nowait(uid)
+
+    async def warm_personal_runtime_caches(user_id: int) -> None:
+        status = await personal_source_service.get_build_status(user_id)
+        if status.get("status") != "ready":
+            return
+
+        info = await personal_source_service.get_data_info("personal", user_id)
+        years = list(info.get("available_years") or [])
+        if not years:
+            return
+
+        primary_year = int(years[0])
+
+        await personal_source_service._upsert_build_state(
+            user_id=user_id,
+            signature_hash=status.get("signature_hash") or "",
+            status="building",
+            stage="warming_analysis",
+            progress=72.0,
+            stage_message=personal_source_service._build_stage_message("warming_analysis"),
+            error=None,
+            duration_ms=status.get("duration_ms"),
+            built_at=None,
+        )
+
+        resolution = await personal_source_service.resolve_for_year("personal", primary_year, user_id)
+        if resolution.effective_source != "default":
+            analysis_cache = getattr(app.state, "personal_analysis_service_cache", None)
+            if analysis_cache is None:
+                from cachetools import LRUCache
+                analysis_cache = LRUCache(maxsize=16)
+                app.state.personal_analysis_service_cache = analysis_cache
+
+            analysis_key = (
+                int(user_id),
+                int(resolution.mars_year),
+                str(resolution.effective_source),
+                str(getattr(resolution, "signature_hash", "") or ""),
+            )
+            analysis_service_cached = analysis_cache.get(analysis_key)
+            if analysis_service_cached is None:
+                data_view = SingleYearDataView(
+                    mars_year=resolution.mars_year,
+                    openmars_data=resolution.openmars_data,
+                    aligned_mcd_data=resolution.aligned_mcd_data,
+                    mcd_raw_data=resolution.mcd_raw_data,
+                )
+                analysis_service_cached = AnalysisService(data_view)
+                analysis_cache[analysis_key] = analysis_service_cached
+            try:
+                await asyncio.to_thread(
+                    analysis_service_cached.get_seasonal_heatmap,
+                    resolution.mars_year,
+                    variable="o3col",
+                )
+                await asyncio.to_thread(
+                    analysis_service_cached.get_seasonal_bands,
+                    resolution.mars_year,
+                )
+            except Exception:
+                logger.exception("personal analysis cache warm failed for user %s", user_id)
+
+            await personal_source_service._upsert_build_state(
+                user_id=user_id,
+                signature_hash=status.get("signature_hash") or "",
+                status="building",
+                stage="warming_predict",
+                progress=88.0,
+                stage_message=personal_source_service._build_stage_message("warming_predict"),
+                error=None,
+                duration_ms=status.get("duration_ms"),
+                built_at=None,
+            )
+
+            predict_cache = getattr(app.state, "personal_predict_service_cache", None)
+            if predict_cache is None:
+                from cachetools import LRUCache
+                predict_cache = LRUCache(maxsize=16)
+                app.state.personal_predict_service_cache = predict_cache
+
+            predict_key = (
+                int(user_id),
+                int(resolution.mars_year),
+                str(resolution.effective_source),
+                str(getattr(resolution, "signature_hash", "") or ""),
+            )
+            predict_service_cached = predict_cache.get(predict_key)
+            if predict_service_cached is None:
+                data_view = SingleYearDataView(
+                    mars_year=resolution.mars_year,
+                    openmars_data=resolution.openmars_data,
+                    aligned_mcd_data=resolution.aligned_mcd_data,
+                    mcd_raw_data=resolution.mcd_raw_data,
+                )
+                personal_prep = PredictDataService(data_view, use_processed_tensor=False)
+                predict_service_cached = PredictOrchestratorService(
+                    data_service=data_view,
+                    ml_data_prep=personal_prep,
+                    transforms=app.state.predict_transforms,
+                    inference=app.state.predict_inference,
+                )
+                predict_cache[predict_key] = predict_service_cached
+            try:
+                ml_data_prep = getattr(predict_service_cached, "ml_data_prep", None)
+                if ml_data_prep is not None and hasattr(ml_data_prep, "prewarm_for_year"):
+                    await asyncio.to_thread(ml_data_prep.prewarm_for_year, resolution.mars_year)
+            except Exception:
+                logger.exception("personal predict cache warm failed for user %s", user_id)
+
+        final_status = await personal_source_service.get_build_status(user_id)
+        await personal_source_service._upsert_build_state(
+            user_id=user_id,
+            signature_hash=final_status.get("signature_hash") or status.get("signature_hash") or "",
+            status="ready",
+            stage="ready",
+            progress=100.0,
+            stage_message=personal_source_service._build_stage_message("ready"),
+            error=None,
+            duration_ms=final_status.get("duration_ms"),
+            built_at=datetime.now(timezone.utc),
+        )
+
+    async def personal_cache_rebuild_worker() -> None:
+        while True:
+            uid = await personal_cache_rebuild_queue.get()
+            try:
+                await personal_source_service.build_user_cache(uid)
+                await warm_personal_runtime_caches(uid)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("personal cache rebuild worker failed for user %s", uid)
+            finally:
+                personal_cache_pending_users.discard(uid)
+                personal_cache_rebuild_queue.task_done()
+
+    app.state.personal_cache_rebuild_queue = personal_cache_rebuild_queue
+    app.state.personal_cache_pending_users = personal_cache_pending_users
+    app.state.enqueue_personal_cache_rebuild = enqueue_personal_cache_rebuild
+    app.state.personal_cache_rebuild_worker_task = asyncio.create_task(personal_cache_rebuild_worker())
+
+    # 数据治理服务（资产总览 / 质量评分 / 血缘信息）
+    data_governance_service = DataGovernanceService()
+    app.state.data_governance_service = data_governance_service
 
     # 2. 领域服务：可视化与 ML 数据准备
     logger.info("[2/5] 初始化分析与 ML 准备服务...")
@@ -184,6 +346,11 @@ async def lifespan(app: FastAPI):
 
     # 关闭时清理
     logger.info("正在关闭服务...")
+    worker_task = getattr(app.state, "personal_cache_rebuild_worker_task", None)
+    if worker_task is not None:
+        worker_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await worker_task
     await ai_service.close()
     await copilot_service.close()
 
@@ -223,6 +390,7 @@ app.include_router(ai.router,                        prefix=API_PREFIX)
 app.include_router(copilot.router,                   prefix=API_PREFIX)
 app.include_router(auth.router,                      prefix=API_PREFIX)
 app.include_router(upload_router_module.router,        prefix=API_PREFIX)
+app.include_router(governance_router_module.router,    prefix=API_PREFIX)
 app.include_router(notification_router_module.router,  prefix=API_PREFIX)
 app.include_router(user_data_router_module.router,     prefix=API_PREFIX)
 app.include_router(feedback_router_module.router,      prefix=API_PREFIX)

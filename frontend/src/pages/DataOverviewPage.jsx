@@ -18,13 +18,14 @@ import GlobeLegend from './DataOverviewPage/GlobeLegend';
 
 const DataOverviewPageContent = () => {
   const t = useT();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { settings } = useSettings();
   const isLight = settings?.theme === 'light';
   const { 
     marsYear, 
     setMarsYear,
     dataSourceMode,
+    setDataSourceMode,
     setAvailableMarsYears,
     setSourceMeta,
     setIsSwitchingSource,
@@ -56,6 +57,12 @@ const DataOverviewPageContent = () => {
   const GESTURE_WINDOW_HEIGHT = 142;
 
   useEffect(() => {
+    if (!isLoading && !user && dataSourceMode === 'personal') {
+      setDataSourceMode('default');
+    }
+  }, [dataSourceMode, isLoading, setDataSourceMode, user]);
+
+  useEffect(() => {
     setOnGesture((gesture) => {
       if (!globeCanvasRef.current) return;
       if (gesture.type === 'rotate') {
@@ -76,7 +83,7 @@ const DataOverviewPageContent = () => {
       if (!landmarks || landmarks.length === 0) return;
 
       ctx.fillStyle = C.mars;
-      ctx.strokeStyle = '#00f0ff';
+      ctx.strokeStyle = C.blue;
       ctx.lineWidth = 2;
 
       for (const hand of landmarks) {
@@ -201,34 +208,57 @@ const DataOverviewPageContent = () => {
           width: `${GESTURE_WINDOW_WIDTH}px`,
           height: `${GESTURE_WINDOW_HEIGHT}px`,
           zIndex: 2000,
-          borderRadius: '10px',
+          borderRadius: '14px',
           overflow: 'hidden',
-          border: `2px solid ${C.mars}`,
-          boxShadow: isLight ? '0 8px 18px rgba(15,23,42,0.20)' : '0 0 20px rgba(255,107,53,0.3)',
-          background: isLight ? 'rgba(255,255,255,0.86)' : '#000',
+          border: `1px solid ${C.borderStrong}`,
+          boxShadow: isLight ? '0 14px 28px rgba(15,23,42,0.14)' : '0 18px 36px rgba(0,0,0,0.34)',
+          background: isLight ? 'rgba(255,255,255,0.90)' : 'rgba(8,12,18,0.82)',
+          backdropFilter: 'blur(12px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-          <div style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.5 }}>
-            <video
-              ref={videoRef}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
-              playsInline
-              muted
-            />
-          </div>
-          <canvas
-            ref={landmarksCanvasRef}
-            width={GESTURE_WINDOW_WIDTH}
-            height={GESTURE_WINDOW_HEIGHT}
-            style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 2, transform: 'scaleX(-1)' }}
-          />
+          {!gestureError && (
+            <>
+              <div style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.5 }}>
+                <video
+                  ref={videoRef}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
+                  playsInline
+                  muted
+                />
+              </div>
+              <canvas
+                ref={landmarksCanvasRef}
+                width={GESTURE_WINDOW_WIDTH}
+                height={GESTURE_WINDOW_HEIGHT}
+                style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 2, transform: 'scaleX(-1)' }}
+              />
+            </>
+          )}
           <div style={{
-            position: 'absolute', top: '8px', left: '8px', background: isLight ? 'rgba(255,255,255,0.86)' : 'rgba(0,0,0,0.6)',
-            padding: '2px 7px', borderRadius: '4px', color: C.mars, fontSize: '9px',
-            fontFamily: 'Orbitron', zIndex: 3, border: `1px solid ${C.mars}`
+            position: 'absolute', top: '10px', left: '10px', background: isLight ? 'rgba(255,255,255,0.92)' : 'rgba(12,18,28,0.82)',
+            padding: '4px 8px', borderRadius: '999px', color: C.ice, fontSize: 'calc(10px * var(--font-scale, 1))',
+            fontWeight: 600, fontFamily: 'var(--font-body)', zIndex: 3, border: `1px solid ${C.borderStrong}`
           }}>
-            {t('overview.controls.cameraTracking')}
+            {gestureError ? t('overview.controls.gestureErrorTitle') : t('overview.controls.cameraTracking')}
           </div>
+          {gestureError && (
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '36px 14px 14px',
+              textAlign: 'center',
+              color: isLight ? '#7f1d1d' : '#fecaca',
+              fontSize: 'calc(11px * var(--font-scale, 1))',
+              lineHeight: 1.6,
+              background: isLight ? 'rgba(255,245,245,0.92)' : 'rgba(46,10,12,0.76)',
+            }}>
+              {gestureError}
+            </div>
+          )}
         </div>
       )}
 

@@ -19,8 +19,8 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
   const { settings } = useSettings();
 
   const isLight = settings?.theme === 'light';
-  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
-  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+  const plotText = isLight ? 'rgba(23,33,47,0.88)' : 'rgba(236,244,255,0.94)';
+  const plotGrid = isLight ? 'rgba(23,33,47,0.12)' : 'rgba(160,196,240,0.16)';
 
   const ozoneUnit = settings.units.ozone;
   const precision = settings.precision;
@@ -129,30 +129,30 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
     <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gap: 16, overflowX: 'hidden', overflowY: 'auto', scrollbarGutter: 'stable', paddingRight: 4 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(74,158,255,0.08)', border: '1px solid rgba(74,158,255,0.18)' }}>
-          <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.myLs}</div>
-          <div style={{ marginTop: 6, color: C.blue, fontSize: 16, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>{copy.marsYear}{marsYear}</div>
-          <div style={{ color: C.ice30, fontSize: 11 }}>{copy.solarLongitude} {fmtNum(lsValue, 0)} {copy.degree}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1 }}>{copy.myLs}</div>
+          <div style={{ marginTop: 6, color: C.blue, fontSize: 'calc(16px * var(--font-scale, 1))', fontWeight: 800, fontFamily: 'var(--font-display)' }}>{copy.marsYear}{marsYear}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{copy.solarLongitude} {fmtNum(lsValue, 0)} {copy.degree}</div>
         </div>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(199,91,57,0.08)', border: '1px solid rgba(199,91,57,0.18)' }}>
-          <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.globalMean}</div>
-          <div style={{ marginTop: 6, color: C.mars, fontSize: 16, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>{fmtNum(meanConverted, precision)}</div>
-          <div style={{ color: C.ice30, fontSize: 11 }}>{ozoneLabel(ozoneUnit)}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1 }}>{copy.globalMean}</div>
+          <div style={{ marginTop: 6, color: C.mars, fontSize: 'calc(16px * var(--font-scale, 1))', fontWeight: 800, fontFamily: 'var(--font-display)' }}>{fmtNum(meanConverted, precision)}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{ozoneLabel(ozoneUnit)}</div>
         </div>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}` }}>
-          <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.p10}</div>
-          <div style={{ marginTop: 6, color: C.ice, fontSize: 16, fontWeight: 800 }}>{fmtNum(p10Converted, precision)}</div>
-          <div style={{ color: C.ice30, fontSize: 11 }}>{copy.p10Desc}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1 }}>{copy.p10}</div>
+          <div style={{ marginTop: 6, color: C.ice, fontSize: 'calc(16px * var(--font-scale, 1))', fontWeight: 800 }}>{fmtNum(p10Converted, precision)}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{copy.p10Desc}</div>
         </div>
         <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}` }}>
-          <div style={{ color: C.ice30, fontSize: 10, letterSpacing: 1, fontFamily: "'Orbitron', sans-serif" }}>{copy.p90}</div>
-          <div style={{ marginTop: 6, color: C.ice, fontSize: 16, fontWeight: 800 }}>{fmtNum(p90Converted, precision)}</div>
-          <div style={{ color: C.ice30, fontSize: 11 }}>{copy.p90Desc}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', letterSpacing: 1 }}>{copy.p90}</div>
+          <div style={{ marginTop: 6, color: C.ice, fontSize: 'calc(16px * var(--font-scale, 1))', fontWeight: 800 }}>{fmtNum(p90Converted, precision)}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{copy.p90Desc}</div>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18, minHeight: 0 }}>
         <div style={{ padding: 16, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, minHeight: 320, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
-          <div style={{ color: C.ice, fontSize: 14, fontWeight: 800, marginBottom: 8, fontFamily: "'Orbitron', sans-serif" }}>{copy.histogram}</div>
+          <div style={{ color: C.ice, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 8, fontFamily: 'var(--font-display)' }}>{copy.histogram}</div>
           <div style={{ minHeight: 0 }}>
             <Plot
               data={[{
@@ -195,7 +195,7 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
 
         <div style={{ display: 'grid', gridTemplateRows: 'minmax(320px, 1fr) auto', gap: 18, minHeight: 0 }}>
           <div style={{ padding: 16, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, minHeight: 320, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
-            <div style={{ color: C.ice, fontSize: 14, fontWeight: 800, marginBottom: 8, fontFamily: "'Orbitron', sans-serif" }}>{copy.latProfile}</div>
+            <div style={{ color: C.ice, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 8, fontFamily: 'var(--font-display)' }}>{copy.latProfile}</div>
             <div style={{ minHeight: 0 }}>
               <Plot
                 data={[{
@@ -238,7 +238,7 @@ export default function DataDistribution({ marsYear, lsValue, ozoneData }) {
             </div>
           </div>
 
-          <div style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, lineHeight: 1.7, fontSize: 12, color: C.ice60 }}>
+          <div style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, lineHeight: 1.7, fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60 }}>
             {copy.note}
           </div>
         </div>

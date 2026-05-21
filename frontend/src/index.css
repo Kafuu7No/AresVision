@@ -8,59 +8,79 @@
 
 /* ─── 主题 CSS 变量 ─── */
 :root {
-  --bg:               #050508;
-  --bg-card:          rgba(15,15,22,0.65);
-  --bg-nav:           rgba(5,5,8,0.85);
-  --text:             #ffffff;
-  --text-80:          rgba(255,255,255,0.84);
-  --text-60:          rgba(255,255,255,0.66);
-  --text-40:          rgba(255,255,255,0.48);
-  --text-30:          rgba(255,255,255,0.34);
-  --border:           rgba(255,255,255,0.12);
-  --border-hover:     rgba(255,255,255,0.25);
-  --scrollbar:        rgba(255,255,255,0.15);
-  --scrollbar-hover:  rgba(255,255,255,0.30);
-  --breathe-lo:       rgba(74,158,255,0.15);
-  --breathe-hi:       rgba(74,158,255,0.35);
-  --card-shadow:      none;
-  --nav-shadow:       none;
+  --font-scale:       1;
+  --font-body:        'Space Grotesk', 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-display:     'Sora', 'Space Grotesk', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --bg:               #02050b;
+  --bg-elevated:      #08111b;
+  --bg-card:          rgba(8,16,27,0.88);
+  --bg-card-strong:   rgba(11,20,34,0.96);
+  --bg-nav:           rgba(3,8,14,0.90);
+  --bg-muted:         rgba(121,187,255,0.08);
+  --bg-muted-strong:  rgba(121,187,255,0.14);
+  --text:             #f5fbff;
+  --text-80:          rgba(245,251,255,0.92);
+  --text-60:          rgba(219,232,246,0.84);
+  --text-40:          rgba(198,214,231,0.74);
+  --text-30:          rgba(182,201,221,0.64);
+  --border:           rgba(146,182,223,0.18);
+  --border-strong:    rgba(163,201,244,0.28);
+  --border-hover:     rgba(184,218,255,0.38);
+  --scrollbar:        rgba(146,182,223,0.28);
+  --scrollbar-hover:  rgba(184,218,255,0.46);
+  --breathe-lo:       rgba(92,163,255,0.18);
+  --breathe-hi:       rgba(92,163,255,0.34);
+  --card-shadow:      0 1px 0 rgba(255,255,255,0.04), 0 22px 60px rgba(0,0,0,0.42);
+  --nav-shadow:       0 1px 0 rgba(255,255,255,0.04), 0 18px 48px rgba(0,0,0,0.34);
   --obs-ring:         none;
+  --bg-gradient:      radial-gradient(circle at 18% 16%, rgba(121,187,255,0.16), transparent 28%),
+                      radial-gradient(circle at 84% 12%, rgba(255,143,104,0.12), transparent 22%),
+                      radial-gradient(circle at 50% 100%, rgba(76,110,210,0.10), transparent 36%),
+                      linear-gradient(180deg, #02050b 0%, #040913 36%, #08101b 70%, #0c1521 100%);
   /* HUD Variables (Dark Mode Defaults) */
-  --hud-overlay:      rgba(2, 2, 5, 0.95);
-  --hud-bg:           rgba(10, 10, 15, 0.90);
-  --hud-panel:        rgba(10, 10, 15, 0.60);
-  --hud-border:       rgba(255, 255, 255, 0.10);
-  --hud-text:         #ffffff;
-  --hud-accent:       #00f0ff;
-  --hud-stat-bg:      rgba(255, 255, 255, 0.05);
+  --hud-overlay:      rgba(2, 5, 11, 0.84);
+  --hud-bg:           rgba(8, 16, 27, 0.96);
+  --hud-panel:        rgba(14, 22, 36, 0.92);
+  --hud-border:       rgba(163, 201, 244, 0.16);
+  --hud-text:         #f5fbff;
+  --hud-accent:       #79bbff;
+  --hud-stat-bg:      rgba(121, 187, 255, 0.08);
 }
 
 [data-theme="light"] {
-  --bg:               #edf3fb;
-  --bg-card:          rgba(255, 255, 255, 0.84);
-  --bg-nav:           rgba(255, 255, 255, 0.88);
-  --text:             #0f172a;
-  --text-80:          rgba(15, 23, 42, 0.82);
-  --text-60:          rgba(15, 23, 42, 0.64);
-  --text-40:          rgba(15, 23, 42, 0.46);
-  --text-30:          rgba(15, 23, 42, 0.34);
-  --border:           rgba(15, 23, 42, 0.14);
-  --border-hover:     rgba(15, 23, 42, 0.26);
-  --scrollbar:        rgba(15, 23, 42, 0.24);
-  --scrollbar-hover:  rgba(15, 23, 42, 0.42);
-  --breathe-lo:       rgba(74,158,255,0.18);
-  --breathe-hi:       rgba(74,158,255,0.40);
-  --card-shadow:      0 1px 2px rgba(15,23,42,0.06), 0 10px 24px rgba(15,23,42,0.10);
-  --nav-shadow:       0 1px 0 rgba(15,23,42,0.09), 0 8px 20px rgba(15,23,42,0.08);
-  --obs-ring:         0 0 0 1px rgba(15,23,42,0.14), 0 8px 20px rgba(15,23,42,0.12);
+  --bg:               #eef4fb;
+  --bg-elevated:      #ffffff;
+  --bg-card:          rgba(255,255,255,0.92);
+  --bg-card-strong:   rgba(255,255,255,0.98);
+  --bg-nav:           rgba(245,248,252,0.92);
+  --bg-muted:         rgba(47,111,214,0.06);
+  --bg-muted-strong:  rgba(47,111,214,0.11);
+  --text:             #17212f;
+  --text-80:          rgba(23,33,47,0.90);
+  --text-60:          rgba(23,33,47,0.76);
+  --text-40:          rgba(23,33,47,0.62);
+  --text-30:          rgba(23,33,47,0.54);
+  --border:           rgba(23,33,47,0.11);
+  --border-strong:    rgba(23,33,47,0.17);
+  --border-hover:     rgba(23,33,47,0.24);
+  --scrollbar:        rgba(23,33,47,0.22);
+  --scrollbar-hover:  rgba(23,33,47,0.38);
+  --breathe-lo:       rgba(47,111,214,0.14);
+  --breathe-hi:       rgba(47,111,214,0.30);
+  --card-shadow:      0 1px 2px rgba(15,23,42,0.05), 0 18px 42px rgba(15,23,42,0.09);
+  --nav-shadow:       0 1px 0 rgba(15,23,42,0.06), 0 14px 30px rgba(15,23,42,0.07);
+  --obs-ring:         0 0 0 1px rgba(15,23,42,0.08), 0 10px 24px rgba(15,23,42,0.08);
+  --bg-gradient:      radial-gradient(circle at 16% 14%, rgba(82,145,226,0.14), transparent 28%),
+                      radial-gradient(circle at 86% 12%, rgba(232,132,90,0.12), transparent 20%),
+                      linear-gradient(180deg, #f5f8fc 0%, #e7eef7 44%, #dbe5f0 100%);
   /* HUD Variables (Light Mode) */
-  --hud-overlay:      rgba(240, 242, 245, 0.95);
-  --hud-bg:           rgba(255, 255, 255, 0.90);
-  --hud-panel:        rgba(245, 246, 248, 0.70);
-  --hud-border:       rgba(0, 0, 0, 0.10);
-  --hud-text:         #1e293b;
-  --hud-accent:       #0284c7;
-  --hud-stat-bg:      rgba(0, 0, 0, 0.04);
+  --hud-overlay:      rgba(235, 240, 246, 0.84);
+  --hud-bg:           rgba(255, 255, 255, 0.98);
+  --hud-panel:        rgba(248, 250, 252, 0.96);
+  --hud-border:       rgba(23, 33, 47, 0.10);
+  --hud-text:         #17212f;
+  --hud-accent:       #2f6fd6;
+  --hud-stat-bg:      rgba(15, 23, 42, 0.04);
 }
 
 * {
@@ -70,16 +90,46 @@
 }
 
 html {
+  background: var(--bg);
+  color-scheme: dark;
   scroll-behavior: smooth;
 }
 
+[data-theme="light"] {
+  color-scheme: light;
+}
+
 body {
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: var(--bg-gradient);
+  background-attachment: fixed;
   color: var(--text);
-  font-family: 'Exo 2', sans-serif;
+  font-family: var(--font-body);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-  transition: background 0.3s, color 0.3s;
-  zoom: var(--app-zoom, 1);
+  transition: background-color 0.3s, background-image 0.3s, color 0.3s;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+[style*="Orbitron"],
+.font-orbitron {
+  font-family: var(--font-display) !important;
+}
+
+[style*="Exo 2"] {
+  font-family: var(--font-body) !important;
 }
 
 /* ─── Scrollbar ─── */
@@ -133,16 +183,17 @@ body {
 /* ─── Reusable Classes ─── */
 .glass-card {
   background: var(--bg-card);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 18px;
   box-shadow: var(--card-shadow);
-  transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
+  transition: border-color 0.3s, box-shadow 0.3s, background 0.3s, transform 0.3s;
 }
 
 .glass-card:hover {
   border-color: var(--border-hover);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.05), 0 26px 72px rgba(0,0,0,0.46);
 }
 
 .breathe-border {
@@ -151,8 +202,8 @@ body {
 
 .nav-glass {
   background: var(--bg-nav);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
   border-bottom: 1px solid var(--border);
   box-shadow: var(--nav-shadow);
   transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
@@ -173,19 +224,25 @@ body {
 
 /* 太空观测场景容器（DataOverviewPage 全屏）——浅色主题改用深空渐变而非纯黑 */
 .space-scene {
-  background: #000;
+  background: radial-gradient(circle at 18% 18%, rgba(121, 187, 255, 0.16), transparent 32%),
+              radial-gradient(circle at 80% 14%, rgba(255, 143, 104, 0.12), transparent 24%),
+              radial-gradient(circle at 50% 100%, rgba(76, 110, 210, 0.12), transparent 38%),
+              linear-gradient(180deg, #02050b 0%, #040913 38%, #08111b 70%, #0c1521 100%);
 }
 [data-theme="light"] .space-scene {
-  background: radial-gradient(ellipse at 40% 30%, #8292a5 0%, #5a687d 55%, #3e4a5d 100%);
+  background: radial-gradient(circle at 18% 18%, rgba(82, 145, 226, 0.12), transparent 28%),
+              radial-gradient(circle at 80% 15%, rgba(232, 132, 90, 0.10), transparent 22%),
+              linear-gradient(180deg, #e5edf7 0%, #d5e1ee 48%, #c6d5e4 100%);
 }
 
 /* 固定深色面板（如 SettingsPanel）——无论主题如何都保留深色文字 */
 .panel-dark {
-  --text:             #ffffff;
-  --text-60:          #ffffff;
-  --text-30:          #ffffff;
-  --border:           rgba(255,255,255,0.12);
-  --border-hover:     rgba(255,255,255,0.25);
+  --text:             #f5fbff;
+  --text-60:          rgba(219,232,246,0.88);
+  --text-40:          rgba(198,214,231,0.78);
+  --text-30:          rgba(182,201,221,0.72);
+  --border:           rgba(163,201,244,0.16);
+  --border-hover:     rgba(184,218,255,0.34);
 }
 
 .page-enter {

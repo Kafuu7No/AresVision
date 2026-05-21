@@ -76,16 +76,16 @@ function typeIcon(type) {
 
 function NotificationCard({ notif, t, isLight, onMarkRead }) {
   const { icon, color, bg, border } = typeIcon(notif.type);
-  const cardBg = isLight ? 'rgba(248,248,254,0.9)' : 'rgba(16,16,32,0.7)';
+  const cardBg = 'var(--bg-muted)';
   const cardBorder = notif.is_read
-    ? (isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)')
+    ? 'var(--border)'
     : C.blue;
 
   return (
     <div style={{
       background: cardBg,
       border: `1px solid ${cardBorder}`,
-      borderLeft: `3px solid ${notif.is_read ? (isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)') : C.blue}`,
+      borderLeft: `3px solid ${notif.is_read ? 'var(--border)' : C.blue}`,
       borderRadius: 10,
       padding: '12px 14px',
       display: 'flex', gap: 12, alignItems: 'flex-start',
@@ -97,7 +97,7 @@ function NotificationCard({ notif, t, isLight, onMarkRead }) {
         width: 28, height: 28, borderRadius: '50%',
         background: bg, border: `1px solid ${border}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0, fontSize: 12, fontWeight: 700, color,
+        flexShrink: 0, fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 700, color,
       }}>
         {icon}
       </div>
@@ -105,7 +105,7 @@ function NotificationCard({ notif, t, isLight, onMarkRead }) {
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: 12, fontWeight: notif.is_read ? 500 : 700,
+          fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: notif.is_read ? 500 : 700,
           color: 'var(--text)', marginBottom: 3,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
@@ -113,22 +113,22 @@ function NotificationCard({ notif, t, isLight, onMarkRead }) {
         </div>
         {notif.content && (
           <div style={{
-            fontSize: 11, color: 'var(--text-60)', lineHeight: 1.55, marginBottom: 5,
+            fontSize: 'calc(11px * var(--font-scale, 1))', color: 'var(--text-60)', lineHeight: 1.55, marginBottom: 5,
           }}>
             {notif.content}
           </div>
         )}
-        <div style={{ fontSize: 10, color: 'var(--text-30)' }}>
+        <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: 'var(--text-30)' }}>
           {relativeTime(notif.created_at, t)}
         </div>
       </div>
 
       {/* Mark read button (only for unread) */}
-      {!notif.is_read && (
-        <button
-          onClick={() => onMarkRead(notif.id)}
-          title="标记已读"
-          style={{
+        {!notif.is_read && (
+          <button
+            onClick={() => onMarkRead(notif.id)}
+            title={t('notification.markAllRead')}
+            style={{
             background: 'none', border: 'none', cursor: 'pointer',
             color: 'var(--text-30)', padding: 2, flexShrink: 0,
             display: 'flex', alignItems: 'center',
@@ -147,10 +147,10 @@ function PanelContent({ t, isLight, onClose, onReadCountChange }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const titleColor  = isLight ? '#000000' : '#ffffff';
-  const subColor    = isLight ? '#000000' : '#ffffff';
-  const borderColor = isLight ? '#000000' : '#ffffff';
-  const hoverBg     = isLight ? 'rgba(0,0,0,0.04)'     : 'rgba(255,255,255,0.06)';
+  const titleColor  = 'var(--text)';
+  const subColor    = 'var(--text-60)';
+  const borderColor = 'var(--border)';
+  const hoverBg     = 'var(--bg-muted)';
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -198,13 +198,11 @@ function PanelContent({ t, isLight, onClose, onReadCountChange }) {
       }}>
         <div>
           <div style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: 2.5,
-            fontFamily: "'Orbitron', sans-serif",
-            color: C.blue, textTransform: 'uppercase', marginBottom: 3,
+            fontSize: 'calc(15px * var(--font-scale, 1))',
+            fontWeight: 700,
+            color: titleColor,
+            fontFamily: 'var(--font-display)',
           }}>
-            {t('notification.titleEn')}
-          </div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
             {t('notification.title')}
           </div>
         </div>
@@ -215,7 +213,7 @@ function PanelContent({ t, isLight, onClose, onReadCountChange }) {
               style={{
                 background: 'none', border: `1px solid ${borderColor}`,
                 borderRadius: 7, padding: '5px 10px', cursor: 'pointer',
-                color: subColor, fontSize: 11, fontWeight: 500,
+                color: subColor, fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 500,
                 fontFamily: 'inherit', transition: 'background 0.1s',
               }}
               onMouseEnter={e => e.currentTarget.style.background = hoverBg}
@@ -243,7 +241,7 @@ function PanelContent({ t, isLight, onClose, onReadCountChange }) {
       {/* Body */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {loading && (
-          <div style={{ textAlign: 'center', color: subColor, paddingTop: 60, fontSize: 13 }}>
+          <div style={{ textAlign: 'center', color: subColor, paddingTop: 60, fontSize: 'calc(13px * var(--font-scale, 1))' }}>
             {t('common.loading')}
           </div>
         )}
@@ -256,10 +254,10 @@ function PanelContent({ t, isLight, onClose, onReadCountChange }) {
             <div style={{ color: subColor, opacity: 0.5 }}>
               <BellEmptyIcon size={48} color="currentColor" />
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: titleColor, fontFamily: "'Orbitron', sans-serif" }}>
+            <div style={{ fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: 'var(--font-display)' }}>
               {t('notification.empty')}
             </div>
-            <div style={{ fontSize: 12, color: subColor }}>{t('notification.emptySub')}</div>
+            <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: subColor }}>{t('notification.emptySub')}</div>
           </div>
         )}
 
@@ -292,10 +290,6 @@ function NotificationPanelInner({ open, onClose, onReadCountChange }) {
     return () => document.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
-  const panelVars = isLight
-    ? { '--text': '#2a2a3a', '--text-60': 'rgba(42,42,58,0.65)', '--text-30': 'rgba(42,42,58,0.35)', '--border': 'rgba(26,26,46,0.12)' }
-    : { '--text': '#ffffff', '--text-60': '#ffffff', '--text-30': '#ffffff',  '--border': 'rgba(232,237,243,0.08)' };
-
   return (
     <>
       <div
@@ -314,14 +308,13 @@ function NotificationPanelInner({ open, onClose, onReadCountChange }) {
         style={{
           position: 'fixed', top: 0, right: 0, bottom: 0, width: 420,
           zIndex: 3000,
-          background: isLight ? 'rgba(248,248,254,0.98)' : 'rgba(8,8,18,0.97)',
-          backdropFilter: 'blur(32px)',
-          borderLeft: isLight ? '1px solid rgba(26,26,46,0.1)' : '1px solid rgba(232,237,243,0.1)',
+          background: 'var(--bg-card-strong)',
+          backdropFilter: 'blur(18px)',
+          borderLeft: '1px solid var(--border)',
           display: 'flex', flexDirection: 'column',
           transform: open ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
-          boxShadow: isLight ? '-20px 0 60px rgba(0,0,0,0.12)' : '-20px 0 60px rgba(0,0,0,0.5)',
-          ...panelVars,
+          boxShadow: isLight ? '-20px 0 60px rgba(15,23,42,0.10)' : '-20px 0 60px rgba(0,0,0,0.32)',
         }}
       >
         {open && (

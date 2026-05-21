@@ -36,8 +36,8 @@ class ErrorBoundary extends React.Component {
           textAlign: 'center',
           padding: 20
         }}>
-          <div style={{ fontSize: 64, marginBottom: 20 }}>🛸</div>
-          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 10 }}>渲染异常 (Render Error)</h2>
+          <div style={{ fontSize: 'calc(64px * var(--font-scale, 1))', marginBottom: 20 }}>🛸</div>
+          <h2 style={{ fontSize: 'calc(24px * var(--font-scale, 1))', fontWeight: 700, marginBottom: 10 }}>渲染异常 (Render Error)</h2>
           <p style={{ color: 'rgba(255,255,255,0.6)', maxWidth: 400, lineHeight: 1.6, marginBottom: 30 }}>
             看起来火星通信出现了一些干扰。组件在渲染时发生了错误，请尝试刷新页面。
           </p>
@@ -49,7 +49,7 @@ class ErrorBoundary extends React.Component {
               border: 'none',
               borderRadius: 8,
               color: '#fff',
-              fontSize: 14,
+              fontSize: 'calc(14px * var(--font-scale, 1))',
               fontWeight: 600,
               cursor: 'pointer'
             }}
@@ -62,7 +62,7 @@ class ErrorBoundary extends React.Component {
               padding: 20,
               background: 'rgba(255,0,0,0.1)',
               borderRadius: 8,
-              fontSize: 12,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
               color: '#ff6b6b',
               textAlign: 'left',
               maxWidth: '90vw',

@@ -5,6 +5,55 @@ import GlowCard from '../../components/GlowCard';
 import { fetchDataInfo } from '../../services/api';
 import { LoadingBox } from './ExploreComponents';
 
+const OFFICIAL_VARIABLE_GROUPS = [
+  {
+    key: 'ozoneCore',
+    coverage: 100,
+    variables: ['o3col'],
+    color: C.mars,
+  },
+  {
+    key: 'drivers',
+    coverage: 100,
+    variables: ['Temperature', 'Pressure', 'Dust_Optical_Depth'],
+    color: C.blue,
+  },
+  {
+    key: 'radiative',
+    coverage: 100,
+    variables: ['Solar_Flux_DN'],
+    color: C.green,
+  },
+  {
+    key: 'circulation',
+    coverage: 100,
+    variables: ['U_Wind', 'V_Wind'],
+    color: '#9bd2ff',
+  },
+];
+
+const OFFICIAL_CAPABILITY_TAG_KEYS = [
+  'ozoneDiagnosis',
+  'driverCoupling',
+  'predictionTraining',
+  'crossYearAnalysis',
+  'featureBaseline',
+  'unifiedIngestion',
+];
+
+const HERO_TAG_KEYS = ['openmars', 'mcd', 'officialBenchmark', 'unifiedGrid', 'featureSpace'];
+const OPENMARS_TAG_KEYS = ['o3Column', 'globalField', 'lsTime', 'planetaryBaseline'];
+const MCD_TAG_KEYS = ['temperature', 'pressure', 'wind', 'dust', 'solarFlux'];
+
+function getSourceModeLabel(mode, t) {
+  const map = {
+    default: t('explore.defaultDataset.sourceMode.default'),
+    personal_full_year: t('explore.defaultDataset.sourceMode.personal_full_year'),
+    personal_mcd_plus_system_openmars: t('explore.defaultDataset.sourceMode.personal_mcd_plus_system_openmars'),
+  };
+  return map[mode] || mode || '--';
+}
+
 function toYearRows(info) {
   const years = Array.isArray(info?.available_years) ? info.available_years : [];
   const details = info?.details || {};
@@ -17,16 +66,25 @@ function toYearRows(info) {
         year,
         lsStart: range[0],
         lsEnd: range[1],
+        sourceMode: detail.source_mode || 'default',
       };
     })
     .sort((a, b) => a.year - b.year);
 }
 
 function formatLs(v) {
-  return Number.isFinite(v) ? `${Number(v).toFixed(1)} deg` : '--';
+  return Number.isFinite(v) ? `${Number(v).toFixed(1)}°` : '--';
 }
 
-function YearDatasetCard({ row, t }) {
+function pct(value) {
+  return `${Math.max(0, Math.min(100, Number(value || 0))).toFixed(0)}%`;
+}
+
+function YearCoverageCard({ row, t }) {
+  const coverage = row.lsStart != null && row.lsEnd != null
+    ? Math.max(0, Math.min(100, ((row.lsEnd - row.lsStart) / 360) * 100))
+    : 0;
+
   return (
     <div
       style={{
@@ -37,13 +95,13 @@ function YearDatasetCard({ row, t }) {
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
-        minHeight: 156,
+        minHeight: 188,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div
           style={{
-            fontSize: 13,
+            fontSize: 'calc(13px * var(--font-scale, 1))',
             fontWeight: 700,
             color: C.ice,
             fontFamily: "'Orbitron', sans-serif",
@@ -54,9 +112,9 @@ function YearDatasetCard({ row, t }) {
         </div>
         <span
           style={{
-            fontSize: 10,
+            fontSize: 'calc(10px * var(--font-scale, 1))',
             color: C.blue,
-            border: `1px solid rgba(74,158,255,0.35)`,
+            border: '1px solid rgba(74,158,255,0.35)',
             background: 'rgba(74,158,255,0.08)',
             borderRadius: 999,
             padding: '3px 9px',
@@ -67,11 +125,58 @@ function YearDatasetCard({ row, t }) {
         </span>
       </div>
 
-      <div style={{ fontSize: 11, color: C.ice60, lineHeight: 1.7 }}>
-        <div>{`${t('explore.defaultDataset.metaLsRange')}: ${formatLs(row.lsStart)} - ${formatLs(row.lsEnd)}`}</div>
-        <div>{`${t('explore.defaultDataset.metaGrid')}: 5 deg x 5 deg`}</div>
-        <div>{`${t('explore.defaultDataset.metaCoverage')}: OpenMARS + MCD 6.1`}</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+        <div style={{ fontSize: 'calc(28px * var(--font-scale, 1))', fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif" }}>
+          {pct(coverage)}
+        </div>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>{t('explore.defaultDataset.coverageHint')}</div>
       </div>
+
+      <div style={{ height: 7, borderRadius: 999, overflow: 'hidden', background: 'rgba(255,255,255,0.08)' }}>
+        <div
+          style={{
+            width: `${coverage}%`,
+            height: '100%',
+            background: coverage >= 90 ? C.green : coverage >= 70 ? '#f59e0b' : C.mars,
+          }}
+        />
+      </div>
+
+      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8 }}>
+        <div>{`${t('explore.defaultDataset.metaLsRange')}: ${formatLs(row.lsStart)} - ${formatLs(row.lsEnd)}`}</div>
+        <div>{`${t('explore.defaultDataset.metaGrid')}: 5° x 5°`}</div>
+        <div>{`${t('explore.defaultDataset.metaSourceMode')}: ${getSourceModeLabel(row.sourceMode, t)}`}</div>
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({ eyebrow, value, label, desc, accent = C.blue }) {
+  return (
+    <div
+      style={{
+        border: `1px solid ${C.border}`,
+        borderRadius: 14,
+        padding: '16px 18px',
+        background: 'rgba(255,255,255,0.02)',
+      }}
+    >
+      <div
+        style={{
+          fontSize: 'calc(10px * var(--font-scale, 1))',
+          color: accent,
+          fontWeight: 700,
+          letterSpacing: 1.6,
+          fontFamily: "'Orbitron', sans-serif",
+        }}
+      >
+        {eyebrow}
+      </div>
+      <div style={{ marginTop: 10, fontSize: 'calc(28px * var(--font-scale, 1))', color: C.ice, fontWeight: 700, fontFamily: "'Orbitron', sans-serif" }}>
+        {value}
+      </div>
+      <div style={{ marginTop: 4, fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60, fontWeight: 600 }}>{label}</div>
+      <div style={{ marginTop: 8, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.75 }}>{desc}</div>
     </div>
   );
 }
@@ -93,7 +198,7 @@ function SourceCard({ title, subtitle, tags, body }) {
         <div>
           <div
             style={{
-              fontSize: 12,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
               fontWeight: 700,
               color: C.ice,
               fontFamily: "'Orbitron', sans-serif",
@@ -102,7 +207,7 @@ function SourceCard({ title, subtitle, tags, body }) {
           >
             {title}
           </div>
-          <div style={{ fontSize: 11, color: C.ice30, marginTop: 3 }}>{subtitle}</div>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, marginTop: 3 }}>{subtitle}</div>
         </div>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -110,7 +215,7 @@ function SourceCard({ title, subtitle, tags, body }) {
           <span
             key={tag}
             style={{
-              fontSize: 10,
+              fontSize: 'calc(10px * var(--font-scale, 1))',
               color: C.ice60,
               padding: '3px 8px',
               borderRadius: 999,
@@ -122,7 +227,45 @@ function SourceCard({ title, subtitle, tags, body }) {
           </span>
         ))}
       </div>
-      <div style={{ fontSize: 11, color: C.ice60, lineHeight: 1.8 }}>{body}</div>
+      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8 }}>{body}</div>
+    </div>
+  );
+}
+
+function VariableGroupCard({ group, t }) {
+  return (
+    <div
+      style={{
+        border: `1px solid ${C.border}`,
+        borderRadius: 14,
+        padding: '16px 18px',
+        background: 'rgba(255,255,255,0.02)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice, fontWeight: 700 }}>{t(`explore.defaultDataset.variableGroups.${group.key}`)}</div>
+        <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: group.color, fontWeight: 700 }}>{pct(group.coverage)}</div>
+      </div>
+      <div style={{ marginTop: 10, height: 7, borderRadius: 999, overflow: 'hidden', background: 'rgba(255,255,255,0.08)' }}>
+        <div style={{ width: `${group.coverage}%`, height: '100%', background: group.color }} />
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+        {group.variables.map((variable) => (
+          <span
+            key={variable}
+            style={{
+              fontSize: 'calc(10px * var(--font-scale, 1))',
+              color: C.ice60,
+              padding: '4px 9px',
+              borderRadius: 999,
+              border: `1px solid ${C.border}`,
+              background: 'rgba(255,255,255,0.03)',
+            }}
+          >
+            {variable}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -137,7 +280,7 @@ export default function DefaultDatasetTab() {
     setLoading(true);
     setError('');
     try {
-      const info = await fetchDataInfo();
+      const info = await fetchDataInfo({ dataSource: 'default' });
       setDataInfo(info);
     } catch (e) {
       setError(e?.message || t('common.error'));
@@ -151,13 +294,31 @@ export default function DefaultDatasetTab() {
   }, [load]);
 
   const yearRows = useMemo(() => toYearRows(dataInfo), [dataInfo]);
+  const lsCoverageStats = useMemo(() => {
+    if (!yearRows.length) return { avg: '--', min: '--', max: '--' };
+    const values = yearRows
+      .map((row) => (row.lsStart != null && row.lsEnd != null ? ((row.lsEnd - row.lsStart) / 360) * 100 : null))
+      .filter((value) => value != null);
+    if (!values.length) return { avg: '--', min: '--', max: '--' };
+    const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
+    return {
+      avg: pct(avg),
+      min: pct(Math.min(...values)),
+      max: pct(Math.max(...values)),
+    };
+  }, [yearRows]);
+
+  const sourceMeta = dataInfo?.source_meta || {};
+  const officialYearCount = yearRows.length;
+  const variableCount = OFFICIAL_VARIABLE_GROUPS.reduce((sum, group) => sum + group.variables.length, 0);
+  const readinessValue = sourceMeta.effective_source === 'default' ? '100%' : t('explore.defaultDataset.readinessFallback');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <GlowCard style={{ padding: '20px 22px' }}>
         <div
           style={{
-            fontSize: 11,
+            fontSize: 'calc(11px * var(--font-scale, 1))',
             fontWeight: 700,
             color: C.blue,
             fontFamily: "'Orbitron', sans-serif",
@@ -167,15 +328,63 @@ export default function DefaultDatasetTab() {
         >
           {t('explore.defaultDataset.header')}
         </div>
-        <div style={{ fontSize: 13, color: C.ice60, lineHeight: 1.8, maxWidth: 980 }}>
+        <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8, maxWidth: 1050 }}>
           {t('explore.defaultDataset.headerDesc')}
         </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
+          {HERO_TAG_KEYS.map((tagKey) => (
+            <span
+              key={tagKey}
+              style={{
+                fontSize: 'calc(10px * var(--font-scale, 1))',
+                color: C.blue,
+                padding: '4px 10px',
+                borderRadius: 999,
+                border: '1px solid rgba(74,158,255,0.25)',
+                background: 'rgba(74,158,255,0.08)',
+              }}
+            >
+              {t(`explore.defaultDataset.heroTags.${tagKey}`)}
+            </span>
+          ))}
+        </div>
       </GlowCard>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+        <MetricCard
+          eyebrow={t('explore.defaultDataset.metricCoverageEyebrow')}
+          value={officialYearCount}
+          label={t('explore.defaultDataset.metricCoverageLabel')}
+          desc={t('explore.defaultDataset.metricCoverageDesc')}
+          accent={C.blue}
+        />
+        <MetricCard
+          eyebrow={t('explore.defaultDataset.metricGridEyebrow')}
+          value="5° x 5°"
+          label={t('explore.defaultDataset.metricGridLabel')}
+          desc={t('explore.defaultDataset.metricGridDesc')}
+          accent={C.green}
+        />
+        <MetricCard
+          eyebrow={t('explore.defaultDataset.metricVariableEyebrow')}
+          value={variableCount}
+          label={t('explore.defaultDataset.metricVariableLabel')}
+          desc={t('explore.defaultDataset.metricVariableDesc')}
+          accent={C.mars}
+        />
+        <MetricCard
+          eyebrow={t('explore.defaultDataset.metricReadinessEyebrow')}
+          value={readinessValue}
+          label={t('explore.defaultDataset.metricReadinessLabel')}
+          desc={t('explore.defaultDataset.metricReadinessDesc')}
+          accent="#f59e0b"
+        />
+      </div>
 
       <GlowCard style={{ padding: '18px 20px' }}>
         <div
           style={{
-            fontSize: 11,
+            fontSize: 'calc(11px * var(--font-scale, 1))',
             fontWeight: 700,
             color: C.blue,
             fontFamily: "'Orbitron', sans-serif",
@@ -189,13 +398,13 @@ export default function DefaultDatasetTab() {
           <SourceCard
             title="OpenMARS"
             subtitle={t('explore.defaultDataset.openmarsSubtitle')}
-            tags={['O3 Column', 'Global Field', 'Ls-Time']}
+            tags={OPENMARS_TAG_KEYS.map((tagKey) => t(`explore.defaultDataset.openmarsTags.${tagKey}`))}
             body={t('explore.defaultDataset.openmarsBody')}
           />
           <SourceCard
             title="MCD 6.1"
             subtitle={t('explore.defaultDataset.mcdSubtitle')}
-            tags={['Temperature', 'Pressure', 'Wind', 'Dust', 'Solar Flux']}
+            tags={MCD_TAG_KEYS.map((tagKey) => t(`explore.defaultDataset.mcdTags.${tagKey}`))}
             body={t('explore.defaultDataset.mcdBody')}
           />
         </div>
@@ -209,11 +418,12 @@ export default function DefaultDatasetTab() {
             justifyContent: 'space-between',
             gap: 12,
             marginBottom: 14,
+            flexWrap: 'wrap',
           }}
         >
           <div
             style={{
-              fontSize: 11,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               fontWeight: 700,
               color: C.blue,
               fontFamily: "'Orbitron', sans-serif",
@@ -223,8 +433,10 @@ export default function DefaultDatasetTab() {
             {t('explore.defaultDataset.listTitle')}
           </div>
           {!loading && (
-            <div style={{ fontSize: 11, color: C.ice30 }}>
-              {t('explore.defaultDataset.yearCount', { n: yearRows.length })}
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>
+              <span>{t('explore.defaultDataset.yearCount', { n: yearRows.length })}</span>
+              <span>{`${t('explore.defaultDataset.coverageAvg')}: ${lsCoverageStats.avg}`}</span>
+              <span>{`${t('explore.defaultDataset.coverageRange')}: ${lsCoverageStats.min} - ${lsCoverageStats.max}`}</span>
             </div>
           )}
         </div>
@@ -239,7 +451,7 @@ export default function DefaultDatasetTab() {
               padding: '20px 16px',
               textAlign: 'center',
               color: C.mars,
-              fontSize: 12,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -254,7 +466,7 @@ export default function DefaultDatasetTab() {
                 background: 'rgba(255,255,255,0.03)',
                 borderRadius: 8,
                 color: C.ice60,
-                fontSize: 12,
+                fontSize: 'calc(12px * var(--font-scale, 1))',
                 padding: '5px 12px',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
@@ -273,7 +485,7 @@ export default function DefaultDatasetTab() {
               padding: '26px 14px',
               textAlign: 'center',
               color: C.ice30,
-              fontSize: 12,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
             }}
           >
             {t('common.noData')}
@@ -281,48 +493,73 @@ export default function DefaultDatasetTab() {
         )}
 
         {!loading && !error && yearRows.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 14 }}>
             {yearRows.map((row) => (
-              <YearDatasetCard key={row.year} row={row} t={t} />
+              <YearCoverageCard key={row.year} row={row} t={t} />
             ))}
           </div>
         )}
       </GlowCard>
 
-      <GlowCard style={{ padding: '16px 20px' }}>
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            color: C.blue,
-            fontFamily: "'Orbitron', sans-serif",
-            letterSpacing: 2,
-            marginBottom: 10,
-          }}
-        >
-          {t('explore.defaultDataset.variableTitle')}
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-          {['o3col', 'Temperature', 'Pressure', 'Dust_Optical_Depth', 'Solar_Flux_DN', 'U_Wind', 'V_Wind'].map((name) => (
-            <span
-              key={name}
-              style={{
-                fontSize: 11,
-                color: C.ice60,
-                padding: '4px 10px',
-                borderRadius: 999,
-                border: `1px solid ${C.border}`,
-                background: 'rgba(255,255,255,0.03)',
-              }}
-            >
-              {name}
-            </span>
-          ))}
-        </div>
-        <div style={{ fontSize: 11, color: C.ice30, lineHeight: 1.8 }}>
-          {t('explore.defaultDataset.variableDesc')}
-        </div>
-      </GlowCard>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 0.8fr)', gap: 16 }}>
+        <GlowCard style={{ padding: '16px 20px' }}>
+          <div
+            style={{
+              fontSize: 'calc(11px * var(--font-scale, 1))',
+              fontWeight: 700,
+              color: C.blue,
+              fontFamily: "'Orbitron', sans-serif",
+              letterSpacing: 2,
+              marginBottom: 10,
+            }}
+          >
+            {t('explore.defaultDataset.variableTitle')}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+            {OFFICIAL_VARIABLE_GROUPS.map((group) => (
+              <VariableGroupCard key={group.key} group={group} t={t} />
+            ))}
+          </div>
+          <div style={{ marginTop: 12, fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.8 }}>
+            {t('explore.defaultDataset.variableDesc')}
+          </div>
+        </GlowCard>
+
+        <GlowCard style={{ padding: '16px 20px' }}>
+          <div
+            style={{
+              fontSize: 'calc(11px * var(--font-scale, 1))',
+              fontWeight: 700,
+              color: C.blue,
+              fontFamily: "'Orbitron', sans-serif",
+              letterSpacing: 2,
+              marginBottom: 10,
+            }}
+          >
+            {t('explore.defaultDataset.capabilityTitle')}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            {OFFICIAL_CAPABILITY_TAG_KEYS.map((name) => (
+              <span
+                key={name}
+                style={{
+                  fontSize: 'calc(10px * var(--font-scale, 1))',
+                  color: C.ice60,
+                  padding: '5px 10px',
+                  borderRadius: 999,
+                  border: `1px solid ${C.border}`,
+                  background: 'rgba(255,255,255,0.03)',
+                }}
+              >
+                {t(`explore.defaultDataset.capabilityTags.${name}`)}
+              </span>
+            ))}
+          </div>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, lineHeight: 1.85 }}>
+            {t('explore.defaultDataset.capabilityDesc')}
+          </div>
+        </GlowCard>
+      </div>
     </div>
   );
 }

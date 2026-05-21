@@ -1,7 +1,42 @@
-import C from '../../constants/colors'; // Re-triggering vite cache
+import C from '../../constants/colors';
 import { useT } from '../../i18n';
 import GlowCard from '../../components/GlowCard';
 import { FieldCanvas, LoadingBox, EmptyBox } from './PredictComponents';
+
+function SegmentedTabs({ items, activeId, onChange }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 8,
+        flexWrap: 'wrap',
+      }}
+    >
+      {items.map((item) => {
+        const active = activeId === item.id;
+        return (
+          <button
+            key={item.id}
+            onClick={() => onChange(item.id)}
+            style={{
+              padding: '9px 14px',
+              background: active ? 'rgba(74,158,255,0.12)' : C.bgMuted,
+              border: `1px solid ${active ? C.blue : C.border}`,
+              borderRadius: 999,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
+              fontWeight: active ? 700 : 600,
+              color: active ? C.blue : C.ice60,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {item.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function PredictDisplay({
   viewMode,
@@ -23,63 +58,53 @@ export default function PredictDisplay({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* 视图切换 Tab */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        {VIEW_MODES.map((m) => (
-          <button
-            key={m.id}
-            onClick={() => setViewMode(m.id)}
-            style={{
-              padding: '8px 16px',
-              background: viewMode === m.id ? 'rgba(74,158,255,0.12)' : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${viewMode === m.id ? C.blue : C.border}`,
-              borderRadius: 8, fontSize: 12, fontWeight: 600,
-              color: viewMode === m.id ? C.blue : C.ice30,
-              cursor: 'pointer', transition: 'all 0.2s',
-            }}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
+      <SegmentedTabs
+        items={VIEW_MODES}
+        activeId={viewMode}
+        onChange={setViewMode}
+      />
 
-      {/* 预测步骤选择（有多步结果时显示） */}
       {results && results.horizon > 1 && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: C.ice30, marginRight: 4 }}>{t('predict.showStep')}</span>
-          {Array.from({ length: results.horizon }, (_, i) => (
-            <button key={i} onClick={() => setActiveHorizon(i)} style={{
-              padding: '6px 16px',
-              background: activeHorizon === i ? 'rgba(74,158,255,0.12)' : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${activeHorizon === i ? C.blue : C.border}`,
-              borderRadius: 8, fontSize: 12, fontWeight: 600,
-              color: activeHorizon === i ? C.blue : C.ice30, cursor: 'pointer',
-            }}>
-              {t('predict.display.stepLabelFunc', { step: i + 1 })}{results.ls_values?.[i] != null ? ` (Ls=${results.ls_values[i].toFixed(3)}°)` : ''}
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice50 }}>
+            {t('predict.showStep')}
+          </span>
+          <SegmentedTabs
+            items={Array.from({ length: results.horizon }, (_, i) => ({
+              id: String(i),
+              label: `${t('predict.display.stepLabelFunc', { step: i + 1 })}${results.ls_values?.[i] != null ? ` · Ls=${results.ls_values[i].toFixed(3)}°` : ''}`,
+            }))}
+            activeId={String(activeHorizon)}
+            onChange={(nextId) => setActiveHorizon(Number(nextId))}
+          />
         </div>
       )}
 
-      {/* 三联对比视图 */}
       {viewMode === 'triptych' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
           {TRIPTYCH_PANELS.map((panel, i) => {
             const fieldData = i === 0 ? truthField : i === 1 ? predField : residField;
             return (
-              <GlowCard key={i} breathe style={{ padding: 16 }}>
-                <div style={{
-                  fontSize: 10, fontWeight: 700, color: panel.color,
-                  fontFamily: "'Orbitron', sans-serif", letterSpacing: 1,
-                  marginBottom: 8, textAlign: 'center',
-                }}>
-                  {panel.title}
+              <GlowCard key={panel.title} style={{ padding: 16 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    marginBottom: 10,
+                  }}
+                >
+                  <div style={{ color: panel.color, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700, fontFamily: 'var(--font-display)' }}>
+                    {panel.title}
+                  </div>
                   {stepLs != null && (
-                    <span style={{ fontSize: 9, color: C.ice30, marginLeft: 6 }}>
+                    <div style={{ color: C.ice50, fontSize: 'calc(10px * var(--font-scale, 1))' }}>
                       Ls={stepLs.toFixed(3)}°
-                    </span>
+                    </div>
                   )}
                 </div>
+
                 {loading ? (
                   <LoadingBox h={220} />
                 ) : fieldData ? (
@@ -88,15 +113,17 @@ export default function PredictDisplay({
                     <button
                       onClick={() => setFullscreen3D({ fieldData, colorMode: panel.mode })}
                       style={{
-                        width: '100%', padding: '8px 0',
-                        background: 'rgba(74,158,255,0.06)',
-                        border: `1px solid rgba(74,158,255,0.2)`, borderRadius: 6,
-                        color: '#4acfac', fontSize: 11, cursor: 'pointer',
-                        fontFamily: "'Orbitron', sans-serif", letterSpacing: 1,
-                        transition: 'all 0.2s',
+                        width: '100%',
+                        padding: '10px 0',
+                        background: C.bgMuted,
+                        border: `1px solid ${C.borderStrong}`,
+                        borderRadius: 10,
+                        color: C.ice,
+                        fontSize: 'calc(11px * var(--font-scale, 1))',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.15)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.06)' }}
                     >
                       {t('predict.display.view3d')}
                     </button>
@@ -110,7 +137,6 @@ export default function PredictDisplay({
         </div>
       )}
 
-      {/* 单图视图 */}
       {viewMode !== 'triptych' && (() => {
         const isResid = viewMode === 'diff';
         const fd = viewMode === 'original' ? truthField : viewMode === 'prediction' ? predField : residField;
@@ -119,16 +145,14 @@ export default function PredictDisplay({
           : viewMode === 'prediction'
             ? `${t('predict.panels.prediction')}${stepLabel(stepLs)}`
             : `${t('predict.panels.residual')}${stepLabel(stepLs)}`;
-        const panelColor = viewMode === 'original' ? C.blue : viewMode === 'prediction' ? C.mars : '#9c7bea';
+        const panelColor = viewMode === 'original' ? C.blue : viewMode === 'prediction' ? C.mars : C.purple;
+
         return (
-          <GlowCard breathe style={{ padding: 20 }}>
-            <div style={{
-              fontSize: 11, fontWeight: 700, color: panelColor,
-              fontFamily: "'Orbitron', sans-serif", letterSpacing: 1,
-              marginBottom: 12, textAlign: 'center',
-            }}>
+          <GlowCard style={{ padding: 20 }}>
+            <div style={{ color: panelColor, fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 700, fontFamily: 'var(--font-display)', marginBottom: 14 }}>
               {panelTitle}
             </div>
+
             {loading ? (
               <LoadingBox h={400} />
             ) : fd ? (
@@ -137,15 +161,17 @@ export default function PredictDisplay({
                 <button
                   onClick={() => setFullscreen3D({ fieldData: fd, colorMode: isResid ? 'rdbu' : 'inferno' })}
                   style={{
-                    width: '100%', padding: '12px 0',
-                    background: 'rgba(74,158,255,0.06)',
-                    border: `1px dashed rgba(74,158,255,0.3)`, borderRadius: 8,
-                    color: '#4acfac', fontSize: 13, cursor: 'pointer',
-                    fontFamily: "'Orbitron', sans-serif", letterSpacing: 1.5,
-                    transition: 'all 0.2s',
+                    width: '100%',
+                    padding: '12px 0',
+                    background: C.bgMuted,
+                    border: `1px solid ${C.borderStrong}`,
+                    borderRadius: 10,
+                    color: C.ice,
+                    fontSize: 'calc(12px * var(--font-scale, 1))',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.15)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(74,158,255,0.06)' }}
                 >
                   {t('predict.display.viewFullscreen')}
                 </button>
@@ -157,16 +183,15 @@ export default function PredictDisplay({
         );
       })()}
 
-
-
-      {/* 初始提示（无结果时） */}
       {!results && !loading && (
         <GlowCard style={{ padding: 28, textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🔭</div>
-          <div style={{ fontSize: 14, color: C.ice60, marginBottom: 8 }}>
+          <div style={{ width: 52, height: 52, margin: '0 auto 14px', borderRadius: 14, background: C.bgMuted, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.blue, fontWeight: 800 }}>
+            3D
+          </div>
+          <div style={{ fontSize: 'calc(16px * var(--font-scale, 1))', color: C.ice, marginBottom: 8, fontWeight: 700, fontFamily: 'var(--font-display)' }}>
             {t('predict.initPrompt')}
           </div>
-          <div style={{ fontSize: 12, color: C.ice30, lineHeight: 1.7, whiteSpace: 'pre-line' }}>
+          <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice50, lineHeight: 1.7, whiteSpace: 'pre-line', maxWidth: 560, margin: '0 auto' }}>
             {t('predict.initDesc')}
           </div>
         </GlowCard>

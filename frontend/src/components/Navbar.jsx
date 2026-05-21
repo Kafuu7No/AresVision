@@ -63,15 +63,15 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
 
   const isAdmin = user?.role === 'admin';
   const L = isLight;
-  const dropBg     = L ? 'rgba(255,255,255,0.97)' : 'rgba(13,13,32,0.97)';
-  const dropBorder = L ? 'rgba(0,0,0,0.09)'       : 'rgba(255,255,255,0.1)';
+  const dropBg     = L ? 'var(--bg-card-strong)' : 'var(--bg-card-strong)';
+  const dropBorder = L ? 'var(--border)'         : 'var(--border)';
   const dropShadow = L
-    ? '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.07)'
-    : '0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.35)';
-  const labelClr   = L ? '#000000' : '#ffffff';
-  const dimClr     = L ? '#000000' : '#ffffff';
-  const hoverBg    = L ? 'rgba(0,0,0,0.045)'    : 'rgba(255,255,255,0.07)';
-  const divClr     = L ? '#000000' : '#ffffff';
+    ? '0 18px 44px rgba(15,23,42,0.12), 0 4px 14px rgba(15,23,42,0.08)'
+    : '0 18px 44px rgba(0,0,0,0.34), 0 4px 14px rgba(0,0,0,0.20)';
+  const labelClr   = 'var(--text)';
+  const dimClr     = 'var(--text-60)';
+  const hoverBg    = 'var(--bg-muted)';
+  const divClr     = 'var(--border)';
 
   if (!user) {
     return (
@@ -83,8 +83,8 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
           style={{
             background: 'none', border: 'none',
             cursor: 'pointer', padding: '4px 0',
-            color: hovLogin ? '#fff' : C.blue,
-            fontSize: 13, fontWeight: 500,
+            color: hovLogin ? C.mars : C.blue,
+            fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 600,
             textDecoration: hovLogin ? 'underline' : 'none',
             textUnderlineOffset: 3,
             transition: 'color 0.18s, text-decoration 0.18s',
@@ -108,8 +108,8 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
           onClick={() => setDropOpen(v => !v)}
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            background: dropOpen ? (L ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)') : 'transparent',
-            border: 'none', borderRadius: 8, padding: '5px 10px 5px 6px',
+            background: dropOpen ? 'var(--bg-muted-strong)' : 'transparent',
+            border: `1px solid ${dropOpen ? 'var(--border-strong)' : 'transparent'}`, borderRadius: 10, padding: '5px 10px 5px 6px',
             cursor: 'pointer', transition: 'background 0.15s',
           }}
         >
@@ -120,12 +120,12 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{initial}</span>
+            <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: '#fff' }}>{initial}</span>
           </div>
           {/* Username */}
           <div style={{ textAlign: 'left', maxWidth: 76, overflow: 'hidden' }}>
             <div style={{
-              fontSize: 11, fontWeight: 600, color: C.ice,
+              fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 600, color: C.ice,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               lineHeight: 1.2,
             }}>
@@ -133,9 +133,9 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
             </div>
             {isAdmin && (
               <div style={{
-                display: 'inline-block', fontSize: 9, fontWeight: 700,
+                display: 'inline-block', fontSize: 'calc(9px * var(--font-scale, 1))', fontWeight: 700,
                 color: C.mars, letterSpacing: '0.06em',
-                background: 'rgba(199,91,57,0.12)',
+                background: 'rgba(199,91,57,0.10)',
                 borderRadius: 4, padding: '1px 5px', marginTop: 1,
                 lineHeight: 1.5,
               }}>
@@ -154,13 +154,13 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
             border: `1px solid ${dropBorder}`,
             borderRadius: 11,
             boxShadow: dropShadow,
-            backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+            backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
             padding: '6px 0',
             zIndex: 3000,
           }}>
             {/* Email display */}
             <div style={{ padding: '8px 16px 10px' }}>
-              <div style={{ fontSize: 11, color: dimClr, wordBreak: 'break-all' }}>{user.email}</div>
+              <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: dimClr, wordBreak: 'break-all' }}>{user.email}</div>
             </div>
             <div style={{ height: 1, background: divClr, margin: '0 10px 4px' }} />
 
@@ -178,14 +178,14 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   }}
                 >
-                  <span style={{ fontSize: 13, fontWeight: 500, color: labelClr, userSelect: 'none' }}>
+                  <span style={{ fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 500, color: labelClr, userSelect: 'none' }}>
                     {t('admin.menuItem')}
                   </span>
                   {pendingCount > 0 && (
                     <span style={{
                       minWidth: 18, height: 18,
                       background: C.mars, borderRadius: 9,
-                      fontSize: 10, fontWeight: 700, color: '#fff',
+                      fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, color: '#fff',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       padding: '0 5px', lineHeight: 1, flexShrink: 0,
                     }}>
@@ -203,7 +203,7 @@ function NavUserEntry({ t, isLight, onOpenAdmin, onOpenFeedback, pendingCount })
                     transition: 'background 0.1s',
                   }}
                 >
-                  <span style={{ fontSize: 13, fontWeight: 500, color: labelClr, userSelect: 'none' }}>
+                  <span style={{ fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 500, color: labelClr, userSelect: 'none' }}>
                     {t('feedback.adminMenuItem')}
                   </span>
                 </div>
@@ -265,7 +265,7 @@ function DropItem({ label, onClick, hoverBg, color }) {
         transition: 'background 0.1s',
       }}
     >
-      <span style={{ fontSize: 13, fontWeight: 500, color, userSelect: 'none' }}>{label}</span>
+      <span style={{ fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 500, color, userSelect: 'none' }}>{label}</span>
     </div>
   );
 }
@@ -322,21 +322,20 @@ export default function Navbar({ current, onChange, onOpenAdmin, onOpenFeedback,
   }, [fetchUnreadCount, user]);
 
   const navLabelStyle = (isActive) => ({
-    fontSize: 10,
+    fontSize: 'calc(11px * var(--font-scale, 1))',
     fontWeight: 700,
-    letterSpacing: 2,
-    fontFamily: "'Orbitron', sans-serif",
+    letterSpacing: 0.4,
+    fontFamily: 'var(--font-display)',
     color: isActive ? C.mars : C.ice60,
     transition: 'color 0.25s',
-    textTransform: 'uppercase',
   });
 
   const navBtnStyle = (isActive) => ({
-    background: 'transparent',
-    border: 'none',
-    borderBottom: isActive ? `2px solid ${C.mars}` : '2px solid transparent',
-    borderRadius: 0,
-    padding: '10px 22px 8px',
+    background: isActive ? 'rgba(199,91,57,0.10)' : 'transparent',
+    border: `1px solid ${isActive ? 'rgba(199,91,57,0.22)' : 'transparent'}`,
+    borderBottom: `1px solid ${isActive ? 'rgba(199,91,57,0.22)' : 'transparent'}`,
+    borderRadius: 10,
+    padding: '10px 16px',
     cursor: 'pointer',
     transition: 'all 0.25s',
     display: 'flex',
@@ -364,16 +363,16 @@ export default function Navbar({ current, onChange, onOpenAdmin, onOpenFeedback,
         <MarsLogoIcon />
         <div>
           <div style={{
-            fontSize: 15,
+            fontSize: 'calc(15px * var(--font-scale, 1))',
             fontWeight: 700,
-            fontFamily: "'Orbitron', sans-serif",
+            fontFamily: 'var(--font-display)',
             color: C.ice,
-            letterSpacing: 2.5,
+            letterSpacing: 0.6,
             lineHeight: 1.2,
           }}>
             ARESVISION
           </div>
-          <div style={{ fontSize: 10, color: C.ice60, letterSpacing: 2 }}>
+          <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice60, letterSpacing: 0.4 }}>
             {t('nav.subtitle')}
           </div>
         </div>
@@ -406,10 +405,10 @@ export default function Navbar({ current, onChange, onOpenAdmin, onOpenFeedback,
               onClick={() => setNotifOpen(v => !v)}
               title={t('notification.title')}
               style={{
-                background: notifOpen ? (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)') : 'transparent',
-                border: 'none', borderRadius: 8, padding: '6px 8px',
+                background: notifOpen ? 'var(--bg-muted-strong)' : 'transparent',
+                border: `1px solid ${notifOpen ? 'var(--border-strong)' : 'transparent'}`, borderRadius: 10, padding: '6px 8px',
                 cursor: 'pointer', display: 'flex', alignItems: 'center',
-                color: isLight ? '#000000' : '#ffffff',
+                color: 'var(--text)',
                 transition: 'background 0.15s',
               }}
             >

@@ -18,17 +18,17 @@ export const TEAM = [
 export function TechStackBlock({ t }) {
   return (
     <GlowCard style={{ padding: 32, marginBottom: 24 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 24, textAlign: 'center' }}>
+      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 24, textAlign: 'center' }}>
         TECHNOLOGY STACK
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
         {TECH_STACKS.map((stack, i) => (
           <div key={i}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: stack.color, marginBottom: 12, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>
+            <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 700, color: stack.color, marginBottom: 12, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>
               {t(`about.techCats.${stack.catKey}`)}
             </div>
             {stack.items.map((item, j) => (
-              <div key={j} style={{ fontSize: 13, color: C.ice60, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+              <div key={j} style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice60, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                 {item}
               </div>
             ))}
@@ -43,18 +43,18 @@ export function DataSourcesBlock({ t }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
       <GlowCard style={{ padding: 24 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
           {t('about.openmarsTitle')}
         </div>
-        <div style={{ fontSize: 13, color: C.ice60, lineHeight: 1.8, whiteSpace: 'pre-line' }}>
+        <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8, whiteSpace: 'pre-line' }}>
           {t('about.openmarsContent')}
         </div>
       </GlowCard>
       <GlowCard style={{ padding: 24 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
           {t('about.mcdTitle')}
         </div>
-        <div style={{ fontSize: 13, color: C.ice60, lineHeight: 1.8, whiteSpace: 'pre-line' }}>
+        <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice60, lineHeight: 1.8, whiteSpace: 'pre-line' }}>
           {t('about.mcdContent')}
         </div>
       </GlowCard>
@@ -65,7 +65,7 @@ export function DataSourcesBlock({ t }) {
 export function TeamBlock({ t }) {
   return (
     <GlowCard style={{ padding: 32, textAlign: 'center' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 24 }}>
+      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 24 }}>
         TEAM
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', gap: 40 }}>
@@ -79,21 +79,21 @@ export function TeamBlock({ t }) {
                 border: `2px solid ${C.border}`,
                 margin: '0 auto 12px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 24,
+                fontSize: 'calc(24px * var(--font-scale, 1))',
               }}>
                 {member.emoji}
               </div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.ice }}>
+              <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 600, color: C.ice }}>
                 {t('about.member', { n: i + 1 })}
               </div>
-              <div style={{ fontSize: 11, color: C.ice30 }}>
+              <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>
                 {Array.isArray(roles) ? roles[member.roleKey] : ''}
               </div>
             </div>
           );
         })}
       </div>
-      <div style={{ marginTop: 32, fontSize: 12, color: C.ice30 }}>
+      <div style={{ marginTop: 32, fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice30 }}>
         {t('about.competition')}
       </div>
     </GlowCard>

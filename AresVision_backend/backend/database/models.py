@@ -38,6 +38,9 @@ class User(Base):
     notifications: Mapped[list["Notification"]] = relationship(
         "Notification", foreign_keys="Notification.user_id", back_populates="user"
     )
+    lineage_events: Mapped[list["DatasetLineageEvent"]] = relationship(
+        "DatasetLineageEvent", foreign_keys="DatasetLineageEvent.actor_user_id", back_populates="actor"
+    )
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email} role={self.role}>"
@@ -71,9 +74,70 @@ class UploadRecord(Base):
     reviewer: Mapped["User | None"] = relationship(
         "User", foreign_keys=[reviewed_by], back_populates="reviewed_uploads"
     )
+    lineage_events: Mapped[list["DatasetLineageEvent"]] = relationship(
+        "DatasetLineageEvent",
+        foreign_keys="DatasetLineageEvent.upload_id",
+        back_populates="upload_record",
+        cascade="all, delete-orphan",
+    )
+    quality_snapshots: Mapped[list["DatasetQualitySnapshot"]] = relationship(
+        "DatasetQualitySnapshot",
+        foreign_keys="DatasetQualitySnapshot.upload_id",
+        back_populates="upload_record",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<UploadRecord id={self.id} file={self.filename} status={self.status}>"
+
+
+class DatasetLineageEvent(Base):
+    __tablename__ = "dataset_lineage_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    upload_id: Mapped[int] = mapped_column(Integer, ForeignKey("upload_records.id"), nullable=False, index=True)
+    event_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    event_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    actor_user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    actor_role: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now, index=True)
+
+    upload_record: Mapped["UploadRecord"] = relationship(
+        "UploadRecord", foreign_keys=[upload_id], back_populates="lineage_events"
+    )
+    actor: Mapped["User | None"] = relationship(
+        "User", foreign_keys=[actor_user_id], back_populates="lineage_events"
+    )
+
+    def __repr__(self) -> str:
+        return f"<DatasetLineageEvent id={self.id} upload_id={self.upload_id} type={self.event_type}>"
+
+
+class DatasetQualitySnapshot(Base):
+    __tablename__ = "dataset_quality_snapshots"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    upload_id: Mapped[int] = mapped_column(Integer, ForeignKey("upload_records.id"), nullable=False, index=True)
+    file_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    file_mtime_ns: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    overall_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    grade: Mapped[str] = mapped_column(String(2), nullable=False, default="D")
+    missing_rate: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    valid_value_ratio: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    variable_completeness: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    time_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    grid_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    metrics_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    scores_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    issues_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    computed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now, index=True)
+
+    upload_record: Mapped["UploadRecord"] = relationship(
+        "UploadRecord", foreign_keys=[upload_id], back_populates="quality_snapshots"
+    )
+
+    def __repr__(self) -> str:
+        return f"<DatasetQualitySnapshot id={self.id} upload_id={self.upload_id} overall={self.overall_score}>"
 
 
 class Notification(Base):
@@ -145,3 +209,27 @@ class ModelTrainingTask(Base):
 
     def __repr__(self) -> str:
         return f"<ModelTrainingTask id={self.id} script={self.model_script} status={self.status}>"
+
+
+class PersonalSourceBuildState(Base):
+    __tablename__ = "personal_source_build_states"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    signature_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="idle")  # idle | building | ready | failed
+    stage: Mapped[str] = mapped_column(String(40), nullable=False, default="idle")  # idle | queued | building_cache | warming_analysis | warming_predict | ready | failed
+    progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    stage_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    built_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+
+    def __repr__(self) -> str:
+        return (
+            f"<PersonalSourceBuildState user_id={self.user_id} status={self.status} "
+            f"signature={self.signature_hash[:8]}>"
+        )

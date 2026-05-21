@@ -5,20 +5,27 @@
  */
 const C = {
   bg:          'var(--bg)',
+  bgElevated:  'var(--bg-elevated)',
   bgCard:      'var(--bg-card)',
-  mars:        '#c75b39',
-  marsLight:   '#e8845a',
-  blue:        '#4a9eff',
-  blueGlow:    'rgba(74,158,255,0.25)',
+  bgCardStrong:'var(--bg-card-strong)',
+  bgMuted:     'var(--bg-muted)',
+  bgMutedStrong:'var(--bg-muted-strong)',
+  mars:        '#ff8f68',
+  marsLight:   '#ffb08e',
+  blue:        '#79bbff',
+  blueGlow:    'rgba(121,187,255,0.28)',
   ice:         'var(--text)',
   ice80:       'var(--text-80)',
+  ice70:       'color-mix(in srgb, var(--text) 70%, transparent)',
   ice60:       'var(--text-60)',
+  ice50:       'color-mix(in srgb, var(--text) 50%, transparent)',
   ice40:       'var(--text-40)',
   ice30:       'var(--text-30)',
   border:      'var(--border)',
+  borderStrong:'var(--border-strong)',
   borderHover: 'var(--border-hover)',
-  green:       '#4acfac',
-  purple:      '#9c7bea',
+  green:       '#63e8bf',
+  purple:      '#b39bff',
 };
 
 export default C;

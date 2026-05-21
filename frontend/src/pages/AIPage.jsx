@@ -397,7 +397,7 @@ export default function AIPage() {
           >
             <div
               style={{
-                fontSize: 12,
+                fontSize: 'calc(12px * var(--font-scale, 1))',
                 fontWeight: 700,
                 color: C.ice60,
                 fontFamily: "'Orbitron', sans-serif",
@@ -426,7 +426,7 @@ export default function AIPage() {
                 background: 'rgba(255,255,255,0.03)',
                 borderRadius: 8,
                 color: C.ice60,
-                fontSize: 11,
+                fontSize: 'calc(11px * var(--font-scale, 1))',
                 padding: '5px 10px',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
@@ -472,7 +472,7 @@ export default function AIPage() {
                 borderRadius: 10,
                 padding: '10px 12px',
                 color: C.ice,
-                fontSize: 13,
+                fontSize: 'calc(13px * var(--font-scale, 1))',
                 fontFamily: "'Exo 2', sans-serif",
                 outline: 'none',
               }}
@@ -486,7 +486,7 @@ export default function AIPage() {
                 borderRadius: 10,
                 padding: '10px 18px',
                 color: '#fff',
-                fontSize: 13,
+                fontSize: 'calc(13px * var(--font-scale, 1))',
                 fontWeight: 700,
                 cursor: sending ? 'not-allowed' : 'pointer',
                 opacity: sending ? 0.7 : 1,

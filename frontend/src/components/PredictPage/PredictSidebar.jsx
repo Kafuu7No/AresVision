@@ -28,10 +28,10 @@ export default function PredictSidebar({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* 预测控制 */}
       <GlowCard style={{ padding: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
           PREDICTION CONTROL
         </div>
-        <div style={{ fontSize: 11, color: C.ice30, marginBottom: 10 }}>{t('predict.horizon')}</div>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, marginBottom: 10 }}>{t('predict.horizon')}</div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           {[1, 2, 3].map((s) => (
             <button key={s} onClick={() => setPredStep(s)} style={{
@@ -39,7 +39,7 @@ export default function PredictSidebar({
               background: predStep === s ? 'rgba(199,91,57,0.2)' : 'rgba(255,255,255,0.03)',
               border: `1px solid ${predStep === s ? C.mars : C.border}`,
               borderRadius: 8, color: predStep === s ? C.mars : C.ice60,
-              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 700, cursor: 'pointer',
               fontFamily: "'Orbitron', sans-serif",
             }}>+{s}</button>
           ))}
@@ -53,7 +53,7 @@ export default function PredictSidebar({
               ? 'rgba(199,91,57,0.3)'
               : `linear-gradient(135deg, ${C.mars}, ${C.marsLight})`,
             border: 'none', borderRadius: 10, color: '#fff',
-            fontSize: 13, fontWeight: 700,
+            fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 700,
             fontFamily: "'Orbitron', sans-serif", letterSpacing: 2,
             cursor: loading ? 'not-allowed' : 'pointer',
             boxShadow: loading ? 'none' : '0 4px 24px rgba(199,91,57,0.35)',
@@ -76,7 +76,7 @@ export default function PredictSidebar({
           <div style={{
             marginTop: 12, padding: '10px 12px', borderRadius: 8,
             background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.2)',
-            fontSize: 11, color: '#ff6b6b', lineHeight: 1.6,
+            fontSize: 'calc(11px * var(--font-scale, 1))', color: '#ff6b6b', lineHeight: 1.6,
           }}>
             {error}
           </div>
@@ -85,11 +85,11 @@ export default function PredictSidebar({
 
       {/* 参数设置 */}
       <GlowCard style={{ padding: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
           PARAMETERS
         </div>
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, color: C.ice30, marginBottom: 6 }}>{t('predict.marsYear')}</div>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, marginBottom: 6 }}>{t('predict.marsYear')}</div>
           <div style={{ display: 'flex', gap: 8 }}>
             {[27, 28].map((y) => (
               <button key={y} onClick={() => setMarsYear(y)} style={{
@@ -97,7 +97,7 @@ export default function PredictSidebar({
                 background: marsYear === y ? 'rgba(199,91,57,0.2)' : 'rgba(255,255,255,0.03)',
                 border: `1px solid ${marsYear === y ? C.mars : C.border}`,
                 borderRadius: 8, color: marsYear === y ? C.mars : C.ice60,
-                fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 700, cursor: 'pointer',
                 fontFamily: "'Orbitron', sans-serif",
               }}>MY{y}</button>
             ))}
@@ -105,8 +105,8 @@ export default function PredictSidebar({
         </div>
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, color: C.ice30 }}>{t('predict.startLs')}</span>
-            <span style={{ fontSize: 12, color: C.ice, fontFamily: "'Orbitron', sans-serif" }}>{lsStart}°</span>
+            <span style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>{t('predict.startLs')}</span>
+            <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice, fontFamily: "'Orbitron', sans-serif" }}>{lsStart}°</span>
           </div>
           <input
             type="range" min={0} max={355} step={1}
@@ -114,7 +114,7 @@ export default function PredictSidebar({
             onChange={(e) => setLsStart(Number(e.target.value))}
             style={{ width: '100%', accentColor: C.mars }}
           />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.ice30, marginTop: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice30, marginTop: 4 }}>
             <span>{t('predict.lsMarks.spring')}</span><span>{t('predict.lsMarks.summer')}</span><span>{t('predict.lsMarks.autumn')}</span><span>{t('predict.lsMarks.winter')}</span>
           </div>
         </div>
@@ -122,10 +122,10 @@ export default function PredictSidebar({
 
       {/* 变量勾选 */}
       <GlowCard style={{ padding: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: C.blue, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
           INPUT VARIABLES
         </div>
-        <div style={{ fontSize: 11, color: C.ice30, marginBottom: 12, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, marginBottom: 12, lineHeight: 1.6 }}>
           {t('predict.envVarsLabel')}
         </div>
         {VARIABLES.map((v) => (
@@ -142,11 +142,11 @@ export default function PredictSidebar({
               onChange={() => toggleVar(v.id)}
               style={{ accentColor: v.color }}
             />
-            <span style={{ fontSize: 14 }}>{v.icon}</span>
-            <span style={{ fontSize: 12, color: selectedVars.includes(v.id) ? C.ice : C.ice30 }}>{v.label}</span>
+            <span style={{ fontSize: 'calc(14px * var(--font-scale, 1))' }}>{v.icon}</span>
+            <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: selectedVars.includes(v.id) ? C.ice : C.ice30 }}>{v.label}</span>
           </label>
         ))}
-        <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 8, background: 'rgba(199,91,57,0.08)', fontSize: 11, color: C.ice30 }}>
+        <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 8, background: 'rgba(199,91,57,0.08)', fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>
           {t('predict.envVarsNote', { selected: selectedVars.length })}
         </div>
       </GlowCard>
@@ -154,7 +154,7 @@ export default function PredictSidebar({
       {/* 多模型对比勾选 */}
       <GlowCard style={{ padding: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
             COMPARE MODELS
           </div>
           {compareConfigs.length > 0 && (
@@ -168,7 +168,7 @@ export default function PredictSidebar({
                   setSelectedCompareIds(prev => [...new Set([...prev, ...modelIds])]);
                 }
               }}
-              style={{ fontSize: 10, color: C.blue, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif", opacity: 0.8 }}
+              style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.blue, cursor: 'pointer', fontFamily: "'Orbitron', sans-serif", opacity: 0.8 }}
             >
               {compareConfigs.map(c => c.id).every(id => selectedCompareIds.includes(id)) ? 'DESELECT MODELS' : 'SELECT ALL MODELS'}
             </div>
@@ -192,14 +192,14 @@ export default function PredictSidebar({
                 }}
                 style={{ accentColor: '#4acfac' }}
               />
-              <span style={{ fontSize: 12, color: selectedCompareIds.includes(c.id) ? C.ice : C.ice30 }}>{c.label}</span>
+              <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: selectedCompareIds.includes(c.id) ? C.ice : C.ice30 }}>{c.label}</span>
             </label>
             <button
               onClick={() => {
                 setCompareConfigs(prev => prev.filter(pc => pc.id !== c.id));
                 setSelectedCompareIds(prev => prev.filter(pid => pid !== c.id));
               }}
-              style={{ background: 'none', border: 'none', color: 'rgba(199,91,57,0.4)', fontSize: 14, cursor: 'pointer' }}
+              style={{ background: 'none', border: 'none', color: 'rgba(199,91,57,0.4)', fontSize: 'calc(14px * var(--font-scale, 1))', cursor: 'pointer' }}
             >
               ×
             </button>
@@ -225,7 +225,7 @@ export default function PredictSidebar({
           style={{
             width: '100%', marginTop: 8, padding: '8px 0',
             background: 'rgba(255,255,255,0.03)', border: `1px dashed ${C.border}`,
-            borderRadius: 8, color: C.ice60, fontSize: 11, cursor: 'pointer'
+            borderRadius: 8, color: C.ice60, fontSize: 'calc(11px * var(--font-scale, 1))', cursor: 'pointer'
           }}
         >
           + 将当前配置加入对比
@@ -235,7 +235,7 @@ export default function PredictSidebar({
       {/* 融合组管理 */}
       <GlowCard style={{ padding: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: '#4acfac', fontFamily: "'Orbitron', sans-serif", letterSpacing: 2 }}>
             ENSEMBLE GROUPS
           </div>
         </div>
@@ -254,14 +254,14 @@ export default function PredictSidebar({
                 }}
                 style={{ accentColor: '#4acfac' }}
               />
-              <span style={{ fontSize: 12, color: selectedCompareIds.includes(g.id) ? C.ice : C.ice30, fontWeight: 700 }}>{g.label}</span>
+              <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: selectedCompareIds.includes(g.id) ? C.ice : C.ice30, fontWeight: 700 }}>{g.label}</span>
             </label>
             <button
               onClick={() => {
                 setFusionGroups(prev => prev.filter(x => x.id !== g.id));
                 setSelectedCompareIds(prev => prev.filter(pid => pid !== g.id));
               }}
-              style={{ background: 'none', border: 'none', color: 'rgba(199,91,57,0.3)', fontSize: 14, cursor: 'pointer' }}
+              style={{ background: 'none', border: 'none', color: 'rgba(199,91,57,0.3)', fontSize: 'calc(14px * var(--font-scale, 1))', cursor: 'pointer' }}
             >
               ×
             </button>
@@ -280,7 +280,7 @@ export default function PredictSidebar({
           style={{
             width: '100%', marginTop: 8, padding: '10px 0',
             background: 'rgba(74,207,172,0.1)', border: `1px solid rgba(74,207,172,0.3)`,
-            borderRadius: 8, color: '#4acfac', fontSize: 11, fontWeight: 700, cursor: 'pointer'
+            borderRadius: 8, color: '#4acfac', fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, cursor: 'pointer'
           }}
         >
           将选定模型保存为融合组
@@ -289,16 +289,16 @@ export default function PredictSidebar({
 
       {/* File Upload */}
       <GlowCard style={{ padding: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
+        <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 16 }}>
           FILE UPLOAD
         </div>
         <div style={{
           border: `2px dashed ${C.border}`, borderRadius: 12, padding: 28,
           textAlign: 'center', cursor: 'pointer',
         }}>
-          <div style={{ fontSize: 30, marginBottom: 8 }}>📁</div>
-          <div style={{ fontSize: 13, color: C.ice60 }}>{t('predict.fileUpload.drag')}</div>
-          <div style={{ fontSize: 11, color: C.ice30, marginTop: 4 }}>{t('predict.fileUpload.click')}</div>
+          <div style={{ fontSize: 'calc(30px * var(--font-scale, 1))', marginBottom: 8 }}>📁</div>
+          <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.ice60 }}>{t('predict.fileUpload.drag')}</div>
+          <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30, marginTop: 4 }}>{t('predict.fileUpload.click')}</div>
         </div>
       </GlowCard>
     </div>

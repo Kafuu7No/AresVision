@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { DEFAULT_FONT_SCALE, FONT_SCALE_VAR, normalizeFontScale } from '../utils/fontScale';
 
 const STORAGE_KEY = 'aresvision_settings';
 
@@ -20,7 +21,7 @@ export const DEFAULT_SETTINGS = {
     fontSize: 10,       // 8 | 10 | 12
   },
   appearance: {
-    uiScale: 1,         // 0.9 (Small) | 1 (Medium) | 1.15 (Large)
+    uiScale: DEFAULT_FONT_SCALE,         // font scale only
   },
 };
 
@@ -78,8 +79,8 @@ export function SettingsProvider({ children }) {
 
   // 应用 UI 缩放 (用于调节字体和整体布局大小)
   useEffect(() => {
-    const scale = settings.appearance?.uiScale || 1;
-    document.documentElement.style.setProperty('--app-zoom', scale);
+    const scale = normalizeFontScale(settings.appearance?.uiScale);
+    document.documentElement.style.setProperty(FONT_SCALE_VAR, String(scale));
   }, [settings.appearance?.uiScale]);
 
   // 主题变化时自动切换 colormap

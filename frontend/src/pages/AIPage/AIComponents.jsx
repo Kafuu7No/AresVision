@@ -13,7 +13,7 @@ export function ChatMessage({ msg }) {
           ? `linear-gradient(135deg, ${C.mars}, ${C.marsLight})`
           : 'rgba(255,255,255,0.04)',
         border: isUser ? 'none' : `1px solid ${C.border}`,
-        fontSize: 13,
+        fontSize: 'calc(13px * var(--font-scale, 1))',
         lineHeight: 1.7,
         color: C.ice,
         whiteSpace: 'pre-wrap',
@@ -33,7 +33,7 @@ function ContextRow({ item }) {
         gap: 8,
         padding: '8px 0',
         borderBottom: `1px solid ${C.border}`,
-        fontSize: 12,
+        fontSize: 'calc(12px * var(--font-scale, 1))',
       }}
     >
       <span style={{ color: C.ice30, minWidth: 88 }}>{item.label}</span>
@@ -64,7 +64,7 @@ export function SidebarContext({ t, items, contextReady, onRefresh }) {
       >
         <div
           style={{
-            fontSize: 10,
+            fontSize: 'calc(10px * var(--font-scale, 1))',
             fontWeight: 700,
             color: C.blue,
             fontFamily: "'Orbitron', sans-serif",
@@ -80,7 +80,7 @@ export function SidebarContext({ t, items, contextReady, onRefresh }) {
             background: 'rgba(255,255,255,0.03)',
             borderRadius: 6,
             color: C.ice60,
-            fontSize: 11,
+            fontSize: 'calc(11px * var(--font-scale, 1))',
             padding: '3px 8px',
             cursor: 'pointer',
             fontFamily: 'inherit',
@@ -90,7 +90,7 @@ export function SidebarContext({ t, items, contextReady, onRefresh }) {
         </button>
       </div>
 
-      <div style={{ fontSize: 11, color: contextReady ? C.green : C.ice30, marginBottom: 8 }}>
+      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: contextReady ? C.green : C.ice30, marginBottom: 8 }}>
         {contextReady ? t('ai.contextReady') : t('ai.contextEmpty')}
       </div>
 
@@ -113,7 +113,7 @@ export function QuickQuestions({ t, questions, onAsk, disabled }) {
     >
       <div
         style={{
-          fontSize: 10,
+          fontSize: 'calc(10px * var(--font-scale, 1))',
           fontWeight: 700,
           color: C.mars,
           fontFamily: "'Orbitron', sans-serif",
@@ -139,7 +139,7 @@ export function QuickQuestions({ t, questions, onAsk, disabled }) {
               background: 'rgba(255,255,255,0.02)',
               border: `1px solid ${C.border}`,
               borderRadius: 8,
-              fontSize: 12,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
               color: C.ice60,
               cursor: disabled ? 'not-allowed' : 'pointer',
               opacity: disabled ? 0.6 : 1,
@@ -175,7 +175,7 @@ export function ErrorSummary({ t, summary }) {
     >
       <div
         style={{
-          fontSize: 10,
+          fontSize: 'calc(10px * var(--font-scale, 1))',
           fontWeight: 700,
           color: C.blue,
           fontFamily: "'Orbitron', sans-serif",
@@ -186,7 +186,7 @@ export function ErrorSummary({ t, summary }) {
         {t('ai.errorSummaryTitle')}
       </div>
 
-      {!hasData && <div style={{ fontSize: 11, color: C.ice30 }}>{t('ai.errorSummaryEmpty')}</div>}
+      {!hasData && <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>{t('ai.errorSummaryEmpty')}</div>}
 
       {hasData &&
         metrics.map((metric) => (
@@ -195,7 +195,7 @@ export function ErrorSummary({ t, summary }) {
             style={{
               display: 'flex',
               justifyContent: 'space-between',
-              fontSize: 12,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
               padding: '6px 0',
               borderBottom: `1px solid ${C.border}`,
             }}

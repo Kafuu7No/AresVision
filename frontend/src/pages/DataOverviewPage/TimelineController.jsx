@@ -41,37 +41,37 @@ export default function TimelineController() {
         transition: 'none',
       }}
     >
-      <GlowCard style={{ padding: '10px 14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <GlowCard style={{ padding: '12px 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button
             onClick={onTogglePlay}
             title={isPlayingTimeline ? t('common.pause') : t('common.play')}
             style={{
-              width: 34,
-              height: 34,
+              width: 38,
+              height: 38,
               borderRadius: '50%',
-              background: isPlayingTimeline ? 'rgba(199,91,57,0.2)' : `linear-gradient(135deg, ${C.mars}, #ff8e53)`,
-              border: isPlayingTimeline ? `1px solid ${C.mars}` : 'none',
+              background: isPlayingTimeline ? 'rgba(199,91,57,0.14)' : `linear-gradient(135deg, ${C.mars}, ${C.marsLight})`,
+              border: `1px solid ${isPlayingTimeline ? C.mars : 'transparent'}`,
               color: isPlayingTimeline ? C.mars : '#fff',
-              fontSize: 13,
+              fontSize: 'calc(14px * var(--font-scale, 1))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
               transition: 'all 0.3s ease',
-              boxShadow: isPlayingTimeline ? 'none' : '0 3px 10px rgba(199,91,57,0.35)',
+              boxShadow: isPlayingTimeline ? 'none' : '0 10px 24px rgba(199,91,57,0.24)',
               flexShrink: 0,
             }}
           >
-            {isPlayingTimeline ? '||' : '>'}
+            {isPlayingTimeline ? '❚❚' : '▶'}
           </button>
 
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <div style={{ fontSize: 10, color: C.ice30, fontFamily: "'Orbitron', sans-serif", letterSpacing: 1 }}>
-                {isZh ? '太阳黄经' : 'SOLAR LONGITUDE'}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 12 }}>
+              <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice50, fontWeight: 600 }}>
+                {isZh ? '太阳黄经' : 'Solar longitude'}
               </div>
-              <div style={{ fontSize: 12, color: C.mars, fontWeight: 'bold', fontFamily: "'Orbitron', sans-serif" }}>
+              <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', color: C.mars, fontWeight: 700, fontFamily: 'var(--font-display)' }}>
                 {globalTimeLs}°
               </div>
             </div>
@@ -90,13 +90,14 @@ export default function TimelineController() {
             onClick={() => setGlobalTimeLs(0)}
             title={isZh ? '重置 Ls' : 'Reset Ls'}
             style={{
-              background: isLight ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.05)',
+              background: isLight ? 'rgba(15,23,42,0.06)' : 'rgba(255,255,255,0.05)',
               border: `1px solid ${C.border}`,
-              borderRadius: '50%',
-              width: 28,
-              height: 28,
+              borderRadius: 999,
+              minWidth: 58,
+              height: 32,
               color: C.ice60,
-              fontSize: 12,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
+              fontWeight: 600,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -104,17 +105,17 @@ export default function TimelineController() {
               flexShrink: 0,
             }}
           >
-            R
+            {isZh ? '重置' : 'Reset'}
           </button>
 
           <div
             style={{
-              padding: '4px 9px',
-              borderRadius: '999px',
+              padding: '6px 10px',
+              borderRadius: 999,
               border: `1px solid ${C.border}`,
+              background: C.bgMuted,
               color: C.ice60,
-              fontSize: 10,
-              fontFamily: "'Exo 2', sans-serif",
+              fontSize: 'calc(11px * var(--font-scale, 1))',
               whiteSpace: 'nowrap',
               flexShrink: 0,
             }}

@@ -90,30 +90,46 @@ function EnvCard({ meta, dataset, copy, plotText, plotGrid }) {
     ? Math.abs(convertValue(meta.id, summary.peakValue) - convertValue(meta.id, summary.troughValue))
     : NaN;
   const label = unitLabel(meta.id, meta.unit);
+  const numericValueStyle = {
+    fontFamily: 'var(--font-display)',
+    fontVariantNumeric: 'tabular-nums',
+    letterSpacing: '0.01em',
+    lineHeight: 1.15,
+    whiteSpace: 'nowrap',
+  };
 
   return (
-    <div style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, display: 'grid', gridTemplateRows: 'auto auto 1fr', gap: 12, minHeight: 280 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ color: meta.color, fontSize: 14, fontWeight: 800, fontFamily: "'Orbitron', sans-serif" }}>{meta.label}</div>
-          <div style={{ color: C.ice30, fontSize: 11 }}>{copy.summary}</div>
+    <div style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, display: 'grid', gridTemplateRows: 'auto auto 1fr', gap: 12, minHeight: 280, minWidth: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(96px, auto)', alignItems: 'start', gap: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ color: meta.color, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800, fontFamily: 'var(--font-display)' }}>{meta.label}</div>
+          <div style={{ color: C.ice30, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{copy.summary}</div>
         </div>
-        <div style={{ minWidth: 58, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, textAlign: 'right' }}>
-          <div style={{ color: C.ice30, fontSize: 10 }}>{copy.mean}</div>
-          <div style={{ color: meta.color, fontSize: 15, fontWeight: 800 }}>{fmtNum(convertedMean, 2)}</div>
+        <div style={{ minWidth: 96, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, textAlign: 'right', boxSizing: 'border-box' }}>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))' }}>{copy.mean}</div>
+          <div style={{ ...numericValueStyle, color: meta.color, fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 800, marginTop: 2 }}>
+            {fmtNum(convertedMean, 2)}
+          </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
-        <div style={{ padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.border}` }}>
-          <div style={{ color: C.ice30, fontSize: 10 }}>{copy.peakLs}</div>
-          <div style={{ color: C.ice, fontSize: 15, fontWeight: 800, marginTop: 4 }}>{fmtNum(dataset.ls?.[summary.peakIndex] ?? NaN, 0)} deg</div>
-          <div style={{ color: C.ice30, fontSize: 10, marginTop: 2 }}>{fmtNum(convertedPeak, 2)} {label}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+        <div style={{ padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.border}`, minWidth: 0 }}>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))' }}>{copy.peakLs}</div>
+          <div style={{ ...numericValueStyle, color: C.ice, fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 800, marginTop: 4 }}>
+            {fmtNum(dataset.ls?.[summary.peakIndex] ?? NaN, 0)}°
+          </div>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 4, flexWrap: 'wrap' }}>
+            <span style={numericValueStyle}>{fmtNum(convertedPeak, 2)}</span>
+            <span>{label}</span>
+          </div>
         </div>
-        <div style={{ padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.border}` }}>
-          <div style={{ color: C.ice30, fontSize: 10 }}>{copy.spread}</div>
-          <div style={{ color: C.ice, fontSize: 15, fontWeight: 800, marginTop: 4 }}>{fmtNum(convertedSpread, 2)}</div>
-          <div style={{ color: C.ice30, fontSize: 10, marginTop: 2 }}>{label}</div>
+        <div style={{ padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.border}`, minWidth: 0 }}>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))' }}>{copy.spread}</div>
+          <div style={{ ...numericValueStyle, color: C.ice, fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 800, marginTop: 4 }}>
+            {fmtNum(convertedSpread, 2)}
+          </div>
+          <div style={{ color: C.ice30, fontSize: 'calc(10px * var(--font-scale, 1))', marginTop: 2 }}>{label}</div>
         </div>
       </div>
 
@@ -144,8 +160,8 @@ export default function EnvironmentDashboard({ marsYear, dataSourceMode = 'defau
   const { settings } = useSettings();
 
   const isLight = settings?.theme === 'light';
-  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
-  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+  const plotText = isLight ? 'rgba(23,33,47,0.88)' : 'rgba(236,244,255,0.94)';
+  const plotGrid = isLight ? 'rgba(23,33,47,0.12)' : 'rgba(160,196,240,0.16)';
 
   const isZh = settings.language !== 'en';
   const copy = isZh ? {
@@ -288,7 +304,7 @@ export default function EnvironmentDashboard({ marsYear, dataSourceMode = 'defau
   if (loading) {
     return (
       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: C.ice, fontFamily: "'Orbitron', sans-serif", display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ color: C.ice, fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 16, height: 16, border: `2px solid rgba(74,207,172,0.2)`, borderTop: '2px solid #4acfac', borderRadius: '50%', animation: 'spin-slow 1s linear infinite' }} />
           {copy.loading}
         </div>
@@ -310,7 +326,7 @@ export default function EnvironmentDashboard({ marsYear, dataSourceMode = 'defau
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
         <div style={{ padding: 16, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, minHeight: 320, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
-          <div style={{ color: C.ice, fontSize: 14, fontWeight: 800, marginBottom: 10, fontFamily: "'Orbitron', sans-serif" }}>{copy.influence}</div>
+          <div style={{ color: C.ice, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 10, fontFamily: 'var(--font-display)' }}>{copy.influence}</div>
           <div style={{ minHeight: 0 }}>
             <Plot
               data={[{
@@ -338,7 +354,7 @@ export default function EnvironmentDashboard({ marsYear, dataSourceMode = 'defau
 
         <div style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr) auto', gap: 16, minHeight: 0 }}>
           <div style={{ padding: 16, borderRadius: 16, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, minHeight: 320, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
-            <div style={{ color: C.ice, fontSize: 14, fontWeight: 800, marginBottom: 10, fontFamily: "'Orbitron', sans-serif" }}>{copy.dominant}</div>
+            <div style={{ color: C.ice, fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 10, fontFamily: 'var(--font-display)' }}>{copy.dominant}</div>
             <div style={{ minHeight: 0 }}>
               <Plot
                 data={[{
@@ -357,7 +373,7 @@ export default function EnvironmentDashboard({ marsYear, dataSourceMode = 'defau
               />
             </div>
           </div>
-          <div style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, lineHeight: 1.7, fontSize: 12, color: C.ice60 }}>
+          <div style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`, lineHeight: 1.7, fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice60 }}>
             {copy.note}
           </div>
         </div>

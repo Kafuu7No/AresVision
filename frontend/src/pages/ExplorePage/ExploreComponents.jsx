@@ -15,7 +15,7 @@ export function LoadingBox({ h = 200, label }) {
         borderTop: `3px solid ${C.mars}`, borderRadius: '50%',
         animation: 'spin-slow 1s linear infinite',
       }} />
-      <div style={{ marginTop: 12, fontSize: 12, color: C.ice30 }}>{displayLabel}</div>
+      <div style={{ marginTop: 12, fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice30 }}>{displayLabel}</div>
     </div>
   );
 }
@@ -29,7 +29,7 @@ export function InsightBlock({ text }) {
       borderLeft: '3px solid rgba(199,91,57,0.4)',
       borderRadius: 8,
       padding: '12px 16px',
-      fontSize: 12,
+      fontSize: 'calc(12px * var(--font-scale, 1))',
       color: C.ice60,
       lineHeight: 1.7,
     }}>

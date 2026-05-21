@@ -114,12 +114,12 @@ export default function LineChart({ data, year, h = 240 }) {
               <line x1={tx} y1={MT + plotH} x2={tx} y2={MT + plotH + 4}
                 style={{ stroke: 'var(--text-60)' }} strokeWidth="0.8" />
               <text x={tx} y={MT + plotH + 15} textAnchor="middle"
-                fontSize="10" style={{ fill: 'var(--text-60)' }}>{lsVal}°</text>
+                fontSize="calc(10px * var(--font-scale, 1))" style={{ fill: 'var(--text-60)' }}>{lsVal}°</text>
             </g>
           );
         })}
         <text x={ML + plotW / 2} y={H - 6} textAnchor="middle"
-          fontSize="10" style={{ fill: 'var(--text-30)' }}>Solar Longitude Ls (°)</text>
+          fontSize="calc(10px * var(--font-scale, 1))" style={{ fill: 'var(--text-30)' }}>Solar Longitude Ls (°)</text>
 
         <line x1={ML} y1={MT} x2={ML} y2={MT + plotH}
           style={{ stroke: 'var(--text-60)' }} strokeWidth="0.8" />
@@ -131,19 +131,19 @@ export default function LineChart({ data, year, h = 240 }) {
               <line x1={ML - 4} y1={cy} x2={ML} y2={cy}
                 style={{ stroke: 'var(--text-60)' }} strokeWidth="0.8" />
               <text x={ML - 8} y={cy + 4} textAnchor="end"
-                fontSize="9" style={{ fill: 'var(--text-60)' }}>{fmtNum(yv, precision)}</text>
+                fontSize="calc(9px * var(--font-scale, 1))" style={{ fill: 'var(--text-60)' }}>{fmtNum(yv, precision)}</text>
             </g>
           );
         })}
         <text x={14} y={MT + plotH / 2} textAnchor="middle"
-          fontSize="10" style={{ fill: 'var(--text-30)' }}
+          fontSize="calc(10px * var(--font-scale, 1))" style={{ fill: 'var(--text-30)' }}
           transform={`rotate(-90, 14, ${MT + plotH / 2})`}>{`O₃ (${ozoneLabel(ozoneUnit)})`}</text>
       </svg>
 
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 6 }}>
         {bands.map((b, i) => (
           <span key={i} style={{
-            fontSize: 11, color: C.ice60,
+            fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice60,
             display: 'flex', alignItems: 'center', gap: 5,
           }}>
             <span style={{

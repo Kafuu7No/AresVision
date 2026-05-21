@@ -284,17 +284,17 @@ Requirements:
         >
           <div
             onClick={handleClose}
-            style={{ position: 'absolute', top: 10, right: 14, color: C.ice30, cursor: 'pointer', fontSize: 14, padding: 4 }}
+            style={{ position: 'absolute', top: 10, right: 14, color: C.ice30, cursor: 'pointer', fontSize: 'calc(14px * var(--font-scale, 1))', padding: 4 }}
           >
             ✕
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <span style={{ fontSize: 20 }}>🧠</span>
-            <span style={{ color: C.blue, fontFamily: "'Orbitron', sans-serif", fontSize: 14, fontWeight: 'bold' }}>
+            <span style={{ fontSize: 'calc(20px * var(--font-scale, 1))' }}>🧠</span>
+            <span style={{ color: C.blue, fontFamily: 'var(--font-display)', fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700 }}>
               {copy.title}
             </span>
             {hasResult && !isAnalyzing && (
-              <span style={{ color: C.ice, fontSize: 10, background: isLight ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4 }}>
+              <span style={{ color: C.ice, fontSize: 'calc(10px * var(--font-scale, 1))', background: isLight ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4 }}>
                 {copy.done}
               </span>
             )}
@@ -303,8 +303,8 @@ Requirements:
           <div
             style={{
               color: C.ice80,
-              fontSize: 12,
-              fontFamily: "'Exo 2', sans-serif",
+              fontSize: 'calc(12px * var(--font-scale, 1))',
+              fontFamily: 'var(--font-body)',
               lineHeight: 1.6,
               marginBottom: 16,
               maxHeight: 300,
@@ -346,9 +346,9 @@ Requirements:
                   border: `1px solid ${C.blue}`,
                   borderRadius: 6,
                   color: C.blue,
-                  fontFamily: "'Orbitron', sans-serif",
-                  fontSize: 12,
-                  fontWeight: 'bold',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: 'calc(12px * var(--font-scale, 1))',
+                  fontWeight: 700,
                   cursor: 'pointer',
                   transition: '0.3s',
                 }}
@@ -366,9 +366,9 @@ Requirements:
                   border: 'none',
                   borderRadius: 6,
                   color: '#000',
-                  fontFamily: "'Orbitron', sans-serif",
-                  fontSize: 12,
-                  fontWeight: 'bold',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: 'calc(12px * var(--font-scale, 1))',
+                  fontWeight: 700,
                   cursor: 'pointer',
                   boxShadow: '0 0 12px rgba(199,91,57,0.4)',
                 }}
@@ -395,7 +395,7 @@ Requirements:
           boxShadow: pulse ? '0 0 0 0 rgba(74, 158, 255, 0.7)' : (isLight ? '0 6px 16px rgba(15,23,42,0.18)' : '0 4px 12px rgba(0,0,0,0.5)'),
           animation: pulse ? 'pulseBlue 2s infinite' : 'none',
           backdropFilter: 'blur(10px)',
-          fontSize: 24,
+          fontSize: 'calc(24px * var(--font-scale, 1))',
         }}
       >
         <style

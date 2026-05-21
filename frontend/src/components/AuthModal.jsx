@@ -25,13 +25,13 @@ function Input({ label, type = 'text', value, onChange, placeholder, disabled, e
     ? C.mars
     : focused
       ? C.blue
-      : isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)';
+      : 'var(--border-strong)';
 
   return (
     <div style={{ marginBottom: 16 }}>
       <label style={{
-        display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
-        color: isLight ? '#000000' : '#ffffff',
+        display: 'block', fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 600, letterSpacing: '0.08em',
+        color: 'var(--text-80)',
         marginBottom: 6, textTransform: 'uppercase',
       }}>
         {label}
@@ -49,18 +49,18 @@ function Input({ label, type = 'text', value, onChange, placeholder, disabled, e
         style={{
           width: '100%', boxSizing: 'border-box',
           padding: '10px 14px',
-          background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)',
+          background: 'var(--bg-muted)',
           border: `1px solid ${borderColor}`,
           borderRadius: 8,
-          color: isLight ? '#000000' : '#ffffff',
-          fontSize: 14,
+          color: 'var(--text)',
+          fontSize: 'calc(14px * var(--font-scale, 1))',
           outline: 'none',
           transition: 'border-color 0.15s',
           fontFamily: 'inherit',
         }}
       />
       {error && (
-        <div style={{ fontSize: 12, color: C.mars, marginTop: 5 }}>{error}</div>
+        <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.mars, marginTop: 5 }}>{error}</div>
       )}
     </div>
   );
@@ -68,8 +68,8 @@ function Input({ label, type = 'text', value, onChange, placeholder, disabled, e
 
 function TabBar({ tab, setTab, t, isLight }) {
   const activeColor = C.blue;
-  const inactiveColor = isLight ? '#000000' : '#ffffff';
-  const borderBase = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+  const inactiveColor = 'var(--text-60)';
+  const borderBase = 'var(--border)';
 
   return (
     <div style={{ display: 'flex', borderBottom: `1px solid ${borderBase}`, marginBottom: 24 }}>
@@ -80,7 +80,7 @@ function TabBar({ tab, setTab, t, isLight }) {
           style={{
             flex: 1, padding: '12px 0',
             background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 13, fontWeight: 600, letterSpacing: '0.06em',
+            fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 600, letterSpacing: '0.06em',
             color: tab === k ? activeColor : inactiveColor,
             borderBottom: tab === k ? `2px solid ${activeColor}` : '2px solid transparent',
             marginBottom: -1,
@@ -171,20 +171,20 @@ export default function AuthModal() {
 
   const L = isLight;
   const overlayBg    = L ? 'rgba(220,224,240,0.72)' : 'rgba(0,0,8,0.75)';
-  const cardBg       = L ? '#ffffff'                : '#0d0d20';
-  const cardBorder   = L ? 'rgba(0,0,0,0.09)'      : 'rgba(255,255,255,0.1)';
+  const cardBg       = 'var(--bg-card-strong)';
+  const cardBorder   = 'var(--border)';
   const cardShadow   = L
-    ? '0 16px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.07)'
-    : '0 16px 48px rgba(0,0,0,0.75), 0 4px 12px rgba(0,0,0,0.4)';
-  const titleColor   = L ? '#000000' : '#ffffff';
-  const subtitleClr  = L ? '#000000' : '#ffffff';
-  const closeColor   = L ? '#000000' : '#ffffff';
-  const switchColor  = L ? '#000000' : '#ffffff';
-  const hintColor    = L ? '#000000' : '#ffffff';
-  const inputBg      = L ? 'rgba(0,0,0,0.04)'      : 'rgba(255,255,255,0.05)';
-  const inputBorder  = L ? 'rgba(0,0,0,0.15)'      : 'rgba(255,255,255,0.15)';
-  const inputText    = L ? '#000000' : '#ffffff';
-  const labelColor   = L ? '#000000' : '#ffffff';
+    ? '0 16px 48px rgba(15,23,42,0.14), 0 4px 12px rgba(15,23,42,0.07)'
+    : '0 16px 48px rgba(0,0,0,0.40), 0 4px 12px rgba(0,0,0,0.24)';
+  const titleColor   = 'var(--text)';
+  const subtitleClr  = 'var(--text-60)';
+  const closeColor   = 'var(--text-60)';
+  const switchColor  = 'var(--text-60)';
+  const hintColor    = 'var(--text-60)';
+  const inputBg      = 'var(--bg-muted)';
+  const inputBorder  = 'var(--border-strong)';
+  const inputText    = 'var(--text)';
+  const labelColor   = 'var(--text-80)';
 
   // ── 注册/登录校验 ──
   const validate = () => {
@@ -301,7 +301,7 @@ export default function AuthModal() {
         onClick={() => { setForgotMode(false); setForgotError(''); }}
         style={{
           background: 'none', border: 'none', cursor: 'pointer',
-          fontSize: 12, color: C.blue, fontFamily: 'inherit',
+          fontSize: 'calc(12px * var(--font-scale, 1))', color: C.blue, fontFamily: 'inherit',
           padding: 0, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 4,
         }}
       >
@@ -316,7 +316,7 @@ export default function AuthModal() {
               width: 24, height: 24, borderRadius: '50%', display: 'flex',
               alignItems: 'center', justifyContent: 'center',
               background: forgotStep >= n ? C.blue : (L ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)'),
-              fontSize: 11, fontWeight: 700,
+              fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700,
               color: forgotStep >= n ? '#fff' : (L ? 'rgba(42,42,58,0.4)' : 'rgba(232,237,243,0.35)'),
             }}>{n}</div>
             {n < 2 && (
@@ -327,7 +327,7 @@ export default function AuthModal() {
             )}
           </div>
         ))}
-        <span style={{ fontSize: 12, color: hintColor, marginLeft: 6 }}>
+        <span style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: hintColor, marginLeft: 6 }}>
           {forgotStep === 1 ? t('auth.forgotStep1Hint') : t('auth.forgotStep2Hint')}
         </span>
       </div>
@@ -336,7 +336,7 @@ export default function AuthModal() {
       {forgotStep === 1 && (
         <>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', color: labelColor, marginBottom: 6, textTransform: 'uppercase' }}>
+            <label style={{ display: 'block', fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 600, letterSpacing: '0.08em', color: labelColor, marginBottom: 6, textTransform: 'uppercase' }}>
               {t('auth.email')}
             </label>
             <input
@@ -348,7 +348,7 @@ export default function AuthModal() {
               style={{
                 width: '100%', boxSizing: 'border-box', padding: '10px 14px',
                 background: inputBg, border: `1px solid ${inputBorder}`,
-                borderRadius: 8, color: inputText, fontSize: 14,
+                borderRadius: 8, color: inputText, fontSize: 'calc(14px * var(--font-scale, 1))',
                 outline: 'none', transition: 'border-color 0.15s', fontFamily: 'inherit',
               }}
             />
@@ -356,7 +356,7 @@ export default function AuthModal() {
 
           {/* Code row */}
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', color: labelColor, marginBottom: 6, textTransform: 'uppercase' }}>
+            <label style={{ display: 'block', fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 600, letterSpacing: '0.08em', color: labelColor, marginBottom: 6, textTransform: 'uppercase' }}>
               {t('auth.verificationCode')}
             </label>
             <div style={{ display: 'flex', gap: 10 }}>
@@ -371,7 +371,7 @@ export default function AuthModal() {
                   flex: 1, boxSizing: 'border-box', padding: '10px 14px',
                   background: L ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)',
                   border: `1px solid ${L ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)'}`,
-                  borderRadius: 8, fontSize: 14,
+                  borderRadius: 8, fontSize: 'calc(14px * var(--font-scale, 1))',
                   color: L ? '#000000' : '#ffffff',
                   outline: 'none', transition: 'border-color 0.15s', fontFamily: 'inherit',
                 }}
@@ -389,7 +389,7 @@ export default function AuthModal() {
                   borderRadius: 8,
                   color: (forgotCodeSending || forgotCodeCountdown > 0)
                     ? (L ? 'rgba(42,42,58,0.4)' : 'rgba(232,237,243,0.35)') : '#fff',
-                  fontSize: 12, fontWeight: 600,
+                  fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 600,
                   cursor: (forgotCodeSending || forgotCodeCountdown > 0 || loading) ? 'default' : 'pointer',
                   transition: 'all 0.15s', fontFamily: 'inherit',
                 }}
@@ -429,7 +429,7 @@ export default function AuthModal() {
 
       {forgotError && (
         <div style={{
-          fontSize: 13, color: C.mars, marginBottom: 14,
+          fontSize: 'calc(13px * var(--font-scale, 1))', color: C.mars, marginBottom: 14,
           padding: '8px 12px', borderRadius: 7,
           background: L ? 'rgba(220,80,50,0.07)' : 'rgba(220,80,50,0.12)',
           border: '1px solid rgba(220,80,50,0.22)',
@@ -448,7 +448,7 @@ export default function AuthModal() {
             ? (L ? 'rgba(66,133,244,0.5)' : 'rgba(66,133,244,0.35)')
             : C.blue,
           border: 'none', borderRadius: 9,
-          color: '#fff', fontSize: 14, fontWeight: 700,
+          color: '#fff', fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700,
           letterSpacing: '0.04em',
           cursor: loading ? 'default' : 'pointer',
           fontFamily: 'Orbitron, sans-serif',
@@ -509,13 +509,13 @@ export default function AuthModal() {
 
           {/* Header */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.blue, fontFamily: 'Orbitron, sans-serif', marginBottom: 4 }}>
+            <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, letterSpacing: '0.12em', color: C.blue, fontFamily: 'Orbitron, sans-serif', marginBottom: 4 }}>
               ARESVISION
             </div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: titleColor, fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.02em' }}>
+            <div style={{ fontSize: 'calc(20px * var(--font-scale, 1))', fontWeight: 700, color: titleColor, fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.02em' }}>
               {forgotMode ? t('auth.forgotTitle') : (tab === 'login' ? t('auth.loginTitle') : t('auth.registerTitle'))}
             </div>
-            <div style={{ fontSize: 12, color: subtitleClr, marginTop: 4 }}>
+            <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: subtitleClr, marginTop: 4 }}>
               Mars Ozone Intelligence Platform
             </div>
           </div>
@@ -570,7 +570,7 @@ export default function AuthModal() {
                 {tab === 'register' && (
                   <div style={{ marginBottom: 16 }}>
                     <label style={{
-                      display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+                      display: 'block', fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 600, letterSpacing: '0.08em',
                       color: labelColor, marginBottom: 6, textTransform: 'uppercase',
                     }}>
                       {t('auth.verificationCode')}
@@ -587,7 +587,7 @@ export default function AuthModal() {
                           flex: 1, boxSizing: 'border-box', padding: '10px 14px',
                           background: L ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)',
                           border: `1px solid ${errors.verificationCode ? C.mars : L ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)'}`,
-                          borderRadius: 8, fontSize: 14,
+                          borderRadius: 8, fontSize: 'calc(14px * var(--font-scale, 1))',
                           color: L ? '#000000' : '#ffffff',
                           outline: 'none', transition: 'border-color 0.15s', fontFamily: 'inherit',
                         }}
@@ -605,7 +605,7 @@ export default function AuthModal() {
                           borderRadius: 8,
                           color: (codeSending || codeCountdown > 0)
                             ? (L ? 'rgba(42,42,58,0.4)' : 'rgba(232,237,243,0.35)') : '#fff',
-                          fontSize: 12, fontWeight: 600,
+                          fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 600,
                           cursor: (codeSending || codeCountdown > 0 || loading) ? 'default' : 'pointer',
                           transition: 'all 0.15s', fontFamily: 'inherit',
                         }}
@@ -616,7 +616,7 @@ export default function AuthModal() {
                       </button>
                     </div>
                     {errors.verificationCode && (
-                      <div style={{ fontSize: 12, color: C.mars, marginTop: 5 }}>
+                      <div style={{ fontSize: 'calc(12px * var(--font-scale, 1))', color: C.mars, marginTop: 5 }}>
                         {errors.verificationCode}
                       </div>
                     )}
@@ -625,7 +625,7 @@ export default function AuthModal() {
 
                 {globalError && (
                   <div style={{
-                    fontSize: 13, color: C.mars, marginBottom: 14,
+                    fontSize: 'calc(13px * var(--font-scale, 1))', color: C.mars, marginBottom: 14,
                     padding: '8px 12px', borderRadius: 7,
                     background: L ? 'rgba(220,80,50,0.07)' : 'rgba(220,80,50,0.12)',
                     border: '1px solid rgba(220,80,50,0.22)',
@@ -643,7 +643,7 @@ export default function AuthModal() {
                       ? (L ? 'rgba(66,133,244,0.5)' : 'rgba(66,133,244,0.35)')
                       : C.blue,
                     border: 'none', borderRadius: 9,
-                    color: '#fff', fontSize: 14, fontWeight: 700,
+                    color: '#fff', fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 700,
                     letterSpacing: '0.04em',
                     cursor: loading ? 'default' : 'pointer',
                     fontFamily: 'Orbitron, sans-serif',
@@ -665,7 +665,7 @@ export default function AuthModal() {
                     onClick={() => { setForgotMode(true); setForgotStep(1); setGlobalError(''); }}
                     style={{
                       background: 'none', border: 'none', cursor: 'pointer',
-                      fontSize: 12, color: C.blue,
+                      fontSize: 'calc(12px * var(--font-scale, 1))', color: C.blue,
                       textDecoration: 'underline', textUnderlineOffset: 3,
                       fontFamily: 'inherit',
                     }}
@@ -677,7 +677,7 @@ export default function AuthModal() {
                   onClick={() => switchTab(tab === 'login' ? 'register' : 'login')}
                   style={{
                     background: 'none', border: 'none', cursor: 'pointer',
-                    fontSize: 13, color: switchColor,
+                    fontSize: 'calc(13px * var(--font-scale, 1))', color: switchColor,
                     textDecoration: 'underline', textUnderlineOffset: 3,
                     fontFamily: 'inherit',
                   }}

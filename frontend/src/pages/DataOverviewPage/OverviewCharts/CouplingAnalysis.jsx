@@ -10,10 +10,11 @@ export default function CouplingAnalysis({ marsYear, dataSourceMode = 'default' 
   const { settings } = useSettings();
 
   const isLight = settings?.theme === 'light';
-  const plotText = isLight ? '#444444' : 'rgba(255,255,255,0.85)';
-  const plotGrid = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+  const plotText = isLight ? 'rgba(23,33,47,0.88)' : 'rgba(236,244,255,0.94)';
+  const plotGrid = isLight ? 'rgba(23,33,47,0.12)' : 'rgba(160,196,240,0.16)';
 
   const isZh = settings.language === 'zh';
+  const chartHeight = 360;
   
   const copy = isZh ? {
     title: '沙尘-臭氧耦合分析',
@@ -103,12 +104,12 @@ export default function CouplingAnalysis({ marsYear, dataSourceMode = 'default' 
   }
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', display: 'grid', gridTemplateRows: 'auto auto', gap: 12 }}>
       <div style={{ marginBottom: 12 }}>
-        <h3 style={{ color: C.ice, margin: '0 0 4px 0', fontSize: 16 }}>{copy.title}</h3>
-        <p style={{ color: C.ice60, fontSize: 12, margin: 0 }}>{copy.desc}</p>
+        <h3 style={{ color: C.ice, margin: '0 0 4px 0', fontSize: 'calc(16px * var(--font-scale, 1))' }}>{copy.title}</h3>
+        <p style={{ color: C.ice60, fontSize: 'calc(12px * var(--font-scale, 1))', margin: 0 }}>{copy.desc}</p>
       </div>
-      <div style={{ flex: 1, minHeight: 300 }}>
+      <div style={{ minHeight: chartHeight, height: chartHeight }}>
         <Plot
           data={[
             {
@@ -134,26 +135,35 @@ export default function CouplingAnalysis({ marsYear, dataSourceMode = 'default' 
             autosize: true,
             paper_bgcolor: 'transparent',
             plot_bgcolor: 'transparent',
-            margin: { l: 50, r: 50, t: 30, b: 40 },
+            margin: { l: 50, r: 74, t: 30, b: 40 },
             xaxis: {
               title: copy.lsAxis,
               gridcolor: plotGrid,
               tickfont: { color: plotText, size: 10  },
-              titlefont: { color: plotText, size: 11  }
+              titlefont: { color: plotText, size: 11  },
+              automargin: true,
             },
             yaxis: {
-              title: copy.ozoneAxis,
               gridcolor: plotGrid,
               tickfont: { color: plotText, size: 10  },
-              titlefont: { color: C.blue, size: 11 }
+              automargin: true,
+              title: {
+                text: copy.ozoneAxis,
+                standoff: 10,
+                font: { color: C.blue, size: 11 },
+              },
             },
             yaxis2: {
-              title: copy.dustAxis,
               side: 'right',
               overlaying: 'y',
               gridcolor: 'transparent',
               tickfont: { color: plotText, size: 10  },
-              titlefont: { color: C.mars, size: 11 }
+              automargin: true,
+              title: {
+                text: copy.dustAxis,
+                standoff: 14,
+                font: { color: C.mars, size: 11 },
+              },
             },
             legend: {
               orientation: 'h',
@@ -163,7 +173,7 @@ export default function CouplingAnalysis({ marsYear, dataSourceMode = 'default' 
           }}
           config={{ displayModeBar: false, responsive: true }}
           useResizeHandler
-          style={{ width: '100%', height: '100%' }}
+          style={{ width: '100%', height: chartHeight }}
         />
       </div>
     </div>

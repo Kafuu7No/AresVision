@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
 import { getRgb, rdbuRgb } from '../utils/colormaps';
 import { useSettings } from '../contexts/SettingsContext';
+import { buildCanvasFont, normalizeFontScale } from '../utils/fontScale';
 
 // --- 全局缓存贴图 ---
 let cachedMarsTexture = null;
@@ -51,7 +52,7 @@ function latLonToVec3(latDeg, lonDeg, radius) {
   );
 }
 
-function createLabelSprite(text, isLight) {
+function createLabelSprite(text, isLight, fontScale = 1) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   const fontSize = 30;
@@ -59,13 +60,13 @@ function createLabelSprite(text, isLight) {
   const padY = 8;
   const strokeWidth = 4;
   const labelFontFamily = '"Segoe UI Symbol", "Segoe UI", "Arial Unicode MS", "Noto Sans", sans-serif';
-  ctx.font = `600 ${fontSize}px ${labelFontFamily}`;
+  ctx.font = buildCanvasFont(fontSize, { family: labelFontFamily, weight: 600, scale: fontScale });
   const textWidth = Math.ceil(ctx.measureText(text).width);
 
   canvas.width = Math.max(110, textWidth + padX * 2 + strokeWidth * 2 + 6);
   canvas.height = fontSize + padY * 2 + strokeWidth;
 
-  ctx.font = `600 ${fontSize}px ${labelFontFamily}`;
+  ctx.font = buildCanvasFont(fontSize, { family: labelFontFamily, weight: 600, scale: fontScale });
   ctx.fillStyle = isLight ? '#203042' : '#d5e8ff';
   ctx.strokeStyle = isLight ? 'rgba(255,255,255,0.9)' : 'rgba(8,12,20,0.9)';
   ctx.lineWidth = strokeWidth;
@@ -94,7 +95,7 @@ function createLabelSprite(text, isLight) {
   return sprite;
 }
 
-function buildGeoOverlay(isLight) {
+function buildGeoOverlay(isLight, fontScale = 1) {
   const group = new THREE.Group();
   group.name = 'geo-overlay';
 
@@ -138,7 +139,7 @@ function buildGeoOverlay(isLight) {
   const degree = '\u00B0';
   const formatLatLabel = (lat) => (lat === 0 ? `0${degree}` : `${Math.abs(lat)}${degree}${lat > 0 ? 'N' : 'S'}`);
   latLabels.forEach((lat) => {
-    const sprite = createLabelSprite(formatLatLabel(lat), isLight);
+    const sprite = createLabelSprite(formatLatLabel(lat), isLight, fontScale);
     const p = latLonToVec3(lat, 8, lat === 90 || lat === -90 ? 1.06 : 1.03);
     sprite.position.set(p.x, p.y, p.z);
     group.add(sprite);
@@ -146,7 +147,7 @@ function buildGeoOverlay(isLight) {
   // Mirror latitude labels on the opposite hemisphere so labels remain visible when rotating.
   latLabels.forEach((lat) => {
     if (lat === 90 || lat === -90 || lat === 0) return; // Avoid duplicated poles and equator label overlap.
-    const sprite = createLabelSprite(formatLatLabel(lat), isLight);
+    const sprite = createLabelSprite(formatLatLabel(lat), isLight, fontScale);
     const p = latLonToVec3(lat, 188, 1.03);
     sprite.position.set(p.x, p.y, p.z);
     group.add(sprite);
@@ -162,7 +163,7 @@ function buildGeoOverlay(isLight) {
   };
   lonLabels.forEach((lon) => {
     const text = formatLonLabel(lon);
-    const sprite = createLabelSprite(text, isLight);
+    const sprite = createLabelSprite(text, isLight, fontScale);
     const p = latLonToVec3(lonLabelLat, lon, 1.06);
     sprite.position.set(p.x, p.y, p.z);
     group.add(sprite);
@@ -200,6 +201,7 @@ const SphericalFieldCanvas = forwardRef(({
   offsetX = 0,
 }, ref) => {
   const { settings } = useSettings();
+  const fontScale = normalizeFontScale(settings.appearance?.uiScale);
   const isLight = settings.theme === 'light';
   const containerRef = useRef(null);
   const rendererRef = useRef(null);
@@ -436,12 +438,12 @@ const SphericalFieldCanvas = forwardRef(({
         disposeObject3D(geoOverlayRef.current);
         geoOverlayRef.current = null;
       }
-      const overlay = buildGeoOverlay(isLight);
+      const overlay = buildGeoOverlay(isLight, fontScale);
       overlay.visible = showGeoAnnotations;
       sphereMeshRef.current.add(overlay);
       geoOverlayRef.current = overlay;
     }
-  }, [isLight, showGeoAnnotations]);
+  }, [fontScale, isLight, showGeoAnnotations]);
 
   useEffect(() => {
     if (geoOverlayRef.current) {
@@ -480,7 +482,7 @@ const SphericalFieldCanvas = forwardRef(({
       scene.add(globeGroup);
       sphereMeshRef.current = globeGroup;
 
-      const overlay = buildGeoOverlay(isLight);
+      const overlay = buildGeoOverlay(isLight, fontScale);
       overlay.visible = showGeoAnnotations;
       globeGroup.add(overlay);
       geoOverlayRef.current = overlay;
@@ -632,7 +634,7 @@ const SphericalFieldCanvas = forwardRef(({
     particlesMeshRef.current = particles;
 
     // 注意：只销毁数据相关的粒子即可，mars 的析构可以留给整个组件销毁时（见下方独立清理 Effect）
-  }, [fieldData, colorMode, settings.colormap, showConcentration, showMars, isLight]);
+  }, [fieldData, colorMode, settings.colormap, showConcentration, showMars, isLight, fontScale]);
 
   // 组件完全卸载时，清空 sphereMeshRef / 材质资源
   useEffect(() => {

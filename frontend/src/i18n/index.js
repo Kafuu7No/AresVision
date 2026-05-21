@@ -23,7 +23,7 @@ function getDeep(obj, keys) {
  * 返回一个 t(key, params?) 函数：
  *  - key: 点分路径字符串，如 'nav.home'、'explore.heatmapInsight'
  *  - params: 当字典值为函数时，传给该函数的参数对象
- *  - 若 key 在当前语言中找不到，回退到中文；仍找不到则返回 key 本身
+ *  - 若 key 在当前语言中找不到，则返回 key 本身
  *
  * 示例：
  *   const t = useT();
@@ -39,12 +39,7 @@ export function useT() {
 
     return function t(key, params) {
       const keys = key.split('.');
-      let val = getDeep(dict, keys);
-
-      // 中文回退
-      if (val === undefined) {
-        val = getDeep(zh, keys);
-      }
+      const val = getDeep(dict, keys);
 
       // 支持函数模板
       if (typeof val === 'function') {

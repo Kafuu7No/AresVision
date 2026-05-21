@@ -94,7 +94,7 @@ export default function ModelTestModal({ taskId, onClose }) {
     background: 'transparent',
     border: 'none',
     color: isLight ? '#999' : '#666',
-    fontSize: 24,
+    fontSize: 'calc(24px * var(--font-scale, 1))',
     cursor: 'pointer',
     padding: 4,
     display: 'flex',
@@ -124,8 +124,8 @@ export default function ModelTestModal({ taskId, onClose }) {
             flexDirection: 'column',
             gap: 2
           }}>
-            <span style={{ fontSize: 10, fontWeight: 700, opacity: 0.5, letterSpacing: 1 }}>{it.label}</span>
-            <span style={{ fontSize: 18, fontWeight: 800, color: it.color }}>{it.value ?? 'N/A'}</span>
+            <span style={{ fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700, opacity: 0.5, letterSpacing: 1 }}>{it.label}</span>
+            <span style={{ fontSize: 'calc(18px * var(--font-scale, 1))', fontWeight: 800, color: it.color }}>{it.value ?? 'N/A'}</span>
           </div>
         ))}
       </div>
@@ -209,8 +209,8 @@ export default function ModelTestModal({ taskId, onClose }) {
       <div style={modalStyle} onClick={e => e.stopPropagation()}>
         <div style={headerStyle}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.mars }}>{t('modelTest.title')}</h2>
-            <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.4, letterSpacing: 1, marginTop: 2 }}>{t('modelTest.subtitle')} — TASK #{taskId}</div>
+            <h2 style={{ margin: 0, fontSize: 'calc(18px * var(--font-scale, 1))', fontWeight: 800, color: C.mars }}>{t('modelTest.title')}</h2>
+            <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, opacity: 0.4, letterSpacing: 1, marginTop: 2 }}>{t('modelTest.subtitle')} — TASK #{taskId}</div>
           </div>
           <button style={closeBtnStyle} onClick={onClose}>&times;</button>
         </div>
@@ -219,15 +219,15 @@ export default function ModelTestModal({ taskId, onClose }) {
           {loading && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 400, gap: 16 }}>
               <div className="loading-spinner" style={{ width: 40, height: 40, border: `3px solid ${C.mars}22`, borderTop: `3px solid ${C.mars}`, borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-              <div style={{ fontSize: 14, fontWeight: 600, opacity: 0.6 }}>{t('modelTest.loading')}</div>
+              <div style={{ fontSize: 'calc(14px * var(--font-scale, 1))', fontWeight: 600, opacity: 0.6 }}>{t('modelTest.loading')}</div>
             </div>
           )}
 
           {error && (
             <div style={{ padding: 40, textAlign: 'center' }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+              <div style={{ fontSize: 'calc(48px * var(--font-scale, 1))', marginBottom: 16 }}>⚠️</div>
               <h3 style={{ margin: '0 0 8px 0', color: C.mars }}>{t('modelTest.error')}</h3>
-              <p style={{ margin: 0, opacity: 0.6, fontSize: 14 }}>{error}</p>
+              <p style={{ margin: 0, opacity: 0.6, fontSize: 'calc(14px * var(--font-scale, 1))' }}>{error}</p>
               <button onClick={onClose} style={{ marginTop: 24, padding: '8px 24px', borderRadius: 8, background: C.mars, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700 }}>{t('explore.upload.closeResult')}</button>
             </div>
           )}
@@ -236,7 +236,7 @@ export default function ModelTestModal({ taskId, onClose }) {
             <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 24, alignItems: 'start' }}>
               {/* Left Column: Metrics */}
               <div>
-                <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 16, opacity: 0.8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 16, opacity: 0.8, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 4, height: 14, background: C.mars, borderRadius: 2 }} />
                   {t('modelTest.metricsTitle')}
                 </div>
@@ -250,7 +250,7 @@ export default function ModelTestModal({ taskId, onClose }) {
 
               {/* Right Column: Visualization */}
               <div>
-                <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 16, opacity: 0.8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 800, marginBottom: 16, opacity: 0.8, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 4, height: 14, background: C.blue, borderRadius: 2 }} />
                   {t('modelTest.visualTitle')}
                 </div>
