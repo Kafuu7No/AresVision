@@ -216,27 +216,49 @@ const DataOverviewPageContent = () => {
           backdropFilter: 'blur(12px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-          <div style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.5 }}>
-            <video
-              ref={videoRef}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
-              playsInline
-              muted
-            />
-          </div>
-          <canvas
-            ref={landmarksCanvasRef}
-            width={GESTURE_WINDOW_WIDTH}
-            height={GESTURE_WINDOW_HEIGHT}
-            style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 2, transform: 'scaleX(-1)' }}
-          />
+          {!gestureError && (
+            <>
+              <div style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.5 }}>
+                <video
+                  ref={videoRef}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
+                  playsInline
+                  muted
+                />
+              </div>
+              <canvas
+                ref={landmarksCanvasRef}
+                width={GESTURE_WINDOW_WIDTH}
+                height={GESTURE_WINDOW_HEIGHT}
+                style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 2, transform: 'scaleX(-1)' }}
+              />
+            </>
+          )}
           <div style={{
             position: 'absolute', top: '10px', left: '10px', background: isLight ? 'rgba(255,255,255,0.92)' : 'rgba(12,18,28,0.82)',
             padding: '4px 8px', borderRadius: '999px', color: C.ice, fontSize: 'calc(10px * var(--font-scale, 1))',
             fontWeight: 600, fontFamily: 'var(--font-body)', zIndex: 3, border: `1px solid ${C.borderStrong}`
           }}>
-            {t('overview.controls.cameraTracking')}
+            {gestureError ? t('overview.controls.gestureErrorTitle') : t('overview.controls.cameraTracking')}
           </div>
+          {gestureError && (
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '36px 14px 14px',
+              textAlign: 'center',
+              color: isLight ? '#7f1d1d' : '#fecaca',
+              fontSize: 'calc(11px * var(--font-scale, 1))',
+              lineHeight: 1.6,
+              background: isLight ? 'rgba(255,245,245,0.92)' : 'rgba(46,10,12,0.76)',
+            }}>
+              {gestureError}
+            </div>
+          )}
         </div>
       )}
 

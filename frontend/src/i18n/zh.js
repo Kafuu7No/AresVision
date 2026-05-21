@@ -224,6 +224,7 @@ const zh = {
       dataPoints: '数据点',
       maxVal: '最大值',
       cameraTracking: '摄像头追踪中... 单手拖拽 / 双手缩放',
+      gestureErrorTitle: '手势控制启动失败',
       resetLs: '重置到 Ls=0°',
       longitude: '经度',
       latitude: '纬度',

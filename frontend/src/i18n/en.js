@@ -223,6 +223,7 @@ const en = {
       dataPoints: 'Data Pts',
       maxVal: 'Max Val',
       cameraTracking: 'Camera active... One hand: rotate / Two hands: zoom',
+      gestureErrorTitle: 'Gesture control failed',
       resetLs: 'Reset to Ls=0°',
       longitude: 'Longitude',
       latitude: 'Latitude',

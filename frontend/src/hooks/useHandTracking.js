@@ -8,6 +8,7 @@ export default function useHandTracking(enabled = false) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const requestRef = useRef(null);
+  const loadedDataHandlerRef = useRef(null);
 
   // 回调 refs，避免闭包陷阱
   const onGestureCb = useRef(null);
@@ -31,81 +32,100 @@ export default function useHandTracking(enabled = false) {
     onLandmarksCb.current = cb;
   }, []);
 
-  // 1. 初始化 MediaPipe HandLandmarker
+  const initHandLandmarker = useCallback(async () => {
+    if (handLandmarkerRef.current) return handLandmarkerRef.current;
+    const vision = await FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+    );
+    const handLandmarker = await HandLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+        delegate: 'GPU',
+      },
+      runningMode: 'VIDEO',
+      numHands: 2,
+      minHandDetectionConfidence: 0.5,
+      minHandPresenceConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    });
+    handLandmarkerRef.current = handLandmarker;
+    return handLandmarker;
+  }, []);
+
   useEffect(() => {
-    let active = true;
-    const initTask = async () => {
-      try {
-        const vision = await FilesetResolver.forVisionTasks(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
-        );
-        const handLandmarker = await HandLandmarker.createFromOptions(vision, {
-          baseOptions: {
-            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-            delegate: "GPU",
-          },
-          runningMode: "VIDEO",
-          numHands: 2, // 最多识别两只手
-          minHandDetectionConfidence: 0.5,
-          minHandPresenceConfidence: 0.5,
-          minTrackingConfidence: 0.5,
-        });
-
-        if (active) {
-          handLandmarkerRef.current = handLandmarker;
-          setIsReady(true);
-        }
-      } catch (err) {
-        if (active) {
-          console.error("Failed to initialize hand landmarker:", err);
-          setError("手势识别引擎初始化失败: " + err.message);
-        }
-      }
-    };
-    initTask();
-
     return () => {
-      active = false;
+      if (requestRef.current) {
+        cancelAnimationFrame(requestRef.current);
+        requestRef.current = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        if (loadedDataHandlerRef.current) {
+          videoRef.current.removeEventListener('loadeddata', loadedDataHandlerRef.current);
+        }
+        videoRef.current.srcObject = null;
+      }
       if (handLandmarkerRef.current) {
         handLandmarkerRef.current.close();
+        handLandmarkerRef.current = null;
       }
     };
   }, []);
 
   // 2. 视频流捕捉与处理
   useEffect(() => {
-    if (!enabled || !isReady || error) return;
+    if (!enabled) return;
     
-    // 不要自行创建挂载外的 DOM 元素，而是复用传入的 ref 对象
     const video = videoRef.current;
     if (!video) return;
 
     let isVideoPlaying = false;
+    let cancelled = false;
 
     const startCamera = async () => {
       try {
+        setError(null);
+        setIsReady(false);
+        await initHandLandmarker();
+        if (cancelled) return;
+        setIsReady(true);
+
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: "user" }
+          video: { width: 640, height: 480, facingMode: 'user' }
         });
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
         video.srcObject = stream;
         streamRef.current = stream;
         
-        // 赋予静音属性，避免被现代浏览器的 AutoPlay Policy 拦截
         video.muted = true;
+        video.playsInline = true;
 
-        video.addEventListener('loadeddata', async () => {
+        const handleLoadedData = async () => {
           try {
             await video.play();
+            if (cancelled) return;
             isVideoPlaying = true;
             predictWebcam();
           } catch (e) {
-            console.warn("Video play interrupted by browser policy", e);
-            setError("摄像头自动播放被阻止，需交互授权");
+            console.warn('Video play interrupted by browser policy', e);
+            setError('摄像头自动播放被阻止，请允许摄像头访问后重试。');
           }
-        }, { once: true });
+        };
+
+        if (loadedDataHandlerRef.current) {
+          video.removeEventListener('loadeddata', loadedDataHandlerRef.current);
+        }
+        loadedDataHandlerRef.current = handleLoadedData;
+        video.addEventListener('loadeddata', handleLoadedData, { once: true });
       } catch (err) {
-        console.error("Camera error:", err);
-        setError("无法访问摄像头: " + err.message);
+        console.error('Hand tracking startup error:', err);
+        setError(`无法启动手势控制：${err.message}`);
       }
     };
 
@@ -201,25 +221,28 @@ export default function useHandTracking(enabled = false) {
     startCamera();
 
     return () => {
-      // 停止视频分析循环
+      cancelled = true;
       if (requestRef.current) {
         cancelAnimationFrame(requestRef.current);
+        requestRef.current = null;
       }
 
       isVideoPlaying = false;
 
-      // 停止摄像头流
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
       if (videoRef.current) {
+        if (loadedDataHandlerRef.current) {
+          videoRef.current.removeEventListener('loadeddata', loadedDataHandlerRef.current);
+        }
         videoRef.current.srcObject = null;
       }
 
-      // 重置历史状态
       lastState.current = { x: null, y: null, dist: null, activeHands: 0 };
     };
-  }, [enabled, isReady, error]);
+  }, [enabled, initHandLandmarker]);
 
   return {
     isReady,
