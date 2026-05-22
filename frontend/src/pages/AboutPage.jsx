@@ -4,7 +4,6 @@ import SectionTitle from '../components/SectionTitle';
 import {
   TechStackBlock,
   DataSourcesBlock,
-  TeamBlock,
 } from './AboutPage/AboutComponents';
 
 export default function AboutPage() {
@@ -20,7 +19,6 @@ export default function AboutPage() {
 
       <TechStackBlock t={t} />
       <DataSourcesBlock t={t} />
-      <TeamBlock t={t} />
     </div>
   );
 }

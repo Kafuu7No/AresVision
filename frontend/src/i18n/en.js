@@ -15,7 +15,7 @@ const en = {
   },
 
   footer: {
-    copyright: '© 2025 AresVision · SUSCC Big Data Track',
+    copyright: '© 2025 AresVision · National College Computer Application Ability Competition',
     powered: 'Powered by OpenMARS · MCD 6.1 · PredRNNv2',
   },
 
@@ -1011,7 +1011,7 @@ const en = {
       'Alignment: Ls-interpolated to OpenMARS grid',
     teamRoles: ['Full-Stack Dev', 'Data Science', 'UI/UX', 'Model Training'],
     member: ({ n }) => `Member ${n}`,
-    competition: 'SUSCC — Big Data Track',
+    competition: 'National College Computer Application Ability Competition — Big Data Track',
   },
 
   auth: {
