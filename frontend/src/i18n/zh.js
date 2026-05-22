@@ -15,7 +15,7 @@ const zh = {
   },
 
   footer: {
-    copyright: '© 2025 AresVision 智绘赤星 · 上海大学生计算机能力大赛',
+    copyright: '© 2025 AresVision 智绘赤星 · 全国大学生计算机应用能力大赛',
     powered: '基于 OpenMARS · MCD 6.1 · PredRNNv2',
   },
 
@@ -1064,7 +1064,7 @@ const zh = {
       '时间对齐：Ls 插值到 OpenMARS 格点',
     teamRoles: ['全栈开发', '数据科学', 'UI/UX', '模型训练'],
     member: ({ n }) => `成员 ${n}`,
-    competition: '上海大学生计算机能力大赛 · 大数据赛道',
+    competition: '全国大学生计算机应用能力大赛 · 大数据赛道',
   },
 
   auth: {

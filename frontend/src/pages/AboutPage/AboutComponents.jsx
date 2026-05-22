@@ -8,13 +8,6 @@ export const TECH_STACKS = [
   { catKey: 'data',     color: '#9c7bea',   items: ['OpenMARS (o3col)', 'MCD 6.1', 'NetCDF (.nc)', '36×72 Grid'] },
 ];
 
-export const TEAM = [
-  { emoji: '👨‍💻', roleKey: 0 },
-  { emoji: '👩‍🔬', roleKey: 1 },
-  { emoji: '👨‍🎨', roleKey: 2 },
-  { emoji: '👩‍💻', roleKey: 3 },
-];
-
 export function TechStackBlock({ t }) {
   return (
     <GlowCard style={{ padding: 32, marginBottom: 24 }}>
@@ -59,43 +52,5 @@ export function DataSourcesBlock({ t }) {
         </div>
       </GlowCard>
     </div>
-  );
-}
-
-export function TeamBlock({ t }) {
-  return (
-    <GlowCard style={{ padding: 32, textAlign: 'center' }}>
-      <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700, color: C.mars, fontFamily: "'Orbitron', sans-serif", letterSpacing: 2, marginBottom: 24 }}>
-        TEAM
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 40 }}>
-        {TEAM.map((member, i) => {
-          const roles = t('about.teamRoles');
-          return (
-            <div key={i} style={{ textAlign: 'center' }}>
-              <div style={{
-                width: 72, height: 72, borderRadius: '50%',
-                background: `linear-gradient(135deg, ${C.mars}40, ${C.blue}40)`,
-                border: `2px solid ${C.border}`,
-                margin: '0 auto 12px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 'calc(24px * var(--font-scale, 1))',
-              }}>
-                {member.emoji}
-              </div>
-              <div style={{ fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 600, color: C.ice }}>
-                {t('about.member', { n: i + 1 })}
-              </div>
-              <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice30 }}>
-                {Array.isArray(roles) ? roles[member.roleKey] : ''}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ marginTop: 32, fontSize: 'calc(12px * var(--font-scale, 1))', color: C.ice30 }}>
-        {t('about.competition')}
-      </div>
-    </GlowCard>
   );
 }
