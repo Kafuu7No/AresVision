@@ -109,3 +109,5 @@ scratch/
 tmp/
 
 projects/
+
+*.pdf
