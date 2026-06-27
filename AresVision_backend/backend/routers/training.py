@@ -124,6 +124,7 @@ async def delete_task(task_id: int, current_user: User = Depends(get_current_use
 async def perform_task_action(
     task_id: int,
     action: str,
+    request: Request,
     current_user: User = Depends(get_current_user),
 ):
     task = await _get_task_with_access_check(task_id, current_user)
@@ -132,10 +133,18 @@ async def perform_task_action(
         raise HTTPException(status_code=400, detail="Cannot perform action on incomplete task")
 
     if action == "test":
+        temp_data_root = None
         try:
-            results = await inference_service.get_test_results(task_id)
+            data_dirs, temp_data_root = await training_service.prepare_task_inference_data_env(
+                task,
+                data_service=getattr(request.app.state, "data_service", None),
+                personal_source_service=getattr(request.app.state, "personal_data_source_service", None),
+            )
+            results = await inference_service.get_test_results(task_id, data_dirs=data_dirs)
             return {"status": "success", "data": results}
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Inference failed: {e}")
+        finally:
+            training_service.cleanup_temp_data_root(temp_data_root)
 
     return {"message": f"Action '{action}' executed for task {task_id}", "status": "success"}

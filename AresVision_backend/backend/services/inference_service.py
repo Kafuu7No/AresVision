@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import json
 import torch
@@ -6,12 +8,16 @@ import glob
 import re
 import netCDF4 as nc
 from pathlib import Path
-from sklearn.preprocessing import StandardScaler
-from scipy.interpolate import interp1d
 
-from core.predict_model import PredRNNv2
 from database.models import ModelTrainingTask
 from database.engine import async_session_maker
+from services.training_channels import extract_architecture_params, get_task_channel_suffix
+from training_backbones.model_zoo import (
+    build_forecaster,
+    normalize_model_architecture,
+    normalize_use_sphere,
+)
+
 
 class InferenceService:
     def __init__(self):
@@ -20,7 +26,7 @@ class InferenceService:
         self.openmars_dir = self.base_dir / "data" / "openmars"
         self.mcd_dir = self.base_dir / "data" / "MCD"
 
-    async def get_test_results(self, task_id: int):
+    async def get_test_results(self, task_id: int, data_dirs: dict[str, str] | None = None):
         """获取训练任务的测试结果（散点图数据）"""
         async with async_session_maker() as session:
             task = await session.get(ModelTrainingTask, task_id)
@@ -32,10 +38,12 @@ class InferenceService:
             window = hypers.get("window", 3)
             horizon = hypers.get("horizon", 3)
             hidden_dims = hypers.get("stlstm_hidden_dims", [64, 64, 64])
+            model_architecture = normalize_model_architecture(hypers.get("model_architecture", "predrnnv2"))
+            use_sphere = normalize_use_sphere(hypers)
+            architecture_params = extract_architecture_params(hypers)
             
             # 2. 识别使用的变量
-            script_name = task.model_script
-            active_vars = script_name.replace("demo3-", "").replace(".py", "")
+            active_vars = get_task_channel_suffix(task)
             # UDST -> ['U_Wind', 'Dust_Optical_Depth', 'Solar_Flux_DN', 'Temperature']
             mcd_vars_map = {
                 'U': ('U_Wind', 'u'), 
@@ -45,13 +53,29 @@ class InferenceService:
                 'T': ('Temperature', 'temp')
             }
             used_mcd_vars = [mcd_vars_map[c] for c in active_vars if c in mcd_vars_map]
-            input_dim = 1 + len(used_mcd_vars)
+            base_input_dim = 1 + len(used_mcd_vars)
 
             # 3. 加载并预处理数据 (简化版，复用脚本逻辑)
-            X_torch, y_torch, y_mean, y_std = self._prepare_data(used_mcd_vars, window, horizon)
+            X_torch, y_torch, ls_torch, y_mean, y_std = self._prepare_data(
+                used_mcd_vars,
+                window,
+                horizon,
+                data_dirs=data_dirs,
+            )
             
             # 4. 加载模型
-            model = PredRNNv2(input_dim=input_dim, hidden_dims=hidden_dims, height=36, width=72, horizon=horizon).to(self.device)
+            model = build_forecaster(
+                architecture=model_architecture,
+                input_channels=base_input_dim,
+                selected_channels=list(active_vars),
+                hidden_dims=hidden_dims,
+                height=36,
+                width=72,
+                window=window,
+                horizon=horizon,
+                use_sphere=use_sphere,
+                architecture_params=architecture_params,
+            ).to(self.device)
             state_dict = torch.load(task.output_model_path, map_location=self.device, weights_only=True)
             model.load_state_dict(state_dict)
             model.eval()
@@ -68,8 +92,9 @@ class InferenceService:
                 
                 test_xb = X_test[indices].to(self.device)
                 test_yb = y_test_true[indices]
+                test_lsb = ls_torch[split:][indices].to(self.device)
                 
-                preds = model(test_xb).cpu().numpy()
+                preds = model(test_xb, test_lsb).cpu().numpy()
                 trues = test_yb.numpy()
 
             # 6. 反标准化还原物理值
@@ -91,12 +116,17 @@ class InferenceService:
                 "metrics": json.loads(task.metrics) if task.metrics else {}
             }
 
-    def _prepare_data(self, used_mcd_vars, window, horizon):
+    def _prepare_data(self, used_mcd_vars, window, horizon, data_dirs: dict[str, str] | None = None):
         """复用训练脚本中的数据加载逻辑"""
+        from scipy.interpolate import interp1d
+        from sklearn.preprocessing import StandardScaler
+
         # --- Loading OpenMars ---
+        openmars_dir = Path((data_dirs or {}).get("ARESVISION_OPENMARS_DIR") or self.openmars_dir)
+        mcd_dir = Path((data_dirs or {}).get("ARESVISION_MCD_DIR") or self.mcd_dir)
         o3_list, om_ls_list = [], []
-        def natural_sort_key(s): return [int(text) if text.isdigit() else text.lower() for text in re.split('([0-9]+)', s)]
-        file_list = sorted(glob.glob(str(self.openmars_dir / "*.nc")), key=natural_sort_key)
+        def natural_sort_key(s): return [int(text) if text.isdigit() else text.lower() for text in re.split('([0-9]+)', str(s))]
+        file_list = sorted(glob.glob(str(openmars_dir / "*.nc")), key=natural_sort_key)
         for f in file_list:
             ds = nc.Dataset(f)
             o3_list.append(ds.variables['o3col'][:])
@@ -111,7 +141,7 @@ class InferenceService:
             vars_dict = {}
             mcd_data = {sn: [] for sn in short_names}
             mcd_ls = []
-            for f_nc in [self.mcd_dir / "MCD_MY27_Lat-90-90_real.nc", self.mcd_dir / "MCD_MY28_Lat-90-90_real.nc"]:
+            for f_nc in sorted(mcd_dir.glob("*.nc"), key=natural_sort_key):
                 if not f_nc.exists(): continue
                 ds = nc.Dataset(f_nc, 'r')
                 for var_name, sn in used_mcd_vars:
@@ -157,12 +187,14 @@ class InferenceService:
         y_mean, y_std = y_train_part.mean(), y_train_part.std()
         y_scaled = (y_raw - y_mean) / (y_std + 1e-6)
 
-        X_seq, y_seq = [], []
+        X_seq, y_seq, ls_seq = [], [], []
         for i in range(T - window - horizon + 1):
             X_seq.append(X_scaled[i: i + window])
             y_seq.append(y_scaled[i + window: i + window + horizon])
+            ls_seq.append(om_ls_raw[i: i + window])
         
         X_torch = torch.tensor(np.array(X_seq)).permute(0, 1, 4, 2, 3).float()
         y_torch = torch.tensor(np.array(y_seq)).unsqueeze(2).float()
+        ls_torch = torch.tensor(np.array(ls_seq)).float()
         
-        return X_torch, y_torch, y_mean, y_std
+        return X_torch, y_torch, ls_torch, y_mean, y_std

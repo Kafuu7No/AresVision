@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import sys
 import json
@@ -23,6 +25,11 @@ from database.engine import async_session_maker
 from database.models import ModelTrainingTask
 from services.data_service import DataService
 from services.personal_data_source_service import PersonalDataSourceService
+from services.training_channels import (
+    UNIFIED_TRAINING_SCRIPT,
+    build_hyperparameter_args,
+    normalize_training_hyperparameters,
+)
 import config
 
 logger = logging.getLogger("aresvision.training")
@@ -36,13 +43,10 @@ OUTPUT_MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 class TrainingService:
     def get_available_scripts(self) -> list[str]:
-        if not MODELS_DIR.exists():
+        script_path = MODELS_DIR / UNIFIED_TRAINING_SCRIPT
+        if not script_path.exists():
             return []
-        scripts = []
-        for file in MODELS_DIR.iterdir():
-            if file.is_file() and file.name.endswith(".py"):
-                scripts.append(file.name)
-        return sorted(scripts)
+        return [UNIFIED_TRAINING_SCRIPT]
 
     async def start_training(
         self,
@@ -54,6 +58,7 @@ class TrainingService:
         data_service: DataService | None = None,
         personal_source_service: PersonalDataSourceService | None = None,
     ) -> ModelTrainingTask:
+        model_script = UNIFIED_TRAINING_SCRIPT
         if not MODELS_DIR.joinpath(model_script).exists():
             raise FileNotFoundError(f"Script {model_script} not found in {MODELS_DIR}")
 
@@ -71,7 +76,7 @@ class TrainingService:
         if source not in ("default", "personal"):
             source = "default"
 
-        payload_hypers = dict(hyperparameters or {})
+        payload_hypers = normalize_training_hyperparameters(hyperparameters)
         payload_hypers["_data_source"] = source
 
         async with async_session_maker() as session:
@@ -178,6 +183,35 @@ class TrainingService:
         except Exception:
             shutil.rmtree(temp_root, ignore_errors=True)
             raise
+
+    async def prepare_task_inference_data_env(
+        self,
+        task: ModelTrainingTask,
+        data_service: DataService | None,
+        personal_source_service: PersonalDataSourceService | None,
+    ) -> tuple[dict[str, str], Path | None]:
+        try:
+            hyperparameters = json.loads(getattr(task, "hyperparameters", "") or "{}")
+        except Exception:
+            hyperparameters = {}
+
+        requested_source = str(
+            hyperparameters.get("_data_source") or hyperparameters.get("_effective_data_source") or "default"
+        ).strip().lower()
+        if requested_source != "personal":
+            return {}, None
+
+        env_overrides, temp_data_root, _effective_source, _source_note = await self._prepare_personal_training_env(
+            user_id=getattr(task, "user_id", None),
+            task_id=getattr(task, "id", 0),
+            data_service=data_service,
+            personal_source_service=personal_source_service,
+        )
+        return env_overrides, temp_data_root
+
+    def cleanup_temp_data_root(self, temp_data_root: Path | None) -> None:
+        if temp_data_root is not None:
+            shutil.rmtree(temp_data_root, ignore_errors=True)
 
     def _write_openmars_nc(self, file_path: Path, openmars_data: dict[str, Any]) -> None:
         lat = np.asarray(openmars_data.get("lat"), dtype=np.float32).reshape(-1)
@@ -311,8 +345,7 @@ class TrainingService:
         python_exe = getattr(config, "TRAINING_PYTHON_PATH", sys.executable)
 
         args = [python_exe, str(script_path)]
-        for k, v in hyperparameters.items():
-            args.extend([f"--{k}", str(v)])
+        args.extend(build_hyperparameter_args(hyperparameters))
         args.extend(["--output_path", str(output_path)])
 
         with open(log_file, "w", encoding="utf-8") as f:
