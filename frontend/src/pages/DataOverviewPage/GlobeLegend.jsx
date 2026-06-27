@@ -24,6 +24,10 @@ function unitLabelByVariable(variable, units) {
   return '';
 }
 
+function formatMetric(value, digits = 3) {
+  return Number.isFinite(value) ? Number(value).toFixed(digits) : '--';
+}
+
 export default function GlobeLegend({ ozoneData, sceneModel }) {
   const { settings } = useSettings();
   const isLight = settings?.theme === 'light';
@@ -61,6 +65,17 @@ export default function GlobeLegend({ ozoneData, sceneModel }) {
 
   const activeSourceIds = new Set((sceneModel?.layers || []).map((layer) => layer.source || layer.id));
   const diffGradient = 'linear-gradient(90deg, #2b6cb0 0%, #f8fafc 50%, #c2410c 100%)';
+  const validation = sceneModel?.validation?.nomad || null;
+  const isValidation = sceneModel?.legendMode === 'validation';
+  const validationMetrics = validation
+    ? [
+      ['N', validation.sample_count],
+      ['Bias', formatMetric(validation.bias)],
+      ['MAE', formatMetric(validation.mae)],
+      ['RMSE', formatMetric(validation.rmse)],
+      ['R', formatMetric(validation.correlation, 2)],
+    ]
+    : [];
 
   return (
     <div
@@ -117,6 +132,40 @@ export default function GlobeLegend({ ozoneData, sceneModel }) {
                 </div>
               );
             })}
+          </div>
+        ) : isValidation ? (
+          <div style={{ display: 'grid', gap: 9 }}>
+            <div
+              style={{
+                height: 10,
+                borderRadius: 999,
+                border: `1px solid ${C.border}`,
+                background: diffGradient,
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: C.ice60, fontSize: 'calc(9px * var(--font-scale, 1))', fontWeight: 700 }}>
+              <span>{isZh ? 'MCD 偏低' : 'MCD lower'}</span>
+              <span>{isZh ? 'MCD 偏高' : 'MCD higher'}</span>
+            </div>
+            {validation ? (
+              <>
+                <div style={{ color: C.ice60, fontSize: 'calc(10px * var(--font-scale, 1))', lineHeight: 1.5 }}>
+                  {isZh ? 'NOMAD 稀疏验证' : 'NOMAD sparse validation'} · Ls {formatMetric(validation.matched_ls, 1)}°
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6 }}>
+                  {validationMetrics.map(([label, value]) => (
+                    <div key={label} style={{ padding: '6px 7px', borderRadius: 8, background: 'rgba(255,255,255,0.045)', border: `1px solid ${C.border}` }}>
+                      <div style={{ color: C.ice30, fontSize: 'calc(8px * var(--font-scale, 1))', fontWeight: 700 }}>{label}</div>
+                      <div style={{ color: label === 'Bias' ? C.blue : C.ice, fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 800, marginTop: 2 }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div style={{ color: C.ice40, fontSize: 'calc(10px * var(--font-scale, 1))', lineHeight: 1.5 }}>
+                {isZh ? '当前 Ls 附近暂无 NOMAD 匹配点。' : 'No NOMAD match near the current Ls.'}
+              </div>
+            )}
           </div>
         ) : (
           <>

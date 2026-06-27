@@ -77,6 +77,39 @@ export function buildOverviewSceneModel({
   const mcdLayer = normalizeLayer(ozoneOverlay.mcd || mainSlice, 'mcd');
   const openmarsLayer = normalizeLayer(ozoneOverlay.openmars, 'openmars');
   const nomadLayer = normalizeLayer(ozoneOverlay.nomad, 'nomad');
+  const nomadValidation = ozoneOverlay.validation?.nomad || null;
+
+  if (ozoneDisplayMode === 'validation') {
+    if (!nomadValidation?.points?.length) {
+      return {
+        renderMode: 'single',
+        legendMode: 'continuous',
+        colorMode: 'inferno',
+        layers: [mcdLayer],
+        validation: ozoneOverlay.validation || null,
+      };
+    }
+
+    return {
+      renderMode: 'validation',
+      legendMode: 'validation',
+      colorMode: 'inferno',
+      layers: [
+        mcdLayer,
+        {
+          id: nomadValidation.comparison || 'MCD-NOMAD',
+          source: 'nomad-validation',
+          variable: 'o3col_diff',
+          points: nomadValidation.points,
+          minVal: nomadValidation.minDiff ?? 0,
+          maxVal: nomadValidation.maxDiff ?? 1,
+          ls: nomadValidation.matched_ls,
+          colorMode: 'rdbu',
+        },
+      ],
+      validation: ozoneOverlay.validation,
+    };
+  }
 
   if (ozoneDisplayMode === 'diff') {
     if (ozoneDiffPair === 'MCD-OpenMARS' && openmarsLayer) {

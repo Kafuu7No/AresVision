@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 import xarray as xr
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -59,6 +60,47 @@ def write_overview_with_all_nan_dust(path: Path):
             "V_Wind": (("time", "lat", "lon"), field),
             "Dust_Optical_Depth": (("time", "lat", "lon"), np.full_like(field, np.nan)),
             "Solar_Flux_DN": (("time", "lat", "lon"), field),
+        },
+        coords={"time": np.arange(1), "lat": lat, "lon": lon},
+    )
+    ds.to_netcdf(path)
+    ds.close()
+
+
+def write_validation_overview(path: Path):
+    lat = np.array([2.5, -2.5], dtype=np.float32)
+    lon = np.array([-180.0, -175.0], dtype=np.float32)
+    ls = np.array([10.0], dtype=np.float32)
+    ozone = np.array([[[10.0, 20.0], [30.0, 40.0]]], dtype=np.float32)
+    env = np.ones_like(ozone)
+    ds = xr.Dataset(
+        data_vars={
+            "Ls": (("time",), ls),
+            "o3col": (("time", "lat", "lon"), ozone),
+            "Pressure": (("time", "lat", "lon"), env),
+            "Temperature": (("time", "lat", "lon"), env),
+            "U_Wind": (("time", "lat", "lon"), env),
+            "V_Wind": (("time", "lat", "lon"), env),
+            "Dust_Optical_Depth": (("time", "lat", "lon"), env),
+            "Solar_Flux_DN": (("time", "lat", "lon"), env),
+        },
+        coords={"time": np.arange(1), "lat": lat, "lon": lon},
+    )
+    ds.to_netcdf(path)
+    ds.close()
+
+
+def write_validation_nomad(path: Path):
+    lat = np.array([2.5, -2.5], dtype=np.float32)
+    lon = np.array([-180.0, -175.0], dtype=np.float32)
+    ls = np.array([10.0], dtype=np.float32)
+    ozone = np.array([[[8.0, 22.0], [28.0, np.nan]]], dtype=np.float32)
+    count = np.array([[[3, 2], [4, 0]]], dtype=np.int32)
+    ds = xr.Dataset(
+        data_vars={
+            "Ls": (("time",), ls),
+            "o3col": (("time", "lat", "lon"), ozone),
+            "count": (("time", "lat", "lon"), count),
         },
         coords={"time": np.arange(1), "lat": lat, "lon": lon},
     )
@@ -142,3 +184,29 @@ def test_overview_correlation_excludes_dust_variable():
     assert response.status_code == 200
     payload = response.json()
     assert "Dust_Optical_Depth" not in payload["variable_names"]
+
+
+def test_overview_ozone_sources_returns_nomad_validation_metrics(tmp_path):
+    overview_dir = tmp_path / "mcd_overview"
+    nomad_dir = tmp_path / "nomad"
+    overview_dir.mkdir()
+    nomad_dir.mkdir()
+    write_validation_overview(overview_dir / "MCD_MY34_overview.nc")
+    write_validation_nomad(nomad_dir / "NOMAD_ozone_MY34_gridded.nc")
+    client = build_client_with_overview_dir(overview_dir, nomad_dir)
+
+    response = client.get("/api/explore/overview/ozone-sources?my=34&ls=10")
+
+    assert response.status_code == 200
+    payload = response.json()
+    validation = payload["validation"]["nomad"]
+    assert validation["sample_count"] == 3
+    assert validation["matched_ls"] == 10.0
+    assert validation["bias"] == pytest.approx(2 / 3)
+    assert validation["mae"] == pytest.approx(2.0)
+    assert validation["rmse"] == pytest.approx(2.0)
+    assert validation["points"] == [
+        {"lat": 2.5, "lng": -180.0, "val": 2.0, "mcd_value": 10.0, "nomad_value": 8.0, "count": 3},
+        {"lat": 2.5, "lng": -175.0, "val": -2.0, "mcd_value": 20.0, "nomad_value": 22.0, "count": 2},
+        {"lat": -2.5, "lng": -180.0, "val": 2.0, "mcd_value": 30.0, "nomad_value": 28.0, "count": 4},
+    ]

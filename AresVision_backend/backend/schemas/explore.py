@@ -24,6 +24,12 @@ class GlobePoint(BaseModel):
     val: float
 
 
+class ValidationPoint(GlobePoint):
+    mcd_value: float
+    nomad_value: float
+    count: int
+
+
 class GlobeDataResponse(BaseModel):
     points: list[GlobePoint]
     minVal: float
@@ -82,6 +88,24 @@ class OzoneSourceLayerResponse(BaseModel):
     ls: float
 
 
+class NomadValidationResponse(BaseModel):
+    source: str
+    comparison: str
+    matched_ls: float
+    sample_count: int
+    bias: float
+    mae: float
+    rmse: float
+    correlation: float | None = None
+    minDiff: float
+    maxDiff: float
+    points: list[ValidationPoint]
+
+
+class OzoneValidationResponse(BaseModel):
+    nomad: NomadValidationResponse | None = None
+
+
 class OverviewOzoneSourcesResponse(BaseModel):
     mars_year: int
     requested_ls: float
@@ -91,4 +115,5 @@ class OverviewOzoneSourcesResponse(BaseModel):
     nomad: OzoneSourceLayerResponse | None = None
     available_sources: list[str]
     diff_candidates: list[str]
+    validation: OzoneValidationResponse | None = None
     capabilities: dict

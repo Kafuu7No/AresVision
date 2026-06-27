@@ -668,7 +668,7 @@ const SphericalFieldCanvas = forwardRef(({
 
   useEffect(() => {
     if (!Array.isArray(fieldLayers) || fieldLayers.length <= 1 || !sceneRef.current) return;
-    const drawableLayers = fieldLayers.filter((layer) => layer?.fieldData?.field);
+    const drawableLayers = fieldLayers.filter((layer) => layer?.fieldData?.field || (layer?.renderAsPoints && layer?.points?.length));
     if (!drawableLayers.length) return;
 
     const scene = sceneRef.current;
@@ -700,6 +700,51 @@ const SphericalFieldCanvas = forwardRef(({
     if (!showConcentration) return;
 
     const createLayerParticles = (layerConfig) => {
+      if (layerConfig.renderAsPoints) {
+        const layerColorMode = layerConfig.layerColorMode || layerConfig.colorMode || colorMode;
+        const radiusOffset = layerConfig.radiusOffset || 0;
+        const values = layerConfig.points.map((point) => point.val).filter(Number.isFinite);
+        const absMax = Math.max(1, ...values.map((value) => Math.abs(value)));
+        const positions = [];
+        const colors = [];
+        const baseRadius = 0.9 + radiusOffset;
+
+        layerConfig.points.forEach((point) => {
+          if (!Number.isFinite(point?.lat) || !Number.isFinite(point?.lng) || !Number.isFinite(point?.val)) return;
+          const countBoost = Math.min(3, Math.max(1, Math.sqrt(Math.max(1, point.count || 1))));
+          const t = layerColorMode === 'rdbu'
+            ? (Math.max(-absMax, Math.min(absMax, point.val)) + absMax) / (2 * absMax)
+            : 0.5;
+          const rgb = layerColorMode === 'rdbu'
+            ? rdbuRgb(t).map((value) => value / 255)
+            : tintedRgb('#34d399', t);
+
+          for (let p = 0; p < Math.round(16 * countBoost); p += 1) {
+            const latJitter = point.lat + (Math.random() - 0.5) * 1.8;
+            const lonJitter = point.lng + (Math.random() - 0.5) * 1.8;
+            const vec = latLonToVec3(latJitter, lonJitter, baseRadius + (Math.random() - 0.5) * 0.01);
+            positions.push(vec.x, vec.y, vec.z);
+            colors.push(rgb[0], rgb[1], rgb[2]);
+          }
+        });
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        const material = new THREE.PointsMaterial({
+          size: 0.024,
+          vertexColors: true,
+          map: createCircleTexture(),
+          transparent: true,
+          opacity: isLight ? 0.86 : 0.96,
+          depthWrite: false,
+          blending: isLight ? THREE.NormalBlending : THREE.AdditiveBlending,
+        });
+        const particles = new THREE.Points(geometry, material);
+        particles.visible = showConcentration;
+        return particles;
+      }
+
       const { field, minVal, maxVal } = layerConfig.fieldData;
       const nLat = field.length;
       const nLon = field[0].length;

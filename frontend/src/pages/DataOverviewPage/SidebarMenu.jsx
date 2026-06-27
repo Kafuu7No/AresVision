@@ -602,6 +602,13 @@ export default function SidebarMenu() {
                       disabled: !overviewOzoneCapabilities?.openmars && !overviewOzoneCapabilities?.nomad,
                     },
                     {
+                      value: 'validation',
+                      label: isZh ? '验证' : 'Validate',
+                      activeBg: 'rgba(52,211,153,0.14)',
+                      activeColor: '#34d399',
+                      disabled: !overviewOzoneCapabilities?.nomad,
+                    },
+                    {
                       value: 'diff',
                       label: isZh ? '差值' : 'Diff',
                       activeBg: 'rgba(74,158,255,0.14)',
@@ -612,8 +619,8 @@ export default function SidebarMenu() {
                 />
                 <div style={{ marginTop: 8, color: C.ice40, fontSize: 'calc(10px * var(--font-scale, 1))', lineHeight: 1.5 }}>
                   {isZh
-                    ? '右侧分析始终使用 MCD；多源与差值仅影响 3D 臭氧球体。'
-                    : 'Right-side analysis stays on MCD; sources and diff only affect the ozone globe.'}
+                    ? '右侧分析始终使用 MCD；验证模式用 NOMAD 稀疏观测点对比对应位置的 MCD。'
+                    : 'Right-side analysis stays on MCD; validation compares sparse NOMAD observations against matched MCD cells.'}
                 </div>
               </div>
             ) : null}

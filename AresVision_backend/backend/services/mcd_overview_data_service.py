@@ -239,7 +239,78 @@ class McdOverviewDataService:
             matched_ls,
             "nomad",
         )
+        count_by_key = {}
+        for i, lat in enumerate(nomad["lat"]):
+            for j, lon in enumerate(nomad["lon"]):
+                lon_value = float(lon) if float(lon) <= 180 else float(lon) - 360
+                count_by_key[(round(float(lat), 3), round(lon_value, 3))] = int(count[i, j])
+        for point in layer.get("points", []):
+            key = (round(float(point["lat"]), 3), round(float(point["lng"]), 3))
+            point["count"] = count_by_key.get(key, 1)
         return layer if layer["points"] else None
+
+    @staticmethod
+    def _safe_correlation(a: np.ndarray, b: np.ndarray) -> float | None:
+        if a.size < 2 or b.size < 2:
+            return None
+        if float(np.nanstd(a)) == 0.0 or float(np.nanstd(b)) == 0.0:
+            return None
+        corr = float(np.corrcoef(a, b)[0, 1])
+        return corr if np.isfinite(corr) else None
+
+    def _build_nomad_validation(self, mcd_layer: dict, nomad_layer: dict | None) -> dict | None:
+        if not nomad_layer:
+            return None
+
+        mcd_by_key = {
+            (round(float(point["lat"]), 3), round(float(point["lng"]), 3)): float(point["val"])
+            for point in mcd_layer.get("points", [])
+            if np.isfinite(float(point.get("val", np.nan)))
+        }
+
+        points = []
+        mcd_values = []
+        nomad_values = []
+        diffs = []
+        for point in nomad_layer.get("points", []):
+            key = (round(float(point["lat"]), 3), round(float(point["lng"]), 3))
+            mcd_value = mcd_by_key.get(key)
+            nomad_value = float(point.get("val", np.nan))
+            if mcd_value is None or not np.isfinite(nomad_value):
+                continue
+            diff = float(mcd_value - nomad_value)
+            points.append({
+                "lat": float(point["lat"]),
+                "lng": float(point["lng"]),
+                "val": diff,
+                "mcd_value": float(mcd_value),
+                "nomad_value": nomad_value,
+                "count": int(point.get("count", 1)),
+            })
+            mcd_values.append(float(mcd_value))
+            nomad_values.append(nomad_value)
+            diffs.append(diff)
+
+        if not points:
+            return None
+
+        diff_arr = np.asarray(diffs, dtype=np.float64)
+        mcd_arr = np.asarray(mcd_values, dtype=np.float64)
+        nomad_arr = np.asarray(nomad_values, dtype=np.float64)
+        values_abs = np.abs(diff_arr)
+        return {
+            "source": "nomad",
+            "comparison": "MCD-NOMAD",
+            "matched_ls": float(nomad_layer.get("ls", mcd_layer.get("ls", 0.0))),
+            "sample_count": int(len(points)),
+            "bias": float(np.mean(diff_arr)),
+            "mae": float(np.mean(values_abs)),
+            "rmse": float(np.sqrt(np.mean(diff_arr ** 2))),
+            "correlation": self._safe_correlation(mcd_arr, nomad_arr),
+            "minDiff": float(np.min(diff_arr)),
+            "maxDiff": float(np.max(diff_arr)),
+            "points": points,
+        }
 
     def get_ozone_capabilities(self) -> dict:
         diff_pairs = ["MCD-OpenMARS"]
@@ -255,6 +326,7 @@ class McdOverviewDataService:
         mcd = self._build_layer_from_source(self.get_openmars_data(mars_year), ls, "mcd")
         openmars = self._match_openmars_layer(mars_year, mcd["ls"])
         nomad = self._match_nomad_layer(mars_year, mcd["ls"])
+        nomad_validation = self._build_nomad_validation(mcd, nomad)
 
         available_sources = [
             source
@@ -276,5 +348,8 @@ class McdOverviewDataService:
             "nomad": nomad,
             "available_sources": available_sources,
             "diff_candidates": diff_candidates,
+            "validation": {
+                "nomad": nomad_validation,
+            },
             "capabilities": self.get_ozone_capabilities(),
         }
