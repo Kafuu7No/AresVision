@@ -14,6 +14,8 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 OPENMARS_DIR = DATA_DIR / "openmars"
 MCD_DIR = DATA_DIR / "mcd"
+MCD_OVERVIEW_DIR = DATA_DIR / "mcd_overview"
+NOMAD_DIR = DATA_DIR / "nomad"
 MODEL_DIR = BASE_DIR / "models" / "predrnnv2"
 PERF_CACHE_DIR = DATA_DIR / "perf_cache"
 PERSONAL_CACHE_DIR = DATA_DIR / "personal_cache"
@@ -23,10 +25,16 @@ SUPPORTED_MARS_YEARS = [27, 28]
 DEFAULT_MARS_YEAR = 27
 N_LAT = 36
 N_LON = 72
+OVERVIEW_OZONE_MATCH_TOLERANCE_LS = 2.5
+NOMAD_MATCH_TOLERANCE_LS = 2.5
 
 MCD_VARIABLES = [
     "U_Wind", "V_Wind", "Dust_Optical_Depth",
     "Solar_Flux_DN", "Temperature",
+]
+OVERVIEW_MCD_VARIABLES = [
+    var for var in MCD_VARIABLES
+    if var != "Dust_Optical_Depth"
 ]
 
 # 模型训练时的物理主序 (决定了 Tensor 的堆叠顺序)
@@ -94,8 +102,12 @@ AI_API_KEY = os.getenv("AI_API_KEY", "")
 USER_UPLOADS_DIR   = DATA_DIR / "user_uploads"
 PENDING_REVIEW_DIR = DATA_DIR / "pending_review"
 APPROVED_DIR       = DATA_DIR / "approved"
+USER_MODELS_DIR = DATA_DIR / "user_models"
 MAX_UPLOAD_SIZE_MB = 200
 ALLOWED_NC_EXTENSIONS = [".nc", ".nc4", ".netcdf"]
+MAX_USER_MODEL_SIZE_KB = int(os.getenv("MAX_USER_MODEL_SIZE_KB", "256"))
+ALLOWED_USER_MODEL_EXTENSIONS = [".py"]
+USER_MODEL_TRAINING_TIMEOUT_SECONDS = int(os.getenv("USER_MODEL_TRAINING_TIMEOUT_SECONDS", "7200"))
 
 # ─── 数据库 ───
 DATABASE_URL = os.getenv(

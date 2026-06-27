@@ -7,10 +7,15 @@ class TrainingStartRequest(BaseModel):
     hyperparameters: Dict[str, Any] = Field(default_factory=dict, description="Custom hyperparameters")
     model_name: str = Field(..., min_length=1, description="Required unique name for the resulting model")
     data_source: str = Field(default="default", description="default | personal")
+    model_source: str = Field(default="official", description="official | uploaded")
+    uploaded_model_id: Optional[str] = Field(default=None, description="Validated uploaded model package id")
 
 class TrainingTaskResponse(BaseModel):
     id: int
     model_script: str
+    model_source: str = "official"
+    uploaded_model_id: Optional[str] = None
+    uploaded_model_version: Optional[int] = None
     status: str
     start_time: datetime
     end_time: Optional[datetime]

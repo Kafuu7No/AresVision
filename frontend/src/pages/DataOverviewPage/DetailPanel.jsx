@@ -35,12 +35,12 @@ const CARD_TITLES = {
   wave: { zh: '波动结构', en: 'Wave explorer' },
   waveDiag: { zh: '波动诊断', en: 'Wave diagnostics' },
   polar: { zh: '极区动力', en: 'Polar dynamics' },
-  coupling: { zh: '尘埃耦合', en: 'Dust coupling' },
+  coupling: { zh: '温度耦合', en: 'Temperature coupling' },
   distribution: { zh: '点位分布', en: 'Distribution' },
   correlation: { zh: '点位相关', en: 'Correlation' },
 };
 
-export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
+export default function DetailPanel({ sliceData, dataSourceMode = 'default' }) {
   const { settings } = useSettings();
   const isLight = settings?.theme === 'light';
   const isZh = settings?.language !== 'en';
@@ -162,11 +162,11 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
       <DataDistribution
         marsYear={marsYear}
         lsValue={globalTimeLs}
-        ozoneData={ozoneData}
+        sliceData={sliceData}
         coordinate={selectedCoordinate}
       />
     ),
-    [marsYear, globalTimeLs, ozoneData, selectedCoordinate],
+    [marsYear, globalTimeLs, sliceData, selectedCoordinate],
   );
   const correlationComponent = useMemo(
     () => <CorrelationMatrix marsYear={marsYear} coordinate={selectedCoordinate} dataSourceMode={dataSourceMode} />,

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useSettings } from '../../../contexts/SettingsContext';
-import { fetchPolarDynamics } from '../../../services/api';
+import { fetchOverviewPolarDynamics } from '../../../services/api';
 import useAiInsightRegistration from './useAiInsightRegistration';
 import { roundValue, sampleSeries, summarizeSeries } from './aiInsight';
 
@@ -47,7 +47,7 @@ export default function PolarDynamics({ marsYear, dataSourceMode = 'default' }) 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetchPolarDynamics(marsYear, { dataSource: dataSourceMode })
+    fetchOverviewPolarDynamics(marsYear, { dataSource: dataSourceMode })
       .then((res) => {
         if (active) {
           setData(res);

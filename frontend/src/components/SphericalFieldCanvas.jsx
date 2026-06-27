@@ -188,8 +188,30 @@ function disposeObject3D(root) {
   });
 }
 
+function createCircleTexture() {
+  if (cachedCircleTexture) return cachedCircleTexture;
+  const canvas = document.createElement('canvas');
+  canvas.width = 32;
+  canvas.height = 32;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+  gradient.addColorStop(0, 'rgba(255,255,255,1)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 32, 32);
+  cachedCircleTexture = new THREE.CanvasTexture(canvas);
+  return cachedCircleTexture;
+}
+
+function tintedRgb(tint, valueRatio) {
+  const color = new THREE.Color(tint);
+  const brightness = 0.52 + Math.max(0, Math.min(1, valueRatio)) * 0.48;
+  return [color.r * brightness, color.g * brightness, color.b * brightness];
+}
+
 const SphericalFieldCanvas = forwardRef(({
   fieldData,
+  fieldLayers,
   colorMode = 'inferno',
   h = 240,
   forceFullscreen = false,
@@ -207,6 +229,7 @@ const SphericalFieldCanvas = forwardRef(({
   const rendererRef = useRef(null);
   const sphereMeshRef = useRef(null);
   const particlesMeshRef = useRef(null); // 新增针对外层臭氧点云的引用维护
+  const particleLayersRef = useRef([]);
   const controlsRef = useRef(null);
   const autoRotateRef = useRef(autoRotate);
   const starMeshRef = useRef(null);
@@ -455,6 +478,9 @@ const SphericalFieldCanvas = forwardRef(({
     if (particlesMeshRef.current) {
       particlesMeshRef.current.visible = showConcentration;
     }
+    particleLayersRef.current.forEach((layer) => {
+      layer.visible = showConcentration;
+    });
   }, [showConcentration]);
 
   // 当外部动态调整窗口边界宽度时，实时保持地球在可用中间区域的正中心
@@ -472,6 +498,7 @@ const SphericalFieldCanvas = forwardRef(({
 
   // 2. 响应数据更新，重建臭氧场网格（保持火星本身及分组姿态不变）
   useEffect(() => {
+    if (Array.isArray(fieldLayers) && fieldLayers.length > 1) return;
     if (!fieldData?.field || !sceneRef.current) return;
     const scene = sceneRef.current;
 
@@ -493,12 +520,14 @@ const SphericalFieldCanvas = forwardRef(({
     else removeMarsMesh(globeGroup);
 
     // 清理旧的粒子网格
-    if (particlesMeshRef.current) {
-      globeGroup.remove(particlesMeshRef.current);
-      if (particlesMeshRef.current.geometry) particlesMeshRef.current.geometry.dispose();
-      if (particlesMeshRef.current.material) particlesMeshRef.current.material.dispose();
-      particlesMeshRef.current = null;
-    }
+    const previousLayers = particleLayersRef.current.length ? particleLayersRef.current : [particlesMeshRef.current].filter(Boolean);
+    previousLayers.forEach((layer) => {
+      globeGroup.remove(layer);
+      if (layer.geometry) layer.geometry.dispose();
+      if (layer.material) layer.material.dispose();
+    });
+    particleLayersRef.current = [];
+    particlesMeshRef.current = null;
 
     if (!showConcentration) return;
 
@@ -632,9 +661,178 @@ const SphericalFieldCanvas = forwardRef(({
     // 将粒子加到地球组中
     globeGroup.add(particles);
     particlesMeshRef.current = particles;
+    particleLayersRef.current = [particles];
 
     // 注意：只销毁数据相关的粒子即可，mars 的析构可以留给整个组件销毁时（见下方独立清理 Effect）
-  }, [fieldData, colorMode, settings.colormap, showConcentration, showMars, isLight, fontScale]);
+  }, [fieldData, fieldLayers, colorMode, settings.colormap, showConcentration, showMars, isLight, fontScale]);
+
+  useEffect(() => {
+    if (!Array.isArray(fieldLayers) || fieldLayers.length <= 1 || !sceneRef.current) return;
+    const drawableLayers = fieldLayers.filter((layer) => layer?.fieldData?.field || (layer?.renderAsPoints && layer?.points?.length));
+    if (!drawableLayers.length) return;
+
+    const scene = sceneRef.current;
+    if (!sphereMeshRef.current) {
+      const globeGroup = new THREE.Group();
+      globeGroup.rotation.y = -Math.PI / 2;
+      scene.add(globeGroup);
+      sphereMeshRef.current = globeGroup;
+
+      const overlay = buildGeoOverlay(isLight, fontScale);
+      overlay.visible = showGeoAnnotations;
+      globeGroup.add(overlay);
+      geoOverlayRef.current = overlay;
+    }
+
+    const globeGroup = sphereMeshRef.current;
+    if (showMars) addMarsMesh(globeGroup);
+    else removeMarsMesh(globeGroup);
+
+    const previousLayers = particleLayersRef.current.length ? particleLayersRef.current : [particlesMeshRef.current].filter(Boolean);
+    previousLayers.forEach((layer) => {
+      globeGroup.remove(layer);
+      if (layer.geometry) layer.geometry.dispose();
+      if (layer.material) layer.material.dispose();
+    });
+    particleLayersRef.current = [];
+    particlesMeshRef.current = null;
+
+    if (!showConcentration) return;
+
+    const createLayerParticles = (layerConfig) => {
+      if (layerConfig.renderAsPoints) {
+        const layerColorMode = layerConfig.layerColorMode || layerConfig.colorMode || colorMode;
+        const radiusOffset = layerConfig.radiusOffset || 0;
+        const values = layerConfig.points.map((point) => point.val).filter(Number.isFinite);
+        const absMax = Math.max(1, ...values.map((value) => Math.abs(value)));
+        const positions = [];
+        const colors = [];
+        const baseRadius = 0.9 + radiusOffset;
+
+        layerConfig.points.forEach((point) => {
+          if (!Number.isFinite(point?.lat) || !Number.isFinite(point?.lng) || !Number.isFinite(point?.val)) return;
+          const countBoost = Math.min(3, Math.max(1, Math.sqrt(Math.max(1, point.count || 1))));
+          const t = layerColorMode === 'rdbu'
+            ? (Math.max(-absMax, Math.min(absMax, point.val)) + absMax) / (2 * absMax)
+            : 0.5;
+          const rgb = layerColorMode === 'rdbu'
+            ? rdbuRgb(t).map((value) => value / 255)
+            : tintedRgb('#34d399', t);
+
+          for (let p = 0; p < Math.round(16 * countBoost); p += 1) {
+            const latJitter = point.lat + (Math.random() - 0.5) * 1.8;
+            const lonJitter = point.lng + (Math.random() - 0.5) * 1.8;
+            const vec = latLonToVec3(latJitter, lonJitter, baseRadius + (Math.random() - 0.5) * 0.01);
+            positions.push(vec.x, vec.y, vec.z);
+            colors.push(rgb[0], rgb[1], rgb[2]);
+          }
+        });
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        const material = new THREE.PointsMaterial({
+          size: 0.024,
+          vertexColors: true,
+          map: createCircleTexture(),
+          transparent: true,
+          opacity: isLight ? 0.86 : 0.96,
+          depthWrite: false,
+          blending: isLight ? THREE.NormalBlending : THREE.AdditiveBlending,
+        });
+        const particles = new THREE.Points(geometry, material);
+        particles.visible = showConcentration;
+        return particles;
+      }
+
+      const { field, minVal, maxVal } = layerConfig.fieldData;
+      const nLat = field.length;
+      const nLon = field[0].length;
+      const layerColorMode = layerConfig.colorMode || colorMode;
+      const tint = layerConfig.tint || null;
+      const radiusOffset = layerConfig.radiusOffset || 0;
+      let dMin = minVal;
+      let dMax = maxVal;
+
+      if (layerColorMode === 'rdbu') {
+        let absMax = 0;
+        for (let li = 0; li < nLat; li += 1) {
+          for (let lj = 0; lj < nLon; lj += 1) {
+            absMax = Math.max(absMax, Math.abs(field[li][lj]));
+          }
+        }
+        dMin = -(absMax || 1);
+        dMax = absMax || 1;
+      }
+
+      const range = dMax - dMin || 1;
+      const positions = [];
+      const colors = [];
+      const particleDensity = 55;
+      const baseRadius = 0.9;
+
+      for (let li = 0; li < nLat; li += 1) {
+        for (let lj = 0; lj < nLon; lj += 1) {
+          const val = field[li][lj];
+          if (val == null || isNaN(val)) continue;
+
+          const latCenter = 90 - (li / (nLat - 1)) * 180;
+          const lonCenter = (lj / Math.max(1, nLon)) * 360;
+
+          for (let p = 0; p < particleDensity; p += 1) {
+            const latJitter = latCenter + (Math.random() - 0.5) * (180 / nLat);
+            const lonJitter = lonCenter + (Math.random() - 0.5) * (360 / nLon);
+            const liFloat = ((90 - latJitter) / 180) * (nLat - 1);
+            const ljFloat = (lonJitter / 360) * nLon;
+            const interpVal = bilinearInterpolate(field, liFloat, ljFloat);
+            if (isNaN(interpVal)) continue;
+
+            const interpT = (Math.max(dMin, Math.min(dMax, interpVal)) - dMin) / range;
+            const interOffset = layerColorMode === 'rdbu' ? (interpT - 0.5) * 0.3 : interpT * 0.225;
+            const phi = (90 - latJitter) * (Math.PI / 180);
+            const theta = lonJitter * (Math.PI / 180);
+            const r = baseRadius + radiusOffset + interOffset + (Math.random() - 0.5) * 0.005;
+
+            positions.push(
+              r * Math.sin(phi) * Math.cos(theta),
+              r * Math.cos(phi),
+              r * Math.sin(phi) * Math.sin(theta),
+            );
+
+            const rgb = tint
+              ? tintedRgb(tint, interpT)
+              : (layerColorMode === 'rdbu'
+                ? rdbuRgb(interpT).map((value) => value / 255)
+                : getRgb(settings.colormap, interpT).map((value) => value / 255));
+            colors.push(rgb[0], rgb[1], rgb[2]);
+          }
+        }
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+      const material = new THREE.PointsMaterial({
+        size: 0.01,
+        vertexColors: true,
+        map: createCircleTexture(),
+        transparent: true,
+        opacity: isLight ? 0.58 : 0.78,
+        depthWrite: false,
+        blending: isLight ? THREE.NormalBlending : THREE.AdditiveBlending,
+      });
+
+      const particles = new THREE.Points(geometry, material);
+      particles.visible = showConcentration;
+      return particles;
+    };
+
+    const nextLayers = drawableLayers.map((layer) => createLayerParticles(layer));
+    nextLayers.forEach((layer) => globeGroup.add(layer));
+    particleLayersRef.current = nextLayers;
+    particlesMeshRef.current = nextLayers[0] || null;
+  }, [fieldLayers, colorMode, settings.colormap, showConcentration, showMars, showGeoAnnotations, isLight, fontScale]);
 
   // 组件完全卸载时，清空 sphereMeshRef / 材质资源
   useEffect(() => {
@@ -644,6 +842,7 @@ const SphericalFieldCanvas = forwardRef(({
         disposeObject3D(sphereMeshRef.current);
         sphereMeshRef.current = null;
         particlesMeshRef.current = null;
+        particleLayersRef.current = [];
         geoOverlayRef.current = null;
         marsMeshRef.current = null;
       }

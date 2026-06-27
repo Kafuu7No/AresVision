@@ -8,11 +8,12 @@ import { roundValue, sampleSeries, summarizeSeries } from './aiInsight';
 
 const LABELS = {
   o3: { zh: '臭氧', en: 'O3' },
-  dust: { zh: '沙尘', en: 'Dust' },
   temp: { zh: '温度', en: 'Temperature' },
   solar: { zh: '太阳辐射', en: 'Solar Flux' },
   wind: { zh: '风速', en: 'Wind Speed' },
 };
+
+const DISPLAY_SERIES_KEYS = ['o3', 'temp', 'solar', 'wind'];
 
 export default function GlobalTrendLinesChart({ marsYear, dataSourceMode = 'default' }) {
   const { settings } = useSettings();
@@ -30,7 +31,7 @@ export default function GlobalTrendLinesChart({ marsYear, dataSourceMode = 'defa
       x: 'Ls',
       y: '标准化值',
       noteTitle: '视图说明：',
-      noteBody: '该图对 O3、沙尘、温度、太阳辐射、风速做全球平均后再标准化（Z-score），用于比较变量间同步变化趋势，不表示绝对数值大小。',
+      noteBody: '该图对 O3、温度、太阳辐射、风速做全球平均后再标准化（Z-score），用于比较变量间同步变化趋势，不表示绝对数值大小。',
     }
     : {
       loading: 'Loading trend lines...',
@@ -38,7 +39,7 @@ export default function GlobalTrendLinesChart({ marsYear, dataSourceMode = 'defa
       x: 'Ls',
       y: 'Z-score',
       noteTitle: 'View Note:',
-      noteBody: 'This chart compares globally averaged O3, dust, temperature, solar flux and wind after Z-score normalization. It emphasizes synchronized trends rather than absolute magnitudes.',
+      noteBody: 'This chart compares globally averaged O3, temperature, solar flux and wind after Z-score normalization. It emphasizes synchronized trends rather than absolute magnitudes.',
     };
 
   useEffect(() => {
@@ -67,13 +68,12 @@ export default function GlobalTrendLinesChart({ marsYear, dataSourceMode = 'defa
     const series = data?.series || {};
     const palette = {
       o3: C.mars,
-      dust: '#f2c14e',
       temp: '#4acfac',
       solar: '#6aa9ff',
       wind: '#d2b48c',
     };
 
-    return Object.keys(series).map((key) => {
+    return DISPLAY_SERIES_KEYS.filter((key) => Array.isArray(series[key])).map((key) => {
       const label = LABELS[key] ? (isZh ? LABELS[key].zh : LABELS[key].en) : key.toUpperCase();
       return {
         x: ls,
@@ -90,18 +90,21 @@ export default function GlobalTrendLinesChart({ marsYear, dataSourceMode = 'defa
   const aiInsightProvider = useCallback(() => {
     const lsAxis = data?.ls || [];
     const series = data?.series || {};
-    const seriesSummary = Object.entries(series).map(([key, values]) => {
-      const first = values.find((value) => Number.isFinite(value));
-      const reversed = [...values].reverse();
-      const last = reversed.find((value) => Number.isFinite(value));
-      return {
-        variable: key,
-        label: LABELS[key] ? (isZh ? LABELS[key].zh : LABELS[key].en) : key,
-        stats: summarizeSeries(values),
-        delta: Number.isFinite(first) && Number.isFinite(last) ? roundValue(last - first) : null,
-        sample: sampleSeries(values, lsAxis, 8),
-      };
-    });
+    const seriesSummary = DISPLAY_SERIES_KEYS
+      .filter((key) => Array.isArray(series[key]))
+      .map((key) => {
+        const values = series[key];
+        const first = values.find((value) => Number.isFinite(value));
+        const reversed = [...values].reverse();
+        const last = reversed.find((value) => Number.isFinite(value));
+        return {
+          variable: key,
+          label: LABELS[key] ? (isZh ? LABELS[key].zh : LABELS[key].en) : key,
+          stats: summarizeSeries(values),
+          delta: Number.isFinite(first) && Number.isFinite(last) ? roundValue(last - first) : null,
+          sample: sampleSeries(values, lsAxis, 8),
+        };
+      });
     return {
       card: 'globalTrend',
       marsYear,

@@ -3,7 +3,7 @@ import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useT } from '../../../i18n';
 import { useSettings } from '../../../contexts/SettingsContext';
-import { fetchDiurnal } from '../../../services/api';
+import { fetchOverviewDiurnal } from '../../../services/api';
 import { convertOzone, ozoneLabel } from '../../../utils/units';
 import { fmtNum } from '../../../utils/fmt';
 import useAiInsightRegistration from './useAiInsightRegistration';
@@ -82,7 +82,7 @@ export default function RealtimeMonitor({ marsYear, lsValue, dataSourceMode = 'd
     if (hasRenderableData) setRefreshing(true);
     else setLoading(true);
 
-    fetchDiurnal(marsYear, lsValue, latBand, { dataSource: dataSourceMode })
+    fetchOverviewDiurnal(marsYear, lsValue, latBand, { dataSource: dataSourceMode })
       .then((res) => {
         if (active) {
           setData(res);

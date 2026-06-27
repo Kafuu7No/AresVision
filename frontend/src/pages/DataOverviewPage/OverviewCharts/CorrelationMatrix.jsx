@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
-import { fetchCorrelation, fetchEnvHeatmap, fetchSeasonalHeatmap } from '../../../services/api';
+import { fetchOverviewCorrelation, fetchOverviewEnvHeatmap, fetchOverviewSeasonalHeatmap } from '../../../services/api';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { ozoneLabel, convertOzone } from '../../../utils/units';
 import { fmtNum } from '../../../utils/fmt';
@@ -12,7 +12,6 @@ const VARIABLE_META_BASE = [
   { id: 'U_Wind', color: C.blue, unit: 'm/s' },
   { id: 'V_Wind', color: '#7fb3ff', unit: 'm/s' },
   { id: 'Temperature', color: C.mars, unit: 'K' },
-  { id: 'Dust_Optical_Depth', color: '#d7a15d', unit: 'tau' },
   { id: 'Solar_Flux_DN', color: '#f7cf4a', unit: 'W/m^2' },
 ];
 
@@ -107,11 +106,9 @@ export default function CorrelationMatrix({ marsYear, dataSourceMode = 'default'
       U_Wind: '纬向风',
       V_Wind: '经向风',
       Temperature: '温度',
-      Dust_Optical_Depth: '沙尘光学厚度',
       Solar_Flux_DN: '太阳辐射',
       o3col: 'O3',
       Temp: '温度',
-      Dust: '沙尘',
       Solar: '辐射',
     },
     strongest: '最强相关对',
@@ -146,11 +143,9 @@ export default function CorrelationMatrix({ marsYear, dataSourceMode = 'default'
       U_Wind: 'U Wind',
       V_Wind: 'V Wind',
       Temperature: 'Temperature',
-      Dust_Optical_Depth: 'Dust Optical Depth',
       Solar_Flux_DN: 'Solar Flux',
       o3col: 'O3',
       Temp: 'Temp',
-      Dust: 'Dust',
       Solar: 'Solar',
     },
     strongest: 'MATRIX STRONGEST',
@@ -190,7 +185,6 @@ export default function CorrelationMatrix({ marsYear, dataSourceMode = 'default'
     U_Wind: copy.labels.U_Wind,
     V_Wind: copy.labels.V_Wind,
     Temperature: copy.labels.Temp,
-    Dust_Optical_Depth: copy.labels.Dust,
     Solar_Flux_DN: copy.labels.Solar,
   }), [copy.labels]);
 
@@ -204,9 +198,9 @@ export default function CorrelationMatrix({ marsYear, dataSourceMode = 'default'
     let active = true;
     setLoading(true);
     Promise.all([
-      fetchCorrelation(marsYear, { dataSource: dataSourceMode }),
-      fetchSeasonalHeatmap(marsYear, { dataSource: dataSourceMode }),
-      Promise.all(VARIABLE_META_BASE.map((meta) => fetchEnvHeatmap(marsYear, meta.id, { dataSource: dataSourceMode }))),
+      fetchOverviewCorrelation(marsYear, { dataSource: dataSourceMode }),
+      fetchOverviewSeasonalHeatmap(marsYear, { dataSource: dataSourceMode }),
+      Promise.all(VARIABLE_META_BASE.map((meta) => fetchOverviewEnvHeatmap(marsYear, meta.id, { dataSource: dataSourceMode }))),
     ])
       .then(([corrRes, ozoneRes, envRes]) => {
         if (!active) return;

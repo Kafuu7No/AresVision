@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useSettings } from '../../../contexts/SettingsContext';
-import { fetchEnvHeatmap, fetchSeasonalHeatmap } from '../../../services/api';
+import { fetchOverviewEnvHeatmap, fetchOverviewSeasonalHeatmap } from '../../../services/api';
 import {
   convertOzone,
   ozoneLabel,
@@ -17,7 +17,6 @@ import { roundValue, sampleSeries } from './aiInsight';
 const VARIABLE_OPTIONS = [
   { id: 'o3col', zh: '臭氧柱浓度', en: 'Ozone Column' },
   { id: 'Temperature', zh: '温度', en: 'Temperature' },
-  { id: 'Dust_Optical_Depth', zh: '沙尘光学厚度', en: 'Dust Optical Depth' },
   { id: 'Solar_Flux_DN', zh: '太阳下行辐射', en: 'Solar Downwelling Flux' },
   { id: 'U_Wind', zh: '纬向风 U', en: 'U Wind' },
   { id: 'V_Wind', zh: '经向风 V', en: 'V Wind' },
@@ -43,7 +42,6 @@ function unitByVariable(variable, units) {
   if (variable === 'o3col') return ozoneLabel(units.ozone);
   if (variable === 'Temperature') return tempLabel(units.temperature);
   if (variable === 'U_Wind' || variable === 'V_Wind') return windLabel(units.wind);
-  if (variable === 'Dust_Optical_Depth') return 'tau';
   if (variable === 'Solar_Flux_DN') return 'W/m²';
   return '';
 }
@@ -156,8 +154,8 @@ export default function SeasonalExtremesChart({ marsYear, dataSourceMode = 'defa
     setLoading(true);
 
     const fetcher = variable === 'o3col'
-      ? fetchSeasonalHeatmap(marsYear, { dataSource: dataSourceMode })
-      : fetchEnvHeatmap(marsYear, variable, { dataSource: dataSourceMode });
+      ? fetchOverviewSeasonalHeatmap(marsYear, { dataSource: dataSourceMode })
+      : fetchOverviewEnvHeatmap(marsYear, variable, { dataSource: dataSourceMode });
 
     Promise.resolve(fetcher)
       .then((res) => {

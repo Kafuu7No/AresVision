@@ -15,6 +15,7 @@ export default function TimelineController() {
     setGlobalTimeLs,
     isPlayingTimeline,
     setIsPlayingTimeline,
+    overviewTimeline,
     leftPanelWidth,
     rightPanelWidth,
   } = useDataOverview();
@@ -28,6 +29,9 @@ export default function TimelineController() {
     t('common.season.winter');
 
   const onTogglePlay = () => setIsPlayingTimeline((p) => !p);
+  const timelineMin = Number.isFinite(overviewTimeline?.min) ? overviewTimeline.min : 0;
+  const timelineMax = Number.isFinite(overviewTimeline?.max) ? overviewTimeline.max : 360;
+  const timelineStep = Number.isFinite(overviewTimeline?.step) ? overviewTimeline.step : 5;
 
   return (
     <div
@@ -77,9 +81,9 @@ export default function TimelineController() {
             </div>
             <input
               type="range"
-              min={0}
-              max={360}
-              step={5}
+              min={timelineMin}
+              max={timelineMax}
+              step={timelineStep}
               value={globalTimeLs}
               onChange={(e) => setGlobalTimeLs(Number(e.target.value))}
               style={{ width: '100%', accentColor: C.mars, cursor: 'pointer' }}
@@ -87,7 +91,7 @@ export default function TimelineController() {
           </div>
 
           <button
-            onClick={() => setGlobalTimeLs(0)}
+            onClick={() => setGlobalTimeLs(timelineMin)}
             title={isZh ? '重置 Ls' : 'Reset Ls'}
             style={{
               background: isLight ? 'rgba(15,23,42,0.06)' : 'rgba(255,255,255,0.05)',

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useSettings } from '../../../contexts/SettingsContext';
-import { fetchSolarPhotochemical } from '../../../services/api';
+import { fetchOverviewSolarPhotochemical } from '../../../services/api';
 import useAiInsightRegistration from './useAiInsightRegistration';
 import { correlation, sampleSeries, summarizeSeries } from './aiInsight';
 
@@ -68,7 +68,7 @@ export default function SolarSensitivity({ marsYear, dataSourceMode = 'default' 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetchSolarPhotochemical(marsYear, activeBand, { dataSource: dataSourceMode })
+    fetchOverviewSolarPhotochemical(marsYear, activeBand, { dataSource: dataSourceMode })
       .then((res) => {
         if (active) {
           setData(res);

@@ -10,8 +10,9 @@ const BASE = '/api';
 /** 从 localStorage 读取 token，自动附加到请求头 */
 async function authedFetch(url, options = {}) {
   const token = localStorage.getItem('aresvision_token');
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...options.headers,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
@@ -143,6 +144,86 @@ export async function fetchCorrelation(marsYear = 27, options = {}) {
 
 export async function fetchDataInfo(options = {}) {
   const res = await authedFetch(appendDataSource(`${BASE}/explore/info`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewInfo(options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/info`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewGlobeData(marsYear = 27, ls = 10, variable = 'o3col', signal = null, options = {}) {
+  const opts = signal ? { signal } : {};
+  const url = appendDataSource(`${BASE}/explore/overview/globe?my=${marsYear}&ls=${ls}&variable=${encodeURIComponent(variable)}`, options);
+  const res = await authedFetch(url, opts);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewOzoneSources(marsYear = 27, ls = 10, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/ozone-sources?my=${marsYear}&ls=${ls}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewSeasonalHeatmap(marsYear = 27, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/seasonal-heatmap?my=${marsYear}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewEnvHeatmap(marsYear = 27, variable, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/env-heatmap?my=${marsYear}&variable=${variable}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewCorrelation(marsYear = 27, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/correlation?my=${marsYear}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewCouplingData(marsYear = 27, var1 = 'o3col', var2 = 'Temperature', options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/coupling?my=${marsYear}&var1=${var1}&var2=${var2}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewZonalAnomaly(marsYear = 27, variable = 'o3col', options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/zonal-anomaly?my=${marsYear}&variable=${variable}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewSolarPhotochemical(marsYear = 27, latBand = 'Equatorial (30S-30N)', options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/solar-photochemical?my=${marsYear}&lat_band=${encodeURIComponent(latBand)}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewPolarDynamics(marsYear = 27, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/polar-dynamics?my=${marsYear}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewResearchSuite(marsYear = 27, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/research-suite?my=${marsYear}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewPhaseSpace(marsYear = 27, driver = 'Temperature', options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/phase-space?my=${marsYear}&driver=${encodeURIComponent(driver)}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewDiurnal(marsYear = 27, ls = 90, latBand = 'Equatorial (30S-30N)', options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/diurnal?my=${marsYear}&ls=${ls}&lat_band=${encodeURIComponent(latBand)}`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
@@ -525,12 +606,71 @@ export async function fetchScripts() {
   return res.json();
 }
 
-export async function startTrainingTask(model_script, hyperparameters, model_name = null, data_source = 'default') {
+export async function startTrainingTask(
+  model_script,
+  hyperparameters,
+  model_name = null,
+  data_source = 'default',
+  options = {}
+) {
   const res = await authedFetch(`${BASE}/training/start`, {
     method: 'POST',
-    body: JSON.stringify({ model_script, hyperparameters, model_name, data_source }),
+    body: JSON.stringify({
+      model_script,
+      hyperparameters,
+      model_name,
+      data_source,
+      model_source: options.modelSource || 'official',
+      uploaded_model_id: options.uploadedModelId || null,
+    }),
   });
   if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+}
+
+export async function uploadUserModel(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await authedFetch(`${BASE}/user-models`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function fetchUserModels() {
+  const res = await authedFetch(`${BASE}/user-models`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function revalidateUserModel(modelId) {
+  const res = await authedFetch(`${BASE}/user-models/${modelId}/validate`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteUserModel(modelId) {
+  const res = await authedFetch(`${BASE}/user-models/${modelId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
   return res.json();
 }
 

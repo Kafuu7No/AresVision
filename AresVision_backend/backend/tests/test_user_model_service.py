@@ -1,0 +1,236 @@
+import asyncio
+import sys
+import tempfile
+from datetime import datetime, timezone
+from types import SimpleNamespace
+from pathlib import Path
+
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+from database.engine import Base  # noqa: E402
+from database.models import User  # noqa: E402
+from config import MAX_USER_MODEL_SIZE_KB  # noqa: E402
+from routers.user_models import _serialize_package  # noqa: E402
+from services.user_model_service import UserModelService  # noqa: E402
+
+
+VALID_MODEL = b"""
+import torch
+from torch import nn
+
+MODEL_SPEC = {
+    "name": "StoredTiny",
+    "description": "Tiny stored model for service tests.",
+    "parameters": {
+        "hidden_dim": {
+            "type": "int",
+            "default": 4,
+            "min": 1,
+            "max": 16,
+        },
+    },
+}
+
+
+class StoredTiny(nn.Module):
+    def __init__(self, horizon):
+        super().__init__()
+        self.horizon = horizon
+
+    def forward(self, x):
+        last = x[:, -1, :1]
+        return last.unsqueeze(1).repeat(1, self.horizon, 1, 1, 1)
+
+
+def build_model(config):
+    return StoredTiny(config["horizon"])
+"""
+
+
+async def _make_sessionmaker(db_path: Path):
+    engine = create_async_engine(
+        f"sqlite+aiosqlite:///{db_path}",
+        connect_args={"check_same_thread": False},
+    )
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    return engine, async_sessionmaker(engine, expire_on_commit=False)
+
+
+async def _create_user(sessionmaker, email: str) -> User:
+    async with sessionmaker() as session:
+        user = User(
+            email=email,
+            username=email.split("@", 1)[0],
+            password_hash="test-hash",
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return user
+
+
+async def test_service_creates_lists_revalidates_and_soft_deletes_model():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        db_path = root / "test.db"
+        upload_root = root / "uploads"
+        engine, sessionmaker = await _make_sessionmaker(db_path)
+
+        try:
+            user = await _create_user(sessionmaker, "owner@example.com")
+            service = UserModelService(
+                storage_root=upload_root,
+                sessionmaker=sessionmaker,
+            )
+
+            package = await service.create_from_source(
+                user.id,
+                "stored tiny.py",
+                VALID_MODEL,
+            )
+
+            assert package.validation_status == "valid"
+            assert Path(package.storage_path).exists()
+            assert package.version == 1
+            assert package.display_name == "StoredTiny"
+
+            packages = await service.list_user_packages(user.id)
+            assert [item.id for item in packages] == [package.id]
+
+            revalidated = await service.revalidate_package(package.id, user.id)
+            assert revalidated.validation_status == "valid"
+
+            await service.soft_delete_package(package.id, user.id)
+            assert await service.list_user_packages(user.id) == []
+            assert Path(package.storage_path).exists()
+        finally:
+            await engine.dispose()
+
+
+async def test_service_rejects_non_owner_access():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        db_path = root / "test.db"
+        upload_root = root / "uploads"
+        engine, sessionmaker = await _make_sessionmaker(db_path)
+
+        try:
+            owner = await _create_user(sessionmaker, "owner@example.com")
+            other = await _create_user(sessionmaker, "other@example.com")
+            service = UserModelService(
+                storage_root=upload_root,
+                sessionmaker=sessionmaker,
+            )
+            package = await service.create_from_source(
+                owner.id,
+                "owner_model.py",
+                VALID_MODEL,
+            )
+
+            try:
+                await service.get_package_for_user(package.id, other.id)
+            except PermissionError:
+                pass
+            else:
+                raise AssertionError("non-owner access should raise PermissionError")
+        finally:
+            await engine.dispose()
+
+
+async def test_service_rejects_non_py_original_filename_before_writing():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        db_path = root / "test.db"
+        upload_root = root / "uploads"
+        engine, sessionmaker = await _make_sessionmaker(db_path)
+
+        try:
+            user = await _create_user(sessionmaker, "owner@example.com")
+            service = UserModelService(
+                storage_root=upload_root,
+                sessionmaker=sessionmaker,
+            )
+
+            try:
+                await service.create_from_source(user.id, "model.txt", VALID_MODEL)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("non-.py filenames should raise ValueError")
+
+            assert await service.list_user_packages(user.id) == []
+            assert not any(upload_root.rglob("*"))
+        finally:
+            await engine.dispose()
+
+
+async def test_service_rejects_oversized_source_before_creating_package():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        db_path = root / "test.db"
+        upload_root = root / "uploads"
+        engine, sessionmaker = await _make_sessionmaker(db_path)
+
+        try:
+            user = await _create_user(sessionmaker, "owner@example.com")
+            service = UserModelService(
+                storage_root=upload_root,
+                sessionmaker=sessionmaker,
+            )
+            oversized_source = b"x" * (MAX_USER_MODEL_SIZE_KB * 1024 + 1)
+
+            try:
+                await service.create_from_source(user.id, "too_large.py", oversized_source)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("oversized sources should raise ValueError")
+
+            assert await service.list_user_packages(user.id) == []
+            assert not any(upload_root.rglob("*"))
+        finally:
+            await engine.dispose()
+
+
+def test_serialize_package_normalizes_malformed_json_shapes():
+    now = datetime.now(timezone.utc)
+    package = SimpleNamespace(
+        id="package-id",
+        user_id=1,
+        display_name="BrokenJsonModel",
+        version=1,
+        original_filename="broken.py",
+        content_hash="a" * 64,
+        param_schema="[]",
+        description=None,
+        validation_status="invalid",
+        validation_report='{"errors":"bad"}',
+        created_at=now,
+        updated_at=now,
+    )
+
+    response = _serialize_package(package)
+
+    assert response.param_schema == {}
+    assert response.validation_report.ok is False
+    assert response.validation_report.errors == []
+    assert response.validation_report.warnings == []
+    assert response.validation_report.output_shape is None
+
+
+async def _run_tests():
+    await test_service_creates_lists_revalidates_and_soft_deletes_model()
+    await test_service_rejects_non_owner_access()
+    await test_service_rejects_non_py_original_filename_before_writing()
+    await test_service_rejects_oversized_source_before_creating_package()
+    test_serialize_package_normalizes_malformed_json_shapes()
+
+
+if __name__ == "__main__":
+    asyncio.run(_run_tests())
+    print("user model service tests passed")
