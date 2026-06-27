@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.machinery
 import importlib.util
 import json
 import os
@@ -105,7 +106,8 @@ def build_uploaded_model_config(
 def load_uploaded_model(model_path: Path, config: dict[str, Any]) -> nn.Module:
     path = Path(model_path)
     module_name = f"aresvision_uploaded_runner_{uuid.uuid4().hex}"
-    spec = importlib.util.spec_from_file_location(module_name, path)
+    loader = importlib.machinery.SourceFileLoader(module_name, str(path))
+    spec = importlib.util.spec_from_loader(module_name, loader)
     if spec is None or spec.loader is None:
         raise ImportError(f"Could not load uploaded model from {path}")
 

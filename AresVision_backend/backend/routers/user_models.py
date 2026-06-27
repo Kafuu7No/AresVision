@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
 
 from auth.dependencies import get_current_user
 from database.models import User, UserModelPackage
@@ -10,6 +11,30 @@ from schemas.user_models import UserModelListResponse, UserModelPackageResponse
 from services.user_model_service import UserModelService
 
 router = APIRouter(prefix="/user-models", tags=["User Models"])
+REPO_ROOT = Path(__file__).resolve().parents[3]
+UPLOADED_MODEL_DOWNLOAD_ASSETS = {
+    "guide": {
+        "path": REPO_ROOT / "docs" / "uploaded-model-training.md",
+        "download_name": "aresvision_uploaded_model_guide.md",
+        "media_type": "text/markdown; charset=utf-8",
+    },
+    "template": {
+        "path": REPO_ROOT / "docs" / "uploaded-model-template.py",
+        "download_name": "aresvision_uploaded_model_template.py",
+        "media_type": "text/x-python; charset=utf-8",
+    },
+}
+
+
+def get_uploaded_model_download_assets() -> dict[str, dict[str, Any]]:
+    return UPLOADED_MODEL_DOWNLOAD_ASSETS
+
+
+def get_uploaded_model_download_asset(kind: str) -> dict[str, Any]:
+    asset = UPLOADED_MODEL_DOWNLOAD_ASSETS.get((kind or "").strip().lower())
+    if not asset or not asset["path"].is_file():
+        raise HTTPException(status_code=404, detail="Uploaded model download asset not found")
+    return asset
 
 
 def _service(request: Request) -> UserModelService:
@@ -104,6 +129,16 @@ async def list_user_models(
     packages = await _service(request).list_user_packages(current_user.id)
     return UserModelListResponse(
         items=[_serialize_package(package) for package in packages]
+    )
+
+
+@router.get("/downloads/{kind}")
+async def download_uploaded_model_asset(kind: str):
+    asset = get_uploaded_model_download_asset(kind)
+    return FileResponse(
+        path=asset["path"],
+        filename=asset["download_name"],
+        media_type=asset["media_type"],
     )
 
 

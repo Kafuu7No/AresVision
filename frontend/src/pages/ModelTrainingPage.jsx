@@ -12,6 +12,7 @@ import {
   fetchDataInfo,
   uploadUserModel,
   fetchUserModels,
+  getUserModelDownloadUrl,
   revalidateUserModel,
   deleteUserModel,
 } from '../services/api';
@@ -616,6 +617,8 @@ export default function ModelTrainingPage() {
         : 'Upload, select, revalidate, or remove Python model files for custom training.',
       uploadedModelsEmpty: isZh ? '还没有上传模型文件。' : 'No uploaded model files yet.',
       uploadModel: isZh ? '上传 .py' : 'Upload .py',
+      downloadModelGuide: isZh ? '下载说明' : 'Guide',
+      downloadModelTemplate: isZh ? '下载模板' : 'Template',
       uploadingModel: isZh ? '上传中...' : 'Uploading...',
       revalidateModel: isZh ? '重新校验' : 'Revalidate',
       deleteUploadedModel: isZh ? '删除' : 'Delete',
@@ -1549,11 +1552,15 @@ export default function ModelTrainingPage() {
                     onDelete={handleDeleteUploadedModel}
                     uploading={uploadingModel}
                     busy={isProcessing}
+                    guideDownloadUrl={getUserModelDownloadUrl('guide')}
+                    templateDownloadUrl={getUserModelDownloadUrl('template')}
                     labels={{
                       title: copy.uploadedModels,
                       hint: copy.uploadedModelsHint,
                       empty: copy.uploadedModelsEmpty,
                       upload: copy.uploadModel,
+                      downloadGuide: copy.downloadModelGuide,
+                      downloadTemplate: copy.downloadModelTemplate,
                       uploading: copy.uploadingModel,
                       revalidate: copy.revalidateModel,
                       delete: copy.deleteUploadedModel,

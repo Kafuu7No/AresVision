@@ -96,6 +96,28 @@ def test_load_uploaded_model_imports_build_model_and_returns_module():
     assert list(output.shape) == [2, 3, 1, 8, 16]
 
 
+def test_load_uploaded_model_reads_python_source_from_non_py_storage_path():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        model_path = Path(temp_dir) / "runner_tiny.py.user"
+        model_path.write_text(MODEL_SOURCE, encoding="utf-8")
+        config = build_uploaded_model_config(
+            in_channels=3,
+            window=3,
+            horizon=3,
+            height=8,
+            width=16,
+            selected_channels=["U", "V"],
+            custom_model_params={},
+            param_schema={"hidden_dim": {"type": "int", "default": 8}},
+        )
+
+        model = load_uploaded_model(model_path, config)
+        output = model(torch.zeros(2, 3, 1, 8, 16))
+
+    assert isinstance(model, torch.nn.Module)
+    assert list(output.shape) == [2, 3, 1, 8, 16]
+
+
 def test_assert_prediction_shape_accepts_matching_shapes_and_rejects_mismatches():
     prediction = torch.zeros(2, 3, 1, 8, 16)
     target = torch.ones(2, 3, 1, 8, 16)
@@ -147,6 +169,7 @@ if __name__ == "__main__":
     test_parse_json_arg_accepts_dict_json_string_and_empty_values()
     test_build_uploaded_model_config_merges_core_custom_and_schema_defaults()
     test_load_uploaded_model_imports_build_model_and_returns_module()
+    test_load_uploaded_model_reads_python_source_from_non_py_storage_path()
     test_assert_prediction_shape_accepts_matching_shapes_and_rejects_mismatches()
     test_bad_shape_uploaded_model_is_caught_by_prediction_shape_guard()
     print("uploaded model runner tests passed")

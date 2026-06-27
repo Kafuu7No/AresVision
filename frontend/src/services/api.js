@@ -652,6 +652,10 @@ export async function fetchUserModels() {
   return res.json();
 }
 
+export function getUserModelDownloadUrl(kind) {
+  return `${BASE}/user-models/downloads/${encodeURIComponent(kind)}`;
+}
+
 export async function revalidateUserModel(modelId) {
   const res = await authedFetch(`${BASE}/user-models/${modelId}/validate`, {
     method: 'POST',
