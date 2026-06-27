@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import C from '../constants/colors';
 import { useT } from '../i18n';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { DataOverviewProvider, useDataOverview } from '../contexts/DataOverviewContext';
-import { fetchDataInfo, fetchGlobeData } from '../services/api';
+import { fetchOverviewGlobeData, fetchOverviewInfo, fetchOverviewOzoneSources } from '../services/api';
 import useHandTracking from '../hooks/useHandTracking';
+import { buildOverviewSceneModel } from './DataOverviewPage/overviewSceneModel';
 
 // Sub-components
 import TopStatusBar from './DataOverviewPage/TopStatusBar';
@@ -29,24 +30,33 @@ const DataOverviewPageContent = () => {
     setAvailableMarsYears,
     setSourceMeta,
     setIsSwitchingSource,
+    setOverviewTimeline,
+    setOverviewOzoneCapabilities,
     globalTimeLs, setGlobalTimeLs, 
     isPlayingTimeline, setIsPlayingTimeline,
     setSelectedCoordinate,
+    overviewTimeline,
     autoRotate,
     gestureEnabled,
     showConcentration3D,
     showGeoAnnotations,
     showMarsTexture,
     globeVariable,
+    ozoneDisplayMode,
+    ozoneDiffPair,
+    mcdMainSlice,
+    setMcdMainSlice,
+    ozoneOverlayPayload,
+    setOzoneOverlayPayload,
     leftPanelWidth,
     rightPanelWidth
   } = useDataOverview();
 
-  const [ozoneData, setOzoneData] = useState({ points: [], minVal: 0, maxVal: 1, variable: 'o3col' });
   const [loadingGlobe, setLoadingGlobe] = useState(false);
 
   const timerRef = useRef(null);
-  const abortRef = useRef(null);
+  const mainAbortRef = useRef(null);
+  const overlayAbortRef = useRef(null);
   const globeCanvasRef = useRef(null);
   const landmarksCanvasRef = useRef(null);
 
@@ -111,15 +121,15 @@ const DataOverviewPageContent = () => {
     });
   }, [setOnLandmarks]);
 
-  const loadGlobe = useCallback(async (ls, year, variable) => {
-    if (abortRef.current) abortRef.current.abort();
+  const loadMainSlice = useCallback(async (ls, year, variable) => {
+    if (mainAbortRef.current) mainAbortRef.current.abort();
     const ctrl = new AbortController();
-    abortRef.current = ctrl;
+    mainAbortRef.current = ctrl;
     setLoadingGlobe(true);
     try {
-      const d = await fetchGlobeData(year, ls, variable, ctrl.signal, { dataSource: dataSourceMode });
+      const d = await fetchOverviewGlobeData(year, ls, variable, ctrl.signal, { dataSource: dataSourceMode });
       if (!ctrl.signal.aborted) {
-        setOzoneData({
+        setMcdMainSlice({
           points: d.points || [],
           minVal: d.minVal ?? 0,
           maxVal: d.maxVal ?? 1,
@@ -134,18 +144,42 @@ const DataOverviewPageContent = () => {
         setLoadingGlobe(false);
       }
     }
-  }, [dataSourceMode, setSourceMeta]);
+  }, [dataSourceMode, setMcdMainSlice, setSourceMeta]);
+
+  const loadOzoneOverlay = useCallback(async (ls, year) => {
+    if (overlayAbortRef.current) overlayAbortRef.current.abort();
+    if (globeVariable !== 'o3col' || ozoneDisplayMode === 'mcd') {
+      setOzoneOverlayPayload(null);
+      return;
+    }
+
+    const ctrl = new AbortController();
+    overlayAbortRef.current = ctrl;
+    try {
+      const payload = await fetchOverviewOzoneSources(year, ls, { dataSource: dataSourceMode });
+      if (!ctrl.signal.aborted) {
+        setOzoneOverlayPayload(payload);
+      }
+    } catch (e) {
+      if (!ctrl.signal.aborted) {
+        console.error('Ozone overlay data error:', e);
+        setOzoneOverlayPayload(null);
+      }
+    }
+  }, [dataSourceMode, globeVariable, ozoneDisplayMode, setOzoneOverlayPayload]);
 
   useEffect(() => {
     let active = true;
     setIsSwitchingSource(true);
-    fetchDataInfo({ dataSource: dataSourceMode })
+    fetchOverviewInfo({ dataSource: dataSourceMode })
       .then((info) => {
         if (!active) return;
         const years = Array.isArray(info?.available_years) && info.available_years.length > 0
           ? info.available_years
           : [27, 28];
         setAvailableMarsYears(years);
+        setOverviewTimeline(info?.timeline || { min: 0, max: 360, step: 5 });
+        setOverviewOzoneCapabilities(info?.ozone_capabilities || { openmars: true, nomad: false, diff_pairs: ['MCD-OpenMARS'] });
         setSourceMeta(info?.source_meta || null);
         setMarsYear((prev) => (years.includes(prev) ? prev : years[0]));
       })
@@ -161,25 +195,43 @@ const DataOverviewPageContent = () => {
     return () => {
       active = false;
     };
-  }, [dataSourceMode, setAvailableMarsYears, setMarsYear, setSourceMeta, setIsSwitchingSource, user?.id]);
+  }, [dataSourceMode, setAvailableMarsYears, setMarsYear, setOverviewOzoneCapabilities, setOverviewTimeline, setSourceMeta, setIsSwitchingSource, user?.id]);
 
   useEffect(() => {
-    loadGlobe(globalTimeLs, marsYear, globeVariable);
-  }, [globalTimeLs, marsYear, globeVariable, dataSourceMode, loadGlobe]);
+    loadMainSlice(globalTimeLs, marsYear, globeVariable);
+  }, [globalTimeLs, marsYear, globeVariable, dataSourceMode, loadMainSlice]);
+
+  useEffect(() => {
+    loadOzoneOverlay(globalTimeLs, marsYear);
+  }, [globalTimeLs, marsYear, dataSourceMode, globeVariable, ozoneDisplayMode, loadOzoneOverlay]);
+
+  const sceneModel = useMemo(
+    () => buildOverviewSceneModel({
+      globeVariable,
+      ozoneDisplayMode,
+      ozoneDiffPair,
+      mainSlice: mcdMainSlice,
+      ozoneOverlay: ozoneOverlayPayload,
+    }),
+    [globeVariable, ozoneDisplayMode, ozoneDiffPair, mcdMainSlice, ozoneOverlayPayload],
+  );
 
   useEffect(() => {
     if (isPlayingTimeline) {
       timerRef.current = setInterval(() => {
         setGlobalTimeLs(v => {
-          if (v >= 355) { setIsPlayingTimeline(false); return 0; }
-          return v + 5;
+          const min = Number.isFinite(overviewTimeline?.min) ? overviewTimeline.min : 0;
+          const max = Number.isFinite(overviewTimeline?.max) ? overviewTimeline.max : 360;
+          const step = Number.isFinite(overviewTimeline?.step) ? overviewTimeline.step : 5;
+          if (v >= max - step) { setIsPlayingTimeline(false); return min; }
+          return Math.min(max, v + step);
         });
       }, 600);
     } else {
       clearInterval(timerRef.current);
     }
     return () => clearInterval(timerRef.current);
-  }, [isPlayingTimeline, setGlobalTimeLs, setIsPlayingTimeline]);
+  }, [isPlayingTimeline, overviewTimeline, setGlobalTimeLs, setIsPlayingTimeline]);
 
   return (
     <div className="space-scene" style={{ width: '100vw', height: '100vh', overflow: 'hidden', position: 'relative' }}>
@@ -188,7 +240,8 @@ const DataOverviewPageContent = () => {
       <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }}>
         <Mars3DBackground
           ref={globeCanvasRef}
-          ozoneData={ozoneData}
+          ozoneData={sceneModel.layers[0] || mcdMainSlice}
+          sceneModel={sceneModel}
           is3DMode={true}
           autoRotate={autoRotate}
           showConcentration3D={showConcentration3D}
@@ -274,7 +327,7 @@ const DataOverviewPageContent = () => {
         </div>
 
         <div style={{ pointerEvents: 'auto' }}>
-          <DetailPanel ozoneData={ozoneData} dataSourceMode={dataSourceMode} />
+          <DetailPanel sliceData={mcdMainSlice} dataSourceMode={dataSourceMode} />
         </div>
 
         <div style={{ pointerEvents: 'auto' }}>
@@ -286,7 +339,7 @@ const DataOverviewPageContent = () => {
         </div>
 
         <div style={{ pointerEvents: 'auto' }}>
-          <GlobeLegend ozoneData={ozoneData} />
+          <GlobeLegend ozoneData={sceneModel.layers[0] || mcdMainSlice} sceneModel={sceneModel} />
         </div>
       </div>
 

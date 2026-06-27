@@ -14,6 +14,8 @@ from schemas.explore import (
     CorrelationResponse,
     GlobeDataResponse,
     HeatmapResponse,
+    OverviewInfoResponse,
+    OverviewOzoneSourcesResponse,
     SeasonalBandsResponse,
 )
 from services.analysis_service import AnalysisService
@@ -110,6 +112,252 @@ async def _resolve_analysis_context(
             )
 
     return service, resolution.source_meta(), resolution.mars_year
+
+
+def _overview_source_meta(data_source: str, mars_year: int) -> dict:
+    requested = _normalize_source(data_source)
+    if requested == "personal":
+        return {
+            "requested_source": "personal",
+            "effective_source": "default",
+            "fallback": True,
+            "message": "MCD-only overview currently uses the default runtime dataset.",
+            "mars_year": mars_year,
+        }
+    return {
+        "requested_source": "default",
+        "effective_source": "default",
+        "fallback": False,
+        "message": None,
+        "mars_year": mars_year,
+    }
+
+
+def _resolve_overview_context(request: Request, my: int, data_source: str) -> tuple[AnalysisService, dict, int]:
+    service = request.app.state.mcd_overview_analysis_service
+    source_meta = _overview_source_meta(data_source, my)
+    return service, source_meta, my
+
+
+@router.get("/overview/info", response_model=OverviewInfoResponse)
+async def get_overview_info(
+    request: Request,
+    data_source: str = Query("default", description="default | personal"),
+):
+    try:
+        overview_service = request.app.state.mcd_overview_service
+        years = overview_service.get_available_years()
+        primary_year = DEFAULT_MARS_YEAR if DEFAULT_MARS_YEAR in years else years[0]
+        ls_min, ls_max = overview_service.get_ls_range(primary_year)
+        return {
+            "available_years": years,
+            "timeline": {
+                "min": float(ls_min),
+                "max": float(ls_max),
+                "step": 5.0,
+            },
+            "ozone_capabilities": {
+                "openmars": True,
+                "nomad": False,
+                "diff_pairs": ["MCD-OpenMARS"],
+            },
+            "source_meta": _overview_source_meta(data_source, primary_year),
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"获取 MCD 总览信息失败: {exc}")
+
+
+@router.get("/overview/globe", response_model=GlobeDataResponse)
+async def get_overview_globe_data(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    ls: float = Query(10.0, ge=0, le=360, description="太阳黄经 Ls"),
+    variable: str = Query("o3col", description="显示变量", enum=["o3col"] + MCD_VARIABLES),
+    data_source: str = Query("default", description="default | personal"),
+):
+    try:
+        service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
+        result = service.get_globe_data(resolved_year, ls, variable=variable)
+        return _with_source_meta(result, source_meta)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"MCD 总览球体数据处理错误: {exc}")
+
+
+@router.get("/overview/seasonal-heatmap", response_model=HeatmapResponse)
+async def get_overview_seasonal_heatmap(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    data_source: str = Query("default", description="default | personal"),
+):
+    try:
+        service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
+        result = service.get_seasonal_heatmap(resolved_year, variable="o3col")
+        return _with_source_meta(result, source_meta)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get("/overview/env-heatmap", response_model=HeatmapResponse)
+async def get_overview_env_variable_heatmap(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    variable: str = Query(..., description="变量名", enum=MCD_VARIABLES),
+    data_source: str = Query("default", description="default | personal"),
+):
+    try:
+        service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
+        result = service.get_env_variable_heatmap(resolved_year, variable)
+        return _with_source_meta(result, source_meta)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get("/overview/correlation", response_model=CorrelationResponse)
+async def get_overview_correlation_matrix(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    data_source: str = Query("default", description="default | personal"),
+):
+    try:
+        service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
+        result = service.get_correlation_matrix(resolved_year)
+        return _with_source_meta(result, source_meta)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get("/overview/diurnal")
+async def get_overview_diurnal(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    ls: float = Query(90.0, description="太阳黄经 Ls"),
+    lat_band: str = Query("Equatorial (30S-30N)", description="纬度带名称"),
+    data_source: str = Query("default", description="default | personal"),
+):
+    try:
+        service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
+        result = service.get_diurnal_data(resolved_year, ls, lat_band)
+        return _with_source_meta(result, source_meta)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/overview/coupling")
+async def get_overview_coupling(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    var1: str = Query("o3col", description="变量1"),
+    var2: str = Query("Dust_Optical_Depth", description="变量2"),
+    data_source: str = Query("default", description="default | personal"),
+):
+    try:
+        service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
+        result = service.get_coupling_data(resolved_year, var1, var2)
+        return _with_source_meta(result, source_meta)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/overview/zonal-anomaly")
+async def get_overview_zonal_anomaly(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    variable: str = Query("o3col", description="变量名"),
+    data_source: str = Query("default", description="default | personal"),
+):
+    try:
+        service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
+        result = service.get_zonal_anomalies(resolved_year, variable)
+        return _with_source_meta(result, source_meta)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/overview/solar-photochemical")
+async def get_overview_solar_photochemical(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    lat_band: str = Query("Equatorial (30S-30N)", description="纬度带名称"),
+    data_source: str = Query("default", description="default | personal"),
+):
+    try:
+        service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
+        result = service.get_solar_photochemical(resolved_year, lat_band)
+        return _with_source_meta(result, source_meta)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/overview/polar-dynamics")
+async def get_overview_polar_dynamics(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    data_source: str = Query("default", description="default | personal"),
+):
+    try:
+        service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
+        result = service.get_polar_dynamics(resolved_year)
+        return _with_source_meta(result, source_meta)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/overview/research-suite")
+async def get_overview_research_suite(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    data_source: str = Query("default", description="default | personal"),
+):
+    try:
+        service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
+        result = service.get_research_suite(resolved_year)
+        return _with_source_meta(result, source_meta)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/overview/phase-space")
+async def get_overview_phase_space(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    driver: str = Query("Dust_Optical_Depth", description="驱动变量", enum=MCD_VARIABLES),
+    data_source: str = Query("default", description="default | personal"),
+):
+    try:
+        service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
+        result = service.get_phase_space(resolved_year, driver)
+        return _with_source_meta(result, source_meta)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/overview/ozone-sources", response_model=OverviewOzoneSourcesResponse)
+async def get_overview_ozone_sources(
+    request: Request,
+    my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
+    ls: float = Query(10.0, ge=0, le=360, description="太阳黄经 Ls"),
+    data_source: str = Query("default", description="default | personal"),
+):
+    try:
+        _normalize_source(data_source)
+        overview_service = request.app.state.mcd_overview_service
+        return overview_service.get_ozone_overlay_payload(my, ls)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"MCD 总览臭氧多源数据处理错误: {exc}")
 
 
 @router.get("/globe", response_model=GlobeDataResponse)

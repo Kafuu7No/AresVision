@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useSettings } from '../../../contexts/SettingsContext';
-import { fetchZonalAnomaly } from '../../../services/api';
+import { fetchOverviewZonalAnomaly } from '../../../services/api';
 import useAiInsightRegistration from './useAiInsightRegistration';
 import { roundValue, sampleSeries } from './aiInsight';
 
@@ -106,7 +106,7 @@ export default function WaveBandDiagnosticsChart({ marsYear, dataSourceMode = 'd
     let active = true;
     setLoading(true);
 
-    fetchZonalAnomaly(marsYear, variable, { dataSource: dataSourceMode })
+    fetchOverviewZonalAnomaly(marsYear, variable, { dataSource: dataSourceMode })
       .then((res) => {
         if (active) setRawData(res || null);
       })

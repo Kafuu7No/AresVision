@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
-import { fetchCorrelation, fetchEnvHeatmap, fetchSeasonalHeatmap } from '../../../services/api';
+import { fetchOverviewCorrelation, fetchOverviewEnvHeatmap, fetchOverviewSeasonalHeatmap } from '../../../services/api';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { ozoneLabel, convertOzone } from '../../../utils/units';
 import { fmtNum } from '../../../utils/fmt';
@@ -204,9 +204,9 @@ export default function CorrelationMatrix({ marsYear, dataSourceMode = 'default'
     let active = true;
     setLoading(true);
     Promise.all([
-      fetchCorrelation(marsYear, { dataSource: dataSourceMode }),
-      fetchSeasonalHeatmap(marsYear, { dataSource: dataSourceMode }),
-      Promise.all(VARIABLE_META_BASE.map((meta) => fetchEnvHeatmap(marsYear, meta.id, { dataSource: dataSourceMode }))),
+      fetchOverviewCorrelation(marsYear, { dataSource: dataSourceMode }),
+      fetchOverviewSeasonalHeatmap(marsYear, { dataSource: dataSourceMode }),
+      Promise.all(VARIABLE_META_BASE.map((meta) => fetchOverviewEnvHeatmap(marsYear, meta.id, { dataSource: dataSourceMode }))),
     ])
       .then(([corrRes, ozoneRes, envRes]) => {
         if (!active) return;

@@ -24,7 +24,7 @@ function unitLabelByVariable(variable, units) {
   return '';
 }
 
-export default function GlobeLegend({ ozoneData }) {
+export default function GlobeLegend({ ozoneData, sceneModel }) {
   const { settings } = useSettings();
   const isLight = settings?.theme === 'light';
   const isZh = settings?.language !== 'en';
@@ -52,6 +52,15 @@ export default function GlobeLegend({ ozoneData }) {
     });
     return `linear-gradient(90deg, ${pts.join(', ')})`;
   })();
+
+  const sourceItems = [
+    { id: 'mcd', label: 'MCD', color: '#f97316' },
+    { id: 'openmars', label: 'OpenMARS', color: '#38bdf8' },
+    { id: 'nomad', label: 'NOMAD', color: '#34d399' },
+  ];
+
+  const activeSourceIds = new Set((sceneModel?.layers || []).map((layer) => layer.source || layer.id));
+  const diffGradient = 'linear-gradient(90deg, #2b6cb0 0%, #f8fafc 50%, #c2410c 100%)';
 
   return (
     <div
@@ -92,30 +101,51 @@ export default function GlobeLegend({ ozoneData }) {
           </div>
         </div>
 
-        <div
-          style={{
-            height: 10,
-            borderRadius: 999,
-            border: `1px solid ${C.border}`,
-            background: horizontalGradient,
-            marginBottom: 8,
-          }}
-        />
+        {sceneModel?.legendMode === 'sources' ? (
+          <div style={{ display: 'grid', gap: 8 }}>
+            {sourceItems.map((item) => {
+              const active = activeSourceIds.has(item.id);
+              return (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, opacity: active ? 1 : 0.36 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: C.ice60, fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700 }}>
+                    <span style={{ width: 9, height: 9, borderRadius: 999, background: item.color, boxShadow: `0 0 10px ${item.color}88` }} />
+                    {item.label}
+                  </span>
+                  <span style={{ color: active ? C.ice40 : C.ice30, fontSize: 'calc(9px * var(--font-scale, 1))' }}>
+                    {active ? (isZh ? '可用' : 'Available') : (isZh ? '无数据' : 'No data')}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <>
+            <div
+              style={{
+                height: 10,
+                borderRadius: 999,
+                border: `1px solid ${C.border}`,
+                background: sceneModel?.legendMode === 'diff' ? diffGradient : horizontalGradient,
+                marginBottom: 8,
+              }}
+            />
 
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            fontSize: 'calc(9px * var(--font-scale, 1))',
-            color: C.ice,
-            fontWeight: 700,
-          }}
-        >
-          <span>{minVal}</span>
-          <span style={{ color: C.ice60 }}>{midVal}</span>
-          <span>{maxVal}</span>
-        </div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: 'calc(9px * var(--font-scale, 1))',
+                color: C.ice,
+                fontWeight: 700,
+              }}
+            >
+              <span>{minVal}</span>
+              <span style={{ color: C.ice60 }}>{sceneModel?.legendMode === 'diff' ? '0.000' : midVal}</span>
+              <span>{maxVal}</span>
+            </div>
+          </>
+        )}
       </GlowCard>
     </div>
   );

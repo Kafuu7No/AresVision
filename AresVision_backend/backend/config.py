@@ -14,6 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 OPENMARS_DIR = DATA_DIR / "openmars"
 MCD_DIR = DATA_DIR / "mcd"
+MCD_OVERVIEW_DIR = DATA_DIR / "mcd_overview"
 MODEL_DIR = BASE_DIR / "models" / "predrnnv2"
 PERF_CACHE_DIR = DATA_DIR / "perf_cache"
 PERSONAL_CACHE_DIR = DATA_DIR / "personal_cache"
@@ -23,6 +24,7 @@ SUPPORTED_MARS_YEARS = [27, 28]
 DEFAULT_MARS_YEAR = 27
 N_LAT = 36
 N_LON = 72
+OVERVIEW_OZONE_MATCH_TOLERANCE_LS = 2.5
 
 MCD_VARIABLES = [
     "U_Wind", "V_Wind", "Dust_Optical_Depth",

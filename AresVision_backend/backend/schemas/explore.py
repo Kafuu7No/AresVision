@@ -59,3 +59,36 @@ class CorrelationResponse(BaseModel):
     matrix: list[list[float]]
     variable_names: list[str]
     source_meta: SourceMeta | None = None
+
+
+class OverviewTimeline(BaseModel):
+    min: float
+    max: float
+    step: float
+
+
+class OverviewInfoResponse(BaseModel):
+    available_years: list[int]
+    timeline: OverviewTimeline
+    ozone_capabilities: dict
+    source_meta: SourceMeta | None = None
+
+
+class OzoneSourceLayerResponse(BaseModel):
+    source: str
+    points: list[GlobePoint]
+    minVal: float
+    maxVal: float
+    ls: float
+
+
+class OverviewOzoneSourcesResponse(BaseModel):
+    mars_year: int
+    requested_ls: float
+    anchor_ls: float
+    mcd: OzoneSourceLayerResponse
+    openmars: OzoneSourceLayerResponse | None = None
+    nomad: OzoneSourceLayerResponse | None = None
+    available_sources: list[str]
+    diff_candidates: list[str]
+    capabilities: dict

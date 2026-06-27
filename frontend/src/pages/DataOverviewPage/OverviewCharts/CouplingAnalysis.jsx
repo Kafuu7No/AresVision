@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useSettings } from '../../../contexts/SettingsContext';
-import { fetchCouplingData } from '../../../services/api';
+import { fetchOverviewCouplingData } from '../../../services/api';
 import useAiInsightRegistration from './useAiInsightRegistration';
 import { correlation, roundValue, sampleSeries, summarizeSeries } from './aiInsight';
 
@@ -44,7 +44,7 @@ export default function CouplingAnalysis({ marsYear, dataSourceMode = 'default' 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetchCouplingData(marsYear, 'o3col', 'Dust_Optical_Depth', { dataSource: dataSourceMode })
+    fetchOverviewCouplingData(marsYear, 'o3col', 'Dust_Optical_Depth', { dataSource: dataSourceMode })
       .then((res) => {
         if (active) {
           setData(res);

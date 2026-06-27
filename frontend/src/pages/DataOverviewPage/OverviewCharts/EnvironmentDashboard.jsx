@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
-import { fetchEnvHeatmap, fetchSeasonalHeatmap } from '../../../services/api';
+import { fetchOverviewEnvHeatmap, fetchOverviewSeasonalHeatmap } from '../../../services/api';
 import { useT } from '../../../i18n';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { convertTemp, tempLabel, convertWind, windLabel } from '../../../utils/units';
@@ -225,8 +225,8 @@ export default function EnvironmentDashboard({ marsYear, dataSourceMode = 'defau
     let active = true;
     setLoading(true);
     Promise.all([
-      fetchSeasonalHeatmap(marsYear, { dataSource: dataSourceMode }),
-      ...VARIABLE_META_BASE.map((meta) => fetchEnvHeatmap(marsYear, meta.id, { dataSource: dataSourceMode })),
+      fetchOverviewSeasonalHeatmap(marsYear, { dataSource: dataSourceMode }),
+      ...VARIABLE_META_BASE.map((meta) => fetchOverviewEnvHeatmap(marsYear, meta.id, { dataSource: dataSourceMode })),
     ])
       .then(([ozoneRes, ...envResults]) => {
         if (!active) return;

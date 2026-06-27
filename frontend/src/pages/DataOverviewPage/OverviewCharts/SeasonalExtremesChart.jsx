@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useSettings } from '../../../contexts/SettingsContext';
-import { fetchEnvHeatmap, fetchSeasonalHeatmap } from '../../../services/api';
+import { fetchOverviewEnvHeatmap, fetchOverviewSeasonalHeatmap } from '../../../services/api';
 import {
   convertOzone,
   ozoneLabel,
@@ -156,8 +156,8 @@ export default function SeasonalExtremesChart({ marsYear, dataSourceMode = 'defa
     setLoading(true);
 
     const fetcher = variable === 'o3col'
-      ? fetchSeasonalHeatmap(marsYear, { dataSource: dataSourceMode })
-      : fetchEnvHeatmap(marsYear, variable, { dataSource: dataSourceMode });
+      ? fetchOverviewSeasonalHeatmap(marsYear, { dataSource: dataSourceMode })
+      : fetchOverviewEnvHeatmap(marsYear, variable, { dataSource: dataSourceMode });
 
     Promise.resolve(fetcher)
       .then((res) => {

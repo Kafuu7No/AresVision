@@ -1,8 +1,55 @@
 import React, { forwardRef, useMemo } from 'react';
 import SphericalFieldCanvas from '../../components/SphericalFieldCanvas';
 
+function pointsToFieldData(layer) {
+  if (!layer?.points?.length) return null;
+  const latSet = new Set();
+  const lngSet = new Set();
+
+  layer.points.forEach((p) => {
+    latSet.add(Math.round(p.lat * 10) / 10);
+    lngSet.add((Math.round(p.lng * 10) / 10 + 360) % 360);
+  });
+
+  const lats = [...latSet].sort((a, b) => b - a);
+  const lngs = [...lngSet].sort((a, b) => a - b);
+
+  const latIdxMap = new Map();
+  lats.forEach((lat, idx) => latIdxMap.set(lat, idx));
+
+  const lngIdxMap = new Map();
+  lngs.forEach((lng, idx) => lngIdxMap.set(lng, idx));
+
+  const nLat = lats.length;
+  const nLon = lngs.length;
+  const field = Array(nLat).fill(0).map(() => Array(nLon).fill(NaN));
+
+  layer.points.forEach((p) => {
+    const lat = Math.round(p.lat * 10) / 10;
+    const lng = ((Math.round(p.lng * 10) / 10) + 360) % 360;
+    const i = latIdxMap.get(lat);
+    const j = lngIdxMap.get(lng);
+    if (i !== undefined && j !== undefined) {
+      field[i][j] = p.val;
+    }
+  });
+
+  return {
+    field,
+    minVal: layer.minVal,
+    maxVal: layer.maxVal,
+  };
+}
+
+const SOURCE_TINTS = {
+  mcd: '#f97316',
+  openmars: '#38bdf8',
+  nomad: '#34d399',
+};
+
 const Mars3DBackground = forwardRef(({
   ozoneData,
+  sceneModel,
   is3DMode,
   autoRotate,
   showConcentration3D,
@@ -12,45 +59,27 @@ const Mars3DBackground = forwardRef(({
   rightPanelWidth,
   onGlobeClick,
 }, ref) => {
-  const fieldData = useMemo(() => {
-    if (!ozoneData?.points?.length) return null;
-    const latSet = new Set();
-    const lngSet = new Set();
-    
-    ozoneData.points.forEach(p => {
-      latSet.add(Math.round(p.lat * 10) / 10);
-      lngSet.add((Math.round(p.lng * 10) / 10 + 360) % 360);
-    });
-    
-    const lats = [...latSet].sort((a, b) => b - a);
-    const lngs = [...lngSet].sort((a, b) => a - b);
+  const layerFields = useMemo(() => {
+    const layers = sceneModel?.layers?.length ? sceneModel.layers : [ozoneData].filter(Boolean);
+    return layers
+      .map((layer, index) => {
+        const fieldData = pointsToFieldData(layer);
+        if (!fieldData) return null;
+        const source = layer.source || layer.id || `layer-${index}`;
+        const isMultiSource = sceneModel?.renderMode === 'multi-source';
+        return {
+          id: layer.id || source,
+          source,
+          fieldData,
+          colorMode: sceneModel?.colorMode || 'inferno',
+          tint: isMultiSource ? SOURCE_TINTS[source] : null,
+          radiusOffset: isMultiSource ? index * 0.012 : 0,
+        };
+      })
+      .filter(Boolean);
+  }, [ozoneData, sceneModel]);
 
-    const latIdxMap = new Map();
-    lats.forEach((lat, idx) => latIdxMap.set(lat, idx));
-    
-    const lngIdxMap = new Map();
-    lngs.forEach((lng, idx) => lngIdxMap.set(lng, idx));
-
-    const nLat = lats.length;
-    const nLon = lngs.length;
-    const field = Array(nLat).fill(0).map(() => Array(nLon).fill(NaN));
-
-    ozoneData.points.forEach(p => {
-      const lat = Math.round(p.lat * 10) / 10;
-      const lng = ((Math.round(p.lng * 10) / 10) + 360) % 360;
-      const i = latIdxMap.get(lat);
-      const j = lngIdxMap.get(lng);
-      if (i !== undefined && j !== undefined) {
-        field[i][j] = p.val;
-      }
-    });
-
-    return {
-      field,
-      minVal: ozoneData.minVal,
-      maxVal: ozoneData.maxVal
-    };
-  }, [ozoneData]);
+  const fieldData = layerFields[0]?.fieldData || null;
 
   if (!fieldData) return null;
 
@@ -69,7 +98,8 @@ const Mars3DBackground = forwardRef(({
       <SphericalFieldCanvas
         ref={ref}
         fieldData={fieldData}
-        colorMode="inferno"
+        fieldLayers={layerFields}
+        colorMode={sceneModel?.colorMode || 'inferno'}
         h="100vh"
         forceFullscreen
         autoRotate={autoRotate}

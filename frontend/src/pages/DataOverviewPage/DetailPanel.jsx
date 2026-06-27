@@ -40,7 +40,7 @@ const CARD_TITLES = {
   correlation: { zh: '点位相关', en: 'Correlation' },
 };
 
-export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
+export default function DetailPanel({ sliceData, dataSourceMode = 'default' }) {
   const { settings } = useSettings();
   const isLight = settings?.theme === 'light';
   const isZh = settings?.language !== 'en';
@@ -162,11 +162,11 @@ export default function DetailPanel({ ozoneData, dataSourceMode = 'default' }) {
       <DataDistribution
         marsYear={marsYear}
         lsValue={globalTimeLs}
-        ozoneData={ozoneData}
+        sliceData={sliceData}
         coordinate={selectedCoordinate}
       />
     ),
-    [marsYear, globalTimeLs, ozoneData, selectedCoordinate],
+    [marsYear, globalTimeLs, sliceData, selectedCoordinate],
   );
   const correlationComponent = useMemo(
     () => <CorrelationMatrix marsYear={marsYear} coordinate={selectedCoordinate} dataSourceMode={dataSourceMode} />,
