@@ -11,10 +11,19 @@ export default function PredictMetrics({
   metrics,
   precision,
   ozoneUnit,
+  modelMode = 'system',
 }) {
   const t = useT();
   const { settings } = useSettings();
   const isZh = settings?.language !== 'en';
+  const isTrainedMode = modelMode === 'trained';
+  const subtitle = isTrainedMode
+    ? (isZh
+      ? '汇总所选训练模型在整个测试集上的整体指标。'
+      : 'Summarizes the selected trained model across the full test set.')
+    : (isZh
+      ? '汇总当前预测结果的整体质量，帮助快速判断模型在这一轮推演中的稳定性。'
+      : 'Summarizes overall model quality for the current prediction run.');
 
   return (
     <GlowCard style={{ padding: 20 }}>
@@ -22,9 +31,8 @@ export default function PredictMetrics({
         {t('predict.evalTitle')}
       </div>
       <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice50, marginBottom: 16 }}>
-        {isZh ? '汇总当前预测结果的整体质量，帮助快速判断模型在这一轮推演中的稳定性。' : 'Summarizes overall model quality for the current prediction run.'}
+        {subtitle}
       </div>
-
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16 }}>
         {METRIC_META.map((m) => {
           const val = metrics?.overall?.[m.key];

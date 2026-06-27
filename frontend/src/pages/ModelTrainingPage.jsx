@@ -52,6 +52,10 @@ import {
   getModelTrainingControlVisibility,
   getVisibleTrainingHyperparameters,
 } from './ModelTrainingPage/modelTrainingVisibility';
+import {
+  TRAINING_TASK_HANDOFF_KEY,
+  buildTrainingTaskHandoff,
+} from './PredictPage/trainedModelSelection';
 
 const MONO_FONT = "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace";
 const PERSONAL_BOUNCE_MS = 720;
@@ -288,6 +292,7 @@ function TrainingTaskCard({
   onStop,
   onDelete,
   onTest,
+  onAnalyze,
 }) {
   const statusMeta = getStatusMeta(task.status, t);
   const hyperparameters = useMemo(() => parseHyperparameters(task.hyperparameters), [task.hyperparameters]);
@@ -507,20 +512,36 @@ function TrainingTaskCard({
         )}
 
         {task.status === 'completed' && (
-          <button
-            onClick={(event) => {
-              event.stopPropagation();
-              onTest(task.id);
-            }}
-            style={{
-              ...actionBaseStyle,
-              background: 'rgba(199,91,57,0.10)',
-              border: '1px solid rgba(199,91,57,0.18)',
-              color: C.mars,
-            }}
-          >
-            {copy.testModel}
-          </button>
+          <>
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                onTest(task.id);
+              }}
+              style={{
+                ...actionBaseStyle,
+                background: 'rgba(199,91,57,0.10)',
+                border: '1px solid rgba(199,91,57,0.18)',
+                color: C.mars,
+              }}
+            >
+              {copy.testModel}
+            </button>
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                onAnalyze(task);
+              }}
+              style={{
+                ...actionBaseStyle,
+                background: 'rgba(74,158,255,0.12)',
+                border: '1px solid rgba(74,158,255,0.22)',
+                color: C.blue,
+              }}
+            >
+              {copy.analyzeInPredict || (copy.testModel === 'Test model' ? 'Analyze in prediction' : '去预测分析')}
+            </button>
+          </>
         )}
 
         <button
@@ -1293,6 +1314,19 @@ export default function ModelTrainingPage() {
       alert(t('modelTraining.deleteError') + error.message);
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleAnalyzeTask = (task) => {
+    const handoff = buildTrainingTaskHandoff(task);
+    if (!handoff) return;
+
+    sessionStorage.setItem(TRAINING_TASK_HANDOFF_KEY, JSON.stringify(handoff));
+    window.history.pushState(null, '', '#/predict?from=training');
+    if (typeof PopStateEvent === 'function') {
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    } else {
+      window.dispatchEvent(new Event('popstate'));
     }
   };
 
@@ -2298,6 +2332,7 @@ export default function ModelTrainingPage() {
                   onStop={handleStopTask}
                   onDelete={setConfirmDeleteId}
                   onTest={setTestTaskId}
+                  onAnalyze={handleAnalyzeTask}
                 />
               ))}
             </div>

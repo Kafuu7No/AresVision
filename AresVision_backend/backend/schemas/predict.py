@@ -1,6 +1,8 @@
 """
 预测分析页 — 请求/响应 Schema
 """
+from typing import Any
+
 from pydantic import BaseModel, Field
 from schemas.explore import SourceMeta
 
@@ -13,6 +15,7 @@ class PredictRequest(BaseModel):
     horizon: int = Field(default=3, ge=1, le=3)
     ls_start: float = Field(default=90.0, ge=0, le=360)
     mars_year: int = Field(default=27)
+    training_task_id: int | None = Field(default=None, ge=1)
 
 
 class PredictFieldData(BaseModel):
@@ -47,6 +50,30 @@ class EvalMetricsResponse(BaseModel):
     overall: StepMetrics
     per_step: list[StepMetrics]
     source_meta: SourceMeta | None = None
+
+
+class TrainingModelCompareRequest(BaseModel):
+    task_ids: list[int] = Field(..., min_length=2)
+    horizon: int = Field(default=3, ge=1, le=3)
+
+
+class TrainingModelMetrics(BaseModel):
+    overall: StepMetrics
+    per_step: list[StepMetrics]
+
+
+class TrainingModelCompareItem(BaseModel):
+    task_id: int
+    model_name: str
+    model_source: str
+    architecture: str
+    selected_channels: list[str] = Field(default_factory=list)
+    hyperparameters: dict[str, Any] = Field(default_factory=dict)
+    metrics: TrainingModelMetrics
+
+
+class TrainingModelCompareResponse(BaseModel):
+    items: list[TrainingModelCompareItem]
 
 
 class AblationItem(BaseModel):

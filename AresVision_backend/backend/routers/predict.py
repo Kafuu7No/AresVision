@@ -15,6 +15,7 @@ from schemas.predict import (
     PredictRequest, PredictResponse,
     EvalMetricsResponse, AblationResponse, DiurnalResponse,
     PerformanceResponse, PerformanceCompareRequest, PerformanceCompareResponse,
+    TrainingModelCompareRequest, TrainingModelCompareResponse,
     ErrorDistributionResponse, GlobalShapResponse, PermutationImportanceResponse,
 )
 from config import DEFAULT_MARS_YEAR, LATITUDE_BANDS
@@ -34,6 +35,13 @@ def _get_predict_service(request: Request):
 
 def _get_analysis_service(request: Request):
     return request.app.state.analysis_service
+
+
+def _get_training_inference_service(request: Request):
+    service = getattr(request.app.state, "training_inference_service", None)
+    if service is None:
+        raise HTTPException(status_code=500, detail="training inference service unavailable")
+    return service
 
 
 def _get_personal_predict_service_cache(request: Request) -> LRUCache:
@@ -168,6 +176,35 @@ async def run_prediction(
     杩斿洖鐪熷€煎満銆侀娴嬪満銆佸樊鍊煎満銆?
     """
     try:
+        if body.training_task_id:
+            service = _get_training_inference_service(request)
+            result = await service.predict_task(
+                task_id=body.training_task_id,
+                mars_year=body.mars_year,
+                ls_start=body.ls_start,
+                horizon=body.horizon,
+                current_user=current_user,
+                data_service=getattr(request.app.state, "data_service", None),
+                personal_source_service=getattr(request.app.state, "personal_data_source_service", None),
+            )
+            source_meta = result.get("source_meta") or {
+                "requested_source": "training_task",
+                "effective_source": "training_task",
+                "fallback": False,
+                "message": None,
+                "mars_year": body.mars_year,
+            }
+            return {
+                "ground_truth": result["ground_truth"],
+                "prediction": result["prediction"],
+                "residual": result["residual"],
+                "selected_variables": result["selected_variables"],
+                "horizon": result["horizon"],
+                "ls_values": result["ls_values"],
+                "model_info": result["model_info"],
+                "source_meta": source_meta,
+            }
+
         ps, source_meta, resolved_year = await _resolve_predict_context(
             request, body.mars_year, data_source, current_user
         )
@@ -189,6 +226,10 @@ async def run_prediction(
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"棰勬祴閿欒: {e}")
 
@@ -204,6 +245,27 @@ async def get_eval_metrics(
 ):
     """鑾峰彇棰勬祴璇勪及鎸囨爣锛圧MSE, MAE, SSIM, R虏锛?"""
     try:
+        if body.training_task_id:
+            service = _get_training_inference_service(request)
+            metrics = await service.task_test_set_metrics(
+                task_id=body.training_task_id,
+                mars_year=body.mars_year,
+                ls_start=body.ls_start,
+                horizon=body.horizon,
+                current_user=current_user,
+                data_service=getattr(request.app.state, "data_service", None),
+                personal_source_service=getattr(request.app.state, "personal_data_source_service", None),
+            )
+            metrics = dict(metrics)
+            metrics["source_meta"] = metrics.get("source_meta") or {
+                "requested_source": "training_task",
+                "effective_source": "training_task",
+                "fallback": False,
+                "message": None,
+                "mars_year": body.mars_year,
+            }
+            return metrics
+
         ps, source_meta, resolved_year = await _resolve_predict_context(
             request, body.mars_year, data_source, current_user
         )
@@ -218,6 +280,82 @@ async def get_eval_metrics(
         return metrics
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except HTTPException:
+        raise
+
+
+@router.post("/training-models/compare", response_model=TrainingModelCompareResponse)
+async def compare_training_models(
+    request: Request,
+    body: TrainingModelCompareRequest = Body(...),
+    current_user: User | None = Depends(get_optional_user),
+):
+    """Compare completed training models using full test-set metrics."""
+    try:
+        service = _get_training_inference_service(request)
+        return await service.compare_task_test_set_metrics(
+            task_ids=body.task_ids,
+            horizon=body.horizon,
+            current_user=current_user,
+            data_service=getattr(request.app.state, "data_service", None),
+            personal_source_service=getattr(request.app.state, "personal_data_source_service", None),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except HTTPException:
+        raise
+
+
+@router.post("/training-models/compare-error-distribution")
+async def compare_training_model_error_distributions(
+    request: Request,
+    body: TrainingModelCompareRequest = Body(...),
+    current_user: User | None = Depends(get_optional_user),
+):
+    """Compare completed training models using full test-set error distributions."""
+    try:
+        service = _get_training_inference_service(request)
+        return await service.compare_task_error_distributions(
+            task_ids=body.task_ids,
+            horizon=body.horizon,
+            current_user=current_user,
+            data_service=getattr(request.app.state, "data_service", None),
+            personal_source_service=getattr(request.app.state, "personal_data_source_service", None),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except HTTPException:
+        raise
+
+
+@router.post("/training-models/compare-pfi")
+async def compare_training_model_pfi(
+    request: Request,
+    body: TrainingModelCompareRequest = Body(...),
+    current_user: User | None = Depends(get_optional_user),
+):
+    """Compare completed training models using full test-set permutation importance."""
+    try:
+        service = _get_training_inference_service(request)
+        return await service.compare_task_permutation_importance(
+            task_ids=body.task_ids,
+            horizon=body.horizon,
+            current_user=current_user,
+            data_service=getattr(request.app.state, "data_service", None),
+            personal_source_service=getattr(request.app.state, "personal_data_source_service", None),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except HTTPException:
+        raise
 
 
 @router.post("/prewarm")
@@ -424,14 +562,31 @@ async def get_model_info(request: Request):
 async def get_error_distribution(
     request: Request,
     vars: str = Query("Temperature,Dust_Optical_Depth,Solar_Flux_DN,U_Wind,V_Wind"),
+    training_task_id: int | None = Query(None, ge=1),
+    horizon: int = Query(3, ge=1, le=3),
+    current_user: User | None = Depends(get_optional_user),
 ):
     """鑾峰彇鏁翠釜娴嬭瘯闆嗕笂鐨勮宸垎甯冦€佹牳瀵嗗害鏁ｇ偣鍙婃煴鐘跺浘鏁版嵁"""
     try:
-        ps = _get_predict_service(request)
         selected_variables = [v.strip() for v in vars.split(",") if v.strip()]
+        if training_task_id:
+            service = _get_training_inference_service(request)
+            return await service.task_error_distribution(
+                task_id=training_task_id,
+                selected_variables=selected_variables,
+                horizon=horizon,
+                current_user=current_user,
+                data_service=getattr(request.app.state, "data_service", None),
+                personal_source_service=getattr(request.app.state, "personal_data_source_service", None),
+            )
+        ps = _get_predict_service(request)
         return ps.get_error_distribution(
             selected_variables=selected_variables
         )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"璇樊鍒嗗竷璁＄畻澶辫触: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -450,12 +605,33 @@ async def get_shapley_global(request: Request):
 async def get_permutation_importance(
     request: Request,
     vars: str = Query("Temperature,Dust_Optical_Depth,Solar_Flux_DN,U_Wind,V_Wind"),
+    training_task_id: int | None = Query(None, ge=1),
+    mars_year: int = Query(DEFAULT_MARS_YEAR),
+    ls_start: float = Query(90.0, ge=0, le=360),
+    horizon: int = Query(3, ge=1, le=3),
+    current_user: User | None = Depends(get_optional_user),
 ):
     """鑾峰彇鎺掑垪鐗瑰緛閲嶈鎬?(Permutation Feature Importance) 鍒嗚В缁撴灉"""
     try:
-        ps = _get_predict_service(request)
         selected_variables = [v.strip() for v in vars.split(",") if v.strip()]
+        if training_task_id:
+            service = _get_training_inference_service(request)
+            return await service.task_permutation_importance(
+                task_id=training_task_id,
+                selected_variables=selected_variables,
+                mars_year=mars_year,
+                ls_start=ls_start,
+                horizon=horizon,
+                current_user=current_user,
+                data_service=getattr(request.app.state, "data_service", None),
+                personal_source_service=getattr(request.app.state, "personal_data_source_service", None),
+            )
+        ps = _get_predict_service(request)
         return ps.get_permutation_importance(selected_variables=selected_variables)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"PFI 鍒嗘瀽澶辫触: {e}")
         raise HTTPException(status_code=500, detail=str(e))

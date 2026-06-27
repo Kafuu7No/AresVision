@@ -64,6 +64,7 @@ Thumbs.db
 # Docs excluded from git
 AGENTS.md
 CLAUDE.md
+docs/superpowers/plans/
 
 # Python/Testing
 .pytest_cache/

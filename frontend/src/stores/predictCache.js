@@ -11,10 +11,22 @@ const cache = {
   errorDistData: null,
   performanceData: null,
   params: null,
+  predictionMode: 'workflow',
   activeHorizon: 0,
   viewMode: 'triptych',
   compareConfigs: [],
   selectedCompareIds: [],
+  pfiData: null,
+  metricsKey: null,
+  errorDistKey: null,
+  pfiKey: null,
+  selectedCompareTrainingTaskIds: [],
+  compareTrainingMetricsData: null,
+  compareTrainingMetricsKey: null,
+  compareTrainingErrorData: null,
+  compareTrainingErrorKey: null,
+  compareTrainingPfiData: null,
+  compareTrainingPfiKey: null,
 };
 
 export function getPredictCache() {
@@ -31,8 +43,20 @@ export function clearPredictCache() {
   cache.errorDistData = null;
   cache.performanceData = null;
   cache.params = null;
+  cache.predictionMode = 'workflow';
   cache.activeHorizon = 0;
   cache.viewMode = 'triptych';
   cache.compareConfigs = [];
   cache.selectedCompareIds = [];
+  cache.pfiData = null;
+  cache.metricsKey = null;
+  cache.errorDistKey = null;
+  cache.pfiKey = null;
+  cache.selectedCompareTrainingTaskIds = [];
+  cache.compareTrainingMetricsData = null;
+  cache.compareTrainingMetricsKey = null;
+  cache.compareTrainingErrorData = null;
+  cache.compareTrainingErrorKey = null;
+  cache.compareTrainingPfiData = null;
+  cache.compareTrainingPfiKey = null;
 }

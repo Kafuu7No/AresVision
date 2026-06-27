@@ -1,8 +1,11 @@
+import { useMemo, useState } from 'react';
 import C from '../../constants/colors';
 import { useT } from '../../i18n';
 import GlowCard from '../../components/GlowCard';
 import { fmtNum } from '../../utils/fmt';
 import { useSettings } from '../../contexts/SettingsContext';
+import { buildTrainedModelParameterItems } from './trainedModelSelection';
+import { buildCompareModelSummary, getCompareSelectionState } from './CompareTrainingModels/compareTrainingModelsData';
 
 const SHORTHAND_MAP = {
   Temperature: 'T',
@@ -143,6 +146,295 @@ function ActionButton({ children, secondary = false, disabled = false, onClick, 
   );
 }
 
+function ModelSourceControl({
+  modelMode,
+  setModelMode,
+  trainingModelOptions,
+  selectedTrainingTaskId,
+  setSelectedTrainingTaskId,
+  selectedCompareTrainingTaskIds,
+  setSelectedCompareTrainingTaskIds,
+  trainingTasksLoading,
+  selectedTrainingOption,
+  isLight,
+  isZh,
+}) {
+  const hasTrainingModels = trainingModelOptions.length > 0;
+  const parameterItems = buildTrainedModelParameterItems(selectedTrainingOption?.task, { isZh });
+  const [searchTerm, setSearchTerm] = useState('');
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredCompareOptions = useMemo(() => (
+    trainingModelOptions.filter((option) => {
+      if (!normalizedSearch) return true;
+      const summary = buildCompareModelSummary(option.task);
+      return [
+        option.label,
+        String(option.id),
+        summary.architecture,
+        summary.inputChannelText,
+        summary.dataSource,
+      ].join(' ').toLowerCase().includes(normalizedSearch);
+    })
+  ), [normalizedSearch, trainingModelOptions]);
+  const compareSelection = getCompareSelectionState(selectedCompareTrainingTaskIds);
+  const modeItems = [
+    {
+      value: 'system',
+      label: isZh ? '系统模型' : 'System',
+      borderColor: C.mars,
+      background: 'rgba(199,91,57,0.12)',
+      color: C.mars,
+    },
+    {
+      value: 'trained',
+      label: isZh ? '单训练模型分析' : 'Single trained model',
+      borderColor: C.blue,
+      background: 'rgba(74,158,255,0.12)',
+      color: C.blue,
+    },
+    {
+      value: 'trained_compare',
+      label: isZh ? '多训练模型对比' : 'Compare trained models',
+      borderColor: C.green,
+      background: 'rgba(74,207,172,0.12)',
+      color: C.green,
+    },
+  ];
+
+  return (
+    <GlowCard style={{ padding: 20 }}>
+      <SectionTitle
+        title={isZh ? '模型来源' : 'Model source'}
+        subtitle={
+          modelMode === 'trained_compare'
+            ? (isZh ? '选择多个已完成训练任务，比较完整测试集表现。' : 'Compare completed training tasks across the full test set.')
+            : modelMode === 'trained'
+            ? (isZh ? '使用训练页面已完成任务的模型权重进行预测。' : 'Use weights produced by a completed training task.')
+            : (isZh ? '使用平台默认预测模型和完整诊断分析。' : 'Use the default platform model with full diagnostics.')
+        }
+        accent={modelMode === 'trained_compare' ? C.green : modelMode === 'trained' ? C.blue : C.mars}
+      />
+
+      <OptionChips items={modeItems} activeValue={modelMode} onChange={setModelMode} />
+
+      {modelMode === 'trained' ? (
+        <div style={{ marginTop: 14, display: 'grid', gap: 8 }}>
+          <select
+            value={selectedTrainingTaskId || ''}
+            disabled={trainingTasksLoading || !hasTrainingModels}
+            onChange={(event) => setSelectedTrainingTaskId(Number(event.target.value) || null)}
+            style={{
+              width: '100%',
+              minWidth: 0,
+              padding: '11px 12px',
+              borderRadius: 12,
+              border: `1px solid ${C.border}`,
+              background: isLight ? 'rgba(255,255,255,0.92)' : C.bgMuted,
+              color: hasTrainingModels ? C.ice : C.ice50,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
+              fontWeight: 600,
+              fontFamily: 'var(--font-body)',
+              outline: 'none',
+            }}
+          >
+            <option value="">
+              {trainingTasksLoading
+                ? (isZh ? '正在加载训练模型...' : 'Loading trained models...')
+                : (isZh ? '选择已完成训练模型' : 'Select a completed model')}
+            </option>
+            {trainingModelOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label} · #{option.id}
+              </option>
+            ))}
+          </select>
+
+          <div style={{ fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice50, lineHeight: 1.55 }}>
+            {hasTrainingModels
+              ? `${isZh ? '当前模型' : 'Current model'}: ${selectedTrainingOption?.label || '--'}`
+              : (isZh ? '暂无可用于预测分析的已完成训练模型。' : 'No completed trained model is available for prediction analysis.')}
+          </div>
+
+          {parameterItems.length > 0 ? (
+            <div
+              style={{
+                marginTop: 6,
+                padding: 12,
+                borderRadius: 12,
+                border: `1px solid ${C.border}`,
+                background: isLight ? 'rgba(255,255,255,0.78)' : 'rgba(255,255,255,0.03)',
+              }}
+            >
+              <div style={{ color: C.ice, fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 700, marginBottom: 10 }}>
+                {isZh ? '所选模型参数' : 'Selected model parameters'}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {parameterItems.map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      minWidth: 0,
+                      padding: '9px 10px',
+                      borderRadius: 10,
+                      background: C.bgMuted,
+                      border: `1px solid ${C.border}`,
+                    }}
+                  >
+                    <div style={{ color: C.ice40, fontSize: 'calc(9px * var(--font-scale, 1))', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      {item.label}
+                    </div>
+                    <div
+                      title={item.value}
+                      style={{
+                        color: C.ice,
+                        fontSize: 'calc(11px * var(--font-scale, 1))',
+                        fontWeight: 700,
+                        lineHeight: 1.45,
+                        marginTop: 5,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {item.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {modelMode === 'trained_compare' ? (
+        <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder={isZh ? '搜索模型名 / 架构 / 通道' : 'Search name, architecture, channels'}
+            disabled={trainingTasksLoading || !hasTrainingModels}
+            style={{
+              width: '100%',
+              minWidth: 0,
+              padding: '11px 12px',
+              borderRadius: 12,
+              border: `1px solid ${C.border}`,
+              background: isLight ? 'rgba(255,255,255,0.92)' : C.bgMuted,
+              color: C.ice,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
+              fontWeight: 600,
+              fontFamily: 'var(--font-body)',
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              disabled={!hasTrainingModels}
+              onClick={() => setSelectedCompareTrainingTaskIds(filteredCompareOptions.map((option) => option.id))}
+              style={{
+                padding: '7px 11px',
+                borderRadius: 999,
+                border: `1px solid rgba(74,207,172,0.30)`,
+                background: 'rgba(74,207,172,0.10)',
+                color: hasTrainingModels ? C.green : C.ice40,
+                fontSize: 'calc(11px * var(--font-scale, 1))',
+                fontWeight: 700,
+                cursor: hasTrainingModels ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {isZh ? '全选' : 'All'}
+            </button>
+            <button
+              type="button"
+              disabled={compareSelection.count === 0}
+              onClick={() => setSelectedCompareTrainingTaskIds([])}
+              style={{
+                padding: '7px 11px',
+                borderRadius: 999,
+                border: `1px solid ${C.borderStrong}`,
+                background: C.bgMuted,
+                color: compareSelection.count > 0 ? C.ice60 : C.ice30,
+                fontSize: 'calc(11px * var(--font-scale, 1))',
+                fontWeight: 700,
+                cursor: compareSelection.count > 0 ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {isZh ? '清空' : 'Clear'}
+            </button>
+            <span style={{ marginLeft: 'auto', color: compareSelection.canCompare ? C.green : C.ice50, fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 700 }}>
+              {isZh ? `已选 ${compareSelection.count}` : `${compareSelection.count} selected`}
+            </span>
+          </div>
+
+          <div style={{ maxHeight: 280, overflowY: 'auto', overflowX: 'hidden', paddingRight: 4, display: 'grid', gap: 8 }}>
+            {filteredCompareOptions.map((option) => {
+              const active = selectedCompareTrainingTaskIds.includes(option.id);
+              const summary = buildCompareModelSummary(option.task);
+              return (
+                <label
+                  key={option.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'auto 1fr',
+                    gap: 10,
+                    padding: '10px 11px',
+                    borderRadius: 12,
+                    border: `1px solid ${active ? 'rgba(74,207,172,0.36)' : C.border}`,
+                    background: active ? 'rgba(74,207,172,0.08)' : C.bgMuted,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={active}
+                    onChange={() => {
+                      setSelectedCompareTrainingTaskIds((prev) => (
+                        prev.includes(option.id)
+                          ? prev.filter((id) => id !== option.id)
+                          : [...prev, option.id]
+                      ));
+                    }}
+                    style={{ accentColor: C.green, marginTop: 2 }}
+                  />
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: 'block', color: C.ice, fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {summary.modelName}
+                    </span>
+                    <span style={{ display: 'block', color: C.ice50, fontSize: 'calc(10px * var(--font-scale, 1))', lineHeight: 1.55, marginTop: 3 }}>
+                      #{summary.taskId} · {summary.architecture} · {summary.inputChannelText}
+                    </span>
+                    <span style={{ display: 'block', color: C.ice40, fontSize: 'calc(10px * var(--font-scale, 1))', lineHeight: 1.55 }}>
+                      {summary.modelSource} · W{summary.window || '--'} · H{summary.horizon || '--'} · {summary.dataSource}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+
+            {!trainingTasksLoading && filteredCompareOptions.length === 0 ? (
+              <div style={{ padding: 16, borderRadius: 12, background: C.bgMuted, border: `1px dashed ${C.borderStrong}`, color: C.ice50, fontSize: 'calc(11px * var(--font-scale, 1))', lineHeight: 1.6, textAlign: 'center' }}>
+                {hasTrainingModels
+                  ? (isZh ? '没有匹配的训练模型。' : 'No matching trained models.')
+                  : (isZh ? '暂无可对比的已完成训练模型。' : 'No completed trained models are available.')}
+              </div>
+            ) : null}
+          </div>
+
+          <div style={{ color: compareSelection.canCompare ? C.ice50 : C.mars, fontSize: 'calc(10px * var(--font-scale, 1))', lineHeight: 1.55 }}>
+            {compareSelection.canCompare
+              ? (isZh ? '点击“开始对比”后将基于完整测试集计算指标。' : 'Start comparison to compute full test-set metrics.')
+              : (isZh ? '至少选择 2 个模型才允许开始对比。' : 'Select at least 2 models to start comparison.')}
+          </div>
+        </div>
+      ) : null}
+    </GlowCard>
+  );
+}
+
 function SelectionPerformance({ currentMetrics, perfLoading, handleFetchPerformance, precision, t, isZh }) {
   const metrics = [
     { label: t('predict.globalR2'), val: currentMetrics?.global_r2, color: C.green },
@@ -227,6 +519,16 @@ export default function PredictSidebar({
   loading,
   isSwitchingSource,
   error,
+  modelMode,
+  setModelMode,
+  trainingModelOptions = [],
+  selectedTrainingTaskId,
+  setSelectedTrainingTaskId,
+  selectedCompareTrainingTaskIds = [],
+  setSelectedCompareTrainingTaskIds,
+  trainingTasksLoading = false,
+  selectedTrainingOption,
+  analysisVisibility = {},
   dataSourceMode,
   setDataSourceMode,
   sourceMeta,
@@ -257,6 +559,15 @@ export default function PredictSidebar({
   const { settings } = useSettings();
   const isZh = settings?.language !== 'en';
   const isPersonalMode = dataSourceMode === 'personal';
+  const canShowShapley = analysisVisibility.shapley !== false;
+  const canShowInputVariables = analysisVisibility.inputVariables !== false;
+  const canShowPerformanceComparison = analysisVisibility.performanceComparison !== false;
+  const canShowSelectionPerformance = analysisVisibility.selectionPerformance !== false;
+  const canShowSystemHyperparams = analysisVisibility.systemHyperparams !== false;
+  const canShowDataSourceControl = analysisVisibility.dataSourceControl !== false;
+  const isTrainedMode = modelMode === 'trained';
+  const isCompareMode = modelMode === 'trained_compare';
+  const compareSelection = getCompareSelectionState(selectedCompareTrainingTaskIds);
 
   const years = Array.isArray(availableMarsYears) && availableMarsYears.length > 0
     ? availableMarsYears
@@ -296,11 +607,27 @@ export default function PredictSidebar({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <ModelSourceControl
+        modelMode={modelMode}
+        setModelMode={setModelMode}
+        trainingModelOptions={trainingModelOptions}
+        selectedTrainingTaskId={selectedTrainingTaskId}
+        setSelectedTrainingTaskId={setSelectedTrainingTaskId}
+        selectedCompareTrainingTaskIds={selectedCompareTrainingTaskIds}
+        setSelectedCompareTrainingTaskIds={setSelectedCompareTrainingTaskIds}
+        trainingTasksLoading={trainingTasksLoading}
+        selectedTrainingOption={selectedTrainingOption}
+        isLight={isLight}
+        isZh={isZh}
+      />
+
       <GlowCard style={{ padding: 20 }}>
         <SectionTitle
           title={t('predict.sidebar.predictionControl')}
-          subtitle={isZh ? '选择预测步长并发起本次推演。' : 'Choose the prediction horizon and run the next inference.'}
-          accent={C.mars}
+          subtitle={isCompareMode
+            ? (isZh ? '选择对比使用的测试集预测步长。' : 'Choose the test-set horizon used for comparison.')
+            : (isZh ? '选择预测步长并发起本次推演。' : 'Choose the prediction horizon and run the next inference.')}
+          accent={isCompareMode ? C.green : C.mars}
         />
 
         <div style={{ marginBottom: 12 }}>
@@ -319,15 +646,21 @@ export default function PredictSidebar({
         </div>
 
         <div style={{ display: 'grid', gap: 10 }}>
-          <ActionButton onClick={handlePredict} disabled={loading || isSwitchingSource}>
+          <ActionButton
+            onClick={handlePredict}
+            disabled={loading || isSwitchingSource || (isCompareMode && !compareSelection.canCompare)}
+            accent={isCompareMode ? C.green : C.mars}
+          >
             {(loading || isSwitchingSource) ? (
               isSwitchingSource ? (isZh ? '切换数据源中…' : 'Switching data source...') : t('predict.runningBtn')
-            ) : t('predict.runBtn')}
+            ) : isCompareMode ? (isZh ? '开始对比' : 'Start comparison') : t('predict.runBtn')}
           </ActionButton>
 
-          <ActionButton secondary onClick={() => onShapleyClick('gradient')}>
-            {t('predict.shapleyBtn')}
-          </ActionButton>
+          {canShowShapley ? (
+            <ActionButton secondary onClick={() => onShapleyClick('gradient')}>
+              {t('predict.shapleyBtn')}
+            </ActionButton>
+          ) : null}
         </div>
 
         {error ? (
@@ -337,6 +670,7 @@ export default function PredictSidebar({
         ) : null}
       </GlowCard>
 
+      {!isCompareMode ? (
       <GlowCard style={{ padding: 20 }}>
         <SectionTitle
           title={t('predict.sidebar.parameters')}
@@ -345,7 +679,8 @@ export default function PredictSidebar({
         />
 
         <div style={{ display: 'grid', gap: 16 }}>
-          <div style={{ padding: '12px 14px', borderRadius: 14, border: `1px solid ${C.border}`, background: C.bgMuted }}>
+          {canShowDataSourceControl ? (
+            <div style={{ padding: '12px 14px', borderRadius: 14, border: `1px solid ${C.border}`, background: C.bgMuted }}>
             <div style={{ display: 'grid', gap: 10 }}>
               <div>
                 <div style={{ color: C.ice, fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 600 }}>
@@ -357,7 +692,7 @@ export default function PredictSidebar({
               </div>
               <ToggleSwitch
                 checked={isPersonalMode}
-                disabled={isSwitchingSource}
+                disabled={isSwitchingSource || isTrainedMode}
                 personalDisabled={personalSourceDisabled}
                 isLight={isLight}
                 onChange={() => setDataSourceMode(isPersonalMode ? 'default' : 'personal')}
@@ -381,7 +716,13 @@ export default function PredictSidebar({
                 {sourceMessage}
               </div>
             ) : null}
-          </div>
+            {isTrainedMode ? (
+              <div style={{ marginTop: 8, fontSize: 'calc(10px * var(--font-scale, 1))', color: C.ice50, lineHeight: 1.55 }}>
+                {isZh ? '训练模型使用任务记录里的数据来源。' : 'Trained models use the data source recorded by the training task.'}
+              </div>
+            ) : null}
+            </div>
+          ) : null}
 
           <div>
             <div style={{ fontSize: 'calc(11px * var(--font-scale, 1))', color: C.ice50, marginBottom: 8 }}>
@@ -418,8 +759,10 @@ export default function PredictSidebar({
           </div>
         </div>
       </GlowCard>
+      ) : null}
 
-      <GlowCard style={{ padding: 20 }}>
+      {canShowInputVariables ? (
+        <GlowCard style={{ padding: 20 }}>
         <SectionTitle
           title={t('predict.sidebar.inputVariables')}
           subtitle={isZh ? '选择参与预测的输入变量。' : 'Choose the input variables used in the model.'}
@@ -457,20 +800,24 @@ export default function PredictSidebar({
             );
           })}
         </div>
-      </GlowCard>
+        </GlowCard>
+      ) : null}
 
-      <SelectionPerformance
-        currentMetrics={currentMetrics}
-        perfLoading={perfLoading}
-        handleFetchPerformance={handleFetchPerformance}
-        precision={precision}
-        t={t}
-        isZh={isZh}
-      />
+      {canShowSelectionPerformance ? (
+        <SelectionPerformance
+          currentMetrics={currentMetrics}
+          perfLoading={perfLoading}
+          handleFetchPerformance={handleFetchPerformance}
+          precision={precision}
+          t={t}
+          isZh={isZh}
+        />
+      ) : null}
 
-      <ModelHyperparams t={t} isZh={isZh} />
+      {canShowSystemHyperparams ? <ModelHyperparams t={t} isZh={isZh} /> : null}
 
-      <GlowCard style={{ padding: 20 }}>
+      {canShowPerformanceComparison ? (
+        <GlowCard style={{ padding: 20 }}>
         <SectionTitle
           title={t('predict.matrix.title')}
           subtitle={isZh ? '管理用于性能比较的变量组合。' : 'Manage the variable combinations used for performance comparison.'}
@@ -572,7 +919,8 @@ export default function PredictSidebar({
         >
           {t('predict.matrix.addBtn')}
         </button>
-      </GlowCard>
+        </GlowCard>
+      ) : null}
     </div>
   );
 }
