@@ -12,6 +12,7 @@ import {
   fetchDataInfo,
   uploadUserModel,
   fetchUserModels,
+  getUserModelDownloadUrl,
   revalidateUserModel,
   deleteUserModel,
 } from '../services/api';
@@ -51,6 +52,10 @@ import {
   getModelTrainingControlVisibility,
   getVisibleTrainingHyperparameters,
 } from './ModelTrainingPage/modelTrainingVisibility';
+import {
+  TRAINING_TASK_HANDOFF_KEY,
+  buildTrainingTaskHandoff,
+} from './PredictPage/trainedModelSelection';
 
 const MONO_FONT = "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace";
 const PERSONAL_BOUNCE_MS = 720;
@@ -287,6 +292,7 @@ function TrainingTaskCard({
   onStop,
   onDelete,
   onTest,
+  onAnalyze,
 }) {
   const statusMeta = getStatusMeta(task.status, t);
   const hyperparameters = useMemo(() => parseHyperparameters(task.hyperparameters), [task.hyperparameters]);
@@ -506,20 +512,36 @@ function TrainingTaskCard({
         )}
 
         {task.status === 'completed' && (
-          <button
-            onClick={(event) => {
-              event.stopPropagation();
-              onTest(task.id);
-            }}
-            style={{
-              ...actionBaseStyle,
-              background: 'rgba(199,91,57,0.10)',
-              border: '1px solid rgba(199,91,57,0.18)',
-              color: C.mars,
-            }}
-          >
-            {copy.testModel}
-          </button>
+          <>
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                onTest(task.id);
+              }}
+              style={{
+                ...actionBaseStyle,
+                background: 'rgba(199,91,57,0.10)',
+                border: '1px solid rgba(199,91,57,0.18)',
+                color: C.mars,
+              }}
+            >
+              {copy.testModel}
+            </button>
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                onAnalyze(task);
+              }}
+              style={{
+                ...actionBaseStyle,
+                background: 'rgba(74,158,255,0.12)',
+                border: '1px solid rgba(74,158,255,0.22)',
+                color: C.blue,
+              }}
+            >
+              {copy.analyzeInPredict || (copy.testModel === 'Test model' ? 'Analyze in prediction' : '去预测分析')}
+            </button>
+          </>
         )}
 
         <button
@@ -616,6 +638,8 @@ export default function ModelTrainingPage() {
         : 'Upload, select, revalidate, or remove Python model files for custom training.',
       uploadedModelsEmpty: isZh ? '还没有上传模型文件。' : 'No uploaded model files yet.',
       uploadModel: isZh ? '上传 .py' : 'Upload .py',
+      downloadModelGuide: isZh ? '下载说明' : 'Guide',
+      downloadModelTemplate: isZh ? '下载模板' : 'Template',
       uploadingModel: isZh ? '上传中...' : 'Uploading...',
       revalidateModel: isZh ? '重新校验' : 'Revalidate',
       deleteUploadedModel: isZh ? '删除' : 'Delete',
@@ -1293,6 +1317,19 @@ export default function ModelTrainingPage() {
     }
   };
 
+  const handleAnalyzeTask = (task) => {
+    const handoff = buildTrainingTaskHandoff(task);
+    if (!handoff) return;
+
+    sessionStorage.setItem(TRAINING_TASK_HANDOFF_KEY, JSON.stringify(handoff));
+    window.history.pushState(null, '', '#/predict?from=training');
+    if (typeof PopStateEvent === 'function') {
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    } else {
+      window.dispatchEvent(new Event('popstate'));
+    }
+  };
+
   const presetStatusText = !user
     ? copy.presetLoginHint
     : modelSource === 'uploaded'
@@ -1549,11 +1586,15 @@ export default function ModelTrainingPage() {
                     onDelete={handleDeleteUploadedModel}
                     uploading={uploadingModel}
                     busy={isProcessing}
+                    guideDownloadUrl={getUserModelDownloadUrl('guide')}
+                    templateDownloadUrl={getUserModelDownloadUrl('template')}
                     labels={{
                       title: copy.uploadedModels,
                       hint: copy.uploadedModelsHint,
                       empty: copy.uploadedModelsEmpty,
                       upload: copy.uploadModel,
+                      downloadGuide: copy.downloadModelGuide,
+                      downloadTemplate: copy.downloadModelTemplate,
                       uploading: copy.uploadingModel,
                       revalidate: copy.revalidateModel,
                       delete: copy.deleteUploadedModel,
@@ -2291,6 +2332,7 @@ export default function ModelTrainingPage() {
                   onStop={handleStopTask}
                   onDelete={setConfirmDeleteId}
                   onTest={setTestTaskId}
+                  onAnalyze={handleAnalyzeTask}
                 />
               ))}
             </div>

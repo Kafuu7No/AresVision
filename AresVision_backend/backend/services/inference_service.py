@@ -11,7 +11,12 @@ from pathlib import Path
 
 from database.models import ModelTrainingTask
 from database.engine import async_session_maker
-from services.training_channels import extract_architecture_params, get_task_channel_suffix
+from core.metrics import compute_error_distribution, compute_metrics, compute_test_set_metrics
+from services.training_channels import (
+    extract_architecture_params,
+    get_channels_from_hyperparameters,
+    get_task_channel_suffix,
+)
 from training_backbones.model_zoo import (
     build_forecaster,
     normalize_model_architecture,
@@ -25,6 +30,958 @@ class InferenceService:
         self.base_dir = Path(__file__).parent.parent
         self.openmars_dir = self.base_dir / "data" / "openmars"
         self.mcd_dir = self.base_dir / "data" / "MCD"
+
+    async def predict_task(
+        self,
+        task_id: int,
+        mars_year: int,
+        ls_start: float,
+        horizon: int = 3,
+        current_user=None,
+        data_service=None,
+        personal_source_service=None,
+    ) -> dict:
+        task, hypers, data_dirs, temp_data_root = await self._prepare_task_prediction_context(
+            task_id=task_id,
+            current_user=current_user,
+            data_service=data_service,
+            personal_source_service=personal_source_service,
+        )
+        try:
+            return await self._predict_task_with_context(
+                task=task,
+                hypers=hypers,
+                mars_year=mars_year,
+                ls_start=ls_start,
+                horizon=horizon,
+                data_dirs=data_dirs,
+            )
+        finally:
+            self._cleanup_temp_data_root(temp_data_root)
+
+    async def task_metrics(
+        self,
+        task_id: int,
+        mars_year: int,
+        ls_start: float,
+        horizon: int = 3,
+        current_user=None,
+        data_service=None,
+        personal_source_service=None,
+    ) -> dict:
+        result = await self.predict_task(
+            task_id=task_id,
+            mars_year=mars_year,
+            ls_start=ls_start,
+            horizon=horizon,
+            current_user=current_user,
+            data_service=data_service,
+            personal_source_service=personal_source_service,
+        )
+        return result["metrics"]
+
+    async def task_test_set_metrics(
+        self,
+        task_id: int,
+        mars_year: int,
+        ls_start: float,
+        horizon: int = 3,
+        current_user=None,
+        data_service=None,
+        personal_source_service=None,
+    ) -> dict:
+        task, hypers, data_dirs, temp_data_root = await self._prepare_task_prediction_context(
+            task_id=task_id,
+            current_user=current_user,
+            data_service=data_service,
+            personal_source_service=personal_source_service,
+        )
+        try:
+            if getattr(task, "model_source", "official") == "uploaded":
+                return self._uploaded_task_test_set_metrics(task, hypers, horizon, data_dirs=data_dirs)
+            return self._official_task_test_set_metrics(task, hypers, horizon, data_dirs=data_dirs)
+        finally:
+            self._cleanup_temp_data_root(temp_data_root)
+
+    async def compare_task_test_set_metrics(
+        self,
+        task_ids: list[int],
+        horizon: int = 3,
+        current_user=None,
+        data_service=None,
+        personal_source_service=None,
+    ) -> dict:
+        unique_task_ids = self._normalize_compare_task_ids(task_ids)
+        items = []
+        for task_id in unique_task_ids:
+            task, hypers, data_dirs, temp_data_root = await self._prepare_task_prediction_context(
+                task_id=task_id,
+                current_user=current_user,
+                data_service=data_service,
+                personal_source_service=personal_source_service,
+            )
+            try:
+                if getattr(task, "model_source", "official") == "uploaded":
+                    metrics = self._uploaded_task_test_set_metrics(task, hypers, horizon, data_dirs=data_dirs)
+                else:
+                    metrics = self._official_task_test_set_metrics(task, hypers, horizon, data_dirs=data_dirs)
+                items.append({
+                    **self._task_compare_metadata(task, hypers),
+                    "metrics": metrics,
+                })
+            finally:
+                self._cleanup_temp_data_root(temp_data_root)
+        return {"items": items}
+
+    async def task_error_distribution(
+        self,
+        task_id: int,
+        selected_variables: list[str] | None = None,
+        horizon: int = 3,
+        current_user=None,
+        data_service=None,
+        personal_source_service=None,
+    ) -> dict:
+        task, hypers, data_dirs, temp_data_root = await self._prepare_task_prediction_context(
+            task_id=task_id,
+            current_user=current_user,
+            data_service=data_service,
+            personal_source_service=personal_source_service,
+        )
+        try:
+            if getattr(task, "model_source", "official") == "uploaded":
+                truth_raw, pred_raw, actual_horizon = self._uploaded_task_test_set_arrays(
+                    task,
+                    hypers,
+                    horizon,
+                    data_dirs=data_dirs,
+                )
+            else:
+                truth_raw, pred_raw, actual_horizon = self._official_task_test_set_arrays(
+                    task,
+                    hypers,
+                    horizon,
+                    data_dirs=data_dirs,
+                )
+            return compute_error_distribution(
+                truth_raw[:, :actual_horizon],
+                pred_raw[:, :actual_horizon],
+            )
+        finally:
+            self._cleanup_temp_data_root(temp_data_root)
+
+    async def compare_task_error_distributions(
+        self,
+        task_ids: list[int],
+        horizon: int = 3,
+        current_user=None,
+        data_service=None,
+        personal_source_service=None,
+    ) -> dict:
+        unique_task_ids = self._normalize_compare_task_ids(task_ids)
+        items = []
+        for task_id in unique_task_ids:
+            task, hypers, data_dirs, temp_data_root = await self._prepare_task_prediction_context(
+                task_id=task_id,
+                current_user=current_user,
+                data_service=data_service,
+                personal_source_service=personal_source_service,
+            )
+            try:
+                if getattr(task, "model_source", "official") == "uploaded":
+                    truth_raw, pred_raw, actual_horizon = self._uploaded_task_test_set_arrays(
+                        task,
+                        hypers,
+                        horizon,
+                        data_dirs=data_dirs,
+                    )
+                else:
+                    truth_raw, pred_raw, actual_horizon = self._official_task_test_set_arrays(
+                        task,
+                        hypers,
+                        horizon,
+                        data_dirs=data_dirs,
+                    )
+                items.append({
+                    "task_id": int(task.id),
+                    "model_name": self._task_model_name(task),
+                    "distribution": compute_error_distribution(
+                        truth_raw[:, :actual_horizon],
+                        pred_raw[:, :actual_horizon],
+                    ),
+                })
+            finally:
+                self._cleanup_temp_data_root(temp_data_root)
+        return {"items": items}
+
+    async def task_permutation_importance(
+        self,
+        task_id: int,
+        selected_variables: list[str],
+        mars_year: int,
+        ls_start: float,
+        horizon: int = 3,
+        current_user=None,
+        data_service=None,
+        personal_source_service=None,
+    ) -> dict:
+        task, hypers, data_dirs, temp_data_root = await self._prepare_task_prediction_context(
+            task_id=task_id,
+            current_user=current_user,
+            data_service=data_service,
+            personal_source_service=personal_source_service,
+        )
+        try:
+            return self._task_permutation_importance_with_context(
+                task=task,
+                hypers=hypers,
+                selected_variables=selected_variables,
+                horizon=horizon,
+                data_dirs=data_dirs,
+            )
+        finally:
+            self._cleanup_temp_data_root(temp_data_root)
+
+    async def compare_task_permutation_importance(
+        self,
+        task_ids: list[int],
+        horizon: int = 3,
+        current_user=None,
+        data_service=None,
+        personal_source_service=None,
+    ) -> dict:
+        unique_task_ids = self._normalize_compare_task_ids(task_ids)
+        items = []
+        for task_id in unique_task_ids:
+            task, hypers, data_dirs, temp_data_root = await self._prepare_task_prediction_context(
+                task_id=task_id,
+                current_user=current_user,
+                data_service=data_service,
+                personal_source_service=personal_source_service,
+            )
+            try:
+                selected_variables = self._channels_to_variable_names(self._task_selected_channels(task, hypers))
+                pfi = self._task_permutation_importance_with_context(
+                    task=task,
+                    hypers=hypers,
+                    selected_variables=selected_variables,
+                    horizon=horizon,
+                    data_dirs=data_dirs,
+                )
+                items.append({
+                    "task_id": int(task.id),
+                    "model_name": self._task_model_name(task),
+                    **pfi,
+                })
+            finally:
+                self._cleanup_temp_data_root(temp_data_root)
+        return {"items": items}
+
+    async def _prepare_task_prediction_context(
+        self,
+        task_id: int,
+        current_user=None,
+        data_service=None,
+        personal_source_service=None,
+    ):
+        async with async_session_maker() as session:
+            task = await session.get(ModelTrainingTask, task_id)
+            if not task:
+                raise ValueError("Training task not found")
+
+            role = str(getattr(current_user, "role", "") or "").lower()
+            user_id = getattr(current_user, "id", None)
+            if role != "admin" and task.user_id is not None and task.user_id != user_id:
+                raise PermissionError("No permission to access this training task")
+
+            if task.status != "completed":
+                raise ValueError("Training task is not completed")
+            if not task.output_model_path or not os.path.exists(task.output_model_path):
+                raise ValueError("Model file not found")
+
+            try:
+                hypers = json.loads(task.hyperparameters or "{}")
+            except Exception:
+                hypers = {}
+
+            data_dirs, temp_data_root = await self._prepare_task_data_env(
+                task=task,
+                hypers=hypers,
+                data_service=data_service,
+                personal_source_service=personal_source_service,
+            )
+            return task, hypers, data_dirs, temp_data_root
+
+    async def _prepare_task_data_env(
+        self,
+        task,
+        hypers: dict,
+        data_service=None,
+        personal_source_service=None,
+    ):
+        requested_source = str(
+            hypers.get("_data_source") or hypers.get("_effective_data_source") or "default"
+        ).strip().lower()
+        if requested_source != "personal":
+            return {}, None
+        if data_service is None or personal_source_service is None:
+            return {}, None
+
+        from services.training_service import TrainingService
+
+        service = TrainingService()
+        return await service.prepare_task_inference_data_env(
+            task,
+            data_service=data_service,
+            personal_source_service=personal_source_service,
+        )
+
+    @staticmethod
+    def _cleanup_temp_data_root(temp_data_root: Path | None) -> None:
+        if temp_data_root is None:
+            return
+        from services.training_service import TrainingService
+
+        TrainingService().cleanup_temp_data_root(temp_data_root)
+
+    @staticmethod
+    def _normalize_compare_task_ids(task_ids: list[int]) -> list[int]:
+        unique = []
+        seen = set()
+        for raw_id in task_ids or []:
+            try:
+                task_id = int(raw_id)
+            except (TypeError, ValueError):
+                continue
+            if task_id <= 0 or task_id in seen:
+                continue
+            seen.add(task_id)
+            unique.append(task_id)
+        if len(unique) < 2:
+            raise ValueError("At least two training tasks are required for comparison")
+        return unique
+
+    @staticmethod
+    def _task_model_name(task) -> str:
+        return getattr(task, "custom_model_name", None) or f"Task #{getattr(task, 'id', '')}"
+
+    def _task_selected_channels(self, task, hypers: dict) -> list[str]:
+        channels = get_channels_from_hyperparameters(hypers)
+        if channels:
+            return channels
+        return [channel for channel in get_task_channel_suffix(task) if channel]
+
+    def _task_compare_metadata(self, task, hypers: dict) -> dict:
+        model_source = str(getattr(task, "model_source", None) or hypers.get("model_source") or "official").lower()
+        selected_channels = self._task_selected_channels(task, hypers)
+        architecture = "uploaded" if model_source == "uploaded" else normalize_model_architecture(
+            hypers.get("model_architecture", "predrnnv2")
+        )
+        data_source = str(hypers.get("_effective_data_source") or hypers.get("_data_source") or "default").lower()
+        safe_keys = (
+            "window",
+            "horizon",
+            "epochs",
+            "batch_size",
+            "learning_rate",
+            "early_stopping_patience",
+            "seed",
+            "use_sphere",
+            "model_architecture",
+        )
+        safe_hypers = {key: hypers[key] for key in safe_keys if key in hypers}
+        safe_hypers.update({
+            "model_source": model_source,
+            "selected_channels": selected_channels,
+            "_data_source": data_source,
+        })
+        return {
+            "task_id": int(task.id),
+            "model_name": self._task_model_name(task),
+            "model_source": model_source,
+            "architecture": architecture,
+            "selected_channels": selected_channels,
+            "hyperparameters": safe_hypers,
+        }
+
+    async def _predict_task_with_context(
+        self,
+        task,
+        hypers: dict,
+        mars_year: int,
+        ls_start: float,
+        horizon: int,
+        data_dirs: dict[str, str] | None = None,
+    ) -> dict:
+        if getattr(task, "model_source", "official") == "uploaded":
+            pred_scaled, truth_scaled, y_mean, y_std, selected_channels = self._predict_uploaded_task_window(
+                task=task,
+                hypers=hypers,
+                ls_start=ls_start,
+                horizon=horizon,
+                data_dirs=data_dirs,
+            )
+            model_info = {
+                "model_source": "trained_task",
+                "training_task_id": task.id,
+                "training_model_source": "uploaded",
+                "model_name": task.custom_model_name,
+                "selected_channels": selected_channels,
+                "weight_file": Path(task.output_model_path).name,
+            }
+        else:
+            pred_scaled, truth_scaled, y_mean, y_std, selected_channels = self._predict_official_task_window(
+                task=task,
+                hypers=hypers,
+                ls_start=ls_start,
+                horizon=horizon,
+                data_dirs=data_dirs,
+            )
+            model_info = {
+                "model_source": "trained_task",
+                "training_task_id": task.id,
+                "training_model_source": "official",
+                "model_name": task.custom_model_name,
+                "architecture": normalize_model_architecture(hypers.get("model_architecture", "predrnnv2")),
+                "selected_channels": selected_channels,
+                "weight_file": Path(task.output_model_path).name,
+            }
+
+        actual_horizon = min(int(horizon), int(pred_scaled.shape[0]), int(truth_scaled.shape[0]))
+        pred_raw = pred_scaled[:actual_horizon] * (y_std + 1e-6) + y_mean
+        truth_raw = truth_scaled[:actual_horizon] * (y_std + 1e-6) + y_mean
+        residual_raw = pred_raw - truth_raw
+        metrics = compute_metrics(truth_raw, pred_raw)
+
+        lat_arr = np.linspace(-87.5, 87.5, pred_raw.shape[-2], dtype=np.float32)
+        lon_arr = np.linspace(-180.0, 175.0, pred_raw.shape[-1], dtype=np.float32)
+        ls_values = [float((ls_start + (idx + 1) * 5.0) % 360.0) for idx in range(actual_horizon)]
+        selected_variables = self._channels_to_variable_names(selected_channels)
+        model_info["requested_mars_year"] = int(mars_year)
+        model_info["requested_ls_start"] = float(ls_start)
+
+        return {
+            "ground_truth": self._fields_to_dicts(truth_raw, lat_arr, lon_arr),
+            "prediction": self._fields_to_dicts(pred_raw, lat_arr, lon_arr),
+            "residual": self._fields_to_dicts(residual_raw, lat_arr, lon_arr),
+            "selected_variables": selected_variables,
+            "horizon": actual_horizon,
+            "ls_values": ls_values,
+            "model_info": model_info,
+            "metrics": metrics,
+            "source_meta": {
+                "requested_source": "training_task",
+                "effective_source": "training_task",
+                "fallback": False,
+                "message": None,
+                "mars_year": int(mars_year),
+            },
+        }
+
+    def _predict_official_task_window(self, task, hypers: dict, ls_start: float, horizon: int, data_dirs=None):
+        window = int(hypers.get("window", 3))
+        task_horizon = int(hypers.get("horizon", horizon or 3))
+        hidden_dims = hypers.get("stlstm_hidden_dims", [64, 64, 64])
+        model_architecture = normalize_model_architecture(hypers.get("model_architecture", "predrnnv2"))
+        use_sphere = normalize_use_sphere(hypers)
+        architecture_params = extract_architecture_params(hypers)
+        active_vars = get_task_channel_suffix(task)
+        mcd_vars_map = {
+            'U': ('U_Wind', 'u'),
+            'V': ('V_Wind', 'v'),
+            'D': ('Dust_Optical_Depth', 'dustq'),
+            'S': ('Solar_Flux_DN', 'fluxsurf_dn_sw'),
+            'T': ('Temperature', 'temp')
+        }
+        used_mcd_vars = [mcd_vars_map[channel] for channel in active_vars if channel in mcd_vars_map]
+        x_torch, y_torch, ls_torch, y_mean, y_std = self._prepare_data(
+            used_mcd_vars,
+            window,
+            task_horizon,
+            data_dirs=data_dirs,
+        )
+        sample_idx = self._nearest_sequence_index(ls_torch, ls_start)
+        x_sample = x_torch[sample_idx: sample_idx + 1].to(self.device)
+        ls_sample = ls_torch[sample_idx: sample_idx + 1].to(self.device)
+
+        model = build_forecaster(
+            architecture=model_architecture,
+            input_channels=1 + len(used_mcd_vars),
+            selected_channels=list(active_vars),
+            hidden_dims=hidden_dims,
+            height=int(x_torch.shape[-2]),
+            width=int(x_torch.shape[-1]),
+            window=window,
+            horizon=task_horizon,
+            use_sphere=use_sphere,
+            architecture_params=architecture_params,
+        ).to(self.device)
+        state_dict = torch.load(task.output_model_path, map_location=self.device, weights_only=True)
+        model.load_state_dict(state_dict)
+        model.eval()
+
+        with torch.no_grad():
+            pred = model(x_sample, ls_sample)[0, :, 0].cpu().numpy()
+        truth = y_torch[sample_idx, :, 0].cpu().numpy()
+        return pred, truth, y_mean, y_std, list(active_vars)
+
+    def _predict_uploaded_task_window(self, task, hypers: dict, ls_start: float, horizon: int, data_dirs=None):
+        from training_backbones.user_model_runner import (
+            assert_prediction_shape,
+            build_uploaded_model_config,
+            load_uploaded_model,
+            parse_selected_channels,
+            prepare_tensors,
+        )
+
+        selected_channels = parse_selected_channels(hypers.get("selected_channels", []))
+        openmars_dir = Path((data_dirs or {}).get("ARESVISION_OPENMARS_DIR") or self.openmars_dir)
+        mcd_dir = Path((data_dirs or {}).get("ARESVISION_MCD_DIR") or self.mcd_dir)
+        window = int(hypers.get("window", 3))
+        task_horizon = int(hypers.get("horizon", horizon or 3))
+        x_torch, y_torch, y_mean, y_std, height, width = prepare_tensors(
+            openmars_dir,
+            mcd_dir,
+            selected_channels,
+            window,
+            task_horizon,
+        )
+        sample_idx = min(max(0, int(round(float(ls_start) / 360.0 * max(1, len(x_torch) - 1)))), len(x_torch) - 1)
+        config = build_uploaded_model_config(
+            in_channels=int(x_torch.shape[2]),
+            window=window,
+            horizon=task_horizon,
+            height=height,
+            width=width,
+            selected_channels=selected_channels,
+            custom_model_params=hypers.get("custom_model_params", {}),
+            param_schema=hypers.get("_uploaded_model_param_schema", {}),
+        )
+        model_path = hypers.get("_uploaded_model_path")
+        if not model_path:
+            raise ValueError("Uploaded model path is missing from task hyperparameters")
+        model = load_uploaded_model(Path(model_path), config).to(self.device)
+        state_dict = torch.load(task.output_model_path, map_location=self.device, weights_only=True)
+        model.load_state_dict(state_dict)
+        model.eval()
+
+        x_sample = x_torch[sample_idx: sample_idx + 1].to(self.device)
+        truth_tensor = y_torch[sample_idx: sample_idx + 1]
+        with torch.no_grad():
+            pred_tensor = model(x_sample)
+            assert_prediction_shape(pred_tensor, truth_tensor.to(self.device), "uploaded prediction")
+        pred = pred_tensor[0, :, 0].cpu().numpy()
+        truth = truth_tensor[0, :, 0].cpu().numpy()
+        return pred, truth, y_mean, y_std, selected_channels
+
+    def _official_task_test_set_metrics(self, task, hypers: dict, horizon: int, data_dirs=None):
+        truth_raw, pred_raw, actual_horizon = self._official_task_test_set_arrays(
+            task,
+            hypers,
+            horizon,
+            data_dirs=data_dirs,
+        )
+        return compute_test_set_metrics(truth_raw, pred_raw, horizon=actual_horizon)
+
+    def _official_task_test_set_arrays(self, task, hypers: dict, horizon: int, data_dirs=None):
+        window = int(hypers.get("window", 3))
+        task_horizon = int(hypers.get("horizon", horizon or 3))
+        hidden_dims = hypers.get("stlstm_hidden_dims", [64, 64, 64])
+        model_architecture = normalize_model_architecture(hypers.get("model_architecture", "predrnnv2"))
+        use_sphere = normalize_use_sphere(hypers)
+        architecture_params = extract_architecture_params(hypers)
+        active_vars = get_task_channel_suffix(task)
+        mcd_vars_map = {
+            'U': ('U_Wind', 'u'),
+            'V': ('V_Wind', 'v'),
+            'D': ('Dust_Optical_Depth', 'dustq'),
+            'S': ('Solar_Flux_DN', 'fluxsurf_dn_sw'),
+            'T': ('Temperature', 'temp')
+        }
+        used_mcd_vars = [mcd_vars_map[channel] for channel in active_vars if channel in mcd_vars_map]
+        x_torch, y_torch, ls_torch, y_mean, y_std = self._prepare_data(
+            used_mcd_vars,
+            window,
+            task_horizon,
+            data_dirs=data_dirs,
+        )
+
+        model = build_forecaster(
+            architecture=model_architecture,
+            input_channels=1 + len(used_mcd_vars),
+            selected_channels=list(active_vars),
+            hidden_dims=hidden_dims,
+            height=int(x_torch.shape[-2]),
+            width=int(x_torch.shape[-1]),
+            window=window,
+            horizon=task_horizon,
+            use_sphere=use_sphere,
+            architecture_params=architecture_params,
+        ).to(self.device)
+        state_dict = torch.load(task.output_model_path, map_location=self.device, weights_only=True)
+        model.load_state_dict(state_dict)
+        model.eval()
+
+        split = int(0.8 * len(x_torch))
+        x_test = x_torch[split:]
+        y_test = y_torch[split:]
+        ls_test = ls_torch[split:]
+        if len(x_test) == 0:
+            raise ValueError("No trained model test samples are available")
+
+        pred_batches = []
+        truth_batches = []
+        batch_size = max(1, min(16, int(hypers.get("batch_size", 16) or 16)))
+        actual_horizon = min(int(horizon), int(task_horizon))
+        with torch.no_grad():
+            for start in range(0, len(x_test), batch_size):
+                end = min(start + batch_size, len(x_test))
+                pred = model(
+                    x_test[start:end].to(self.device),
+                    ls_test[start:end].to(self.device),
+                ).cpu().numpy()
+                pred_batches.append(pred[:, :actual_horizon, 0] * (y_std + 1e-6) + y_mean)
+                truth_batches.append(
+                    y_test[start:end, :actual_horizon, 0].cpu().numpy() * (y_std + 1e-6) + y_mean
+                )
+
+        return (
+            np.concatenate(truth_batches, axis=0),
+            np.concatenate(pred_batches, axis=0),
+            actual_horizon,
+        )
+
+    def _uploaded_task_test_set_metrics(self, task, hypers: dict, horizon: int, data_dirs=None):
+        truth_raw, pred_raw, actual_horizon = self._uploaded_task_test_set_arrays(
+            task,
+            hypers,
+            horizon,
+            data_dirs=data_dirs,
+        )
+        return compute_test_set_metrics(truth_raw, pred_raw, horizon=actual_horizon)
+
+    def _uploaded_task_test_set_arrays(self, task, hypers: dict, horizon: int, data_dirs=None):
+        from training_backbones.user_model_runner import (
+            assert_prediction_shape,
+            build_uploaded_model_config,
+            load_uploaded_model,
+            parse_selected_channels,
+            prepare_tensors,
+        )
+
+        selected_channels = parse_selected_channels(hypers.get("selected_channels", []))
+        openmars_dir = Path((data_dirs or {}).get("ARESVISION_OPENMARS_DIR") or self.openmars_dir)
+        mcd_dir = Path((data_dirs or {}).get("ARESVISION_MCD_DIR") or self.mcd_dir)
+        window = int(hypers.get("window", 3))
+        task_horizon = int(hypers.get("horizon", horizon or 3))
+        x_torch, y_torch, y_mean, y_std, height, width = prepare_tensors(
+            openmars_dir,
+            mcd_dir,
+            selected_channels,
+            window,
+            task_horizon,
+        )
+        config = build_uploaded_model_config(
+            in_channels=int(x_torch.shape[2]),
+            window=window,
+            horizon=task_horizon,
+            height=height,
+            width=width,
+            selected_channels=selected_channels,
+            custom_model_params=hypers.get("custom_model_params", {}),
+            param_schema=hypers.get("_uploaded_model_param_schema", {}),
+        )
+        model_path = hypers.get("_uploaded_model_path")
+        if not model_path:
+            raise ValueError("Uploaded model path is missing from task hyperparameters")
+        model = load_uploaded_model(Path(model_path), config).to(self.device)
+        state_dict = torch.load(task.output_model_path, map_location=self.device, weights_only=True)
+        model.load_state_dict(state_dict)
+        model.eval()
+
+        split = int(0.8 * len(x_torch))
+        x_test = x_torch[split:]
+        y_test = y_torch[split:]
+        if len(x_test) == 0:
+            raise ValueError("No uploaded model test samples are available")
+
+        pred_batches = []
+        truth_batches = []
+        batch_size = max(1, min(16, int(hypers.get("batch_size", 16) or 16)))
+        actual_horizon = min(int(horizon), int(task_horizon))
+        with torch.no_grad():
+            for start in range(0, len(x_test), batch_size):
+                end = min(start + batch_size, len(x_test))
+                truth_tensor = y_test[start:end].to(self.device)
+                pred = model(x_test[start:end].to(self.device))
+                assert_prediction_shape(pred, truth_tensor, "uploaded test-set metrics")
+                pred_np = pred.cpu().numpy()
+                pred_batches.append(pred_np[:, :actual_horizon, 0] * (y_std + 1e-6) + y_mean)
+                truth_batches.append(
+                    truth_tensor[:, :actual_horizon, 0].cpu().numpy() * (y_std + 1e-6) + y_mean
+                )
+
+        return (
+            np.concatenate(truth_batches, axis=0),
+            np.concatenate(pred_batches, axis=0),
+            actual_horizon,
+        )
+
+    def _task_permutation_importance_with_context(
+        self,
+        task,
+        hypers: dict,
+        selected_variables: list[str],
+        horizon: int,
+        data_dirs=None,
+    ) -> dict:
+        if getattr(task, "model_source", "official") == "uploaded":
+            return self._uploaded_task_permutation_importance(
+                task=task,
+                hypers=hypers,
+                selected_variables=selected_variables,
+                horizon=horizon,
+                data_dirs=data_dirs,
+            )
+        return self._official_task_permutation_importance(
+            task=task,
+            hypers=hypers,
+            selected_variables=selected_variables,
+            horizon=horizon,
+            data_dirs=data_dirs,
+        )
+
+    def _official_task_permutation_importance(self, task, hypers: dict, selected_variables: list[str], horizon: int, data_dirs=None):
+        from sklearn.metrics import r2_score
+
+        window = int(hypers.get("window", 3))
+        task_horizon = int(hypers.get("horizon", horizon or 3))
+        hidden_dims = hypers.get("stlstm_hidden_dims", [64, 64, 64])
+        model_architecture = normalize_model_architecture(hypers.get("model_architecture", "predrnnv2"))
+        use_sphere = normalize_use_sphere(hypers)
+        architecture_params = extract_architecture_params(hypers)
+        active_channels = list(get_task_channel_suffix(task))
+        mcd_vars_map = {
+            'U': ('U_Wind', 'u'),
+            'V': ('V_Wind', 'v'),
+            'D': ('Dust_Optical_Depth', 'dustq'),
+            'S': ('Solar_Flux_DN', 'fluxsurf_dn_sw'),
+            'T': ('Temperature', 'temp')
+        }
+        used_mcd_vars = [mcd_vars_map[channel] for channel in active_channels if channel in mcd_vars_map]
+        x_torch, y_torch, ls_torch, y_mean, y_std = self._prepare_data(
+            used_mcd_vars,
+            window,
+            task_horizon,
+            data_dirs=data_dirs,
+        )
+        model = build_forecaster(
+            architecture=model_architecture,
+            input_channels=1 + len(used_mcd_vars),
+            selected_channels=active_channels,
+            hidden_dims=hidden_dims,
+            height=int(x_torch.shape[-2]),
+            width=int(x_torch.shape[-1]),
+            window=window,
+            horizon=task_horizon,
+            use_sphere=use_sphere,
+            architecture_params=architecture_params,
+        ).to(self.device)
+        state_dict = torch.load(task.output_model_path, map_location=self.device, weights_only=True)
+        model.load_state_dict(state_dict)
+        model.eval()
+
+        split = int(0.8 * len(x_torch))
+        x_test = x_torch[split:].clone()
+        y_test = y_torch[split:]
+        ls_test = ls_torch[split:]
+        if len(x_test) == 0:
+            return {"items": [], "baseline_metric": "r2", "baseline_value": 0.0}
+
+        sample_size = min(40, len(x_test))
+        sample_indices = np.linspace(0, len(x_test) - 1, sample_size, dtype=int)
+        x_sample = x_test[sample_indices]
+        y_sample = y_test[sample_indices]
+        ls_sample = ls_test[sample_indices]
+
+        def score(batch):
+            with torch.no_grad():
+                pred = model(batch.to(self.device), ls_sample.to(self.device)).cpu().numpy()
+            truth = y_sample.numpy()
+            pred_raw = pred[:, :horizon, 0] * (y_std + 1e-6) + y_mean
+            truth_raw = truth[:, :horizon, 0] * (y_std + 1e-6) + y_mean
+            valid = np.isfinite(truth_raw) & np.isfinite(pred_raw)
+            if np.count_nonzero(valid) < 10:
+                return 0.0
+            return float(r2_score(truth_raw[valid], pred_raw[valid]))
+
+        baseline = score(x_sample)
+        name_by_channel = {
+            "U": "U_Wind",
+            "V": "V_Wind",
+            "D": "Dust_Optical_Depth",
+            "S": "Solar_Flux_DN",
+            "T": "Temperature",
+        }
+        selected_set = set(selected_variables or self._channels_to_variable_names(active_channels))
+        selected_set.add("Ozone")
+        items = []
+        feature_pairs = [(0, "Ozone")] + [
+            (index, name_by_channel[channel])
+            for index, channel in enumerate(active_channels, start=1)
+            if channel in name_by_channel
+        ]
+        for channel_index, name in feature_pairs:
+            if name not in selected_set:
+                continue
+            shuffled = x_sample.clone()
+            order = torch.randperm(shuffled.shape[0])
+            shuffled[:, :, channel_index] = shuffled[order, :, channel_index]
+            items.append({
+                "name": name,
+                "importance": round(float(baseline - score(shuffled)), 6),
+            })
+
+        items.sort(key=lambda item: item["importance"], reverse=True)
+        return {"items": items, "baseline_metric": "r2", "baseline_value": round(float(baseline), 4)}
+
+    def _uploaded_task_permutation_importance(self, task, hypers: dict, selected_variables: list[str], horizon: int, data_dirs=None):
+        from sklearn.metrics import r2_score
+        from training_backbones.user_model_runner import (
+            assert_prediction_shape,
+            build_uploaded_model_config,
+            load_uploaded_model,
+            parse_selected_channels,
+            prepare_tensors,
+        )
+
+        selected_channels = parse_selected_channels(hypers.get("selected_channels", []))
+        openmars_dir = Path((data_dirs or {}).get("ARESVISION_OPENMARS_DIR") or self.openmars_dir)
+        mcd_dir = Path((data_dirs or {}).get("ARESVISION_MCD_DIR") or self.mcd_dir)
+        window = int(hypers.get("window", 3))
+        task_horizon = int(hypers.get("horizon", horizon or 3))
+        x_torch, y_torch, y_mean, y_std, height, width = prepare_tensors(
+            openmars_dir,
+            mcd_dir,
+            selected_channels,
+            window,
+            task_horizon,
+        )
+        config = build_uploaded_model_config(
+            in_channels=int(x_torch.shape[2]),
+            window=window,
+            horizon=task_horizon,
+            height=height,
+            width=width,
+            selected_channels=selected_channels,
+            custom_model_params=hypers.get("custom_model_params", {}),
+            param_schema=hypers.get("_uploaded_model_param_schema", {}),
+        )
+        model_path = hypers.get("_uploaded_model_path")
+        if not model_path:
+            raise ValueError("Uploaded model path is missing from task hyperparameters")
+        model = load_uploaded_model(Path(model_path), config).to(self.device)
+        state_dict = torch.load(task.output_model_path, map_location=self.device, weights_only=True)
+        model.load_state_dict(state_dict)
+        model.eval()
+
+        split = int(0.8 * len(x_torch))
+        x_test = x_torch[split:].clone()
+        y_test = y_torch[split:]
+        if len(x_test) == 0:
+            return {"items": [], "baseline_metric": "r2", "baseline_value": 0.0}
+        sample_size = min(40, len(x_test))
+        sample_indices = np.linspace(0, len(x_test) - 1, sample_size, dtype=int)
+        x_sample = x_test[sample_indices]
+        y_sample = y_test[sample_indices]
+
+        def score(batch):
+            with torch.no_grad():
+                pred = model(batch.to(self.device))
+                assert_prediction_shape(pred, y_sample.to(self.device), "uploaded permutation importance")
+                pred_np = pred.cpu().numpy()
+            truth = y_sample.numpy()
+            pred_raw = pred_np[:, :horizon, 0] * (y_std + 1e-6) + y_mean
+            truth_raw = truth[:, :horizon, 0] * (y_std + 1e-6) + y_mean
+            valid = np.isfinite(truth_raw) & np.isfinite(pred_raw)
+            if np.count_nonzero(valid) < 10:
+                return 0.0
+            return float(r2_score(truth_raw[valid], pred_raw[valid]))
+
+        baseline = score(x_sample)
+        name_by_channel = {
+            "U": "U_Wind",
+            "V": "V_Wind",
+            "D": "Dust_Optical_Depth",
+            "S": "Solar_Flux_DN",
+            "T": "Temperature",
+        }
+        selected_set = set(selected_variables or self._channels_to_variable_names(selected_channels))
+        selected_set.add("Ozone")
+        items = []
+        feature_pairs = [(0, "Ozone")] + [
+            (index, name_by_channel[channel])
+            for index, channel in enumerate(selected_channels, start=1)
+            if channel in name_by_channel
+        ]
+        for channel_index, name in feature_pairs:
+            if name not in selected_set:
+                continue
+            shuffled = x_sample.clone()
+            order = torch.randperm(shuffled.shape[0])
+            shuffled[:, :, channel_index] = shuffled[order, :, channel_index]
+            items.append({
+                "name": name,
+                "importance": round(float(baseline - score(shuffled)), 6),
+            })
+        items.sort(key=lambda item: item["importance"], reverse=True)
+        return {"items": items, "baseline_metric": "r2", "baseline_value": round(float(baseline), 4)}
+
+    @staticmethod
+    def _nearest_sequence_index(ls_torch: torch.Tensor, ls_start: float) -> int:
+        values = ls_torch[:, 0].detach().cpu().numpy().reshape(-1)
+        if len(values) == 0:
+            return 0
+        diffs = np.abs(((values - float(ls_start) + 180.0) % 360.0) - 180.0)
+        return int(np.argmin(diffs))
+
+    @staticmethod
+    def _channels_to_variable_names(channels: list[str] | str) -> list[str]:
+        channel_map = {
+            "U": "U_Wind",
+            "V": "V_Wind",
+            "D": "Dust_Optical_Depth",
+            "S": "Solar_Flux_DN",
+            "T": "Temperature",
+        }
+        return [channel_map[channel] for channel in list(channels or "") if channel in channel_map]
+
+    @staticmethod
+    def _fields_to_dicts(fields: np.ndarray, lat_arr: np.ndarray, lon_arr: np.ndarray) -> list[dict]:
+        result = []
+        for step in range(fields.shape[0]):
+            field = fields[step]
+            points = []
+            for i, lat in enumerate(lat_arr):
+                for j, lon in enumerate(lon_arr):
+                    val = float(field[i, j])
+                    if not np.isnan(val):
+                        points.append({
+                            "lat": float(lat),
+                            "lng": float(lon) if lon <= 180 else float(lon - 360),
+                            "val": val,
+                        })
+
+            valid = field[~np.isnan(field)]
+            result.append({
+                "points": points,
+                "lat": [float(v) for v in lat_arr],
+                "lon": [float(v) for v in lon_arr],
+                "field": [[float(v) for v in row] for row in np.nan_to_num(field)],
+                "minVal": float(np.nanmin(valid)) if len(valid) > 0 else 0.0,
+                "maxVal": float(np.nanmax(valid)) if len(valid) > 0 else 1.0,
+            })
+        return result
 
     async def get_test_results(self, task_id: int, data_dirs: dict[str, str] | None = None):
         """获取训练任务的测试结果（散点图数据）"""

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -42,15 +43,16 @@ class UserModelService:
                 f"User model file exceeds {MAX_USER_MODEL_SIZE_KB} KB size limit"
             )
 
-        package_id = str(uuid.uuid4())
+        content_hash = hashlib.sha256(source).hexdigest()
         safe_name = self._safe_filename(original_filename)
+        result = self._validate_source_bytes(source, safe_name)
+
+        package_id = str(uuid.uuid4())
         user_dir = self.storage_root / str(user_id)
         user_dir.mkdir(parents=True, exist_ok=True)
-        storage_path = user_dir / f"{package_id}_{safe_name}"
+        storage_path = user_dir / f"{package_id}_{safe_name}.source"
         storage_path.write_bytes(source)
 
-        content_hash = hashlib.sha256(source).hexdigest()
-        result = self.validator.validate_file(storage_path)
         display_name = result.display_name or Path(original_filename).stem
         version = await self._next_version(user_id, display_name)
 
@@ -106,7 +108,11 @@ class UserModelService:
                 package_id,
                 user_id,
             )
-            result = self.validator.validate_file(Path(package.storage_path))
+            source = Path(package.storage_path).read_bytes()
+            result = self._validate_source_bytes(
+                source,
+                self._safe_filename(package.original_filename),
+            )
             package.validation_status = "valid" if result.ok else "invalid"
             package.validation_report = json.dumps(result.report_dict(), ensure_ascii=False)
             package.param_schema = json.dumps(result.param_schema, ensure_ascii=False)
@@ -149,6 +155,12 @@ class UserModelService:
         if not safe_name.lower().endswith(".py"):
             safe_name = f"{safe_name}.py"
         return safe_name
+
+    def _validate_source_bytes(self, source: bytes, safe_name: str):
+        with tempfile.TemporaryDirectory(prefix="aresvision_user_model_") as temp_dir:
+            validation_path = Path(temp_dir) / safe_name
+            validation_path.write_bytes(source)
+            return self.validator.validate_file(validation_path)
 
     @staticmethod
     async def _get_package_for_user_in_session(

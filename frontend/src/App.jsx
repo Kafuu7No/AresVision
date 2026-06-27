@@ -16,12 +16,12 @@ import AboutPage from './pages/AboutPage';
 import ModelTrainingPage from './pages/ModelTrainingPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import { TrainingProvider } from './contexts/TrainingContext';
+import { getCurrentPageFromHash } from './router/hashRoute';
 
 const VALID_PAGES = ['home', 'overview', 'explore', 'predict', 'training', 'ai', 'about'];
 
 function getPageFromHash() {
-  const hash = window.location.hash.replace('#/', '').replace('#', '');
-  return VALID_PAGES.includes(hash) ? hash : 'home';
+  return getCurrentPageFromHash(VALID_PAGES);
 }
 
 export default function App() {

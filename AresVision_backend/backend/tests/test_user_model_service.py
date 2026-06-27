@@ -51,6 +51,29 @@ def build_model(config):
 """
 
 
+class RecordingValidator:
+    def __init__(self):
+        self.paths = []
+
+    def validate_file(self, path):
+        self.paths.append(Path(path))
+        return SimpleNamespace(
+            ok=True,
+            errors=[],
+            warnings=[],
+            display_name="StoredTiny",
+            description="recorded validation",
+            param_schema={},
+            output_shape=[2, 3, 1, 8, 16],
+            report_dict=lambda: {
+                "ok": True,
+                "errors": [],
+                "warnings": [],
+                "output_shape": [2, 3, 1, 8, 16],
+            },
+        )
+
+
 async def _make_sessionmaker(db_path: Path):
     engine = create_async_engine(
         f"sqlite+aiosqlite:///{db_path}",
@@ -108,6 +131,36 @@ async def test_service_creates_lists_revalidates_and_soft_deletes_model():
             await service.soft_delete_package(package.id, user.id)
             assert await service.list_user_packages(user.id) == []
             assert Path(package.storage_path).exists()
+        finally:
+            await engine.dispose()
+
+
+async def test_service_validates_temporary_file_before_permanent_storage_write():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        db_path = root / "test.db"
+        upload_root = root / "uploads"
+        engine, sessionmaker = await _make_sessionmaker(db_path)
+        validator = RecordingValidator()
+
+        try:
+            user = await _create_user(sessionmaker, "owner@example.com")
+            service = UserModelService(
+                storage_root=upload_root,
+                sessionmaker=sessionmaker,
+                validator=validator,
+            )
+
+            package = await service.create_from_source(
+                user.id,
+                "stored_tiny.py",
+                VALID_MODEL,
+            )
+
+            assert len(validator.paths) == 1
+            assert upload_root not in validator.paths[0].parents
+            assert Path(package.storage_path).exists()
+            assert Path(package.storage_path).suffix != ".py"
         finally:
             await engine.dispose()
 
@@ -225,6 +278,7 @@ def test_serialize_package_normalizes_malformed_json_shapes():
 
 async def _run_tests():
     await test_service_creates_lists_revalidates_and_soft_deletes_model()
+    await test_service_validates_temporary_file_before_permanent_storage_write()
     await test_service_rejects_non_owner_access()
     await test_service_rejects_non_py_original_filename_before_writing()
     await test_service_rejects_oversized_source_before_creating_package()

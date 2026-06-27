@@ -1,0 +1,544 @@
+import { useMemo, useState } from 'react';
+import Plot from 'react-plotly.js';
+import C from '../../../constants/colors';
+import GlowCard from '../../../components/GlowCard';
+import { fmtNum } from '../../../utils/fmt';
+import { METRIC_META } from '../PredictComponents';
+import {
+  buildErrorHistogramTraces,
+  buildCompareParameterRows,
+  buildPfiMatrix,
+  buildStepCurveTraces,
+  sortCompareItems,
+} from './compareTrainingModelsData';
+
+const GOOD_METRICS = new Set(['r2', 'ssim']);
+
+function withAlpha(color, alpha) {
+  if (!color) return `rgba(255,255,255,${alpha})`;
+  if (color.startsWith('#')) {
+    let hex = color.slice(1);
+    if (hex.length === 3) hex = hex.split('').map((char) => char + char).join('');
+    const value = Number.parseInt(hex, 16);
+    return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
+  }
+  return color;
+}
+
+function MetricTabs({ activeMetric, setActiveMetric }) {
+  return (
+    <div style={{ display: 'flex', gap: 6, padding: 4, borderRadius: 14, background: C.bgMuted, border: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
+      {METRIC_META.map((metric) => {
+        const active = activeMetric === metric.key;
+        return (
+          <button
+            key={metric.key}
+            type="button"
+            onClick={() => setActiveMetric(metric.key)}
+            style={{
+              minHeight: 34,
+              padding: '7px 12px',
+              borderRadius: 10,
+              border: 'none',
+              background: active ? 'rgba(121,187,255,0.16)' : 'transparent',
+              color: active ? C.blue : C.ice60,
+              fontSize: 'calc(11px * var(--font-scale, 1))',
+              fontWeight: active ? 800 : 600,
+              cursor: 'pointer',
+            }}
+          >
+            {metric.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function LoadingState({ isZh }) {
+  return (
+    <GlowCard style={{ padding: 24 }}>
+      <div style={{ minHeight: 180, display: 'grid', placeItems: 'center', gap: 12 }}>
+        <div style={{ width: 28, height: 28, border: `3px solid ${C.border}`, borderTop: `3px solid ${C.green}`, borderRadius: '50%', animation: 'spin-slow 0.9s linear infinite' }} />
+        <div style={{ color: C.ice60, fontSize: 'calc(12px * var(--font-scale, 1))' }}>
+          {isZh ? '正在计算多模型测试集指标…' : 'Computing multi-model test-set metrics...'}
+        </div>
+      </div>
+    </GlowCard>
+  );
+}
+
+function EmptyState({ isZh, selectedCount }) {
+  return (
+    <GlowCard style={{ padding: 24 }}>
+      <div style={{ padding: '34px 20px', borderRadius: 16, border: `1px dashed ${C.borderStrong}`, background: C.bgMuted, textAlign: 'center' }}>
+        <div style={{ color: selectedCount >= 2 ? C.green : C.mars, fontSize: 'calc(13px * var(--font-scale, 1))', fontWeight: 800 }}>
+          {selectedCount >= 2
+            ? (isZh ? '点击左侧“开始对比”生成结果' : 'Start comparison from the sidebar')
+            : (isZh ? '至少选择 2 个训练模型' : 'Select at least 2 trained models')}
+        </div>
+        <div style={{ color: C.ice50, fontSize: 'calc(11px * var(--font-scale, 1))', lineHeight: 1.65, marginTop: 8 }}>
+          {isZh
+            ? '对比结果会基于完整测试集指标，而不是当前预测窗口。'
+            : 'Comparison results use full test-set metrics rather than the current prediction window.'}
+        </div>
+      </div>
+    </GlowCard>
+  );
+}
+
+function SummaryTable({ items, precision, isZh }) {
+  const [sortMetric, setSortMetric] = useState('rmse');
+  const [direction, setDirection] = useState('asc');
+  const sorted = useMemo(() => sortCompareItems(items, { metric: sortMetric, direction }), [direction, items, sortMetric]);
+  const columns = [
+    { key: 'model', label: isZh ? '模型名' : 'Model' },
+    { key: 'rmse', label: 'RMSE' },
+    { key: 'mae', label: 'MAE' },
+    { key: 'ssim', label: 'SSIM' },
+    { key: 'r2', label: 'R²' },
+    { key: 'architecture', label: isZh ? '架构' : 'Architecture' },
+    { key: 'channels', label: isZh ? '输入通道' : 'Channels' },
+    { key: 'window', label: 'Window' },
+    { key: 'horizon', label: 'Horizon' },
+    { key: 'source', label: isZh ? '数据源' : 'Data source' },
+  ];
+
+  const setSort = (metric) => {
+    if (sortMetric === metric) {
+      setDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortMetric(metric);
+    setDirection(metric === 'rmse' || metric === 'mae' ? 'asc' : 'desc');
+  };
+
+  return (
+    <GlowCard style={{ padding: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start', marginBottom: 14, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ color: C.ice, fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 800, fontFamily: 'var(--font-display)' }}>
+            {isZh ? '多模型综合排名' : 'Multi-model ranking'}
+          </div>
+          <div style={{ color: C.ice50, fontSize: 'calc(11px * var(--font-scale, 1))', lineHeight: 1.55, marginTop: 5 }}>
+            {isZh ? '默认按 RMSE 升序，支持切换 RMSE / MAE / SSIM / R² 排序。' : 'Defaults to RMSE ascending; switch sorting across RMSE, MAE, SSIM, and R².'}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {METRIC_META.map((metric) => (
+            <button
+              key={metric.key}
+              type="button"
+              onClick={() => setSort(metric.key)}
+              style={{
+                minHeight: 34,
+                padding: '7px 11px',
+                borderRadius: 10,
+                border: `1px solid ${sortMetric === metric.key ? withAlpha(metric.color, 0.46) : C.border}`,
+                background: sortMetric === metric.key ? withAlpha(metric.color, 0.12) : C.bgMuted,
+                color: sortMetric === metric.key ? metric.color : C.ice60,
+                fontSize: 'calc(11px * var(--font-scale, 1))',
+                fontWeight: 800,
+                cursor: 'pointer',
+              }}
+            >
+              {metric.name}{sortMetric === metric.key ? (direction === 'asc' ? ' ↑' : ' ↓') : ''}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ overflowX: 'auto', border: `1px solid ${C.border}`, borderRadius: 12 }}>
+        <table style={{ width: '100%', minWidth: 920, borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ background: C.bgMuted }}>
+              {columns.map((column) => (
+                <th key={column.key} style={{ padding: '11px 12px', textAlign: 'left', color: C.ice50, fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 800, textTransform: 'uppercase' }}>
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((item, index) => {
+              const hypers = item.hyperparameters || {};
+              const overall = item.metrics?.overall || {};
+              return (
+                <tr key={item.task_id} style={{ borderTop: `1px solid ${C.border}` }}>
+                  <td style={{ padding: '12px', color: C.ice, fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 800 }}>
+                    <span style={{ color: index === 0 ? C.green : C.ice40, marginRight: 8 }}>#{index + 1}</span>
+                    {item.model_name || `Task #${item.task_id}`}
+                    <div style={{ color: C.ice40, fontSize: 'calc(10px * var(--font-scale, 1))', marginTop: 3 }}>Task #{item.task_id}</div>
+                  </td>
+                  {['rmse', 'mae', 'ssim', 'r2'].map((metric) => (
+                    <td key={metric} style={{ padding: '12px', color: GOOD_METRICS.has(metric) ? C.green : C.mars, fontSize: 'calc(12px * var(--font-scale, 1))', fontWeight: 800, fontFamily: 'var(--font-display)' }}>
+                      {overall[metric] == null ? '--' : fmtNum(overall[metric], precision)}
+                    </td>
+                  ))}
+                  <td style={{ padding: '12px', color: C.ice70, fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700 }}>{item.architecture || '--'}</td>
+                  <td style={{ padding: '12px', color: C.ice70, fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 700 }}>{(item.selected_channels || []).join(' / ') || 'O3 only'}</td>
+                  <td style={{ padding: '12px', color: C.ice70, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{hypers.window ?? '--'}</td>
+                  <td style={{ padding: '12px', color: C.ice70, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{hypers.horizon ?? '--'}</td>
+                  <td style={{ padding: '12px', color: C.ice70, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{hypers._effective_data_source || hypers._data_source || 'default'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </GlowCard>
+  );
+}
+
+function MetricBars({ items, precision, isZh, plotTextColor, plotGridColor }) {
+  const [activeMetric, setActiveMetric] = useState('rmse');
+  const metricMeta = METRIC_META.find((metric) => metric.key === activeMetric) || METRIC_META[0];
+  const sorted = useMemo(() => sortCompareItems(items, { metric: activeMetric }), [activeMetric, items]);
+  const color = GOOD_METRICS.has(activeMetric) ? C.green : C.mars;
+
+  return (
+    <GlowCard style={{ padding: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start', marginBottom: 14, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ color: C.ice, fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 800, fontFamily: 'var(--font-display)' }}>
+            {isZh ? '多模型指标柱状图' : 'Metric comparison'}
+          </div>
+          <div style={{ color: C.ice50, fontSize: 'calc(11px * var(--font-scale, 1))', lineHeight: 1.55, marginTop: 5 }}>
+            {isZh ? '切换指标查看模型间差距，RMSE/MAE 越低越好，SSIM/R² 越高越好。' : 'Switch metrics to inspect gaps; lower RMSE/MAE is better and higher SSIM/R² is better.'}
+          </div>
+        </div>
+        <MetricTabs activeMetric={activeMetric} setActiveMetric={setActiveMetric} />
+      </div>
+
+      <Plot
+        data={[
+          {
+            type: 'bar',
+            orientation: 'h',
+            x: sorted.map((item) => Number(item.metrics?.overall?.[activeMetric]) || 0),
+            y: sorted.map((item) => item.model_name || `Task #${item.task_id}`),
+            marker: {
+              color: sorted.map((_, index) => withAlpha(color, Math.max(0.42, 0.96 - index * 0.06))),
+              line: { color: withAlpha(color, 0.9), width: 1 },
+            },
+            customdata: sorted.map((item) => [item.task_id, fmtNum(item.metrics?.overall?.[activeMetric] || 0, precision)]),
+            hovertemplate: `<b>%{y}</b><br>Task #%{customdata[0]}<br>${metricMeta.name}: <b>%{customdata[1]}</b><extra></extra>`,
+          },
+        ]}
+        layout={{
+          autosize: true,
+          height: Math.max(300, sorted.length * 46 + 100),
+          margin: { l: 150, r: 24, t: 10, b: 42 },
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          font: { color: plotTextColor, family: 'var(--font-body)' },
+          xaxis: { title: metricMeta.name, gridcolor: plotGridColor, zerolinecolor: plotGridColor },
+          yaxis: { automargin: true, autorange: 'reversed' },
+          showlegend: false,
+        }}
+        config={{ displayModeBar: false, responsive: true }}
+        style={{ width: '100%' }}
+      />
+    </GlowCard>
+  );
+}
+
+function ParameterMatrix({ items, isZh }) {
+  const rows = useMemo(() => buildCompareParameterRows(items), [items]);
+  const columns = [
+    { key: 'modelName', label: isZh ? '模型名' : 'Model' },
+    { key: 'taskId', label: 'Task ID' },
+    { key: 'modelSource', label: isZh ? '模型来源' : 'Source' },
+    { key: 'architecture', label: isZh ? '架构' : 'Architecture' },
+    { key: 'selectedChannels', label: isZh ? '输入通道' : 'Channels' },
+    { key: 'useSphere', label: 'SPHERE' },
+    { key: 'window', label: 'Window' },
+    { key: 'horizon', label: 'Horizon' },
+    { key: 'epochs', label: isZh ? '轮次' : 'Epochs' },
+    { key: 'batchSize', label: 'Batch' },
+    { key: 'learningRate', label: 'LR' },
+    { key: 'earlyStoppingPatience', label: isZh ? '早停' : 'Early stop' },
+    { key: 'seed', label: 'Seed' },
+    { key: 'dataSource', label: isZh ? '数据源' : 'Data source' },
+  ];
+
+  return (
+    <GlowCard style={{ padding: 20 }}>
+      <div style={{ color: C.ice, fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 800, fontFamily: 'var(--font-display)' }}>
+        {isZh ? '模型参数矩阵' : 'Parameter matrix'}
+      </div>
+      <div style={{ color: C.ice50, fontSize: 'calc(11px * var(--font-scale, 1))', lineHeight: 1.55, marginTop: 5, marginBottom: 14 }}>
+        {isZh ? '横向对比训练配置，帮助解释指标差异。' : 'Compare training configurations side by side to explain metric differences.'}
+      </div>
+      <div style={{ overflowX: 'auto', border: `1px solid ${C.border}`, borderRadius: 12 }}>
+        <table style={{ width: '100%', minWidth: 1120, borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ background: C.bgMuted }}>
+              {columns.map((column) => (
+                <th key={column.key} style={{ padding: '11px 12px', textAlign: 'left', color: C.ice50, fontSize: 'calc(10px * var(--font-scale, 1))', fontWeight: 800, textTransform: 'uppercase' }}>
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.taskId} style={{ borderTop: `1px solid ${C.border}` }}>
+                {columns.map((column) => (
+                  <td key={column.key} title={String(row[column.key] ?? '--')} style={{ padding: '12px', color: column.key === 'modelName' ? C.ice : C.ice70, fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: column.key === 'modelName' ? 800 : 600, maxWidth: column.key === 'modelName' ? 190 : 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {row[column.key] ?? '--'}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </GlowCard>
+  );
+}
+
+function StepCurves({ items, isZh, plotTextColor, plotGridColor }) {
+  const [activeMetric, setActiveMetric] = useState('rmse');
+  const metricMeta = METRIC_META.find((metric) => metric.key === activeMetric) || METRIC_META[0];
+  const traces = useMemo(() => buildStepCurveTraces(items, activeMetric), [activeMetric, items]);
+
+  return (
+    <GlowCard style={{ padding: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start', marginBottom: 14, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ color: C.ice, fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 800, fontFamily: 'var(--font-display)' }}>
+            {isZh ? 'Step 1 / 2 / 3 逐步性能' : 'Step-by-step performance'}
+          </div>
+          <div style={{ color: C.ice50, fontSize: 'calc(11px * var(--font-scale, 1))', lineHeight: 1.55, marginTop: 5 }}>
+            {isZh ? '查看预测步长增加时，各模型指标如何变化。' : 'Inspect how each model changes as the forecast step increases.'}
+          </div>
+        </div>
+        <MetricTabs activeMetric={activeMetric} setActiveMetric={setActiveMetric} />
+      </div>
+
+      <Plot
+        data={traces.map((trace) => ({
+          type: 'scatter',
+          mode: 'lines+markers',
+          x: trace.x.map((step) => `Step ${step}`),
+          y: trace.y,
+          name: trace.name,
+          line: { width: 2 },
+          marker: { size: 7 },
+          hovertemplate: `<b>${trace.name}</b><br>%{x}<br>${metricMeta.name}: <b>%{y:.4f}</b><extra></extra>`,
+        }))}
+        layout={{
+          autosize: true,
+          height: 340,
+          margin: { l: 54, r: 24, t: 10, b: 46 },
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          font: { color: plotTextColor, family: 'var(--font-body)' },
+          xaxis: { title: isZh ? '预测步' : 'Forecast step', gridcolor: plotGridColor },
+          yaxis: { title: metricMeta.name, gridcolor: plotGridColor, zerolinecolor: plotGridColor },
+          legend: { orientation: 'h', y: -0.24, x: 0, font: { size: 10 } },
+        }}
+        config={{ displayModeBar: false, responsive: true }}
+        style={{ width: '100%' }}
+      />
+    </GlowCard>
+  );
+}
+
+function LazyDiagnosticCard({ title, description, buttonText, loading, data, onLoad, children, isZh }) {
+  return (
+    <GlowCard style={{ padding: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start', marginBottom: 14, flexWrap: 'wrap' }}>
+        <div style={{ maxWidth: 680 }}>
+          <div style={{ color: C.ice, fontSize: 'calc(15px * var(--font-scale, 1))', fontWeight: 800, fontFamily: 'var(--font-display)' }}>
+            {title}
+          </div>
+          <div style={{ color: C.ice50, fontSize: 'calc(11px * var(--font-scale, 1))', lineHeight: 1.55, marginTop: 5 }}>
+            {description}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onLoad}
+          disabled={loading}
+          style={{
+            minHeight: 38,
+            padding: '9px 13px',
+            borderRadius: 12,
+            border: `1px solid ${data ? 'rgba(99,232,191,0.34)' : C.borderStrong}`,
+            background: data ? 'rgba(99,232,191,0.10)' : C.bgMuted,
+            color: loading ? C.ice40 : data ? C.green : C.ice70,
+            fontSize: 'calc(11px * var(--font-scale, 1))',
+            fontWeight: 800,
+            cursor: loading ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {loading ? (isZh ? '计算中…' : 'Computing...') : data ? (isZh ? '刷新' : 'Refresh') : buttonText}
+        </button>
+      </div>
+      {loading ? (
+        <div style={{ height: 220, display: 'grid', placeItems: 'center', background: C.bgMuted, border: `1px solid ${C.border}`, borderRadius: 12 }}>
+          <div style={{ display: 'grid', gap: 10, justifyItems: 'center' }}>
+            <div style={{ width: 24, height: 24, border: `2px solid ${C.border}`, borderTop: `2px solid ${C.green}`, borderRadius: '50%', animation: 'spin-slow 0.8s linear infinite' }} />
+            <div style={{ color: C.ice50, fontSize: 'calc(11px * var(--font-scale, 1))' }}>{isZh ? '正在读取完整测试集结果' : 'Reading full test-set results'}</div>
+          </div>
+        </div>
+      ) : data ? children : (
+        <div style={{ padding: '28px 18px', borderRadius: 12, border: `1px dashed ${C.borderStrong}`, background: C.bgMuted, color: C.ice50, textAlign: 'center', fontSize: 'calc(11px * var(--font-scale, 1))', lineHeight: 1.6 }}>
+          {isZh ? '该模块计算较重，点击按钮后按需加载。' : 'This module is computed on demand because it can be heavier.'}
+        </div>
+      )}
+    </GlowCard>
+  );
+}
+
+function ErrorDistributionCompare({ data, loading, onLoad, isZh, plotTextColor, plotGridColor }) {
+  const traces = useMemo(() => buildErrorHistogramTraces(data?.items || []), [data]);
+
+  return (
+    <LazyDiagnosticCard
+      title={isZh ? '多模型误差分布对比' : 'Error distribution comparison'}
+      description={isZh ? '叠加各模型完整测试集误差直方图，观察偏差集中区间和长尾。' : 'Overlay full test-set error histograms to inspect bias regions and long tails.'}
+      buttonText={isZh ? '加载误差分布' : 'Load distributions'}
+      loading={loading}
+      data={data}
+      onLoad={onLoad}
+      isZh={isZh}
+    >
+      <Plot
+        data={traces.map((trace) => ({
+          type: 'bar',
+          x: trace.centers,
+          y: trace.counts,
+          name: trace.name,
+          opacity: 0.58,
+          hovertemplate: `<b>${trace.name}</b><br>${isZh ? '误差' : 'Error'}: %{x:.4f}<br>${isZh ? '数量' : 'Count'}: %{y}<extra></extra>`,
+        }))}
+        layout={{
+          autosize: true,
+          height: 340,
+          barmode: 'overlay',
+          margin: { l: 54, r: 24, t: 10, b: 46 },
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          font: { color: plotTextColor, family: 'var(--font-body)' },
+          xaxis: { title: isZh ? '预测误差' : 'Prediction error', gridcolor: plotGridColor, zerolinecolor: plotGridColor },
+          yaxis: { title: isZh ? '数量' : 'Count', gridcolor: plotGridColor },
+          legend: { orientation: 'h', y: -0.24, x: 0, font: { size: 10 } },
+        }}
+        config={{ displayModeBar: false, responsive: true }}
+        style={{ width: '100%' }}
+      />
+    </LazyDiagnosticCard>
+  );
+}
+
+function PfiCompare({ data, loading, onLoad, isZh, plotTextColor, plotGridColor }) {
+  const matrix = useMemo(() => buildPfiMatrix(data?.items || []), [data]);
+
+  return (
+    <LazyDiagnosticCard
+      title={isZh ? 'PFI 特征重要性矩阵' : 'PFI importance matrix'}
+      description={isZh ? '行是模型，列是特征，颜色和数值表示完整测试集置换重要性。' : 'Rows are models and columns are features; color and value show full test-set permutation importance.'}
+      buttonText={isZh ? '加载 PFI 对比' : 'Load PFI'}
+      loading={loading}
+      data={data}
+      onLoad={onLoad}
+      isZh={isZh}
+    >
+      {matrix.features.length > 0 ? (
+        <Plot
+          data={[
+            {
+              type: 'heatmap',
+              x: matrix.features,
+              y: matrix.rows.map((row) => row.modelName),
+              z: matrix.rows.map((row) => matrix.features.map((feature) => row.values[feature] || 0)),
+              colorscale: [
+                [0, 'rgba(121,187,255,0.12)'],
+                [0.5, 'rgba(121,187,255,0.72)'],
+                [1, 'rgba(99,232,191,0.95)'],
+              ],
+              hovertemplate: `<b>%{y}</b><br>%{x}<br>${isZh ? '重要性' : 'Importance'}: <b>%{z:.5f}</b><extra></extra>`,
+              colorbar: { thickness: 12, title: isZh ? '重要性' : 'Importance' },
+            },
+          ]}
+          layout={{
+            autosize: true,
+            height: Math.max(280, matrix.rows.length * 42 + 150),
+            margin: { l: 150, r: 42, t: 10, b: 92 },
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            font: { color: plotTextColor, family: 'var(--font-body)' },
+            xaxis: { tickangle: -28, gridcolor: plotGridColor },
+            yaxis: { gridcolor: plotGridColor },
+          }}
+          config={{ displayModeBar: false, responsive: true }}
+          style={{ width: '100%' }}
+        />
+      ) : (
+        <div style={{ padding: 24, border: `1px dashed ${C.borderStrong}`, borderRadius: 12, color: C.ice50, textAlign: 'center', fontSize: 'calc(11px * var(--font-scale, 1))' }}>
+          {isZh ? '暂无 PFI 数据。' : 'No PFI data available.'}
+        </div>
+      )}
+    </LazyDiagnosticCard>
+  );
+}
+
+export default function CompareTrainingModelsPanel({
+  data,
+  loading,
+  errorDistributionData,
+  errorDistributionLoading,
+  onLoadErrorDistribution,
+  pfiData,
+  pfiLoading,
+  onLoadPfi,
+  selectedCount,
+  precision,
+  isZh,
+  plotTextColor,
+  plotGridColor,
+}) {
+  const items = Array.isArray(data?.items) ? data.items : [];
+
+  if (loading) return <LoadingState isZh={isZh} />;
+  if (!items.length) return <EmptyState isZh={isZh} selectedCount={selectedCount} />;
+
+  return (
+    <div style={{ display: 'grid', gap: 20 }}>
+      <SummaryTable items={items} precision={precision} isZh={isZh} />
+      <MetricBars
+        items={items}
+        precision={precision}
+        isZh={isZh}
+        plotTextColor={plotTextColor}
+        plotGridColor={plotGridColor}
+      />
+      <StepCurves
+        items={items}
+        isZh={isZh}
+        plotTextColor={plotTextColor}
+        plotGridColor={plotGridColor}
+      />
+      <ErrorDistributionCompare
+        data={errorDistributionData}
+        loading={errorDistributionLoading}
+        onLoad={onLoadErrorDistribution}
+        isZh={isZh}
+        plotTextColor={plotTextColor}
+        plotGridColor={plotGridColor}
+      />
+      <PfiCompare
+        data={pfiData}
+        loading={pfiLoading}
+        onLoad={onLoadPfi}
+        isZh={isZh}
+        plotTextColor={plotTextColor}
+        plotGridColor={plotGridColor}
+      />
+      <ParameterMatrix items={items} isZh={isZh} />
+    </div>
+  );
+}

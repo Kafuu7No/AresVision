@@ -30,6 +30,7 @@ from services.analysis_service import AnalysisService
 from services.mcd_overview_data_service import McdOverviewDataService
 from services.predict_data_service import PredictDataService
 from services.predict_service import PredictOrchestratorService
+from services.inference_service import InferenceService
 from services.ai_service import AIService
 from services.copilot_service import CopilotService
 from services.upload_service import UploadService
@@ -331,6 +332,7 @@ async def lifespan(app: FastAPI):
         inference=predict_inference,
     )
     app.state.predict_service = predict_orchestrator
+    app.state.training_inference_service = InferenceService()
 
     # 4. 初始化 AI 服务
     logger.info("[4/5] 初始化 AI 解读与 Copilot 服务...")

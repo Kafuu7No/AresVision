@@ -46,12 +46,28 @@ export default function UploadedModelPanel({
   onDelete,
   uploading = false,
   busy = false,
+  guideDownloadUrl,
+  templateDownloadUrl,
   labels,
   sectionTitleStyle,
   fieldHintStyle,
 }) {
   const fileRef = useRef(null);
   const selected = models.find((item) => item.id === selectedId) || null;
+  const downloadLinkStyle = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '9px 12px',
+    borderRadius: 10,
+    border: `1px solid ${C.border}`,
+    background: 'transparent',
+    color: C.ice70,
+    textDecoration: 'none',
+    fontWeight: 700,
+    fontSize: 'calc(12px * var(--font-scale, 1))',
+    fontFamily: 'var(--font-body)',
+  };
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
@@ -68,25 +84,37 @@ export default function UploadedModelPanel({
           <div style={{ ...sectionTitleStyle, marginBottom: 4 }}>{labels.title}</div>
           <div style={{ ...fieldHintStyle, marginTop: 0 }}>{labels.hint}</div>
         </div>
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading || busy}
-          style={{
-            padding: '9px 12px',
-            borderRadius: 10,
-            border: `1px solid ${C.border}`,
-            background: C.bgMuted,
-            color: C.ice,
-            cursor: uploading || busy ? 'not-allowed' : 'pointer',
-            opacity: uploading || busy ? 0.6 : 1,
-            fontWeight: 700,
-            fontSize: 'calc(12px * var(--font-scale, 1))',
-            fontFamily: 'var(--font-body)',
-          }}
-        >
-          {uploading ? labels.uploading : labels.upload}
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {guideDownloadUrl ? (
+            <a href={guideDownloadUrl} download style={downloadLinkStyle}>
+              {labels.downloadGuide}
+            </a>
+          ) : null}
+          {templateDownloadUrl ? (
+            <a href={templateDownloadUrl} download style={downloadLinkStyle}>
+              {labels.downloadTemplate}
+            </a>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading || busy}
+            style={{
+              padding: '9px 12px',
+              borderRadius: 10,
+              border: `1px solid ${C.border}`,
+              background: C.bgMuted,
+              color: C.ice,
+              cursor: uploading || busy ? 'not-allowed' : 'pointer',
+              opacity: uploading || busy ? 0.6 : 1,
+              fontWeight: 700,
+              fontSize: 'calc(12px * var(--font-scale, 1))',
+              fontFamily: 'var(--font-body)',
+            }}
+          >
+            {uploading ? labels.uploading : labels.upload}
+          </button>
+        </div>
         <input
           ref={fileRef}
           type="file"

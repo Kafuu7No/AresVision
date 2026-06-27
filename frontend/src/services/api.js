@@ -348,16 +348,63 @@ export async function fetchShapleyGlobal() {
   return res.json();
 }
 
-export async function fetchErrorDistribution(vars = []) {
+export async function fetchErrorDistribution(vars = [], options = {}) {
   const varsStr = vars.length > 0 ? vars.join(',') : 'Temperature,Dust_Optical_Depth,Solar_Flux_DN,U_Wind,V_Wind';
-  const res = await fetch(`${BASE}/predict/error-distribution?vars=${encodeURIComponent(varsStr)}`);
+  const params = new URLSearchParams({ vars: varsStr });
+  if (options.trainingTaskId) params.set('training_task_id', String(options.trainingTaskId));
+  if (options.horizon != null) params.set('horizon', String(options.horizon));
+  const res = await authedFetch(`${BASE}/predict/error-distribution?${params.toString()}`);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
 
-export async function fetchPermutationImportance(vars = []) {
+export async function compareTrainingModels(taskIds, options = {}) {
+  const res = await authedFetch(`${BASE}/predict/training-models/compare`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      task_ids: taskIds,
+      horizon: options.horizon ?? 3,
+    }),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function compareTrainingModelErrorDistributions(taskIds, options = {}) {
+  const res = await authedFetch(`${BASE}/predict/training-models/compare-error-distribution`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      task_ids: taskIds,
+      horizon: options.horizon ?? 3,
+    }),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function compareTrainingModelPfi(taskIds, options = {}) {
+  const res = await authedFetch(`${BASE}/predict/training-models/compare-pfi`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      task_ids: taskIds,
+      horizon: options.horizon ?? 3,
+    }),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchPermutationImportance(vars = [], options = {}) {
   const varsStr = vars.length > 0 ? vars.join(',') : 'Temperature,Dust_Optical_Depth,Solar_Flux_DN,U_Wind,V_Wind';
-  const res = await fetch(`${BASE}/predict/permutation-importance?vars=${encodeURIComponent(varsStr)}`);
+  const params = new URLSearchParams({ vars: varsStr });
+  if (options.trainingTaskId) params.set('training_task_id', String(options.trainingTaskId));
+  if (options.marsYear != null) params.set('mars_year', String(options.marsYear));
+  if (options.lsStart != null) params.set('ls_start', String(options.lsStart));
+  if (options.horizon != null) params.set('horizon', String(options.horizon));
+  const res = await authedFetch(`${BASE}/predict/permutation-importance?${params.toString()}`);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
@@ -650,6 +697,10 @@ export async function fetchUserModels() {
     throw new Error(err.detail || `${res.status}`);
   }
   return res.json();
+}
+
+export function getUserModelDownloadUrl(kind) {
+  return `${BASE}/user-models/downloads/${encodeURIComponent(kind)}`;
 }
 
 export async function revalidateUserModel(modelId) {

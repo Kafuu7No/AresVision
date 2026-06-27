@@ -9,7 +9,7 @@ import ChangePasswordModal from './ChangePasswordModal';
 import NotificationPanel from './NotificationPanel';
 import { getPendingReviews, getUnreadCount } from '../services/api';
 
-const NAV_IDS = ['home', 'overview', 'predict', 'training', 'explore', 'ai', 'about'];
+const NAV_IDS = ['home', 'overview', 'training', 'predict', 'explore', 'ai', 'about'];
 
 function MarsLogoIcon() {
   return (
