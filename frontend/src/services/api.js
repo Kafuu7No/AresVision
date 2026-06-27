@@ -10,8 +10,9 @@ const BASE = '/api';
 /** 从 localStorage 读取 token，自动附加到请求头 */
 async function authedFetch(url, options = {}) {
   const token = localStorage.getItem('aresvision_token');
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...options.headers,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
@@ -605,12 +606,71 @@ export async function fetchScripts() {
   return res.json();
 }
 
-export async function startTrainingTask(model_script, hyperparameters, model_name = null, data_source = 'default') {
+export async function startTrainingTask(
+  model_script,
+  hyperparameters,
+  model_name = null,
+  data_source = 'default',
+  options = {}
+) {
   const res = await authedFetch(`${BASE}/training/start`, {
     method: 'POST',
-    body: JSON.stringify({ model_script, hyperparameters, model_name, data_source }),
+    body: JSON.stringify({
+      model_script,
+      hyperparameters,
+      model_name,
+      data_source,
+      model_source: options.modelSource || 'official',
+      uploaded_model_id: options.uploadedModelId || null,
+    }),
   });
   if (!res.ok) throw new Error(`${res.status}`);
+  return res.json();
+}
+
+export async function uploadUserModel(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await authedFetch(`${BASE}/user-models`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function fetchUserModels() {
+  const res = await authedFetch(`${BASE}/user-models`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function revalidateUserModel(modelId) {
+  const res = await authedFetch(`${BASE}/user-models/${modelId}/validate`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteUserModel(modelId) {
+  const res = await authedFetch(`${BASE}/user-models/${modelId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
   return res.json();
 }
 

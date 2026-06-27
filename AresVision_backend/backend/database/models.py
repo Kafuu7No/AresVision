@@ -41,6 +41,9 @@ class User(Base):
     lineage_events: Mapped[list["DatasetLineageEvent"]] = relationship(
         "DatasetLineageEvent", foreign_keys="DatasetLineageEvent.actor_user_id", back_populates="actor"
     )
+    user_model_packages: Mapped[list["UserModelPackage"]] = relationship(
+        "UserModelPackage", foreign_keys="UserModelPackage.user_id", back_populates="owner"
+    )
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email} role={self.role}>"
@@ -181,12 +184,43 @@ class Feedback(Base):
         return f"<Feedback id={self.id} type={self.type} status={self.status}>"
 
 
+class UserModelPackage(Base):
+    __tablename__ = "user_model_packages"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    display_name: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    storage_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    param_schema: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    validation_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    validation_report: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    owner: Mapped["User"] = relationship(
+        "User", foreign_keys=[user_id], back_populates="user_model_packages"
+    )
+
+    def __repr__(self) -> str:
+        return f"<UserModelPackage id={self.id} user_id={self.user_id} name={self.display_name}>"
+
+
 class ModelTrainingTask(Base):
     __tablename__ = "model_training_tasks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
     model_script: Mapped[str] = mapped_column(String(255), nullable=False)
+    model_source: Mapped[str] = mapped_column(String(20), nullable=False, default="official")
+    uploaded_model_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("user_model_packages.id"), nullable=True
+    )
+    uploaded_model_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     hyperparameters: Mapped[str] = mapped_column(Text, nullable=False)  # JSON stored as string
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")  # pending, running, completed, failed
     start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
@@ -206,6 +240,9 @@ class ModelTrainingTask(Base):
     loss_history: Mapped[str | None] = mapped_column(Text, nullable=True) # JSON: {"train": [], "val": []}
 
     user: Mapped["User | None"] = relationship("User", foreign_keys=[user_id])
+    uploaded_model: Mapped["UserModelPackage | None"] = relationship(
+        "UserModelPackage", foreign_keys=[uploaded_model_id]
+    )
 
     def __repr__(self) -> str:
         return f"<ModelTrainingTask id={self.id} script={self.model_script} status={self.status}>"

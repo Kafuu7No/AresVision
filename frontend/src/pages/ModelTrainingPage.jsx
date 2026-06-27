@@ -10,6 +10,10 @@ import {
   stopTrainingTask,
   deleteTrainingTask,
   fetchDataInfo,
+  uploadUserModel,
+  fetchUserModels,
+  revalidateUserModel,
+  deleteUserModel,
 } from '../services/api';
 import {
   getPersonalSourceAvailability,
@@ -35,6 +39,18 @@ import {
   sanitizePositiveInteger,
   sanitizePositiveNumber,
 } from './ModelTrainingPage/trainingParamSanitizers';
+import ModelSourceSelector from './ModelTrainingPage/ModelSourceSelector';
+import UploadedModelPanel from './ModelTrainingPage/UploadedModelPanel';
+import DynamicModelParamsForm from './ModelTrainingPage/DynamicModelParamsForm';
+import {
+  buildCustomModelParams,
+  createDefaultCustomModelParams,
+  validateCustomModelParams,
+} from './ModelTrainingPage/uploadedModelParams';
+import {
+  getModelTrainingControlVisibility,
+  getVisibleTrainingHyperparameters,
+} from './ModelTrainingPage/modelTrainingVisibility';
 
 const MONO_FONT = "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace";
 const PERSONAL_BOUNCE_MS = 720;
@@ -115,6 +131,7 @@ function getStatusMeta(status, t) {
 
 function formatHyperValue(key, value, t) {
   if (Array.isArray(value)) return value.join(' / ');
+  if (value && typeof value === 'object') return JSON.stringify(value);
   if (key === 'model_architecture') return getModelArchitectureLabel(value);
   if (key === 'learning_rate' && typeof value === 'number') return value.toFixed(5);
   if (key === 'early_stopping_patience' && value === 0) return t('modelTraining.hypers.disabled');
@@ -127,10 +144,6 @@ function parseHyperparameters(raw) {
   } catch {
     return {};
   }
-}
-
-function getVisibleHyperparameters(hyperparameters) {
-  return Object.entries(hyperparameters || {}).filter(([key]) => !key.startsWith('_'));
 }
 
 function normalizeModelArchitecture(value) {
@@ -278,7 +291,7 @@ function TrainingTaskCard({
   const statusMeta = getStatusMeta(task.status, t);
   const hyperparameters = useMemo(() => parseHyperparameters(task.hyperparameters), [task.hyperparameters]);
   const visibleHyperparameters = useMemo(
-    () => getVisibleHyperparameters(hyperparameters),
+    () => getVisibleTrainingHyperparameters(hyperparameters),
     [hyperparameters]
   );
 
@@ -288,6 +301,7 @@ function TrainingTaskCard({
     hyperparameters._effective_data_source || hyperparameters._data_source || 'default',
     copy
   );
+  const isUploadedTask = hyperparameters.model_source === 'uploaded';
   const architectureLabel = getModelArchitectureLabel(hyperparameters.model_architecture);
   const sphereLabel = hyperparameters.use_sphere ? 'SPHERE ON' : 'SPHERE OFF';
   const actionBaseStyle = {
@@ -371,8 +385,8 @@ function TrainingTaskCard({
             }}
           >
             <span>{scriptSummary}</span>
-            <span>{architectureLabel}</span>
-            <span>{sphereLabel}</span>
+            {!isUploadedTask ? <span>{architectureLabel}</span> : null}
+            {!isUploadedTask ? <span>{sphereLabel}</span> : null}
             <span>{taskSourceLabel}</span>
             <span>{formatTaskDate(task.start_time, locale)}</span>
           </div>
@@ -587,6 +601,44 @@ export default function ModelTrainingPage() {
       trainingPreset: isZh ? '训练预设' : 'Training preset',
       trainingSummary: isZh ? '训练摘要' : 'Training summary',
       presetLoading: isZh ? '正在加载训练脚本...' : 'Loading training presets...',
+      modelSource: isZh ? '模型来源' : 'Model source',
+      modelSourceOfficial: isZh ? '官方模型' : 'Official model',
+      modelSourceUploaded: isZh ? '上传模型' : 'Uploaded model',
+      modelSourceOfficialHint: isZh
+        ? '使用平台内置训练脚本和模型结构。'
+        : 'Use the platform training script and built-in model architectures.',
+      modelSourceUploadedHint: isZh
+        ? '使用已通过校验的 Python 模型文件进行训练。'
+        : 'Train with a validated Python model uploaded by your lab account.',
+      uploadedModels: isZh ? '上传模型' : 'Uploaded models',
+      uploadedModelsHint: isZh
+        ? '上传、选择、重新校验或删除用于自定义训练的 Python 模型文件。'
+        : 'Upload, select, revalidate, or remove Python model files for custom training.',
+      uploadedModelsEmpty: isZh ? '还没有上传模型文件。' : 'No uploaded model files yet.',
+      uploadModel: isZh ? '上传 .py' : 'Upload .py',
+      uploadingModel: isZh ? '上传中...' : 'Uploading...',
+      revalidateModel: isZh ? '重新校验' : 'Revalidate',
+      deleteUploadedModel: isZh ? '删除' : 'Delete',
+      uploadedModelValid: isZh ? '可训练' : 'Valid',
+      uploadedModelInvalid: isZh ? '需修正' : 'Invalid',
+      uploadedModelPending: isZh ? '校验中' : 'Pending',
+      uploadedModelReady: isZh ? '该模型已通过校验，可以训练。' : 'This model is ready for training.',
+      uploadedModelUnnamed: isZh ? '未命名模型' : 'Unnamed model',
+      uploadedModelNoFilename: isZh ? '未知文件' : 'Unknown file',
+      customModelParams: isZh ? '自定义模型参数' : 'Custom model params',
+      customModelParamsEmpty: isZh
+        ? '该模型没有声明额外参数。'
+        : 'This model does not define additional parameters.',
+      paramRangeHint: (min, max) => (isZh ? `范围 ${min} - ${max}` : `Range ${min} - ${max}`),
+      paramMinHint: (min) => (isZh ? `最小值 ${min}` : `Min ${min}`),
+      paramMaxHint: (max) => (isZh ? `最大值 ${max}` : `Max ${max}`),
+      uploadModelSuccess: isZh ? '模型校验通过' : 'Model validation passed',
+      uploadModelInvalid: isZh ? '模型校验失败' : 'Model validation failed',
+      uploadModelError: isZh ? '模型上传失败' : 'Model upload failed',
+      revalidateModelSuccess: isZh ? '模型已重新校验' : 'Model revalidated',
+      deleteUploadedModelSuccess: isZh ? '上传模型已删除' : 'Uploaded model deleted',
+      selectValidUploadedModel: isZh ? '请选择通过校验的上传模型。' : 'Select a valid uploaded model.',
+      fixCustomModelParams: isZh ? '请修正自定义模型参数。' : 'Fix the custom model parameters.',
       presetUnavailable: isZh
         ? '当前通道组合暂无可用训练脚本。'
         : 'No training preset is available for the current channel selection.',
@@ -649,6 +701,12 @@ export default function ModelTrainingPage() {
 
   const [selectedChannels, setSelectedChannels] = useState([]);
   const [selectedScript, setSelectedScript] = useState(UNIFIED_TRAINING_SCRIPT);
+  const [modelSource, setModelSource] = useState('official');
+  const [uploadedModels, setUploadedModels] = useState([]);
+  const [selectedUploadedModelId, setSelectedUploadedModelId] = useState('');
+  const [customModelParams, setCustomModelParams] = useState({});
+  const [customModelParamErrors, setCustomModelParamErrors] = useState({});
+  const [uploadingModel, setUploadingModel] = useState(false);
   const [modelArchitecture, setModelArchitecture] = useState('predrnnv2');
   const [useSphere, setUseSphere] = useState(false);
   const [epochs, setEpochs] = useState(10);
@@ -688,6 +746,27 @@ export default function ModelTrainingPage() {
     () => tasks.find((task) => task.id === activeTaskId) || null,
     [activeTaskId, tasks]
   );
+  const selectedUploadedModel = useMemo(
+    () => uploadedModels.find((item) => item.id === selectedUploadedModelId) || null,
+    [selectedUploadedModelId, uploadedModels]
+  );
+  const selectedUploadedParamSchema = useMemo(
+    () => selectedUploadedModel?.param_schema || {},
+    [selectedUploadedModel]
+  );
+  const customParamValidation = useMemo(
+    () => validateCustomModelParams(selectedUploadedParamSchema, customModelParams),
+    [customModelParams, selectedUploadedParamSchema]
+  );
+  const visibleCustomModelParamErrors = useMemo(
+    () => ({
+      ...customParamValidation.errors,
+      ...customModelParamErrors,
+    }),
+    [customModelParamErrors, customParamValidation.errors]
+  );
+  const selectedUploadedModelLabel =
+    selectedUploadedModel?.display_name || selectedUploadedModel?.original_filename || copy.uploadedModelUnnamed;
 
   const activeStatusMeta = getStatusMeta(activeTask?.status || 'idle', t);
   const normalizedModelArchitecture = normalizeModelArchitecture(modelArchitecture);
@@ -710,9 +789,19 @@ export default function ModelTrainingPage() {
       : '');
 
   const selectedScriptAvailable = !!selectedScript && scripts.includes(selectedScript);
+  const uploadedModelStartBlocked =
+    modelSource === 'uploaded' &&
+    (!selectedUploadedModel || selectedUploadedModel.validation_status !== 'valid' || !customParamValidation.ok);
+  const activeModelSourceAvailable =
+    modelSource === 'uploaded' ? !uploadedModelStartBlocked : selectedScriptAvailable;
   const startDisabled = user
-    ? !selectedScriptAvailable || !!modelNameError || !customModelName.trim() || isProcessing
+    ? (modelSource === 'official' && !selectedScriptAvailable) ||
+      uploadedModelStartBlocked ||
+      !!modelNameError ||
+      !customModelName.trim() ||
+      isProcessing
     : false;
+  const controlVisibility = getModelTrainingControlVisibility(modelSource);
 
   const summaryCardStyle = {
     padding: '14px 16px',
@@ -902,6 +991,46 @@ export default function ModelTrainingPage() {
   }, [scripts, user]);
 
   useEffect(() => {
+    if (!user) {
+      setModelSource('official');
+      setUploadedModels([]);
+      setSelectedUploadedModelId('');
+      setCustomModelParams({});
+      setCustomModelParamErrors({});
+      setUploadingModel(false);
+      return undefined;
+    }
+
+    let active = true;
+
+    fetchUserModels()
+      .then((payload) => {
+        if (!active) return;
+        const items = Array.isArray(payload?.items) ? payload.items : [];
+        setUploadedModels(items);
+        setSelectedUploadedModelId((current) => {
+          const currentModel = items.find((item) => item.id === current);
+          if (currentModel) return current;
+          return items.find((item) => item.validation_status === 'valid')?.id || items[0]?.id || '';
+        });
+      })
+      .catch(() => {
+        if (!active) return;
+        setUploadedModels([]);
+        setSelectedUploadedModelId('');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    setCustomModelParams(createDefaultCustomModelParams(selectedUploadedParamSchema));
+    setCustomModelParamErrors({});
+  }, [selectedUploadedModelId, selectedUploadedParamSchema]);
+
+  useEffect(() => {
     let active = true;
     setIsSwitchingSource(true);
 
@@ -962,6 +1091,82 @@ export default function ModelTrainingPage() {
     }
   };
 
+  const refreshUploadedModels = async (preferredId = selectedUploadedModelId) => {
+    const payload = await fetchUserModels();
+    const items = Array.isArray(payload?.items) ? payload.items : [];
+    setUploadedModels(items);
+    setSelectedUploadedModelId(() => {
+      const preferredModel = items.find((item) => item.id === preferredId);
+      if (preferredModel) return preferredId;
+      return items.find((item) => item.validation_status === 'valid')?.id || items[0]?.id || '';
+    });
+    return items;
+  };
+
+  const handleUploadModel = async (file) => {
+    if (!user) {
+      openAuthModal('login');
+      return;
+    }
+
+    try {
+      setUploadingModel(true);
+      const uploaded = await uploadUserModel(file);
+      await refreshUploadedModels(uploaded?.id);
+      setSelectedUploadedModelId(uploaded?.id || '');
+      setModelSource('uploaded');
+      showToast(
+        uploaded?.validation_status === 'valid' ? copy.uploadModelSuccess : copy.uploadModelInvalid,
+        uploaded?.validation_status === 'valid' ? 'success' : 'error'
+      );
+    } catch (error) {
+      showToast(`${copy.uploadModelError}: ${error.message}`, 'error');
+    } finally {
+      setUploadingModel(false);
+    }
+  };
+
+  const handleRevalidateModel = async (modelId) => {
+    if (!modelId || isProcessing) return;
+    try {
+      setIsProcessing(true);
+      const updated = await revalidateUserModel(modelId);
+      await refreshUploadedModels(updated?.id || modelId);
+      showToast(
+        updated?.validation_status === 'valid' ? copy.revalidateModelSuccess : copy.uploadModelInvalid,
+        updated?.validation_status === 'valid' ? 'success' : 'error'
+      );
+    } catch (error) {
+      showToast(error.message, 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteUploadedModel = async (modelId) => {
+    if (!modelId || isProcessing) return;
+    try {
+      setIsProcessing(true);
+      await deleteUserModel(modelId);
+      await refreshUploadedModels('');
+      showToast(copy.deleteUploadedModelSuccess, 'success');
+    } catch (error) {
+      showToast(error.message, 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCustomModelParamChange = (key, value) => {
+    setCustomModelParams((previous) => ({ ...previous, [key]: value }));
+    setCustomModelParamErrors((previous) => {
+      if (!previous[key]) return previous;
+      const next = { ...previous };
+      delete next[key];
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (autoScrollRef.current && logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
@@ -986,14 +1191,28 @@ export default function ModelTrainingPage() {
       return;
     }
 
-    if (!selectedScriptAvailable) {
+    if (modelSource === 'official' && !selectedScriptAvailable) {
       alert(copy.presetUnavailable);
       return;
     }
 
+    if (modelSource === 'uploaded') {
+      if (!selectedUploadedModel || selectedUploadedModel.validation_status !== 'valid') {
+        showToast(copy.selectValidUploadedModel, 'error');
+        return;
+      }
+
+      const customValidation = validateCustomModelParams(selectedUploadedParamSchema, customModelParams);
+      if (!customValidation.ok) {
+        setCustomModelParamErrors(customValidation.errors);
+        showToast(copy.fixCustomModelParams, 'error');
+        return;
+      }
+    }
+
     try {
       setIsProcessing(true);
-      const hyperparameters = buildTrainingHyperparameters({
+      const baseHyperparameters = buildTrainingHyperparameters({
         epochs,
         batchSize,
         learningRate,
@@ -1008,12 +1227,25 @@ export default function ModelTrainingPage() {
         useSphere,
         architectureParamsByModel,
       });
+      const hyperparameters =
+        modelSource === 'uploaded'
+          ? {
+              ...baseHyperparameters,
+              custom_model_params: buildCustomModelParams(selectedUploadedParamSchema, customModelParams),
+            }
+          : baseHyperparameters;
+      const apiModelScript =
+        modelSource === 'uploaded' ? selectedScript || UNIFIED_TRAINING_SCRIPT : selectedScript;
 
       const task = await startTrainingTask(
-        selectedScript,
+        apiModelScript,
         hyperparameters,
         customModelName.trim(),
-        dataSourceMode
+        dataSourceMode,
+        {
+          modelSource,
+          uploadedModelId: modelSource === 'uploaded' ? selectedUploadedModelId : null,
+        }
       );
 
       setTasks((previous) => {
@@ -1063,6 +1295,10 @@ export default function ModelTrainingPage() {
 
   const presetStatusText = !user
     ? copy.presetLoginHint
+    : modelSource === 'uploaded'
+      ? selectedUploadedModel?.validation_status === 'valid'
+        ? copy.uploadedModelReady
+        : copy.selectValidUploadedModel
     : scriptsLoading
       ? copy.presetLoading
       : scriptsError || (selectedScriptAvailable ? copy.presetMatched : copy.presetUnavailable);
@@ -1216,14 +1452,14 @@ export default function ModelTrainingPage() {
                     gap: 8,
                     padding: '8px 12px',
                     borderRadius: 999,
-                    background: selectedScriptAvailable ? 'rgba(74,158,255,0.12)' : 'rgba(217,92,92,0.10)',
-                    border: `1px solid ${selectedScriptAvailable ? 'rgba(74,158,255,0.20)' : 'rgba(217,92,92,0.16)'}`,
-                    color: selectedScriptAvailable ? C.blue : '#d95c5c',
+                    background: activeModelSourceAvailable ? 'rgba(74,158,255,0.12)' : 'rgba(217,92,92,0.10)',
+                    border: `1px solid ${activeModelSourceAvailable ? 'rgba(74,158,255,0.20)' : 'rgba(217,92,92,0.16)'}`,
+                    color: activeModelSourceAvailable ? C.blue : '#d95c5c',
                     fontSize: 'calc(11px * var(--font-scale, 1))',
                     fontWeight: 700,
                   }}
                 >
-                  {!user ? copy.loginRequiredToUse : (selectedScriptAvailable ? copy.presetMatched : copy.selectionUnavailable)}
+                  {!user ? copy.loginRequiredToUse : (activeModelSourceAvailable ? copy.presetMatched : copy.selectionUnavailable)}
                 </div>
               </div>
 
@@ -1285,6 +1521,78 @@ export default function ModelTrainingPage() {
               </div>
 
               <div style={{ ...summaryCardStyle, padding: '16px 16px 14px' }}>
+                <ModelSourceSelector
+                  value={modelSource}
+                  onChange={setModelSource}
+                  labels={{
+                    title: copy.modelSource,
+                    official: copy.modelSourceOfficial,
+                    uploaded: copy.modelSourceUploaded,
+                    officialHint: copy.modelSourceOfficialHint,
+                    uploadedHint: copy.modelSourceUploadedHint,
+                  }}
+                  isLight={isLight}
+                  disabled={!user}
+                  sectionTitleStyle={sectionTitleStyle}
+                  fieldHintStyle={fieldHintStyle}
+                />
+              </div>
+
+              {modelSource === 'uploaded' ? (
+                <div style={{ ...summaryCardStyle, padding: '16px 16px 14px' }}>
+                  <UploadedModelPanel
+                    models={uploadedModels}
+                    selectedId={selectedUploadedModelId}
+                    onSelect={setSelectedUploadedModelId}
+                    onUpload={handleUploadModel}
+                    onRevalidate={handleRevalidateModel}
+                    onDelete={handleDeleteUploadedModel}
+                    uploading={uploadingModel}
+                    busy={isProcessing}
+                    labels={{
+                      title: copy.uploadedModels,
+                      hint: copy.uploadedModelsHint,
+                      empty: copy.uploadedModelsEmpty,
+                      upload: copy.uploadModel,
+                      uploading: copy.uploadingModel,
+                      revalidate: copy.revalidateModel,
+                      delete: copy.deleteUploadedModel,
+                      valid: copy.uploadedModelValid,
+                      invalid: copy.uploadedModelInvalid,
+                      pending: copy.uploadedModelPending,
+                      ready: copy.uploadedModelReady,
+                      unnamed: copy.uploadedModelUnnamed,
+                      noFilename: copy.uploadedModelNoFilename,
+                    }}
+                    sectionTitleStyle={sectionTitleStyle}
+                    fieldHintStyle={fieldHintStyle}
+                  />
+                </div>
+              ) : null}
+
+              {modelSource === 'uploaded' ? (
+                <div style={{ ...summaryCardStyle, padding: '16px 16px 14px' }}>
+                  <DynamicModelParamsForm
+                    schema={selectedUploadedParamSchema}
+                    values={customModelParams}
+                    errors={visibleCustomModelParamErrors}
+                    onChange={handleCustomModelParamChange}
+                    labels={{
+                      title: copy.customModelParams,
+                      empty: copy.customModelParamsEmpty,
+                      rangeHint: copy.paramRangeHint,
+                      minHint: copy.paramMinHint,
+                      maxHint: copy.paramMaxHint,
+                    }}
+                    sectionTitleStyle={sectionTitleStyle}
+                    fieldLabelStyle={fieldLabelStyle}
+                    fieldHintStyle={fieldHintStyle}
+                    inputStyle={inputStyle}
+                  />
+                </div>
+              ) : null}
+
+              <div style={{ ...summaryCardStyle, padding: '16px 16px 14px' }}>
                 <div style={{ ...sectionTitleStyle, marginBottom: 12 }}>{t('modelTraining.modelNaming')}</div>
                 <div style={fieldLabelStyle}>
                   {modelNameLabel}
@@ -1321,9 +1629,13 @@ export default function ModelTrainingPage() {
                     accent={C.mars}
                   />
                   <CompactField
-                    label={copy.modelArchitecture}
-                    value={`${getModelArchitectureLabel(modelArchitecture)} / SPHERE ${useSphere ? 'ON' : 'OFF'}`}
-                    accent={useSphere ? C.blue : C.ice}
+                    label={modelSource === 'uploaded' ? copy.modelSourceUploaded : copy.modelArchitecture}
+                    value={
+                      modelSource === 'uploaded'
+                        ? selectedUploadedModelLabel
+                        : `${getModelArchitectureLabel(modelArchitecture)} / SPHERE ${useSphere ? 'ON' : 'OFF'}`
+                    }
+                    accent={modelSource === 'uploaded' || useSphere ? C.blue : C.ice}
                   />
                   <CompactField
                     label={copy.coreParameters}
@@ -1389,98 +1701,100 @@ export default function ModelTrainingPage() {
                 </div>
               </div>
 
-              <div className="model-training-section">
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: 12,
-                    marginBottom: 12,
-                  }}
-                >
-                  <div style={sectionTitleStyle}>{copy.backboneModel}</div>
-                  <button
-                    type="button"
-                    onClick={() => setArchitecturePickerOpen((previous) => !previous)}
-                    style={{
-                      padding: '6px 10px',
-                      borderRadius: 10,
-                      border: `1px solid ${C.border}`,
-                      background: C.bgMuted,
-                      color: C.ice70,
-                      fontSize: 'calc(11px * var(--font-scale, 1))',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {architecturePickerOpen ? copy.collapse : copy.expand}
-                  </button>
-                </div>
-                {!architecturePickerOpen ? (
+              {controlVisibility.officialModelControls ? (
+                <div className="model-training-section">
                   <div
                     style={{
-                      padding: '10px 12px',
-                      borderRadius: 12,
-                      border: '1px solid rgba(74,158,255,0.24)',
-                      background: 'rgba(74,158,255,0.10)',
-                      color: C.blue,
-                      fontSize: 'calc(12px * var(--font-scale, 1))',
-                      fontWeight: 700,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 12,
+                      marginBottom: 12,
                     }}
                   >
-                    {getModelArchitectureLabel(modelArchitecture)}
+                    <div style={sectionTitleStyle}>{copy.backboneModel}</div>
+                    <button
+                      type="button"
+                      onClick={() => setArchitecturePickerOpen((previous) => !previous)}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: 10,
+                        border: `1px solid ${C.border}`,
+                        background: C.bgMuted,
+                        color: C.ice70,
+                        fontSize: 'calc(11px * var(--font-scale, 1))',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {architecturePickerOpen ? copy.collapse : copy.expand}
+                    </button>
                   </div>
-                ) : (
-                  <div className="model-training-channels-compact">
-                    {MODEL_ARCHITECTURES.map((architecture) => {
-                      const active = modelArchitecture === architecture.id;
-                      return (
-                        <button
-                          key={architecture.id}
-                          onClick={() => {
-                            setModelArchitecture(architecture.id);
-                            setArchitecturePickerOpen(false);
-                          }}
-                          style={{
-                            padding: '10px 12px',
-                            borderRadius: 12,
-                            border: `1px solid ${active ? 'rgba(74,158,255,0.24)' : C.border}`,
-                            background: active ? 'rgba(74,158,255,0.10)' : C.bgMuted,
-                            color: active ? C.blue : C.ice,
-                            fontSize: 'calc(11px * var(--font-scale, 1))',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            minHeight: 44,
-                          }}
-                        >
-                          {architecture.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setUseSphere((value) => !value)}
-                  style={{
-                    marginTop: 12,
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: 12,
-                    border: `1px solid ${useSphere ? 'rgba(74,158,255,0.24)' : C.border}`,
-                    background: useSphere ? 'rgba(74,158,255,0.10)' : C.bgMuted,
-                    color: useSphere ? C.blue : C.ice,
-                    fontSize: 'calc(20px * var(--font-scale, 1))',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                  }}
-                >
-                  {copy.sphereToggle}: {useSphere ? copy.enabled : copy.disabled}
-                </button>
-              </div>
+                  {!architecturePickerOpen ? (
+                    <div
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 12,
+                        border: '1px solid rgba(74,158,255,0.24)',
+                        background: 'rgba(74,158,255,0.10)',
+                        color: C.blue,
+                        fontSize: 'calc(12px * var(--font-scale, 1))',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {getModelArchitectureLabel(modelArchitecture)}
+                    </div>
+                  ) : (
+                    <div className="model-training-channels-compact">
+                      {MODEL_ARCHITECTURES.map((architecture) => {
+                        const active = modelArchitecture === architecture.id;
+                        return (
+                          <button
+                            key={architecture.id}
+                            onClick={() => {
+                              setModelArchitecture(architecture.id);
+                              setArchitecturePickerOpen(false);
+                            }}
+                            style={{
+                              padding: '10px 12px',
+                              borderRadius: 12,
+                              border: `1px solid ${active ? 'rgba(74,158,255,0.24)' : C.border}`,
+                              background: active ? 'rgba(74,158,255,0.10)' : C.bgMuted,
+                              color: active ? C.blue : C.ice,
+                              fontSize: 'calc(11px * var(--font-scale, 1))',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              minHeight: 44,
+                            }}
+                          >
+                            {architecture.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setUseSphere((value) => !value)}
+                    style={{
+                      marginTop: 12,
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 12,
+                      border: `1px solid ${useSphere ? 'rgba(74,158,255,0.24)' : C.border}`,
+                      background: useSphere ? 'rgba(74,158,255,0.10)' : C.bgMuted,
+                      color: useSphere ? C.blue : C.ice,
+                      fontSize: 'calc(20px * var(--font-scale, 1))',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {copy.sphereToggle}: {useSphere ? copy.enabled : copy.disabled}
+                  </button>
+                </div>
+              ) : null}
 
               <div className="model-training-section">
                 <div style={sectionTitleStyle}>{copy.coreParameters}</div>
@@ -1596,130 +1910,132 @@ export default function ModelTrainingPage() {
                 <div style={{ ...fieldHintStyle, marginTop: 4 }}>{t('modelTraining.earlyStopNote')}</div>
               </div>
 
-              <div className="model-training-section">
-                <div
-                  style={{
-                    borderRadius: 16,
-                    border: `1px solid ${C.border}`,
-                    background: C.bgMuted,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <button
-                    onClick={() => setAdvancedOpen((previous) => !previous)}
+              {controlVisibility.officialModelControls ? (
+                <div className="model-training-section">
+                  <div
                     style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      border: 'none',
-                      background: 'transparent',
-                      color: C.ice,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 12,
-                      cursor: 'pointer',
-                      fontFamily: 'var(--font-body)',
+                      borderRadius: 16,
+                      border: `1px solid ${C.border}`,
+                      background: C.bgMuted,
+                      overflow: 'hidden',
                     }}
                   >
-                      <div style={{ textAlign: 'left' }}>
-                        <div style={{ ...sectionTitleStyle, marginBottom: 4 }}>{copy.modelArchitecture}</div>
-                        <div style={{ ...fieldHintStyle, marginTop: 0 }}>
-                          {advancedOpen ? getModelArchitectureLabel(modelArchitecture) : structureSummary}
-                        </div>
-                      </div>
-                    <div
+                    <button
+                      onClick={() => setAdvancedOpen((previous) => !previous)}
                       style={{
-                        fontSize: 'calc(12px * var(--font-scale, 1))',
-                        color: C.ice60,
-                        fontWeight: 700,
+                        width: '100%',
+                        padding: '12px 14px',
+                        border: 'none',
+                        background: 'transparent',
+                        color: C.ice,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        cursor: 'pointer',
+                        fontFamily: 'var(--font-body)',
                       }}
                     >
-                      {advancedOpen ? copy.collapse : copy.expand}
-                    </div>
-                  </button>
-
-                  {advancedOpen ? (
-                    <div
-                      style={{
-                        padding: '0 14px 14px',
-                        borderTop: `1px solid ${C.border}`,
-                      }}
-                    >
-                      {isRecurrentModel ? (
-                        <>
-                          <div className="model-training-field-grid" style={{ marginTop: 16 }}>
-                            <div>
-                              <div style={fieldLabelStyle}>{t('modelTraining.stlstmLayers')}</div>
-                              <input
-                                type="number"
-                                style={inputStyle}
-                                value={stlstmLayers}
-                                onChange={handleLayersChange}
-                                min="1"
-                                max="10"
-                              />
-                            </div>
+                        <div style={{ textAlign: 'left' }}>
+                          <div style={{ ...sectionTitleStyle, marginBottom: 4 }}>{copy.modelArchitecture}</div>
+                          <div style={{ ...fieldHintStyle, marginTop: 0 }}>
+                            {advancedOpen ? getModelArchitectureLabel(modelArchitecture) : structureSummary}
                           </div>
-
-                          {hiddenDims.length > 0 ? (
-                            <div className="model-training-dim-grid">
-                              {hiddenDims.map((dim, index) => (
-                                <div key={`${index}`}>
-                                  <div style={fieldLabelStyle}>
-                                    {t('modelTraining.layer')} {index + 1} {t('modelTraining.layerDim')}
-                                  </div>
-                                  <input
-                                    type="number"
-                                    style={inputStyle}
-                                    value={dim}
-                                    onChange={(event) => handleDimChange(index, event.target.value)}
-                                    min="1"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          ) : null}
-                        </>
-                      ) : (
-                        <div className="model-training-field-grid" style={{ marginTop: 16 }}>
-                          {activeStructureConfig.map((field) => (
-                            <div key={field.key}>
-                              <div style={fieldLabelStyle}>
-                                {getModelStructureParamLabel(field.key, structureLabelLanguage)}
-                              </div>
-                              <input
-                                type={field.type === 'integerList' ? 'text' : 'number'}
-                                style={inputStyle}
-                                value={
-                                  Array.isArray(activeStructureParams[field.key] ?? field.defaultValue)
-                                    ? (activeStructureParams[field.key] ?? field.defaultValue).join(',')
-                                    : activeStructureParams[field.key] ?? field.defaultValue
-                                }
-                                min={
-                                  field.type === 'boundedFloat' && OPEN_INTERVAL_FLOAT_FIELDS.has(field.key)
-                                    ? '0.000001'
-                                    : ['dropout', 'boundedFloat', 'nonNegativeNumber'].includes(field.type)
-                                      ? '0'
-                                      : '1'
-                                }
-                                max={['dropout', 'boundedFloat'].includes(field.type) ? '0.9' : undefined}
-                                step={['dropout', 'boundedFloat', 'nonNegativeNumber'].includes(field.type) ? '0.05' : '1'}
-                                onChange={(event) =>
-                                  handleStructureParamChange(
-                                    normalizedModelArchitecture,
-                                    field,
-                                    event.target.value
-                                  )
-                                }
-                              />
-                            </div>
-                          ))}
                         </div>
-                      )}
-                    </div>
-                  ) : null}
+                      <div
+                        style={{
+                          fontSize: 'calc(12px * var(--font-scale, 1))',
+                          color: C.ice60,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {advancedOpen ? copy.collapse : copy.expand}
+                      </div>
+                    </button>
+
+                    {advancedOpen ? (
+                      <div
+                        style={{
+                          padding: '0 14px 14px',
+                          borderTop: `1px solid ${C.border}`,
+                        }}
+                      >
+                        {isRecurrentModel ? (
+                          <>
+                            <div className="model-training-field-grid" style={{ marginTop: 16 }}>
+                              <div>
+                                <div style={fieldLabelStyle}>{t('modelTraining.stlstmLayers')}</div>
+                                <input
+                                  type="number"
+                                  style={inputStyle}
+                                  value={stlstmLayers}
+                                  onChange={handleLayersChange}
+                                  min="1"
+                                  max="10"
+                                />
+                              </div>
+                            </div>
+
+                            {hiddenDims.length > 0 ? (
+                              <div className="model-training-dim-grid">
+                                {hiddenDims.map((dim, index) => (
+                                  <div key={`${index}`}>
+                                    <div style={fieldLabelStyle}>
+                                      {t('modelTraining.layer')} {index + 1} {t('modelTraining.layerDim')}
+                                    </div>
+                                    <input
+                                      type="number"
+                                      style={inputStyle}
+                                      value={dim}
+                                      onChange={(event) => handleDimChange(index, event.target.value)}
+                                      min="1"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </>
+                        ) : (
+                          <div className="model-training-field-grid" style={{ marginTop: 16 }}>
+                            {activeStructureConfig.map((field) => (
+                              <div key={field.key}>
+                                <div style={fieldLabelStyle}>
+                                  {getModelStructureParamLabel(field.key, structureLabelLanguage)}
+                                </div>
+                                <input
+                                  type={field.type === 'integerList' ? 'text' : 'number'}
+                                  style={inputStyle}
+                                  value={
+                                    Array.isArray(activeStructureParams[field.key] ?? field.defaultValue)
+                                      ? (activeStructureParams[field.key] ?? field.defaultValue).join(',')
+                                      : activeStructureParams[field.key] ?? field.defaultValue
+                                  }
+                                  min={
+                                    field.type === 'boundedFloat' && OPEN_INTERVAL_FLOAT_FIELDS.has(field.key)
+                                      ? '0.000001'
+                                      : ['dropout', 'boundedFloat', 'nonNegativeNumber'].includes(field.type)
+                                        ? '0'
+                                        : '1'
+                                  }
+                                  max={['dropout', 'boundedFloat'].includes(field.type) ? '0.9' : undefined}
+                                  step={['dropout', 'boundedFloat', 'nonNegativeNumber'].includes(field.type) ? '0.05' : '1'}
+                                  onChange={(event) =>
+                                    handleStructureParamChange(
+                                      normalizedModelArchitecture,
+                                      field,
+                                      event.target.value
+                                    )
+                                  }
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
               <div className="model-training-section" style={{ marginTop: 'auto', paddingTop: 16 }}>
                 <div
@@ -1734,7 +2050,7 @@ export default function ModelTrainingPage() {
                   <div style={{ minWidth: 0 }}>
                     <div style={sectionTitleStyle}>{copy.trainingPreset}</div>
                     <div style={fieldHintStyle}>
-                      {!user ? copy.loginRequiredToUse : (selectedScriptAvailable ? presetStatusText : copy.selectionUnavailable)}
+                      {!user ? copy.loginRequiredToUse : presetStatusText}
                     </div>
                   </div>
                   <button

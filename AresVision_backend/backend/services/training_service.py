@@ -57,10 +57,13 @@ class TrainingService:
         data_source: str = "default",
         data_service: DataService | None = None,
         personal_source_service: PersonalDataSourceService | None = None,
+        model_source: str = "official",
+        uploaded_model_id: str | None = None,
+        user_model_service: Any | None = None,
     ) -> ModelTrainingTask:
-        model_script = UNIFIED_TRAINING_SCRIPT
-        if not MODELS_DIR.joinpath(model_script).exists():
-            raise FileNotFoundError(f"Script {model_script} not found in {MODELS_DIR}")
+        model_source = (model_source or "official").strip().lower()
+        if model_source not in ("official", "uploaded"):
+            model_source = "official"
 
         if not custom_model_name or not custom_model_name.strip():
             raise ValueError("模型命名不能为空")
@@ -76,13 +79,50 @@ class TrainingService:
         if source not in ("default", "personal"):
             source = "default"
 
-        payload_hypers = normalize_training_hyperparameters(hyperparameters)
+        if model_source == "uploaded":
+            model_script, raw_hypers = await self._resolve_uploaded_training_entrypoint(
+                user_id=user_id,
+                uploaded_model_id=uploaded_model_id,
+                hyperparameters=hyperparameters,
+                user_model_service=user_model_service,
+            )
+        else:
+            model_script, raw_hypers = self._resolve_training_entrypoint(
+                user_id=user_id,
+                model_source=model_source,
+                uploaded_model_id=uploaded_model_id,
+                hyperparameters=hyperparameters,
+                user_model_service=user_model_service,
+            )
+
+        if model_script == "__user_model_runner__":
+            runner_path = Path(__file__).parent.parent / "training_backbones" / "user_model_runner.py"
+            if not runner_path.exists():
+                raise FileNotFoundError(f"Script {runner_path.name} not found in {runner_path.parent}")
+        elif not MODELS_DIR.joinpath(model_script).exists():
+            raise FileNotFoundError(f"Script {model_script} not found in {MODELS_DIR}")
+
+        preserved_keys = ["model_source"]
+        if model_source == "uploaded":
+            preserved_keys.extend([
+                "_uploaded_model_id",
+                "_uploaded_model_version",
+                "_uploaded_model_path",
+                "_uploaded_model_param_schema",
+                "custom_model_params",
+            ])
+        preserved_hypers = {key: raw_hypers[key] for key in preserved_keys if key in raw_hypers}
+        payload_hypers = normalize_training_hyperparameters(raw_hypers)
+        payload_hypers.update(preserved_hypers)
         payload_hypers["_data_source"] = source
 
         async with async_session_maker() as session:
             task = ModelTrainingTask(
                 user_id=user_id,
                 model_script=model_script,
+                model_source=model_source,
+                uploaded_model_id=payload_hypers.get("_uploaded_model_id"),
+                uploaded_model_version=payload_hypers.get("_uploaded_model_version"),
                 hyperparameters=json.dumps(payload_hypers),
                 custom_model_name=custom_model_name,
                 status="pending",
@@ -138,6 +178,63 @@ class TrainingService:
             )
 
             return task
+
+    def _resolve_training_entrypoint(
+        self,
+        user_id: int | None,
+        model_source: str,
+        uploaded_model_id: str | None,
+        hyperparameters: dict | None,
+        user_model_service: Any | None,
+    ) -> tuple[str, dict]:
+        uploaded_only_keys = {
+            "_uploaded_model_id",
+            "_uploaded_model_version",
+            "_uploaded_model_path",
+            "_uploaded_model_param_schema",
+            "custom_model_params",
+        }
+        payload = {
+            key: value
+            for key, value in (hyperparameters or {}).items()
+            if key not in uploaded_only_keys
+        }
+        payload["model_source"] = "official"
+        return UNIFIED_TRAINING_SCRIPT, payload
+
+    async def _resolve_uploaded_training_entrypoint(
+        self,
+        user_id: int | None,
+        uploaded_model_id: str | None,
+        hyperparameters: dict | None,
+        user_model_service: Any | None,
+    ) -> tuple[str, dict]:
+        if user_id is None:
+            raise ValueError("user_id is required for uploaded model training")
+        if not uploaded_model_id:
+            raise ValueError("uploaded_model_id is required for uploaded model training")
+        if user_model_service is None:
+            raise ValueError("user_model_service is required for uploaded model training")
+
+        package = await user_model_service.get_package_for_user(uploaded_model_id, user_id)
+        if getattr(package, "validation_status", None) != "valid":
+            raise ValueError("Uploaded model package must be valid before training")
+
+        try:
+            param_schema = json.loads(getattr(package, "param_schema", None) or "{}")
+        except Exception:
+            param_schema = {}
+        if not isinstance(param_schema, dict):
+            param_schema = {}
+
+        payload = dict(hyperparameters or {})
+        payload["model_source"] = "uploaded"
+        payload["_uploaded_model_id"] = getattr(package, "id", uploaded_model_id)
+        payload["_uploaded_model_version"] = getattr(package, "version", None)
+        payload["_uploaded_model_path"] = getattr(package, "storage_path", None)
+        payload["_uploaded_model_param_schema"] = param_schema
+        payload.setdefault("custom_model_params", {})
+        return "__user_model_runner__", payload
 
     async def _prepare_personal_training_env(
         self,
@@ -341,11 +438,21 @@ class TrainingService:
                 task.total_epochs = total_epochs
                 await session.commit()
 
-        script_path = MODELS_DIR / script_name
+        if script_name == "__user_model_runner__":
+            script_path = Path(__file__).parent.parent / "training_backbones" / "user_model_runner.py"
+        else:
+            script_path = MODELS_DIR / script_name
         python_exe = getattr(config, "TRAINING_PYTHON_PATH", sys.executable)
 
         args = [python_exe, str(script_path)]
         args.extend(build_hyperparameter_args(hyperparameters))
+        if script_name == "__user_model_runner__":
+            args.extend([
+                "--uploaded_model_path",
+                str(hyperparameters["_uploaded_model_path"]),
+                "--uploaded_model_param_schema",
+                json.dumps(hyperparameters.get("_uploaded_model_param_schema") or {}),
+            ])
         args.extend(["--output_path", str(output_path)])
 
         with open(log_file, "w", encoding="utf-8") as f:

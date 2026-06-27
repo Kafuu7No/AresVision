@@ -102,8 +102,12 @@ AI_API_KEY = os.getenv("AI_API_KEY", "")
 USER_UPLOADS_DIR   = DATA_DIR / "user_uploads"
 PENDING_REVIEW_DIR = DATA_DIR / "pending_review"
 APPROVED_DIR       = DATA_DIR / "approved"
+USER_MODELS_DIR = DATA_DIR / "user_models"
 MAX_UPLOAD_SIZE_MB = 200
 ALLOWED_NC_EXTENSIONS = [".nc", ".nc4", ".netcdf"]
+MAX_USER_MODEL_SIZE_KB = int(os.getenv("MAX_USER_MODEL_SIZE_KB", "256"))
+ALLOWED_USER_MODEL_EXTENSIONS = [".py"]
+USER_MODEL_TRAINING_TIMEOUT_SECONDS = int(os.getenv("USER_MODEL_TRAINING_TIMEOUT_SECONDS", "7200"))
 
 # ─── 数据库 ───
 DATABASE_URL = os.getenv(

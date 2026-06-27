@@ -1,0 +1,167 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+
+from sqlalchemy import func, select
+
+from config import MAX_USER_MODEL_SIZE_KB, USER_MODELS_DIR
+from database.engine import async_session_maker
+from database.models import UserModelPackage
+from services.user_model_validator import UserModelValidator
+
+
+class UserModelService:
+    def __init__(
+        self,
+        storage_root: Path | None = None,
+        sessionmaker=None,
+        validator: UserModelValidator | None = None,
+    ):
+        self.storage_root = Path(storage_root or USER_MODELS_DIR)
+        self.storage_root.mkdir(parents=True, exist_ok=True)
+        self.sessionmaker = sessionmaker or async_session_maker
+        self.validator = validator or UserModelValidator()
+
+    async def create_from_source(
+        self,
+        user_id: int,
+        original_filename: str,
+        source: bytes,
+    ) -> UserModelPackage:
+        if Path(original_filename or "").suffix.lower() != ".py":
+            raise ValueError("User model source must use a .py filename")
+
+        max_size_bytes = MAX_USER_MODEL_SIZE_KB * 1024
+        if len(source) > max_size_bytes:
+            raise ValueError(
+                f"User model file exceeds {MAX_USER_MODEL_SIZE_KB} KB size limit"
+            )
+
+        package_id = str(uuid.uuid4())
+        safe_name = self._safe_filename(original_filename)
+        user_dir = self.storage_root / str(user_id)
+        user_dir.mkdir(parents=True, exist_ok=True)
+        storage_path = user_dir / f"{package_id}_{safe_name}"
+        storage_path.write_bytes(source)
+
+        content_hash = hashlib.sha256(source).hexdigest()
+        result = self.validator.validate_file(storage_path)
+        display_name = result.display_name or Path(original_filename).stem
+        version = await self._next_version(user_id, display_name)
+
+        package = UserModelPackage(
+            id=package_id,
+            user_id=user_id,
+            display_name=display_name,
+            version=version,
+            original_filename=original_filename,
+            storage_path=str(storage_path),
+            content_hash=content_hash,
+            param_schema=json.dumps(result.param_schema, ensure_ascii=False),
+            description=result.description,
+            validation_status="valid" if result.ok else "invalid",
+            validation_report=json.dumps(result.report_dict(), ensure_ascii=False),
+        )
+
+        async with self.sessionmaker() as session:
+            session.add(package)
+            await session.commit()
+            await session.refresh(package)
+            return package
+
+    async def list_user_packages(self, user_id: int) -> list[UserModelPackage]:
+        async with self.sessionmaker() as session:
+            result = await session.execute(
+                select(UserModelPackage)
+                .where(
+                    UserModelPackage.user_id == user_id,
+                    UserModelPackage.deleted_at.is_(None),
+                )
+                .order_by(UserModelPackage.created_at.desc(), UserModelPackage.id.desc())
+            )
+            return list(result.scalars().all())
+
+    async def get_package_for_user(
+        self,
+        package_id: str,
+        user_id: int,
+    ) -> UserModelPackage:
+        async with self.sessionmaker() as session:
+            package = await self._get_package_for_user_in_session(
+                session,
+                package_id,
+                user_id,
+            )
+            return package
+
+    async def revalidate_package(self, package_id: str, user_id: int) -> UserModelPackage:
+        async with self.sessionmaker() as session:
+            package = await self._get_package_for_user_in_session(
+                session,
+                package_id,
+                user_id,
+            )
+            result = self.validator.validate_file(Path(package.storage_path))
+            package.validation_status = "valid" if result.ok else "invalid"
+            package.validation_report = json.dumps(result.report_dict(), ensure_ascii=False)
+            package.param_schema = json.dumps(result.param_schema, ensure_ascii=False)
+            package.description = result.description
+            package.updated_at = datetime.now(timezone.utc)
+
+            await session.commit()
+            await session.refresh(package)
+            return package
+
+    async def soft_delete_package(self, package_id: str, user_id: int) -> None:
+        async with self.sessionmaker() as session:
+            package = await self._get_package_for_user_in_session(
+                session,
+                package_id,
+                user_id,
+            )
+            now = datetime.now(timezone.utc)
+            package.deleted_at = now
+            package.updated_at = now
+            await session.commit()
+
+    async def _next_version(self, user_id: int, display_name: str) -> int:
+        async with self.sessionmaker() as session:
+            result = await session.execute(
+                select(func.max(UserModelPackage.version)).where(
+                    UserModelPackage.user_id == user_id,
+                    UserModelPackage.display_name == display_name,
+                )
+            )
+            max_version = result.scalar_one_or_none()
+            return int(max_version or 0) + 1
+
+    @staticmethod
+    def _safe_filename(original_filename: str) -> str:
+        name = Path(original_filename or "model.py").name
+        if not name:
+            name = "model.py"
+        safe_name = re.sub(r"[^A-Za-z0-9_.-]", "_", name)
+        if not safe_name.lower().endswith(".py"):
+            safe_name = f"{safe_name}.py"
+        return safe_name
+
+    @staticmethod
+    async def _get_package_for_user_in_session(
+        session,
+        package_id: str,
+        user_id: int,
+    ) -> UserModelPackage:
+        result = await session.execute(
+            select(UserModelPackage).where(UserModelPackage.id == package_id)
+        )
+        package = result.scalar_one_or_none()
+        if package is None or package.deleted_at is not None:
+            raise FileNotFoundError("Uploaded model package not found")
+        if package.user_id != user_id:
+            raise PermissionError("No permission to access this uploaded model")
+        return package

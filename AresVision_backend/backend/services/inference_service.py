@@ -35,6 +35,9 @@ class InferenceService:
 
             # 1. 解析任务参数
             hypers = json.loads(task.hyperparameters)
+            if getattr(task, "model_source", "official") == "uploaded":
+                return await self._get_uploaded_model_test_results(task, hypers, data_dirs=data_dirs)
+
             window = hypers.get("window", 3)
             horizon = hypers.get("horizon", 3)
             hidden_dims = hypers.get("stlstm_hidden_dims", [64, 64, 64])
@@ -115,6 +118,83 @@ class InferenceService:
                 "y_pred": y_pred_flat.tolist(),
                 "metrics": json.loads(task.metrics) if task.metrics else {}
             }
+
+    async def _get_uploaded_model_test_results(self, task, hypers, data_dirs=None):
+        from training_backbones.user_model_runner import (
+            assert_prediction_shape,
+            build_uploaded_model_config,
+            load_uploaded_model,
+            parse_selected_channels,
+            prepare_tensors,
+        )
+
+        selected_channels = parse_selected_channels(hypers.get("selected_channels", []))
+        openmars_dir = Path((data_dirs or {}).get("ARESVISION_OPENMARS_DIR") or self.openmars_dir)
+        mcd_dir = Path((data_dirs or {}).get("ARESVISION_MCD_DIR") or self.mcd_dir)
+        window = int(hypers.get("window", 3))
+        horizon = int(hypers.get("horizon", 3))
+
+        x_torch, y_torch, y_mean, y_std, height, width = prepare_tensors(
+            openmars_dir,
+            mcd_dir,
+            selected_channels,
+            window,
+            horizon,
+        )
+        config = build_uploaded_model_config(
+            in_channels=int(x_torch.shape[2]),
+            window=window,
+            horizon=horizon,
+            height=height,
+            width=width,
+            selected_channels=selected_channels,
+            custom_model_params=hypers.get("custom_model_params", {}),
+            param_schema=hypers.get("_uploaded_model_param_schema", {}),
+        )
+
+        model_path = hypers.get("_uploaded_model_path")
+        if not model_path:
+            raise ValueError("Uploaded model path is missing from task hyperparameters")
+        model = load_uploaded_model(Path(model_path), config).to(self.device)
+        state_dict = torch.load(task.output_model_path, map_location=self.device, weights_only=True)
+        model.load_state_dict(state_dict)
+        model.eval()
+
+        split = int(0.8 * len(x_torch))
+        x_test = x_torch[split:]
+        y_test_true = y_torch[split:]
+        if len(x_test) == 0:
+            raise ValueError("No uploaded model test samples are available")
+
+        with torch.no_grad():
+            sample_size = min(len(x_test), 50)
+            indices = np.linspace(0, len(x_test) - 1, sample_size, dtype=int)
+            test_xb = x_test[indices].to(self.device)
+            test_yb = y_test_true[indices]
+            pred_tensor = model(test_xb)
+            assert_prediction_shape(
+                pred_tensor,
+                test_yb.to(self.device),
+                "uploaded inference test",
+            )
+            preds = pred_tensor.cpu().numpy()
+            trues = test_yb.numpy()
+
+        y_pred_raw = preds * (y_std + 1e-6) + y_mean
+        y_true_raw = trues * (y_std + 1e-6) + y_mean
+        y_true_flat = y_true_raw.flatten()
+        y_pred_flat = y_pred_raw.flatten()
+
+        if len(y_true_flat) > 50000:
+            step = int(np.ceil(len(y_true_flat) / 50000))
+            y_true_flat = y_true_flat[::step]
+            y_pred_flat = y_pred_flat[::step]
+
+        return {
+            "y_true": y_true_flat.tolist(),
+            "y_pred": y_pred_flat.tolist(),
+            "metrics": json.loads(task.metrics) if task.metrics else {},
+        }
 
     def _prepare_data(self, used_mcd_vars, window, horizon, data_dirs: dict[str, str] | None = None):
         """复用训练脚本中的数据加载逻辑"""
