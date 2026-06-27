@@ -11,7 +11,6 @@ import { roundValue, sampleSeries, summarizeSeries } from './aiInsight';
 
 const VARIABLE_META_BASE = [
   { id: 'Temperature', color: C.mars, unit: 'K' },
-  { id: 'Dust_Optical_Depth', color: '#d7a15d', unit: 'tau' },
   { id: 'Solar_Flux_DN', color: '#f7cf4a', unit: 'W/m^2' },
   { id: 'U_Wind', color: C.blue, unit: 'm/s' },
 ];
@@ -179,7 +178,6 @@ export default function EnvironmentDashboard({ marsYear, dataSourceMode = 'defau
     note: '这组图适合做分区研究。左侧热图回答不同纬带里谁和 O3 关系最强，右侧柱图则把每个纬带的主导驱动因子直接提炼出来。',
     labels: {
       Temperature: '温度',
-      Dust_Optical_Depth: '沙尘光学厚度',
       Solar_Flux_DN: '太阳辐射',
       U_Wind: '纬向风',
       polar_north: '北极区',
@@ -203,7 +201,6 @@ export default function EnvironmentDashboard({ marsYear, dataSourceMode = 'defau
     note: 'This pair of charts is suited to regional analysis. The heatmap shows which driver is most strongly linked to O3 in each latitude band, while the bar chart summarizes the dominant driver band by band.',
     labels: {
       Temperature: 'Temperature',
-      Dust_Optical_Depth: 'Dust Optical Depth',
       Solar_Flux_DN: 'Solar Flux',
       U_Wind: 'U Wind',
       polar_north: 'Polar North',

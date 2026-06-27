@@ -185,7 +185,7 @@ export async function fetchOverviewCorrelation(marsYear = 27, options = {}) {
   return res.json();
 }
 
-export async function fetchOverviewCouplingData(marsYear = 27, var1 = 'o3col', var2 = 'Dust_Optical_Depth', options = {}) {
+export async function fetchOverviewCouplingData(marsYear = 27, var1 = 'o3col', var2 = 'Temperature', options = {}) {
   const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/coupling?my=${marsYear}&var1=${var1}&var2=${var2}`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
@@ -215,7 +215,7 @@ export async function fetchOverviewResearchSuite(marsYear = 27, options = {}) {
   return res.json();
 }
 
-export async function fetchOverviewPhaseSpace(marsYear = 27, driver = 'Dust_Optical_Depth', options = {}) {
+export async function fetchOverviewPhaseSpace(marsYear = 27, driver = 'Temperature', options = {}) {
   const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/phase-space?my=${marsYear}&driver=${encodeURIComponent(driver)}`, options));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();

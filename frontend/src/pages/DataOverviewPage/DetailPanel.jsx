@@ -35,7 +35,7 @@ const CARD_TITLES = {
   wave: { zh: '波动结构', en: 'Wave explorer' },
   waveDiag: { zh: '波动诊断', en: 'Wave diagnostics' },
   polar: { zh: '极区动力', en: 'Polar dynamics' },
-  coupling: { zh: '尘埃耦合', en: 'Dust coupling' },
+  coupling: { zh: '温度耦合', en: 'Temperature coupling' },
   distribution: { zh: '点位分布', en: 'Distribution' },
   correlation: { zh: '点位相关', en: 'Correlation' },
 };

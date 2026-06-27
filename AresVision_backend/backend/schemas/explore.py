@@ -37,7 +37,7 @@ class GlobeDataResponse(BaseModel):
 class HeatmapResponse(BaseModel):
     x: list[float]
     y: list[float]
-    z: list[list[float]]
+    z: list[list[float | None]]
     min: float
     max: float
     variable: str = "o3col"
@@ -56,7 +56,7 @@ class SeasonalBandsResponse(BaseModel):
 
 
 class CorrelationResponse(BaseModel):
-    matrix: list[list[float]]
+    matrix: list[list[float | None]]
     variable_names: list[str]
     source_meta: SourceMeta | None = None
 

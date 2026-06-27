@@ -8,7 +8,7 @@ from cachetools import LRUCache
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from auth.dependencies import get_optional_user
-from config import DEFAULT_MARS_YEAR, MCD_VARIABLES
+from config import DEFAULT_MARS_YEAR, MCD_VARIABLES, OVERVIEW_MCD_VARIABLES
 from database.models import User
 from schemas.explore import (
     CorrelationResponse,
@@ -55,6 +55,16 @@ def _normalize_source(data_source: str) -> str:
     if s not in _ALLOWED_SOURCES:
         raise HTTPException(status_code=400, detail="data_source must be 'default' or 'personal'")
     return s
+
+
+def _validate_overview_variable(variable: str, *, include_ozone: bool = False) -> str:
+    allowed = (["o3col"] if include_ozone else []) + OVERVIEW_MCD_VARIABLES
+    if variable not in allowed:
+        raise HTTPException(
+            status_code=422,
+            detail=f"variable must be one of: {', '.join(allowed)}",
+        )
+    return variable
 
 
 async def _resolve_analysis_context(
@@ -156,11 +166,7 @@ async def get_overview_info(
                 "max": float(ls_max),
                 "step": 5.0,
             },
-            "ozone_capabilities": {
-                "openmars": True,
-                "nomad": False,
-                "diff_pairs": ["MCD-OpenMARS"],
-            },
+            "ozone_capabilities": overview_service.get_ozone_capabilities(),
             "source_meta": _overview_source_meta(data_source, primary_year),
         }
     except HTTPException:
@@ -174,10 +180,11 @@ async def get_overview_globe_data(
     request: Request,
     my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
     ls: float = Query(10.0, ge=0, le=360, description="太阳黄经 Ls"),
-    variable: str = Query("o3col", description="显示变量", enum=["o3col"] + MCD_VARIABLES),
+    variable: str = Query("o3col", description="显示变量", enum=["o3col"] + OVERVIEW_MCD_VARIABLES),
     data_source: str = Query("default", description="default | personal"),
 ):
     try:
+        variable = _validate_overview_variable(variable, include_ozone=True)
         service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
         result = service.get_globe_data(resolved_year, ls, variable=variable)
         return _with_source_meta(result, source_meta)
@@ -207,10 +214,11 @@ async def get_overview_seasonal_heatmap(
 async def get_overview_env_variable_heatmap(
     request: Request,
     my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
-    variable: str = Query(..., description="变量名", enum=MCD_VARIABLES),
+    variable: str = Query(..., description="变量名", enum=OVERVIEW_MCD_VARIABLES),
     data_source: str = Query("default", description="default | personal"),
 ):
     try:
+        variable = _validate_overview_variable(variable)
         service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
         result = service.get_env_variable_heatmap(resolved_year, variable)
         return _with_source_meta(result, source_meta)
@@ -253,10 +261,11 @@ async def get_overview_coupling(
     request: Request,
     my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
     var1: str = Query("o3col", description="变量1"),
-    var2: str = Query("Dust_Optical_Depth", description="变量2"),
+    var2: str = Query("Temperature", description="变量2", enum=OVERVIEW_MCD_VARIABLES),
     data_source: str = Query("default", description="default | personal"),
 ):
     try:
+        var2 = _validate_overview_variable(var2)
         service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
         result = service.get_coupling_data(resolved_year, var1, var2)
         return _with_source_meta(result, source_meta)
@@ -268,10 +277,11 @@ async def get_overview_coupling(
 async def get_overview_zonal_anomaly(
     request: Request,
     my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
-    variable: str = Query("o3col", description="变量名"),
+    variable: str = Query("o3col", description="变量名", enum=["o3col"] + OVERVIEW_MCD_VARIABLES),
     data_source: str = Query("default", description="default | personal"),
 ):
     try:
+        variable = _validate_overview_variable(variable, include_ozone=True)
         service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
         result = service.get_zonal_anomalies(resolved_year, variable)
         return _with_source_meta(result, source_meta)
@@ -328,10 +338,11 @@ async def get_overview_research_suite(
 async def get_overview_phase_space(
     request: Request,
     my: int = Query(DEFAULT_MARS_YEAR, description="火星年"),
-    driver: str = Query("Dust_Optical_Depth", description="驱动变量", enum=MCD_VARIABLES),
+    driver: str = Query("Temperature", description="驱动变量", enum=OVERVIEW_MCD_VARIABLES),
     data_source: str = Query("default", description="default | personal"),
 ):
     try:
+        driver = _validate_overview_variable(driver)
         service, source_meta, resolved_year = _resolve_overview_context(request, my, data_source)
         result = service.get_phase_space(resolved_year, driver)
         return _with_source_meta(result, source_meta)

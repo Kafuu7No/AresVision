@@ -22,7 +22,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse, FileResponse
 
-from config import API_PREFIX, USER_UPLOADS_DIR, PENDING_REVIEW_DIR
+from config import API_PREFIX, OVERVIEW_MCD_VARIABLES, USER_UPLOADS_DIR, PENDING_REVIEW_DIR
 from database.init_db import init_database
 from database.engine import async_session_maker
 from services.data_service import DataService
@@ -298,7 +298,10 @@ async def lifespan(app: FastAPI):
     analysis_service = AnalysisService(data_service)
     app.state.analysis_service = analysis_service
 
-    mcd_overview_analysis_service = AnalysisService(mcd_overview_service)
+    mcd_overview_analysis_service = AnalysisService(
+        mcd_overview_service,
+        mcd_variables=OVERVIEW_MCD_VARIABLES,
+    )
     app.state.mcd_overview_analysis_service = mcd_overview_analysis_service
 
     predict_data_prep = PredictDataService(data_service)

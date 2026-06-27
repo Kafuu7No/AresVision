@@ -11,12 +11,19 @@ from __future__ import annotations
 
 import glob
 import logging
+import re
 from pathlib import Path
 
 import numpy as np
 import xarray as xr
 
-from config import MCD_OVERVIEW_DIR, OVERVIEW_OZONE_MATCH_TOLERANCE_LS, SUPPORTED_MARS_YEARS
+from config import (
+    MCD_OVERVIEW_DIR,
+    NOMAD_DIR,
+    NOMAD_MATCH_TOLERANCE_LS,
+    OVERVIEW_OZONE_MATCH_TOLERANCE_LS,
+    SUPPORTED_MARS_YEARS,
+)
 from services.data_service import DataService
 
 logger = logging.getLogger("aresvision.mcd_overview")
@@ -31,18 +38,46 @@ OVERVIEW_ENV_FIELDS = [
 
 
 class McdOverviewDataService:
-    def __init__(self, base_data_service: DataService):
+    def __init__(
+        self,
+        base_data_service: DataService,
+        overview_dir: Path = MCD_OVERVIEW_DIR,
+        nomad_dir: Path = NOMAD_DIR,
+        supported_years: list[int] | None = None,
+    ):
         self.base = base_data_service
+        self.overview_dir = Path(overview_dir)
+        self.nomad_dir = Path(nomad_dir)
+        self.supported_years = supported_years
         self.overview: dict[int, dict] = {}
+        self.nomad: dict[int, dict] = {}
         self._load_all()
 
     def _load_all(self) -> None:
-        for mars_year in SUPPORTED_MARS_YEARS:
+        years = self.supported_years if self.supported_years is not None else self._discover_overview_years()
+        if not years:
+            years = SUPPORTED_MARS_YEARS
+        for mars_year in years:
             self._load_year(mars_year)
+        self._load_nomad_all()
         logger.info("MCD overview data loaded for years: %s", sorted(self.overview.keys()))
+        logger.info("NOMAD overview data loaded for years: %s", sorted(self.nomad.keys()))
+
+    @staticmethod
+    def _year_from_path(path: Path) -> int | None:
+        match = re.search(r"MY(\d+)", path.name, flags=re.IGNORECASE)
+        return int(match.group(1)) if match else None
+
+    def _discover_overview_years(self) -> list[int]:
+        years = []
+        for path in sorted(self.overview_dir.glob("*overview*.nc")):
+            year = self._year_from_path(path)
+            if year is not None:
+                years.append(year)
+        return sorted(set(years))
 
     def _load_year(self, mars_year: int) -> None:
-        pattern = str(MCD_OVERVIEW_DIR / f"*MY{mars_year}*overview*.nc")
+        pattern = str(self.overview_dir / f"*MY{mars_year}*overview*.nc")
         files = sorted(glob.glob(pattern))
         if not files:
             logger.warning("MCD overview file not found for MY%s: %s", mars_year, pattern)
@@ -66,6 +101,32 @@ class McdOverviewDataService:
                 data[field_name] = np.asarray(ds[field_name].values, dtype=np.float32)
 
         self.overview[mars_year] = data
+
+    def _load_nomad_all(self) -> None:
+        if not self.nomad_dir.is_dir():
+            logger.info("NOMAD directory not found, skip: %s", self.nomad_dir)
+            return
+        for file_path in sorted(self.nomad_dir.glob("*MY*_gridded.nc")):
+            year = self._year_from_path(file_path)
+            if year is None:
+                logger.warning("Skip NOMAD file without MY marker: %s", file_path)
+                continue
+            self._load_nomad_year(year, file_path)
+
+    def _load_nomad_year(self, mars_year: int, file_path: Path) -> None:
+        with xr.open_dataset(file_path, decode_times=False) as ds:
+            required = ["o3col", "Ls", "lat", "lon", "count"]
+            missing = [name for name in required if name not in ds]
+            if missing:
+                raise ValueError(f"{file_path} missing required fields: {missing}")
+            self.nomad[mars_year] = {
+                "o3col": np.asarray(ds["o3col"].values, dtype=np.float32),
+                "ls": np.asarray(ds["Ls"].values, dtype=np.float32),
+                "lat": np.asarray(ds["lat"].values, dtype=np.float32),
+                "lon": np.asarray(ds["lon"].values, dtype=np.float32),
+                "count": np.asarray(ds["count"].values, dtype=np.int32),
+                "source_file": str(file_path),
+            }
 
     def _require_year(self, mars_year: int) -> dict:
         if mars_year not in self.overview:
@@ -93,7 +154,19 @@ class McdOverviewDataService:
         return aligned
 
     def get_mcd_data(self, mars_year: int) -> dict:
-        return self.base.get_mcd_data(mars_year)
+        try:
+            return self.base.get_mcd_data(mars_year)
+        except ValueError:
+            year = self._require_year(mars_year)
+            out = {
+                "ls": year["ls"],
+                "lat": year["lat"],
+                "lon": year["lon"],
+            }
+            for field_name in OVERVIEW_ENV_FIELDS:
+                if field_name in year:
+                    out[field_name] = year[field_name]
+            return out
 
     def get_available_years(self) -> list[int]:
         return sorted(self.overview.keys())
@@ -141,10 +214,47 @@ class McdOverviewDataService:
 
         return self._build_layer_from_source(openmars, matched_ls, "openmars")
 
+    def _match_nomad_layer(self, mars_year: int, anchor_ls: float) -> dict | None:
+        nomad = self.nomad.get(mars_year)
+        if nomad is None:
+            return None
+
+        idx = self.get_nearest_ls_index(nomad["ls"], anchor_ls)
+        matched_ls = float(nomad["ls"][idx])
+        if abs(matched_ls - float(anchor_ls)) > NOMAD_MATCH_TOLERANCE_LS:
+            return None
+
+        field = np.asarray(nomad["o3col"][idx], dtype=np.float32)
+        count = np.asarray(nomad["count"][idx], dtype=np.int32)
+        if not np.any((count > 0) & np.isfinite(field)):
+            return None
+
+        layer = self._build_layer_from_source(
+            {
+                "o3col": nomad["o3col"],
+                "ls": nomad["ls"],
+                "lat": nomad["lat"],
+                "lon": nomad["lon"],
+            },
+            matched_ls,
+            "nomad",
+        )
+        return layer if layer["points"] else None
+
+    def get_ozone_capabilities(self) -> dict:
+        diff_pairs = ["MCD-OpenMARS"]
+        if bool(self.nomad):
+            diff_pairs.append("MCD-NOMAD")
+        return {
+            "openmars": True,
+            "nomad": bool(self.nomad),
+            "diff_pairs": diff_pairs,
+        }
+
     def get_ozone_overlay_payload(self, mars_year: int, ls: float) -> dict:
         mcd = self._build_layer_from_source(self.get_openmars_data(mars_year), ls, "mcd")
         openmars = self._match_openmars_layer(mars_year, mcd["ls"])
-        nomad = None
+        nomad = self._match_nomad_layer(mars_year, mcd["ls"])
 
         available_sources = [
             source
@@ -166,5 +276,5 @@ class McdOverviewDataService:
             "nomad": nomad,
             "available_sources": available_sources,
             "diff_candidates": diff_candidates,
-            "capabilities": {"openmars": True, "nomad": False},
+            "capabilities": self.get_ozone_capabilities(),
         }

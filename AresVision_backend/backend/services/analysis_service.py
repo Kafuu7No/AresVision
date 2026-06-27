@@ -13,8 +13,9 @@ logger = logging.getLogger("aresvision.analysis")
 
 
 class AnalysisService:
-    def __init__(self, data_service: DataService):
+    def __init__(self, data_service: DataService, mcd_variables: list[str] | None = None):
         self.data_service = data_service
+        self.mcd_variables = list(mcd_variables or MCD_VARIABLES)
         self._cache: dict[str, dict] = {}
 
     def get_globe_data(self, mars_year: int, ls: float, variable: str = "o3col") -> dict:
@@ -68,19 +69,22 @@ class AnalysisService:
             om = self.data_service.get_openmars_data(mars_year)
             lat_arr = om["lat"]
 
-        zonal_mean = np.nanmean(data_3d, axis=2)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            zonal_mean = np.nanmean(data_3d, axis=2)
 
         n_time = len(ls_arr)
         step = max(1, n_time // MAX_LS_POINTS)
         ls_ds = ls_arr[::step]
         zm_ds = zonal_mean[::step]
+        min_val, max_val = self._finite_min_max(zonal_mean)
 
         result = {
             "x": [float(v) for v in ls_ds],
             "y": [float(v) for v in lat_arr],
             "z": self._to_nested_list(zm_ds.T),
-            "min": float(np.nanmin(zonal_mean)),
-            "max": float(np.nanmax(zonal_mean)),
+            "min": min_val,
+            "max": max_val,
             "variable": variable,
         }
         self._cache[cache_key] = result
@@ -128,14 +132,14 @@ class AnalysisService:
         om = self.data_service.get_openmars_data(mars_year)
         am = self.data_service.get_aligned_mcd_data(mars_year)
 
-        var_names = ["o3col"] + MCD_VARIABLES
+        var_names = ["o3col"] + self.mcd_variables
         n_vars = len(var_names)
 
         series_list = []
         o3_mean = np.nanmean(om["o3col"], axis=(1, 2))
         series_list.append(o3_mean)
 
-        for var in MCD_VARIABLES:
+        for var in self.mcd_variables:
             if var in am:
                 v_3d = am[var]
                 v_mean = np.nanmean(v_3d, axis=(1, 2))
@@ -194,8 +198,16 @@ class AnalysisService:
         return self._generate_simulated_diurnal(ls, band_def)
 
     @staticmethod
-    def _to_nested_list(arr: np.ndarray) -> list[list[float]]:
-        return [[float(v) for v in row] for row in arr]
+    def _to_nested_list(arr: np.ndarray) -> list[list[float | None]]:
+        return [[float(v) if np.isfinite(v) else None for v in row] for row in arr]
+
+    @staticmethod
+    def _finite_min_max(arr: np.ndarray) -> tuple[float, float]:
+        values = np.asarray(arr, dtype=np.float64)
+        finite = values[np.isfinite(values)]
+        if finite.size == 0:
+            return 0.0, 0.0
+        return float(np.min(finite)), float(np.max(finite))
 
     @staticmethod
     def _generate_simulated_diurnal(ls: float, band_def: dict) -> dict:
@@ -400,7 +412,7 @@ class AnalysisService:
             o3_band = self._nanmean_no_warn(o3[:, mask, :], axis=(1, 2))
 
             row = []
-            for var in MCD_VARIABLES:
+            for var in self.mcd_variables:
                 if var not in am:
                     row.append(float("nan"))
                     continue
@@ -466,7 +478,7 @@ class AnalysisService:
 
         result = {
             "driver_band_heatmap": {
-                "x": MCD_VARIABLES,
+                "x": self.mcd_variables,
                 "y": heat_y,
                 "z": self._to_nested_list(np.array(heat_z, dtype=float)),
                 "min": -1.0,
@@ -495,7 +507,7 @@ class AnalysisService:
         if cache_key in self._cache:
             return self._cache[cache_key]
 
-        if driver not in MCD_VARIABLES:
+        if driver not in self.mcd_variables:
             raise ValueError(f"变量 {driver} 不可用")
 
         om = self.data_service.get_openmars_data(mars_year)
