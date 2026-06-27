@@ -18,6 +18,12 @@ export const DataOverviewProvider = ({ children }) => {
   const [dataSourceMode, setDataSourceMode] = useState('default');
   const [isSwitchingSource, setIsSwitchingSource] = useState(false);
   const [sourceMeta, setSourceMeta] = useState(null);
+  const [overviewTimeline, setOverviewTimeline] = useState({ min: 0, max: 360, step: 5 });
+  const [overviewOzoneCapabilities, setOverviewOzoneCapabilities] = useState({
+    openmars: true,
+    nomad: false,
+    diff_pairs: ['MCD-OpenMARS'],
+  });
   const [globalTimeLs, setGlobalTimeLs] = useState(0);
   const [isPlayingTimeline, setIsPlayingTimeline] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
@@ -26,6 +32,10 @@ export const DataOverviewProvider = ({ children }) => {
   const [showGeoAnnotations, setShowGeoAnnotations] = useState(true);
   const [showMarsTexture, setShowMarsTexture] = useState(true);
   const [globeVariable, setGlobeVariable] = useState('o3col');
+  const [ozoneDisplayMode, setOzoneDisplayMode] = useState('mcd');
+  const [ozoneDiffPair, setOzoneDiffPair] = useState('MCD-OpenMARS');
+  const [mcdMainSlice, setMcdMainSlice] = useState({ points: [], minVal: 0, maxVal: 1, variable: 'o3col' });
+  const [ozoneOverlayPayload, setOzoneOverlayPayload] = useState(null);
   const [timeRange, setTimeRange] = useState({ start: 0, end: 360 });
   const [selectedVariables, setSelectedVariables] = useState(['o3col', 'temperature', 'pressure']);
   const [leftPanelWidth, setLeftPanelWidth] = useState(280);
@@ -75,6 +85,10 @@ export const DataOverviewProvider = ({ children }) => {
     setIsSwitchingSource,
     sourceMeta,
     setSourceMeta,
+    overviewTimeline,
+    setOverviewTimeline,
+    overviewOzoneCapabilities,
+    setOverviewOzoneCapabilities,
     globalTimeLs,
     setGlobalTimeLs,
     isPlayingTimeline,
@@ -91,6 +105,14 @@ export const DataOverviewProvider = ({ children }) => {
     setShowMarsTexture,
     globeVariable,
     setGlobeVariable,
+    ozoneDisplayMode,
+    setOzoneDisplayMode,
+    ozoneDiffPair,
+    setOzoneDiffPair,
+    mcdMainSlice,
+    setMcdMainSlice,
+    ozoneOverlayPayload,
+    setOzoneOverlayPayload,
     timeRange,
     setTimeRange,
     selectedVariables,

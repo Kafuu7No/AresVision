@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useSettings } from '../../../contexts/SettingsContext';
-import { fetchZonalAnomaly } from '../../../services/api';
+import { fetchOverviewZonalAnomaly } from '../../../services/api';
 import useAiInsightRegistration from './useAiInsightRegistration';
 import { roundValue, sampleSeries } from './aiInsight';
 
@@ -39,7 +39,7 @@ export default function WaveExplorer({ marsYear, dataSourceMode = 'default' }) {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetchZonalAnomaly(marsYear, 'o3col', { dataSource: dataSourceMode })
+    fetchOverviewZonalAnomaly(marsYear, 'o3col', { dataSource: dataSourceMode })
       .then((res) => {
         if (active) {
           setData(res);

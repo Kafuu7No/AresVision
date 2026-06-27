@@ -147,6 +147,86 @@ export async function fetchDataInfo(options = {}) {
   return res.json();
 }
 
+export async function fetchOverviewInfo(options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/info`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewGlobeData(marsYear = 27, ls = 10, variable = 'o3col', signal = null, options = {}) {
+  const opts = signal ? { signal } : {};
+  const url = appendDataSource(`${BASE}/explore/overview/globe?my=${marsYear}&ls=${ls}&variable=${encodeURIComponent(variable)}`, options);
+  const res = await authedFetch(url, opts);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewOzoneSources(marsYear = 27, ls = 10, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/ozone-sources?my=${marsYear}&ls=${ls}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewSeasonalHeatmap(marsYear = 27, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/seasonal-heatmap?my=${marsYear}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewEnvHeatmap(marsYear = 27, variable, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/env-heatmap?my=${marsYear}&variable=${variable}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewCorrelation(marsYear = 27, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/correlation?my=${marsYear}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewCouplingData(marsYear = 27, var1 = 'o3col', var2 = 'Temperature', options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/coupling?my=${marsYear}&var1=${var1}&var2=${var2}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewZonalAnomaly(marsYear = 27, variable = 'o3col', options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/zonal-anomaly?my=${marsYear}&variable=${variable}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewSolarPhotochemical(marsYear = 27, latBand = 'Equatorial (30S-30N)', options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/solar-photochemical?my=${marsYear}&lat_band=${encodeURIComponent(latBand)}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewPolarDynamics(marsYear = 27, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/polar-dynamics?my=${marsYear}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewResearchSuite(marsYear = 27, options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/research-suite?my=${marsYear}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewPhaseSpace(marsYear = 27, driver = 'Temperature', options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/phase-space?my=${marsYear}&driver=${encodeURIComponent(driver)}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchOverviewDiurnal(marsYear = 27, ls = 90, latBand = 'Equatorial (30S-30N)', options = {}) {
+  const res = await authedFetch(appendDataSource(`${BASE}/explore/overview/diurnal?my=${marsYear}&ls=${ls}&lat_band=${encodeURIComponent(latBand)}`, options));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 export async function fetchPersonalBuildStatus() {
   const res = await authedFetch(`${BASE}/explore/personal-build-status`);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);

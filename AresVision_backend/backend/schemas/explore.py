@@ -24,6 +24,12 @@ class GlobePoint(BaseModel):
     val: float
 
 
+class ValidationPoint(GlobePoint):
+    mcd_value: float
+    nomad_value: float
+    count: int
+
+
 class GlobeDataResponse(BaseModel):
     points: list[GlobePoint]
     minVal: float
@@ -37,7 +43,7 @@ class GlobeDataResponse(BaseModel):
 class HeatmapResponse(BaseModel):
     x: list[float]
     y: list[float]
-    z: list[list[float]]
+    z: list[list[float | None]]
     min: float
     max: float
     variable: str = "o3col"
@@ -56,6 +62,58 @@ class SeasonalBandsResponse(BaseModel):
 
 
 class CorrelationResponse(BaseModel):
-    matrix: list[list[float]]
+    matrix: list[list[float | None]]
     variable_names: list[str]
     source_meta: SourceMeta | None = None
+
+
+class OverviewTimeline(BaseModel):
+    min: float
+    max: float
+    step: float
+
+
+class OverviewInfoResponse(BaseModel):
+    available_years: list[int]
+    timeline: OverviewTimeline
+    ozone_capabilities: dict
+    source_meta: SourceMeta | None = None
+
+
+class OzoneSourceLayerResponse(BaseModel):
+    source: str
+    points: list[GlobePoint]
+    minVal: float
+    maxVal: float
+    ls: float
+
+
+class NomadValidationResponse(BaseModel):
+    source: str
+    comparison: str
+    matched_ls: float
+    sample_count: int
+    bias: float
+    mae: float
+    rmse: float
+    correlation: float | None = None
+    minDiff: float
+    maxDiff: float
+    points: list[ValidationPoint]
+
+
+class OzoneValidationResponse(BaseModel):
+    nomad: NomadValidationResponse | None = None
+
+
+class OverviewOzoneSourcesResponse(BaseModel):
+    mars_year: int
+    requested_ls: float
+    anchor_ls: float
+    mcd: OzoneSourceLayerResponse
+    openmars: OzoneSourceLayerResponse | None = None
+    nomad: OzoneSourceLayerResponse | None = None
+    available_sources: list[str]
+    diff_candidates: list[str]
+    validation: OzoneValidationResponse | None = None
+    capabilities: dict

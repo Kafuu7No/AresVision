@@ -2,14 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useSettings } from '../../../contexts/SettingsContext';
-import { fetchZonalAnomaly } from '../../../services/api';
+import { fetchOverviewZonalAnomaly } from '../../../services/api';
 import useAiInsightRegistration from './useAiInsightRegistration';
 import { roundValue, sampleSeries } from './aiInsight';
 
 const VARIABLE_OPTIONS = [
   { id: 'o3col', zh: '臭氧柱浓度', en: 'Ozone Column' },
   { id: 'Temperature', zh: '温度', en: 'Temperature' },
-  { id: 'Dust_Optical_Depth', zh: '沙尘光学厚度', en: 'Dust Optical Depth' },
   { id: 'Solar_Flux_DN', zh: '太阳下行辐射', en: 'Solar Downwelling Flux' },
   { id: 'U_Wind', zh: '纬向风 U', en: 'U Wind' },
   { id: 'V_Wind', zh: '经向风 V', en: 'V Wind' },
@@ -106,7 +105,7 @@ export default function WaveBandDiagnosticsChart({ marsYear, dataSourceMode = 'd
     let active = true;
     setLoading(true);
 
-    fetchZonalAnomaly(marsYear, variable, { dataSource: dataSourceMode })
+    fetchOverviewZonalAnomaly(marsYear, variable, { dataSource: dataSourceMode })
       .then((res) => {
         if (active) setRawData(res || null);
       })

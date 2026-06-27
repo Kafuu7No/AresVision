@@ -5,7 +5,7 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { GLOBE_VARIABLE_OPTIONS } from '../../constants/globeVariables';
-import { fetchDataInfo } from '../../services/api';
+import { fetchOverviewInfo } from '../../services/api';
 import {
   getPersonalSourceAvailability,
   getPersonalSourceBlockedMessage,
@@ -342,6 +342,9 @@ export default function SidebarMenu() {
     setShowMarsTexture,
     globeVariable,
     setGlobeVariable,
+    ozoneDisplayMode,
+    setOzoneDisplayMode,
+    overviewOzoneCapabilities,
     leftPanelWidth,
     setLeftPanelWidth,
   } = useDataOverview();
@@ -430,7 +433,7 @@ export default function SidebarMenu() {
         setIsSwitchingSource(false);
         return;
       }
-      const info = await fetchDataInfo({ dataSource: 'personal' });
+      const info = await fetchOverviewInfo({ dataSource: 'personal' });
       if (isPersonalSourceInsufficient(info?.source_meta)) {
         setSwitchPreviewMode('personal');
         window.setTimeout(() => {
@@ -574,6 +577,53 @@ export default function SidebarMenu() {
               options={globeVariableOptions}
               isLight={isLight}
             />
+
+            {globeVariable === 'o3col' ? (
+              <div>
+                <div style={{ color: C.ice60, fontSize: 'calc(11px * var(--font-scale, 1))', fontWeight: 600, marginBottom: 8 }}>
+                  {isZh ? '臭氧显示方式' : 'Ozone display'}
+                </div>
+                <SegmentedToggle
+                  value={ozoneDisplayMode}
+                  onChange={setOzoneDisplayMode}
+                  isLight={isLight}
+                  options={[
+                    {
+                      value: 'mcd',
+                      label: 'MCD',
+                      activeBg: 'rgba(249,115,22,0.14)',
+                      activeColor: '#f97316',
+                    },
+                    {
+                      value: 'multi-source',
+                      label: isZh ? '多源' : 'Sources',
+                      activeBg: 'rgba(56,189,248,0.14)',
+                      activeColor: '#38bdf8',
+                      disabled: !overviewOzoneCapabilities?.openmars && !overviewOzoneCapabilities?.nomad,
+                    },
+                    {
+                      value: 'validation',
+                      label: isZh ? '验证' : 'Validate',
+                      activeBg: 'rgba(52,211,153,0.14)',
+                      activeColor: '#34d399',
+                      disabled: !overviewOzoneCapabilities?.nomad,
+                    },
+                    {
+                      value: 'diff',
+                      label: isZh ? '差值' : 'Diff',
+                      activeBg: 'rgba(74,158,255,0.14)',
+                      activeColor: C.blue,
+                      disabled: !(overviewOzoneCapabilities?.diff_pairs || []).length,
+                    },
+                  ]}
+                />
+                <div style={{ marginTop: 8, color: C.ice40, fontSize: 'calc(10px * var(--font-scale, 1))', lineHeight: 1.5 }}>
+                  {isZh
+                    ? '右侧分析始终使用 MCD；验证模式用 NOMAD 稀疏观测点对比对应位置的 MCD。'
+                    : 'Right-side analysis stays on MCD; validation compares sparse NOMAD observations against matched MCD cells.'}
+                </div>
+              </div>
+            ) : null}
           </div>
         </section>
 

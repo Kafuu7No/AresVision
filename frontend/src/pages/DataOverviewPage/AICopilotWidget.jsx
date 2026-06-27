@@ -12,7 +12,7 @@ const CARD_TITLES = {
   correlation: { zh: '点位相关性', en: 'Correlation' },
   environment: { zh: '多因子环境', en: 'Environment' },
   solarsens: { zh: '光化学辐射', en: 'Solar Sensitivity' },
-  coupling: { zh: '沙尘冲刷', en: 'Dust Coupling' },
+  coupling: { zh: '温度耦合', en: 'Temperature Coupling' },
   polar: { zh: '极点聚集', en: 'Polar Dynamics' },
   wave: { zh: '行星波异常', en: 'Wave Explorer' },
   waveDiag: { zh: '波动诊断', en: 'Wave Diagnostics' },

@@ -22,11 +22,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse, FileResponse
 
-from config import API_PREFIX, USER_UPLOADS_DIR, PENDING_REVIEW_DIR
+from config import API_PREFIX, OVERVIEW_MCD_VARIABLES, USER_UPLOADS_DIR, PENDING_REVIEW_DIR
 from database.init_db import init_database
 from database.engine import async_session_maker
 from services.data_service import DataService
 from services.analysis_service import AnalysisService
+from services.mcd_overview_data_service import McdOverviewDataService
 from services.predict_data_service import PredictDataService
 from services.predict_service import PredictOrchestratorService
 from services.ai_service import AIService
@@ -118,6 +119,9 @@ async def lifespan(app: FastAPI):
     logger.info("[1/5] 初始化基础数据加载服务...")
     data_service = DataService()
     app.state.data_service = data_service
+
+    mcd_overview_service = McdOverviewDataService(data_service)
+    app.state.mcd_overview_service = mcd_overview_service
 
     # 上传服务（依赖 data_service）
     upload_service = UploadService(data_service)
@@ -293,6 +297,12 @@ async def lifespan(app: FastAPI):
     logger.info("[2/5] 初始化分析与 ML 准备服务...")
     analysis_service = AnalysisService(data_service)
     app.state.analysis_service = analysis_service
+
+    mcd_overview_analysis_service = AnalysisService(
+        mcd_overview_service,
+        mcd_variables=OVERVIEW_MCD_VARIABLES,
+    )
+    app.state.mcd_overview_analysis_service = mcd_overview_analysis_service
 
     predict_data_prep = PredictDataService(data_service)
     app.state.predict_data_prep = predict_data_prep

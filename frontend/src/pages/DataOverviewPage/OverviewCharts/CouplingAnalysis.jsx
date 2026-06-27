@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import C from '../../../constants/colors';
 import { useSettings } from '../../../contexts/SettingsContext';
-import { fetchCouplingData } from '../../../services/api';
+import { fetchOverviewCouplingData } from '../../../services/api';
 import useAiInsightRegistration from './useAiInsightRegistration';
 import { correlation, roundValue, sampleSeries, summarizeSeries } from './aiInsight';
 
@@ -17,25 +17,25 @@ export default function CouplingAnalysis({ marsYear, dataSourceMode = 'default' 
   const chartHeight = 360;
   
   const copy = isZh ? {
-    title: '沙尘-臭氧耦合分析',
-    desc: '观察全球沙尘光学厚度剧增对平均臭氧柱含量的“冲刷”效应。',
+    title: '温度-臭氧耦合分析',
+    desc: '观察全球平均温度与平均臭氧柱含量在火星季节中的同步变化关系。',
     loading: '加载中...',
     noData: '暂无数据',
     ozoneAxis: '全球平均臭氧 (m-atm cm)',
-    dustAxis: '全球平均沙尘厚度 (DOD)',
+    driverAxis: '全球平均温度 (K)',
     lsAxis: '太阳黄经 Ls',
     ozoneSeries: '臭氧',
-    dustSeries: '沙尘',
+    driverSeries: '温度',
   } : {
-    title: 'Dust-Ozone Coupling Analysis',
-    desc: 'Observe the "washout" effect of global DOD surges on mean ozone column.',
+    title: 'Temperature-Ozone Coupling Analysis',
+    desc: 'Compare global mean temperature and ozone column across the Martian seasonal cycle.',
     loading: 'Loading...',
     noData: 'No data',
     ozoneAxis: 'Global Mean O3 (m-atm cm)',
-    dustAxis: 'Global Mean DOD',
+    driverAxis: 'Global Mean Temperature (K)',
     lsAxis: 'Solar Longitude Ls',
     ozoneSeries: 'Ozone',
-    dustSeries: 'Dust',
+    driverSeries: 'Temperature',
   };
 
   const [data, setData] = useState(null);
@@ -44,7 +44,7 @@ export default function CouplingAnalysis({ marsYear, dataSourceMode = 'default' 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetchCouplingData(marsYear, 'o3col', 'Dust_Optical_Depth', { dataSource: dataSourceMode })
+    fetchOverviewCouplingData(marsYear, 'o3col', 'Temperature', { dataSource: dataSourceMode })
       .then((res) => {
         if (active) {
           setData(res);
@@ -63,9 +63,9 @@ export default function CouplingAnalysis({ marsYear, dataSourceMode = 'default' 
     return {
       corr: correlation(data.var1, data.var2),
       ozoneStats: summarizeSeries(data.var1),
-      dustStats: summarizeSeries(data.var2),
+      driverStats: summarizeSeries(data.var2),
       ozoneSamples: sampleSeries(data.var1, data.ls || [], 10),
-      dustSamples: sampleSeries(data.var2, data.ls || [], 10),
+      driverSamples: sampleSeries(data.var2, data.ls || [], 10),
     };
   }, [data]);
 
@@ -81,10 +81,11 @@ export default function CouplingAnalysis({ marsYear, dataSourceMode = 'default' 
         samples: diagnostics.ozoneSamples,
       }
       : null,
-    dust: diagnostics
+    driver: diagnostics
       ? {
-        stats: diagnostics.dustStats,
-        samples: diagnostics.dustSamples,
+        name: 'Temperature',
+        stats: diagnostics.driverStats,
+        samples: diagnostics.driverSamples,
       }
       : null,
     lsRange: {
@@ -126,7 +127,7 @@ export default function CouplingAnalysis({ marsYear, dataSourceMode = 'default' 
               y: data.var2,
               type: 'scatter',
               mode: 'lines',
-              name: copy.dustSeries,
+              name: copy.driverSeries,
               line: { color: C.mars, width: 3, dash: 'dot' },
               yaxis: 'y2'
             }
@@ -160,7 +161,7 @@ export default function CouplingAnalysis({ marsYear, dataSourceMode = 'default' 
               tickfont: { color: plotText, size: 10  },
               automargin: true,
               title: {
-                text: copy.dustAxis,
+                text: copy.driverAxis,
                 standoff: 14,
                 font: { color: C.mars, size: 11 },
               },
