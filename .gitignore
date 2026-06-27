@@ -110,3 +110,10 @@ scratch/
 tmp/
 
 projects/
+
+*.pdf
+findings.md
+progress.md
+task_plan.md
+/.planning
+/Data
