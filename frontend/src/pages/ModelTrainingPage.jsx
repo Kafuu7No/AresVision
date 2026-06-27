@@ -24,9 +24,53 @@ import TrainingProgressMonitor from '../components/TrainingProgressMonitor';
 import LossEvolutionChart from '../components/LossEvolutionChart';
 import SectionTitle from '../components/SectionTitle';
 import { useTraining } from '../contexts/TrainingContext';
+import {
+  buildTrainingHyperparameters,
+  createDefaultArchitectureParamsByModel,
+  getModelStructureConfig,
+  getModelStructureParamLabel,
+  isRecurrentArchitecture,
+  sanitizeNonNegativeInteger,
+  sanitizeDropout,
+  sanitizePositiveInteger,
+  sanitizePositiveNumber,
+} from './ModelTrainingPage/trainingParamSanitizers';
 
 const MONO_FONT = "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace";
 const PERSONAL_BOUNCE_MS = 720;
+const UNIFIED_TRAINING_SCRIPT = 'demo3.py';
+const OPEN_INTERVAL_FLOAT_FIELDS = new Set(['initial_history_weight', 'initial_translation_weight']);
+const MODEL_ARCHITECTURES = [
+  { id: 'predrnnv2', label: 'PredRNNv2' },
+  { id: 'predrnnpp', label: 'PredRNN++' },
+  { id: 'convlstm', label: 'ConvLSTM' },
+  { id: 'simvp', label: 'SimVP' },
+  { id: 'dlinear', label: 'DLinear' },
+  { id: 'informer', label: 'Informer' },
+  { id: 'autoformer', label: 'Autoformer' },
+  { id: 'patchtst', label: 'PatchTST' },
+  { id: 'timemixer', label: 'TimeMixer' },
+  { id: 'timexer', label: 'TimeXer' },
+  { id: 'tsmixer', label: 'TSMixer' },
+  { id: 'crossformer', label: 'Crossformer' },
+  { id: 'earthformer', label: 'Earthformer' },
+  { id: 'etsformer', label: 'ETSformer' },
+  { id: 'fedformer', label: 'FEDformer' },
+  { id: 'itransformer', label: 'iTransformer' },
+  { id: 'mau', label: 'MAU' },
+  { id: 'nbeats', label: 'N-BEATS' },
+  { id: 'nhits', label: 'N-HiTS' },
+  { id: 'pyraformer', label: 'Pyraformer' },
+  { id: 'rnn_cnn_rnn', label: 'RNN-CNN-RNN' },
+  { id: 'cnn_rnn_cnn_rnn_cnn', label: 'CNN-RNN-CNN-RNN-CNN' },
+  { id: 'simvp_3dconv', label: 'SimVP-3DConv' },
+  { id: 'simvp_hybrid3d', label: 'SimVP-Hybrid3D' },
+  { id: 'convlstm_mst', label: 'ConvLSTM-MST' },
+  { id: 'dlinear_mst', label: 'DLinear-MST' },
+  { id: 'convlstm_phase_gated_mst', label: 'ConvLSTM-PhaseGated-MST' },
+  { id: 'convlstm_mst_feature_refiner', label: 'ConvLSTM-MST-Feature' },
+  { id: 'convlstm_climatology_anomaly', label: 'ConvLSTM-Climatology-Anomaly' },
+];
 
 function getStatusMeta(status, t) {
   if (status === 'completed') {
@@ -71,8 +115,9 @@ function getStatusMeta(status, t) {
 
 function formatHyperValue(key, value, t) {
   if (Array.isArray(value)) return value.join(' / ');
+  if (key === 'model_architecture') return getModelArchitectureLabel(value);
   if (key === 'learning_rate' && typeof value === 'number') return value.toFixed(5);
-  if (value === 0) return t('modelTraining.hypers.disabled');
+  if (key === 'early_stopping_patience' && value === 0) return t('modelTraining.hypers.disabled');
   return value ?? '--';
 }
 
@@ -86,6 +131,17 @@ function parseHyperparameters(raw) {
 
 function getVisibleHyperparameters(hyperparameters) {
   return Object.entries(hyperparameters || {}).filter(([key]) => !key.startsWith('_'));
+}
+
+function normalizeModelArchitecture(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  const normalized = raw === 'predrnnv2_sphere' ? 'predrnnv2' : raw;
+  return MODEL_ARCHITECTURES.some((item) => item.id === normalized) ? normalized : 'predrnnv2';
+}
+
+function getModelArchitectureLabel(value) {
+  const normalized = normalizeModelArchitecture(value);
+  return MODEL_ARCHITECTURES.find((item) => item.id === normalized)?.label || MODEL_ARCHITECTURES[0].label;
 }
 
 function getSourceModeLabel(source, copy) {
@@ -105,10 +161,26 @@ function formatTaskDate(value, locale) {
   });
 }
 
-function getScriptSummary(modelScript, channelMap, fallbackLabel) {
-  const suffix = (modelScript || '').replace('demo3-', '').replace('.py', '');
-  if (!suffix) return fallbackLabel;
-  return suffix.split('').map((char) => channelMap[char]?.name || char).join(', ');
+function normalizeTaskChannels(task, channelOrder) {
+  const hyperparameters = parseHyperparameters(task?.hyperparameters);
+  const selected = Array.isArray(hyperparameters.selected_channels)
+    ? hyperparameters.selected_channels
+    : [];
+  const selectedSet = new Set(selected.map((channel) => String(channel).toUpperCase()));
+  const normalized = channelOrder.filter((channel) => selectedSet.has(channel));
+  if (normalized.length > 0 || task?.model_script === UNIFIED_TRAINING_SCRIPT) {
+    return normalized;
+  }
+
+  const suffix = (task?.model_script || '').replace('demo3-', '').replace('.py', '');
+  const suffixSet = new Set(suffix.split('').map((channel) => channel.toUpperCase()));
+  return channelOrder.filter((channel) => suffixSet.has(channel));
+}
+
+function getScriptSummary(task, channelMap, channelOrder, fallbackLabel) {
+  const channels = normalizeTaskChannels(task, channelOrder);
+  if (channels.length === 0) return fallbackLabel;
+  return channels.map((char) => channelMap[char]?.name || char).join(', ');
 }
 
 function SummaryMetric({ label, value, accent = C.ice }) {
@@ -191,6 +263,7 @@ function TrainingTaskCard({
   task,
   t,
   locale,
+  channelOrder,
   channelMap,
   baselineLabel,
   copy,
@@ -210,11 +283,13 @@ function TrainingTaskCard({
   );
 
   const modelName = task.custom_model_name || t('modelTraining.unnamedModel');
-  const scriptSummary = getScriptSummary(task.model_script, channelMap, baselineLabel);
+  const scriptSummary = getScriptSummary(task, channelMap, channelOrder, baselineLabel);
   const taskSourceLabel = getSourceModeLabel(
     hyperparameters._effective_data_source || hyperparameters._data_source || 'default',
     copy
   );
+  const architectureLabel = getModelArchitectureLabel(hyperparameters.model_architecture);
+  const sphereLabel = hyperparameters.use_sphere ? 'SPHERE ON' : 'SPHERE OFF';
   const actionBaseStyle = {
     padding: '8px 14px',
     borderRadius: 10,
@@ -296,6 +371,8 @@ function TrainingTaskCard({
             }}
           >
             <span>{scriptSummary}</span>
+            <span>{architectureLabel}</span>
+            <span>{sphereLabel}</span>
             <span>{taskSourceLabel}</span>
             <span>{formatTaskDate(task.start_time, locale)}</span>
           </div>
@@ -459,6 +536,7 @@ export default function ModelTrainingPage() {
   const { showToast } = useToast();
   const isLight = settings.theme === 'light';
   const isZh = settings.language !== 'en';
+  const structureLabelLanguage = isZh ? 'zh' : 'en';
   const locale = isZh ? 'zh-CN' : 'en-US';
 
   const {
@@ -521,6 +599,18 @@ export default function ModelTrainingPage() {
       currentSelection: isZh ? '当前选择' : 'Current selection',
       coreParameters: isZh ? '核心参数' : 'Core parameters',
       modelArchitecture: isZh ? '模型结构' : 'Model architecture',
+      backboneModel: isZh ? '骨干模型' : 'Backbone model',
+      architecturePredRnn: 'PredRNNv2',
+      architecturePredRnnHint: isZh
+        ? '使用所选通道和当前超参数训练该主干。'
+        : 'Train this backbone with the selected channels and hyperparameters.',
+      architectureSphereHint: isZh
+        ? '独立 SPHERE 前端：为任意所选通道加入 Ls 相位调制特征，Dust 也支持。'
+        : 'Independent SPHERE front-end: adds Ls phase-warped features for any selected channels, including Dust.',
+      sphereToggle: isZh ? 'SPHERE 模块' : 'SPHERE module',
+      enabled: isZh ? '开启' : 'On',
+      disabled: isZh ? '关闭' : 'Off',
+      randomSeed: 'Seed',
       liveLogs: isZh ? '实时日志' : 'Live logs',
       liveLogsHint: isZh
         ? '选择历史任务即可切换当前查看的日志和进度。'
@@ -539,7 +629,6 @@ export default function ModelTrainingPage() {
       selectedTask: isZh ? '当前查看' : 'Selected task',
       currentModel: isZh ? '当前模型' : 'Current model',
       sourceMode: isZh ? '训练来源' : 'Source mode',
-      scriptFile: isZh ? '脚本文件' : 'Script file',
       startTraining: isZh ? '开始训练' : 'Start training',
       loginToStart: isZh ? '登录后开始训练' : 'Sign in to start',
       starting: isZh ? '正在启动...' : 'Starting...',
@@ -559,7 +648,9 @@ export default function ModelTrainingPage() {
   );
 
   const [selectedChannels, setSelectedChannels] = useState([]);
-  const [selectedScript, setSelectedScript] = useState('demo3-.py');
+  const [selectedScript, setSelectedScript] = useState(UNIFIED_TRAINING_SCRIPT);
+  const [modelArchitecture, setModelArchitecture] = useState('predrnnv2');
+  const [useSphere, setUseSphere] = useState(false);
   const [epochs, setEpochs] = useState(10);
   const [batchSize, setBatchSize] = useState(32);
   const [learningRate, setLearningRate] = useState(0.001);
@@ -567,13 +658,18 @@ export default function ModelTrainingPage() {
   const [customModelName, setCustomModelName] = useState('');
   const [modelNameError, setModelNameError] = useState('');
   const [hiddenDims, setHiddenDims] = useState([64, 64, 64]);
+  const [architectureParamsByModel, setArchitectureParamsByModel] = useState(() =>
+    createDefaultArchitectureParamsByModel()
+  );
   const [window_, setWindow] = useState(3);
   const [horizon, setHorizon] = useState(3);
   const [earlyStoppingPatience, setEarlyStoppingPatience] = useState(0);
+  const [seed, setSeed] = useState(11);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [testTaskId, setTestTaskId] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [architecturePickerOpen, setArchitecturePickerOpen] = useState(false);
 
   const displayDataSourceMode = switchPreviewMode || dataSourceMode;
   const isPersonalMode = displayDataSourceMode === 'personal';
@@ -582,11 +678,6 @@ export default function ModelTrainingPage() {
     .replace('：', '')
     .trim();
   const baselineLabel = t('modelTraining.baselineO3');
-
-  const preferredScript = useMemo(() => {
-    const suffix = channelOrder.filter((channel) => selectedChannels.includes(channel)).join('');
-    return `demo3-${suffix}.py`;
-  }, [channelOrder, selectedChannels]);
 
   const selectedChannelsSummary = useMemo(() => {
     if (selectedChannels.length === 0) return copy.channelSummaryEmpty;
@@ -599,6 +690,16 @@ export default function ModelTrainingPage() {
   );
 
   const activeStatusMeta = getStatusMeta(activeTask?.status || 'idle', t);
+  const normalizedModelArchitecture = normalizeModelArchitecture(modelArchitecture);
+  const activeStructureConfig = getModelStructureConfig(normalizedModelArchitecture);
+  const activeStructureParams = architectureParamsByModel[normalizedModelArchitecture] || {};
+  const isRecurrentModel = isRecurrentArchitecture(normalizedModelArchitecture);
+  const structureSummary = isRecurrentModel
+    ? `${getModelArchitectureLabel(normalizedModelArchitecture)} / ${t('modelTraining.stlstmLayers')}: ${stlstmLayers || 0}`
+    : activeStructureConfig
+        .slice(0, 2)
+        .map((field) => `${getModelStructureParamLabel(field.key, structureLabelLanguage)}: ${activeStructureParams[field.key] ?? field.defaultValue}`)
+        .join(' / ') || getModelArchitectureLabel(normalizedModelArchitecture);
 
   const sourceMessage =
     sourceMeta?.message ||
@@ -682,13 +783,13 @@ export default function ModelTrainingPage() {
 
   const handleLayersChange = (event) => {
     const value = event.target.value;
-    setStlstmLayers(value);
+    if (value === '') {
+      setStlstmLayers('');
+      return;
+    }
 
-    if (value === '') return;
-
-    let nextLayerCount = parseInt(value, 10);
-    if (Number.isNaN(nextLayerCount) || nextLayerCount < 1) nextLayerCount = 1;
-    if (nextLayerCount > 10) nextLayerCount = 10;
+    const nextLayerCount = sanitizePositiveInteger(value, 3, 1, 10);
+    setStlstmLayers(nextLayerCount);
 
     setHiddenDims((previous) => {
       const next = [...previous];
@@ -709,8 +810,32 @@ export default function ModelTrainingPage() {
 
   const handleDimChange = (index, value) => {
     const next = [...hiddenDims];
-    next[index] = value === '' ? '' : Number(value);
+    next[index] = value === '' ? '' : sanitizePositiveInteger(value, 64);
     setHiddenDims(next);
+  };
+
+  const handleStructureParamChange = (modelId, field, value) => {
+    const boundedFloatMin = OPEN_INTERVAL_FLOAT_FIELDS.has(field.key) ? 0.000001 : 0;
+    const sanitizedValue =
+      value === ''
+        ? ''
+        : field.type === 'integerList'
+          ? value
+          : field.type === 'dropout'
+            ? sanitizeDropout(value, field.defaultValue)
+            : field.type === 'boundedFloat'
+              ? sanitizePositiveNumber(value, field.defaultValue, boundedFloatMin, 0.9)
+            : field.type === 'nonNegativeNumber'
+              ? sanitizePositiveNumber(value, field.defaultValue, 0)
+              : sanitizePositiveInteger(value, field.defaultValue);
+
+    setArchitectureParamsByModel((previous) => ({
+      ...previous,
+      [modelId]: {
+        ...(previous[modelId] || {}),
+        [field.key]: sanitizedValue,
+      },
+    }));
   };
 
   useEffect(() => {
@@ -759,7 +884,7 @@ export default function ModelTrainingPage() {
 
   useEffect(() => {
     if (!user) {
-      setSelectedScript(preferredScript);
+      setSelectedScript(UNIFIED_TRAINING_SCRIPT);
       return;
     }
 
@@ -768,13 +893,13 @@ export default function ModelTrainingPage() {
       return;
     }
 
-    if (scripts.includes(preferredScript)) {
-      setSelectedScript(preferredScript);
+    if (scripts.includes(UNIFIED_TRAINING_SCRIPT)) {
+      setSelectedScript(UNIFIED_TRAINING_SCRIPT);
       return;
     }
 
     setSelectedScript('');
-  }, [preferredScript, scripts, user]);
+  }, [scripts, user]);
 
   useEffect(() => {
     let active = true;
@@ -868,15 +993,21 @@ export default function ModelTrainingPage() {
 
     try {
       setIsProcessing(true);
-      const hyperparameters = {
-        epochs: Number(epochs) || 10,
-        batch_size: Number(batchSize) || 32,
-        learning_rate: Number(learningRate) || 0.001,
-        stlstm_hidden_dims: hiddenDims.map((dim) => Number(dim) || 64),
-        window: Number(window_) || 3,
-        horizon: Number(horizon) || 3,
-        early_stopping_patience: Number(earlyStoppingPatience) || 0,
-      };
+      const hyperparameters = buildTrainingHyperparameters({
+        epochs,
+        batchSize,
+        learningRate,
+        hiddenDims,
+        windowValue: window_,
+        horizon,
+        earlyStoppingPatience,
+        seed,
+        selectedChannels,
+        channelOrder,
+        modelArchitecture: normalizeModelArchitecture(modelArchitecture),
+        useSphere,
+        architectureParamsByModel,
+      });
 
       const task = await startTrainingTask(
         selectedScript,
@@ -1190,9 +1321,9 @@ export default function ModelTrainingPage() {
                     accent={C.mars}
                   />
                   <CompactField
-                    label={copy.trainingPreset}
-                    value={selectedScriptAvailable ? selectedScript : presetStatusText}
-                    accent={selectedScriptAvailable ? C.ice : '#d95c5c'}
+                    label={copy.modelArchitecture}
+                    value={`${getModelArchitectureLabel(modelArchitecture)} / SPHERE ${useSphere ? 'ON' : 'OFF'}`}
+                    accent={useSphere ? C.blue : C.ice}
                   />
                   <CompactField
                     label={copy.coreParameters}
@@ -1259,6 +1390,99 @@ export default function ModelTrainingPage() {
               </div>
 
               <div className="model-training-section">
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 12,
+                    marginBottom: 12,
+                  }}
+                >
+                  <div style={sectionTitleStyle}>{copy.backboneModel}</div>
+                  <button
+                    type="button"
+                    onClick={() => setArchitecturePickerOpen((previous) => !previous)}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 10,
+                      border: `1px solid ${C.border}`,
+                      background: C.bgMuted,
+                      color: C.ice70,
+                      fontSize: 'calc(11px * var(--font-scale, 1))',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {architecturePickerOpen ? copy.collapse : copy.expand}
+                  </button>
+                </div>
+                {!architecturePickerOpen ? (
+                  <div
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 12,
+                      border: '1px solid rgba(74,158,255,0.24)',
+                      background: 'rgba(74,158,255,0.10)',
+                      color: C.blue,
+                      fontSize: 'calc(12px * var(--font-scale, 1))',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {getModelArchitectureLabel(modelArchitecture)}
+                  </div>
+                ) : (
+                  <div className="model-training-channels-compact">
+                    {MODEL_ARCHITECTURES.map((architecture) => {
+                      const active = modelArchitecture === architecture.id;
+                      return (
+                        <button
+                          key={architecture.id}
+                          onClick={() => {
+                            setModelArchitecture(architecture.id);
+                            setArchitecturePickerOpen(false);
+                          }}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: 12,
+                            border: `1px solid ${active ? 'rgba(74,158,255,0.24)' : C.border}`,
+                            background: active ? 'rgba(74,158,255,0.10)' : C.bgMuted,
+                            color: active ? C.blue : C.ice,
+                            fontSize: 'calc(11px * var(--font-scale, 1))',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            minHeight: 44,
+                          }}
+                        >
+                          {architecture.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setUseSphere((value) => !value)}
+                  style={{
+                    marginTop: 12,
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 12,
+                    border: `1px solid ${useSphere ? 'rgba(74,158,255,0.24)' : C.border}`,
+                    background: useSphere ? 'rgba(74,158,255,0.10)' : C.bgMuted,
+                    color: useSphere ? C.blue : C.ice,
+                    fontSize: 'calc(20px * var(--font-scale, 1))',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                  }}
+                >
+                  {copy.sphereToggle}: {useSphere ? copy.enabled : copy.disabled}
+                </button>
+              </div>
+
+              <div className="model-training-section">
                 <div style={sectionTitleStyle}>{copy.coreParameters}</div>
                 <div className="model-training-field-grid">
                   <div>
@@ -1267,7 +1491,10 @@ export default function ModelTrainingPage() {
                       type="number"
                       style={inputStyle}
                       value={epochs}
-                      onChange={(event) => setEpochs(event.target.value === '' ? '' : Number(event.target.value))}
+                      min="1"
+                      onChange={(event) =>
+                        setEpochs(event.target.value === '' ? '' : sanitizePositiveInteger(event.target.value, 10))
+                      }
                     />
                   </div>
                   <div>
@@ -1276,7 +1503,10 @@ export default function ModelTrainingPage() {
                       type="number"
                       style={inputStyle}
                       value={batchSize}
-                      onChange={(event) => setBatchSize(event.target.value === '' ? '' : Number(event.target.value))}
+                      min="1"
+                      onChange={(event) =>
+                        setBatchSize(event.target.value === '' ? '' : sanitizePositiveInteger(event.target.value, 32))
+                      }
                     />
                   </div>
                   <div>
@@ -1286,8 +1516,62 @@ export default function ModelTrainingPage() {
                       step="0.0001"
                       style={inputStyle}
                       value={learningRate}
+                      min="0.000001"
                       onChange={(event) =>
-                        setLearningRate(event.target.value === '' ? '' : Number(event.target.value))
+                        setLearningRate(
+                          event.target.value === '' ? '' : sanitizePositiveNumber(event.target.value, 0.001)
+                        )
+                      }
+                    />
+                  </div>
+                  <div>
+                    <div style={fieldLabelStyle}>{t('modelTraining.window')}</div>
+                    <input
+                      type="number"
+                      style={inputStyle}
+                      value={window_}
+                      min="1"
+                      max="30"
+                      onChange={(event) =>
+                        setWindow(
+                          event.target.value === ''
+                            ? ''
+                            : sanitizePositiveInteger(event.target.value, 3, 1, 30)
+                        )
+                      }
+                    />
+                  </div>
+                  <div>
+                    <div style={fieldLabelStyle}>{t('modelTraining.horizon')}</div>
+                    <input
+                      type="number"
+                      style={inputStyle}
+                      value={horizon}
+                      min="1"
+                      max="30"
+                      onChange={(event) =>
+                        setHorizon(
+                          event.target.value === ''
+                            ? ''
+                            : sanitizePositiveInteger(event.target.value, 3, 1, 30)
+                        )
+                      }
+                    />
+                  </div>
+                  <div>
+                    <div style={fieldLabelStyle}>{copy.randomSeed}</div>
+                    <input
+                      type="number"
+                      style={inputStyle}
+                      value={seed}
+                      min="0"
+                      max="2147483647"
+                      onChange={(event) =>
+                        setSeed(
+                          event.target.value === ''
+                            ? ''
+                            : sanitizeNonNegativeInteger(event.target.value, 11, 2147483647)
+                        )
                       }
                     />
                   </div>
@@ -1301,7 +1585,9 @@ export default function ModelTrainingPage() {
                       max="200"
                       onChange={(event) =>
                         setEarlyStoppingPatience(
-                          event.target.value === '' ? '' : Math.max(0, Number(event.target.value))
+                          event.target.value === ''
+                            ? ''
+                            : sanitizeNonNegativeInteger(event.target.value, 0, 200)
                         )
                       }
                     />
@@ -1335,14 +1621,12 @@ export default function ModelTrainingPage() {
                       fontFamily: 'var(--font-body)',
                     }}
                   >
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ ...sectionTitleStyle, marginBottom: 4 }}>{copy.modelArchitecture}</div>
-                      <div style={{ ...fieldHintStyle, marginTop: 0 }}>
-                        {advancedOpen
-                          ? t('modelTraining.window') + ' / ' + t('modelTraining.horizon') + ' / ' + copy.scriptFile
-                          : `${t('modelTraining.stlstmLayers')}: ${stlstmLayers} / ${copy.scriptFile}: ${selectedScript || '--'}`}
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ ...sectionTitleStyle, marginBottom: 4 }}>{copy.modelArchitecture}</div>
+                        <div style={{ ...fieldHintStyle, marginTop: 0 }}>
+                          {advancedOpen ? getModelArchitectureLabel(modelArchitecture) : structureSummary}
+                        </div>
                       </div>
-                    </div>
                     <div
                       style={{
                         fontSize: 'calc(12px * var(--font-scale, 1))',
@@ -1361,80 +1645,77 @@ export default function ModelTrainingPage() {
                         borderTop: `1px solid ${C.border}`,
                       }}
                     >
-                      <div className="model-training-field-grid" style={{ marginTop: 16 }}>
-                        <div>
-                          <div style={fieldLabelStyle}>{t('modelTraining.window')}</div>
-                          <input
-                            type="number"
-                            style={inputStyle}
-                            value={window_}
-                            min="1"
-                            max="30"
-                            onChange={(event) =>
-                              setWindow(event.target.value === '' ? '' : Math.max(1, Number(event.target.value)))
-                            }
-                          />
-                        </div>
-                        <div>
-                          <div style={fieldLabelStyle}>{t('modelTraining.horizon')}</div>
-                          <input
-                            type="number"
-                            style={inputStyle}
-                            value={horizon}
-                            min="1"
-                            max="30"
-                            onChange={(event) =>
-                              setHorizon(event.target.value === '' ? '' : Math.max(1, Number(event.target.value)))
-                            }
-                          />
-                        </div>
-                        <div>
-                          <div style={fieldLabelStyle}>{t('modelTraining.stlstmLayers')}</div>
-                          <input
-                            type="number"
-                            style={inputStyle}
-                            value={stlstmLayers}
-                            onChange={handleLayersChange}
-                            min="1"
-                            max="10"
-                          />
-                        </div>
-                        <div>
-                          <div style={fieldLabelStyle}>{copy.scriptFile}</div>
-                          <div style={{ ...summaryCardStyle, minHeight: 44, display: 'flex', alignItems: 'center' }}>
-                            <span
-                              style={{
-                                fontSize: 'calc(12px * var(--font-scale, 1))',
-                                color: selectedScriptAvailable ? C.ice : C.ice50,
-                                fontFamily: MONO_FONT,
-                                lineHeight: 1.5,
-                                wordBreak: 'break-word',
-                              }}
-                            >
-                              {selectedScript || '--'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {hiddenDims.length > 0 ? (
-                        <div className="model-training-dim-grid">
-                          {hiddenDims.map((dim, index) => (
-                            <div key={`${index}`}>
-                              <div style={fieldLabelStyle}>
-                                {t('modelTraining.layer')} {index + 1} {t('modelTraining.layerDim')}
-                              </div>
+                      {isRecurrentModel ? (
+                        <>
+                          <div className="model-training-field-grid" style={{ marginTop: 16 }}>
+                            <div>
+                              <div style={fieldLabelStyle}>{t('modelTraining.stlstmLayers')}</div>
                               <input
                                 type="number"
                                 style={inputStyle}
-                                value={dim}
-                                onChange={(event) => handleDimChange(index, event.target.value)}
+                                value={stlstmLayers}
+                                onChange={handleLayersChange}
                                 min="1"
+                                max="10"
+                              />
+                            </div>
+                          </div>
+
+                          {hiddenDims.length > 0 ? (
+                            <div className="model-training-dim-grid">
+                              {hiddenDims.map((dim, index) => (
+                                <div key={`${index}`}>
+                                  <div style={fieldLabelStyle}>
+                                    {t('modelTraining.layer')} {index + 1} {t('modelTraining.layerDim')}
+                                  </div>
+                                  <input
+                                    type="number"
+                                    style={inputStyle}
+                                    value={dim}
+                                    onChange={(event) => handleDimChange(index, event.target.value)}
+                                    min="1"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                        </>
+                      ) : (
+                        <div className="model-training-field-grid" style={{ marginTop: 16 }}>
+                          {activeStructureConfig.map((field) => (
+                            <div key={field.key}>
+                              <div style={fieldLabelStyle}>
+                                {getModelStructureParamLabel(field.key, structureLabelLanguage)}
+                              </div>
+                              <input
+                                type={field.type === 'integerList' ? 'text' : 'number'}
+                                style={inputStyle}
+                                value={
+                                  Array.isArray(activeStructureParams[field.key] ?? field.defaultValue)
+                                    ? (activeStructureParams[field.key] ?? field.defaultValue).join(',')
+                                    : activeStructureParams[field.key] ?? field.defaultValue
+                                }
+                                min={
+                                  field.type === 'boundedFloat' && OPEN_INTERVAL_FLOAT_FIELDS.has(field.key)
+                                    ? '0.000001'
+                                    : ['dropout', 'boundedFloat', 'nonNegativeNumber'].includes(field.type)
+                                      ? '0'
+                                      : '1'
+                                }
+                                max={['dropout', 'boundedFloat'].includes(field.type) ? '0.9' : undefined}
+                                step={['dropout', 'boundedFloat', 'nonNegativeNumber'].includes(field.type) ? '0.05' : '1'}
+                                onChange={(event) =>
+                                  handleStructureParamChange(
+                                    normalizedModelArchitecture,
+                                    field,
+                                    event.target.value
+                                  )
+                                }
                               />
                             </div>
                           ))}
                         </div>
-                      ) : null}
+                      )}
                     </div>
                   ) : null}
                 </div>
@@ -1683,6 +1964,7 @@ export default function ModelTrainingPage() {
                   task={task}
                   t={t}
                   locale={locale}
+                  channelOrder={channelOrder}
                   channelMap={channelMap}
                   baselineLabel={baselineLabel}
                   copy={copy}

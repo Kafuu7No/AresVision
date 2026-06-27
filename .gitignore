@@ -58,6 +58,7 @@ Thumbs.db
 *.tmp
 *.bak
 *_backup.*
+.codex_tmp/
 
 # Docs excluded from git
 AGENTS.md
