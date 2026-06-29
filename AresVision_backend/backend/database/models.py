@@ -2,6 +2,8 @@
 ORM 数据表模型
 """
 
+from __future__ import annotations
+
 from datetime import datetime, timezone
 
 from sqlalchemy import (
@@ -43,6 +45,9 @@ class User(Base):
     )
     user_model_packages: Mapped[list["UserModelPackage"]] = relationship(
         "UserModelPackage", foreign_keys="UserModelPackage.user_id", back_populates="owner"
+    )
+    training_weight_files: Mapped[list["TrainingWeightFile"]] = relationship(
+        "TrainingWeightFile", foreign_keys="TrainingWeightFile.user_id", back_populates="owner"
     )
 
     def __repr__(self) -> str:
@@ -208,6 +213,28 @@ class UserModelPackage(Base):
 
     def __repr__(self) -> str:
         return f"<UserModelPackage id={self.id} user_id={self.user_id} name={self.display_name}>"
+
+
+class TrainingWeightFile(Base):
+    __tablename__ = "training_weight_files"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    storage_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    file_size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="ready")
+    validation_report: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    owner: Mapped["User"] = relationship(
+        "User", foreign_keys=[user_id], back_populates="training_weight_files"
+    )
+
+    def __repr__(self) -> str:
+        return f"<TrainingWeightFile id={self.id} user_id={self.user_id} file={self.original_filename}>"
 
 
 class ModelTrainingTask(Base):

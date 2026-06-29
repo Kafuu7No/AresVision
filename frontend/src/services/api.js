@@ -675,6 +675,41 @@ export async function startTrainingTask(
   return res.json();
 }
 
+export async function uploadTrainingWeight(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await authedFetch(`${BASE}/training/weights`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function fetchTrainingWeights() {
+  const res = await authedFetch(`${BASE}/training/weights`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteTrainingWeight(weightId) {
+  const res = await authedFetch(`${BASE}/training/weights/${encodeURIComponent(weightId)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `${res.status}`);
+  }
+  return res.json();
+}
+
 export async function uploadUserModel(file) {
   const formData = new FormData();
   formData.append('file', file);

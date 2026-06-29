@@ -15,6 +15,9 @@ import {
   getUserModelDownloadUrl,
   revalidateUserModel,
   deleteUserModel,
+  uploadTrainingWeight,
+  fetchTrainingWeights,
+  deleteTrainingWeight,
 } from '../services/api';
 import {
   getPersonalSourceAvailability,
@@ -35,6 +38,8 @@ import {
   getModelStructureConfig,
   getModelStructureParamLabel,
   isRecurrentArchitecture,
+  TRAINING_DATASET_MCD_OVERVIEW,
+  TRAINING_DATASET_OPENMARS_MCD,
   sanitizeNonNegativeInteger,
   sanitizeDropout,
   sanitizePositiveInteger,
@@ -612,6 +617,15 @@ export default function ModelTrainingPage() {
   const copy = useMemo(
     () => ({
       dataSource: isZh ? '数据源' : 'Data source',
+      trainingDataset: isZh ? '训练数据集' : 'Training dataset',
+      datasetOpenMarsMcd: isZh ? 'OpenMARS + MCD 融合' : 'OpenMARS + MCD',
+      datasetMcdOverview: isZh ? 'MCD 全量 MY24-MY35' : 'Full MCD MY24-MY35',
+      datasetHintOpenMarsMcd: isZh
+        ? '使用当前默认训练数据，OpenMARS 臭氧目标与 MCD 驱动变量融合。'
+        : 'Use the current default fused dataset: OpenMARS ozone targets with MCD drivers.',
+      datasetHintMcdOverview: isZh
+        ? '使用 data/mcd_overview 中的整体 MCD overview 数据，覆盖 MY24-MY35。'
+        : 'Use the full MCD overview corpus from data/mcd_overview, covering MY24-MY35.',
       sourceDefault: isZh ? '默认系统数据' : 'Default source',
       sourcePersonal: isZh ? '个人 / 混合数据' : 'Personal / mixed source',
       sourceHintDefault: isZh
@@ -687,6 +701,30 @@ export default function ModelTrainingPage() {
       enabled: isZh ? '开启' : 'On',
       disabled: isZh ? '关闭' : 'Off',
       randomSeed: 'Seed',
+      transferLearning: isZh ? '迁移学习' : 'Transfer learning',
+      transferHint: isZh
+        ? '从已完成任务或上传权重继续微调。当前版本使用严格匹配加载。'
+        : 'Fine-tune from a completed task or uploaded weight. Strict loading is used.',
+      transferEnable: isZh ? '启用迁移学习' : 'Enable transfer learning',
+      transferTaskSource: isZh ? '历史任务' : 'Completed task',
+      transferUploadSource: isZh ? '上传权重' : 'Uploaded weight',
+      transferSourceTask: isZh ? '来源任务' : 'Source task',
+      transferWeightFile: isZh ? '权重文件' : 'Weight file',
+      transferNoTasks: isZh ? '暂无可用的已完成任务。' : 'No completed tasks are available.',
+      transferNoWeights: isZh ? '暂无上传权重。' : 'No uploaded weights yet.',
+      uploadWeight: isZh ? '上传 .pth/.pt' : 'Upload .pth/.pt',
+      uploadingWeight: isZh ? '上传中...' : 'Uploading...',
+      deleteWeight: isZh ? '删除权重' : 'Delete weight',
+      transferStrict: isZh ? '严格匹配' : 'Strict',
+      freezeMode: isZh ? '冻结策略' : 'Freeze strategy',
+      freezeNone: isZh ? '不冻结' : 'No freeze',
+      freezeBackbone: isZh ? '冻结主体' : 'Freeze backbone',
+      freezeHead: isZh ? '只训练输出头' : 'Train head only',
+      finetuneLearningRate: isZh ? '微调学习率' : 'Fine-tune LR',
+      transferSelectSource: isZh ? '请选择迁移学习来源。' : 'Select a transfer learning source.',
+      uploadWeightSuccess: isZh ? '权重已上传' : 'Weight uploaded',
+      uploadWeightError: isZh ? '权重上传失败' : 'Weight upload failed',
+      deleteWeightSuccess: isZh ? '权重已删除' : 'Weight deleted',
       liveLogs: isZh ? '实时日志' : 'Live logs',
       liveLogsHint: isZh
         ? '选择历史任务即可切换当前查看的日志和进度。'
@@ -731,6 +769,15 @@ export default function ModelTrainingPage() {
   const [customModelParams, setCustomModelParams] = useState({});
   const [customModelParamErrors, setCustomModelParamErrors] = useState({});
   const [uploadingModel, setUploadingModel] = useState(false);
+  const [trainingWeights, setTrainingWeights] = useState([]);
+  const [selectedTrainingWeightId, setSelectedTrainingWeightId] = useState('');
+  const [uploadingWeight, setUploadingWeight] = useState(false);
+  const [trainingDataset, setTrainingDataset] = useState(TRAINING_DATASET_OPENMARS_MCD);
+  const [transferEnabled, setTransferEnabled] = useState(false);
+  const [transferSourceType, setTransferSourceType] = useState('task');
+  const [transferSourceTaskId, setTransferSourceTaskId] = useState('');
+  const [transferFreezeMode, setTransferFreezeMode] = useState('none');
+  const [finetuneLearningRate, setFinetuneLearningRate] = useState(0.0001);
   const [modelArchitecture, setModelArchitecture] = useState('predrnnv2');
   const [useSphere, setUseSphere] = useState(false);
   const [epochs, setEpochs] = useState(10);
@@ -791,6 +838,18 @@ export default function ModelTrainingPage() {
   );
   const selectedUploadedModelLabel =
     selectedUploadedModel?.display_name || selectedUploadedModel?.original_filename || copy.uploadedModelUnnamed;
+  const completedTransferTasks = useMemo(
+    () => tasks.filter((task) => task.status === 'completed' && task.output_model_path),
+    [tasks]
+  );
+  const selectedTrainingWeight = useMemo(
+    () => trainingWeights.find((item) => item.id === selectedTrainingWeightId) || null,
+    [selectedTrainingWeightId, trainingWeights]
+  );
+  const transferStartBlocked =
+    transferEnabled &&
+    ((transferSourceType === 'task' && !transferSourceTaskId) ||
+      (transferSourceType === 'upload' && (!selectedTrainingWeight || selectedTrainingWeight.status !== 'ready')));
 
   const activeStatusMeta = getStatusMeta(activeTask?.status || 'idle', t);
   const normalizedModelArchitecture = normalizeModelArchitecture(modelArchitecture);
@@ -821,6 +880,7 @@ export default function ModelTrainingPage() {
   const startDisabled = user
     ? (modelSource === 'official' && !selectedScriptAvailable) ||
       uploadedModelStartBlocked ||
+      transferStartBlocked ||
       !!modelNameError ||
       !customModelName.trim() ||
       isProcessing
@@ -1022,6 +1082,9 @@ export default function ModelTrainingPage() {
       setCustomModelParams({});
       setCustomModelParamErrors({});
       setUploadingModel(false);
+      setTrainingWeights([]);
+      setSelectedTrainingWeightId('');
+      setUploadingWeight(false);
       return undefined;
     }
 
@@ -1042,6 +1105,35 @@ export default function ModelTrainingPage() {
         if (!active) return;
         setUploadedModels([]);
         setSelectedUploadedModelId('');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setTrainingWeights([]);
+      setSelectedTrainingWeightId('');
+      return undefined;
+    }
+
+    let active = true;
+    fetchTrainingWeights()
+      .then((payload) => {
+        if (!active) return;
+        const items = Array.isArray(payload?.items) ? payload.items : [];
+        setTrainingWeights(items);
+        setSelectedTrainingWeightId((current) => {
+          if (items.find((item) => item.id === current)) return current;
+          return items.find((item) => item.status === 'ready')?.id || items[0]?.id || '';
+        });
+      })
+      .catch(() => {
+        if (!active) return;
+        setTrainingWeights([]);
+        setSelectedTrainingWeightId('');
       });
 
     return () => {
@@ -1123,6 +1215,17 @@ export default function ModelTrainingPage() {
       const preferredModel = items.find((item) => item.id === preferredId);
       if (preferredModel) return preferredId;
       return items.find((item) => item.validation_status === 'valid')?.id || items[0]?.id || '';
+    });
+    return items;
+  };
+
+  const refreshTrainingWeights = async (preferredId = selectedTrainingWeightId) => {
+    const payload = await fetchTrainingWeights();
+    const items = Array.isArray(payload?.items) ? payload.items : [];
+    setTrainingWeights(items);
+    setSelectedTrainingWeightId(() => {
+      if (items.find((item) => item.id === preferredId)) return preferredId;
+      return items.find((item) => item.status === 'ready')?.id || items[0]?.id || '';
     });
     return items;
   };
@@ -1234,6 +1337,11 @@ export default function ModelTrainingPage() {
       }
     }
 
+    if (transferStartBlocked) {
+      showToast(copy.transferSelectSource, 'error');
+      return;
+    }
+
     try {
       setIsProcessing(true);
       const baseHyperparameters = buildTrainingHyperparameters({
@@ -1250,6 +1358,15 @@ export default function ModelTrainingPage() {
         modelArchitecture: normalizeModelArchitecture(modelArchitecture),
         useSphere,
         architectureParamsByModel,
+        trainingDataset,
+        transferLearning: {
+          enabled: transferEnabled,
+          sourceType: transferSourceType,
+          sourceTaskId: transferSourceTaskId,
+          weightId: selectedTrainingWeightId,
+          freezeMode: transferFreezeMode,
+          finetuneLearningRate,
+        },
       });
       const hyperparameters =
         modelSource === 'uploaded'
@@ -1312,6 +1429,39 @@ export default function ModelTrainingPage() {
       loadTasks();
     } catch (error) {
       alert(t('modelTraining.deleteError') + error.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleUploadWeight = async (file) => {
+    if (!user) {
+      openAuthModal('login');
+      return;
+    }
+
+    try {
+      setUploadingWeight(true);
+      const uploaded = await uploadTrainingWeight(file);
+      await refreshTrainingWeights(uploaded.id);
+      setSelectedTrainingWeightId(uploaded.id);
+      showToast(uploaded.status === 'ready' ? copy.uploadWeightSuccess : copy.uploadWeightError, uploaded.status === 'ready' ? 'success' : 'error');
+    } catch (error) {
+      showToast(`${copy.uploadWeightError}: ${error.message}`, 'error');
+    } finally {
+      setUploadingWeight(false);
+    }
+  };
+
+  const handleDeleteWeight = async (weightId) => {
+    if (!weightId || isProcessing) return;
+    try {
+      setIsProcessing(true);
+      await deleteTrainingWeight(weightId);
+      await refreshTrainingWeights('');
+      showToast(copy.deleteWeightSuccess, 'success');
+    } catch (error) {
+      showToast(error.message, 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -1555,6 +1705,50 @@ export default function ModelTrainingPage() {
                     {getPersonalSourceLoginRequiredMessage(isZh)}
                   </div>
                 ) : null}
+                <div style={{ ...sectionTitleStyle, marginTop: 16, marginBottom: 12 }}>{copy.trainingDataset}</div>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 8,
+                    padding: 5,
+                    borderRadius: 16,
+                    background: isLight ? 'rgba(255,255,255,0.82)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${C.border}`,
+                    marginBottom: 10,
+                  }}
+                >
+                  {[
+                    { value: TRAINING_DATASET_OPENMARS_MCD, label: copy.datasetOpenMarsMcd },
+                    { value: TRAINING_DATASET_MCD_OVERVIEW, label: copy.datasetMcdOverview },
+                  ].map((option) => {
+                    const active = trainingDataset === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={() => setTrainingDataset(option.value)}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: 12,
+                          border: 'none',
+                          background: active ? 'rgba(74,158,255,0.14)' : 'transparent',
+                          color: active ? C.blue : C.ice60,
+                          fontSize: 'calc(12px * var(--font-scale, 1))',
+                          fontWeight: active ? 700 : 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.36s ease',
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ ...fieldHintStyle, marginTop: 0 }}>
+                  {trainingDataset === TRAINING_DATASET_MCD_OVERVIEW
+                    ? copy.datasetHintMcdOverview
+                    : copy.datasetHintOpenMarsMcd}
+                </div>
               </div>
 
               <div style={{ ...summaryCardStyle, padding: '16px 16px 14px' }}>
@@ -1739,6 +1933,201 @@ export default function ModelTrainingPage() {
                       );
                     })}
                   </div>
+                </div>
+              </div>
+
+              <div className="model-training-section">
+                <div
+                  style={{
+                    borderRadius: 16,
+                    border: `1px solid ${C.border}`,
+                    background: C.bgMuted,
+                    padding: 14,
+                    display: 'grid',
+                    gap: 12,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ ...sectionTitleStyle, marginBottom: 4 }}>{copy.transferLearning}</div>
+                      <div style={{ ...fieldHintStyle, marginTop: 0 }}>{copy.transferHint}</div>
+                    </div>
+                    <label
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        color: C.ice,
+                        fontSize: 'calc(12px * var(--font-scale, 1))',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={transferEnabled}
+                        onChange={(event) => setTransferEnabled(event.target.checked)}
+                      />
+                      {copy.transferEnable}
+                    </label>
+                  </div>
+
+                  {transferEnabled ? (
+                    <>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {[
+                          ['task', copy.transferTaskSource],
+                          ['upload', copy.transferUploadSource],
+                        ].map(([value, label]) => (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => setTransferSourceType(value)}
+                            style={{
+                              padding: '8px 12px',
+                              borderRadius: 10,
+                              border: `1px solid ${transferSourceType === value ? 'rgba(74,158,255,0.32)' : C.border}`,
+                              background: transferSourceType === value ? 'rgba(74,158,255,0.14)' : 'transparent',
+                              color: transferSourceType === value ? C.blue : C.ice70,
+                              fontSize: 'calc(12px * var(--font-scale, 1))',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {transferSourceType === 'task' ? (
+                        <div>
+                          <div style={fieldLabelStyle}>{copy.transferSourceTask}</div>
+                          <select
+                            style={inputStyle}
+                            value={transferSourceTaskId}
+                            onChange={(event) => setTransferSourceTaskId(event.target.value)}
+                          >
+                            <option value="">{copy.transferNoTasks}</option>
+                            {completedTransferTasks.map((task) => (
+                              <option key={task.id} value={task.id}>
+                                #{task.id} {task.custom_model_name || task.model_script}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gap: 10 }}>
+                          <div>
+                            <div style={fieldLabelStyle}>{copy.transferWeightFile}</div>
+                            <select
+                              style={inputStyle}
+                              value={selectedTrainingWeightId}
+                              onChange={(event) => setSelectedTrainingWeightId(event.target.value)}
+                            >
+                              <option value="">{copy.transferNoWeights}</option>
+                              {trainingWeights.map((weight) => (
+                                <option key={weight.id} value={weight.id}>
+                                  {weight.original_filename} / {weight.status}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <label
+                              style={{
+                                padding: '8px 12px',
+                                borderRadius: 10,
+                                border: `1px solid ${C.border}`,
+                                color: C.ice,
+                                background: 'transparent',
+                                fontSize: 'calc(12px * var(--font-scale, 1))',
+                                fontWeight: 700,
+                                cursor: uploadingWeight ? 'not-allowed' : 'pointer',
+                                opacity: uploadingWeight ? 0.65 : 1,
+                              }}
+                            >
+                              {uploadingWeight ? copy.uploadingWeight : copy.uploadWeight}
+                              <input
+                                type="file"
+                                accept=".pth,.pt"
+                                disabled={uploadingWeight}
+                                style={{ display: 'none' }}
+                                onChange={(event) => {
+                                  const file = event.target.files?.[0];
+                                  event.target.value = '';
+                                  if (file) handleUploadWeight(file);
+                                }}
+                              />
+                            </label>
+                            {selectedTrainingWeight ? (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteWeight(selectedTrainingWeight.id)}
+                                disabled={isProcessing}
+                                style={{
+                                  padding: '8px 12px',
+                                  borderRadius: 10,
+                                  border: '1px solid rgba(217,92,92,0.18)',
+                                  color: '#d95c5c',
+                                  background: 'rgba(217,92,92,0.08)',
+                                  fontSize: 'calc(12px * var(--font-scale, 1))',
+                                  fontWeight: 700,
+                                  cursor: isProcessing ? 'not-allowed' : 'pointer',
+                                  opacity: isProcessing ? 0.65 : 1,
+                                }}
+                              >
+                                {copy.deleteWeight}
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="model-training-field-grid">
+                        <div>
+                          <div style={fieldLabelStyle}>{copy.transferStrict}</div>
+                          <input style={inputStyle} value="strict" disabled />
+                        </div>
+                        <div>
+                          <div style={fieldLabelStyle}>{copy.freezeMode}</div>
+                          <select
+                            style={inputStyle}
+                            value={transferFreezeMode}
+                            onChange={(event) => setTransferFreezeMode(event.target.value)}
+                          >
+                            <option value="none">{copy.freezeNone}</option>
+                            <option value="backbone">{copy.freezeBackbone}</option>
+                            <option value="head">{copy.freezeHead}</option>
+                          </select>
+                        </div>
+                        <div>
+                          <div style={fieldLabelStyle}>{copy.finetuneLearningRate}</div>
+                          <input
+                            type="number"
+                            step="0.00001"
+                            min="0.000001"
+                            style={inputStyle}
+                            value={finetuneLearningRate}
+                            onChange={(event) =>
+                              setFinetuneLearningRate(
+                                event.target.value === ''
+                                  ? ''
+                                  : sanitizePositiveNumber(event.target.value, 0.0001)
+                              )
+                            }
+                          />
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               </div>
 

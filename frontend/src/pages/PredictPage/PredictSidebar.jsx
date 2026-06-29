@@ -6,6 +6,7 @@ import { fmtNum } from '../../utils/fmt';
 import { useSettings } from '../../contexts/SettingsContext';
 import { buildTrainedModelParameterItems } from './trainedModelSelection';
 import { buildCompareModelSummary, getCompareSelectionState } from './CompareTrainingModels/compareTrainingModelsData';
+import { PREDICT_MODEL_MODE_COMPARE, PREDICT_MODEL_MODE_TRAINED } from './predictModelModes';
 
 const SHORTHAND_MAP = {
   Temperature: 'T',
@@ -179,21 +180,14 @@ function ModelSourceControl({
   const compareSelection = getCompareSelectionState(selectedCompareTrainingTaskIds);
   const modeItems = [
     {
-      value: 'system',
-      label: isZh ? '系统模型' : 'System',
-      borderColor: C.mars,
-      background: 'rgba(199,91,57,0.12)',
-      color: C.mars,
-    },
-    {
-      value: 'trained',
+      value: PREDICT_MODEL_MODE_TRAINED,
       label: isZh ? '单训练模型分析' : 'Single trained model',
       borderColor: C.blue,
       background: 'rgba(74,158,255,0.12)',
       color: C.blue,
     },
     {
-      value: 'trained_compare',
+      value: PREDICT_MODEL_MODE_COMPARE,
       label: isZh ? '多训练模型对比' : 'Compare trained models',
       borderColor: C.green,
       background: 'rgba(74,207,172,0.12)',
@@ -206,18 +200,18 @@ function ModelSourceControl({
       <SectionTitle
         title={isZh ? '模型来源' : 'Model source'}
         subtitle={
-          modelMode === 'trained_compare'
+          modelMode === PREDICT_MODEL_MODE_COMPARE
             ? (isZh ? '选择多个已完成训练任务，比较完整测试集表现。' : 'Compare completed training tasks across the full test set.')
-            : modelMode === 'trained'
+            : modelMode === PREDICT_MODEL_MODE_TRAINED
             ? (isZh ? '使用训练页面已完成任务的模型权重进行预测。' : 'Use weights produced by a completed training task.')
-            : (isZh ? '使用平台默认预测模型和完整诊断分析。' : 'Use the default platform model with full diagnostics.')
+            : ''
         }
-        accent={modelMode === 'trained_compare' ? C.green : modelMode === 'trained' ? C.blue : C.mars}
+        accent={modelMode === PREDICT_MODEL_MODE_COMPARE ? C.green : C.blue}
       />
 
       <OptionChips items={modeItems} activeValue={modelMode} onChange={setModelMode} />
 
-      {modelMode === 'trained' ? (
+      {modelMode === PREDICT_MODEL_MODE_TRAINED ? (
         <div style={{ marginTop: 14, display: 'grid', gap: 8 }}>
           <select
             value={selectedTrainingTaskId || ''}
@@ -306,7 +300,7 @@ function ModelSourceControl({
         </div>
       ) : null}
 
-      {modelMode === 'trained_compare' ? (
+      {modelMode === PREDICT_MODEL_MODE_COMPARE ? (
         <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
           <input
             type="search"
@@ -565,8 +559,8 @@ export default function PredictSidebar({
   const canShowSelectionPerformance = analysisVisibility.selectionPerformance !== false;
   const canShowSystemHyperparams = analysisVisibility.systemHyperparams !== false;
   const canShowDataSourceControl = analysisVisibility.dataSourceControl !== false;
-  const isTrainedMode = modelMode === 'trained';
-  const isCompareMode = modelMode === 'trained_compare';
+  const isTrainedMode = modelMode === PREDICT_MODEL_MODE_TRAINED;
+  const isCompareMode = modelMode === PREDICT_MODEL_MODE_COMPARE;
   const compareSelection = getCompareSelectionState(selectedCompareTrainingTaskIds);
 
   const years = Array.isArray(availableMarsYears) && availableMarsYears.length > 0

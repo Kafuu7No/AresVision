@@ -1,5 +1,7 @@
 import asyncio
+import json
 import sys
+import tempfile
 import types
 from pathlib import Path
 
@@ -72,8 +74,10 @@ def import_training_router_with_stubs():
 
         fastapi.APIRouter = APIRouter
         fastapi.Depends = lambda dependency=None: dependency
+        fastapi.File = lambda default=None: default
         fastapi.HTTPException = HTTPException
         fastapi.Request = object
+        fastapi.UploadFile = object
         fastapi.WebSocket = object
         fastapi.WebSocketDisconnect = Exception
         sys.modules["fastapi"] = fastapi
@@ -86,6 +90,8 @@ def import_training_router_with_stubs():
     schemas_training.LogResponse = object
     schemas_training.TrainingStartRequest = object
     schemas_training.TrainingTaskResponse = object
+    schemas_training.TrainingWeightFileListResponse = object
+    schemas_training.TrainingWeightFileResponse = object
     sys.modules["schemas.training"] = schemas_training
 
     inference_service = types.ModuleType("services.inference_service")
@@ -111,6 +117,238 @@ class FakeUserModelService:
         assert package_id == FakePackage.id
         assert user_id == FakePackage.user_id
         return FakePackage
+
+
+class FakeTransferTask:
+    def __init__(self, status="completed", output_model_path="D:/tmp/source.pth", user_id=3):
+        self.id = 44
+        self.user_id = user_id
+        self.status = status
+        self.output_model_path = output_model_path
+        self.model_source = "official"
+        self.uploaded_model_id = None
+        self.uploaded_model_version = None
+        self.hyperparameters = json.dumps({
+            "model_source": "official",
+            "model_architecture": "predrnnv2",
+            "selected_channels": ["U", "D"],
+            "window": 3,
+            "horizon": 3,
+            "use_sphere": False,
+        })
+
+
+class FakeTransferSession:
+    def __init__(self, task):
+        self.task = task
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return None
+
+    async def get(self, model, task_id):
+        return self.task if task_id == 44 else None
+
+
+class FakeTransferSessionMaker:
+    def __init__(self, task):
+        self.task = task
+
+    def __call__(self):
+        return FakeTransferSession(self.task)
+
+
+class FakeScalarResult:
+    def __init__(self, items):
+        self._items = items
+
+    def all(self):
+        return list(self._items)
+
+
+class FakeExecuteResult:
+    def __init__(self, scalar=None, items=None):
+        self._scalar = scalar
+        self._items = items or []
+
+    def scalar_one_or_none(self):
+        return self._scalar
+
+    def scalars(self):
+        return FakeScalarResult(self._items)
+
+
+class FakeSession:
+    def __init__(self):
+        self.records = {}
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return None
+
+    def add(self, record):
+        self.records[record.id] = record
+
+    async def commit(self):
+        return None
+
+    async def refresh(self, record):
+        return None
+
+    async def execute(self, query):
+        return FakeExecuteResult(items=list(self.records.values()))
+
+
+class FakeSessionMaker:
+    def __init__(self):
+        self.session = FakeSession()
+
+    def __call__(self):
+        return self.session
+
+
+class FakeTrainingWeightFile:
+    user_id = object()
+    deleted_at = object()
+    created_at = object()
+    id = object()
+
+    def __init__(
+        self,
+        id,
+        user_id,
+        original_filename,
+        storage_path,
+        content_hash,
+        file_size,
+        status,
+        validation_report,
+    ):
+        self.id = id
+        self.user_id = user_id
+        self.original_filename = original_filename
+        self.storage_path = storage_path
+        self.content_hash = content_hash
+        self.file_size = file_size
+        self.status = status
+        self.validation_report = validation_report
+        self.deleted_at = None
+
+
+async def test_training_weight_service_stores_valid_weight_and_rejects_bad_extension():
+    import importlib
+
+    if "config" in sys.modules:
+        sys.modules.pop("config")
+    if "database.engine" in sys.modules:
+        sys.modules.pop("database.engine")
+    models = types.ModuleType("database.models")
+    models.TrainingWeightFile = FakeTrainingWeightFile
+    sys.modules["database.models"] = models
+
+    engine = types.ModuleType("database.engine")
+    engine.async_session_maker = None
+    sys.modules["database.engine"] = engine
+
+    training_weight_service = importlib.import_module("services.training_weight_service")
+
+    class FakeTorch:
+        @staticmethod
+        def load(path, map_location=None, weights_only=True):
+            return {"layer.weight": object()}
+
+    training_weight_service.torch = FakeTorch
+    fake_sessionmaker = FakeSessionMaker()
+    with tempfile.TemporaryDirectory(prefix="aresvision_weight_test_") as temp_dir:
+        service = training_weight_service.TrainingWeightService(
+            storage_root=Path(temp_dir),
+            sessionmaker=fake_sessionmaker,
+        )
+
+        record = await service.create_from_upload(
+            user_id=3,
+            original_filename="source.pth",
+            content=b"pretend-pytorch-state",
+        )
+
+        assert record.user_id == 3
+        assert record.original_filename == "source.pth"
+        assert Path(record.storage_path).is_file()
+        assert record.file_size == len(b"pretend-pytorch-state")
+        assert record.status == "ready"
+        assert json.loads(record.validation_report)["ok"] is True
+
+        try:
+            await service.create_from_upload(
+                user_id=3,
+                original_filename="notes.txt",
+                content=b"bad",
+            )
+        except ValueError as exc:
+            assert ".pth" in str(exc)
+        else:
+            raise AssertionError("Expected invalid extension to be rejected")
+
+
+def _transfer_request_hypers():
+    return {
+        "model_source": "official",
+        "model_architecture": "predrnnv2",
+        "selected_channels": ["U", "D"],
+        "window": 3,
+        "horizon": 3,
+        "use_sphere": False,
+        "transfer_learning": True,
+        "transfer_source_type": "task",
+        "transfer_source_task_id": 44,
+        "transfer_load_mode": "strict",
+        "freeze_mode": "none",
+        "finetune_learning_rate": 0.0001,
+    }
+
+
+async def test_transfer_source_rejects_incomplete_source_task():
+    TrainingService = import_training_service_with_stubs()
+    training_module = sys.modules["services.training_service"]
+    training_module.async_session_maker = FakeTransferSessionMaker(
+        FakeTransferTask(status="running")
+    )
+    service = TrainingService()
+
+    try:
+        await service._resolve_transfer_source(
+            user_id=3,
+            hyperparameters=_transfer_request_hypers(),
+            training_weight_service=None,
+        )
+    except ValueError as exc:
+        assert "completed" in str(exc)
+    else:
+        raise AssertionError("Expected incomplete source task to be rejected")
+
+
+async def test_transfer_source_task_injects_weight_path_for_compatible_completed_task():
+    TrainingService = import_training_service_with_stubs()
+    training_module = sys.modules["services.training_service"]
+    with tempfile.TemporaryDirectory(prefix="aresvision_transfer_source_") as temp_dir:
+        source_path = Path(temp_dir) / "source.pth"
+        source_path.write_bytes(b"weights")
+        training_module.async_session_maker = FakeTransferSessionMaker(
+            FakeTransferTask(output_model_path=str(source_path))
+        )
+        service = TrainingService()
+
+        env = await service._resolve_transfer_source(
+            user_id=3,
+            hyperparameters=_transfer_request_hypers(),
+            training_weight_service=None,
+        )
+
+        assert env == {"ARESVISION_TRANSFER_WEIGHT_PATH": str(source_path)}
 
 
 async def test_uploaded_training_contract():
@@ -207,6 +445,9 @@ async def test_training_route_maps_permission_error_to_403():
 
 
 if __name__ == "__main__":
+    asyncio.run(test_training_weight_service_stores_valid_weight_and_rejects_bad_extension())
+    asyncio.run(test_transfer_source_rejects_incomplete_source_task())
+    asyncio.run(test_transfer_source_task_injects_weight_path_for_compatible_completed_task())
     asyncio.run(test_uploaded_training_contract())
     test_official_entrypoint_strips_uploaded_private_fields()
     asyncio.run(test_training_route_maps_permission_error_to_403())

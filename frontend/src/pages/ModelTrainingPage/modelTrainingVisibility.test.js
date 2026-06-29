@@ -56,3 +56,29 @@ test('keeps official architecture hyperparameters for official model tasks', () 
     ]
   );
 });
+
+test('keeps transfer metadata visible for task history cards', () => {
+  assert.deepEqual(
+    getVisibleTrainingHyperparameters({
+      model_source: 'official',
+      epochs: 5,
+      transfer_learning: true,
+      transfer_source_type: 'task',
+      transfer_source_task_id: 12,
+      transfer_load_mode: 'strict',
+      freeze_mode: 'none',
+      finetune_learning_rate: 0.0001,
+      _transfer_weight_path: 'D:/secret/source.pth',
+    }),
+    [
+      ['model_source', 'official'],
+      ['epochs', 5],
+      ['transfer_learning', true],
+      ['transfer_source_type', 'task'],
+      ['transfer_source_task_id', 12],
+      ['transfer_load_mode', 'strict'],
+      ['freeze_mode', 'none'],
+      ['finetune_learning_rate', 0.0001],
+    ]
+  );
+});
