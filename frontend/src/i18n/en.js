@@ -8,6 +8,7 @@ const en = {
     overview: 'Overview',
     explore: 'Explore',
     predict: 'Predict',
+    'deep-space': 'Deep Space',
     training: 'Train Model',
     ai: 'AI Insight',
     about: 'About',

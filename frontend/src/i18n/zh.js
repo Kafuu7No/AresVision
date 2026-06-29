@@ -8,6 +8,7 @@ const zh = {
     overview: '数据总览',
     explore: '数据探索',
     predict: '预测分析',
+    'deep-space': '深空探索',
     training: '模型训练',
     ai: 'AI 解读',
     about: '关于',
