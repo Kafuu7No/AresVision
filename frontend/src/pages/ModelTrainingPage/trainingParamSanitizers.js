@@ -3,6 +3,10 @@ const MAX_SEED = 2147483647;
 const OPEN_INTERVAL_FLOAT_FIELDS = new Set(['initial_history_weight', 'initial_translation_weight']);
 const THREE_VALUE_INTEGER_LIST_FIELDS = new Set(['patch_size', 'cuboid_size']);
 export const RECURRENT_MODEL_ARCHITECTURES = ['predrnnv2', 'predrnnpp', 'convlstm'];
+export const TRANSFER_FREEZE_MODES = ['none', 'backbone', 'head'];
+export const TRAINING_DATASET_OPENMARS_MCD = 'openmars_mcd';
+export const TRAINING_DATASET_MCD_OVERVIEW = 'mcd_overview';
+export const TRAINING_DATASET_IDS = [TRAINING_DATASET_OPENMARS_MCD, TRAINING_DATASET_MCD_OVERVIEW];
 
 export const MODEL_STRUCTURE_PARAM_CONFIG = {
   simvp: [
@@ -379,6 +383,16 @@ export function sanitizeEarthformerSizeList(value, fallback = [1, 2, 2]) {
   return normalized;
 }
 
+export function sanitizeTransferFreezeMode(value) {
+  const normalized = String(value || '').toLowerCase();
+  return TRANSFER_FREEZE_MODES.includes(normalized) ? normalized : 'none';
+}
+
+export function sanitizeTrainingDataset(value) {
+  const normalized = String(value || TRAINING_DATASET_OPENMARS_MCD).toLowerCase();
+  return TRAINING_DATASET_IDS.includes(normalized) ? normalized : TRAINING_DATASET_OPENMARS_MCD;
+}
+
 export function isRecurrentArchitecture(modelArchitecture) {
   return RECURRENT_MODEL_ARCHITECTURES.includes(String(modelArchitecture || '').toLowerCase());
 }
@@ -430,12 +444,15 @@ export function buildTrainingHyperparameters({
   modelArchitecture,
   useSphere,
   architectureParamsByModel = {},
+  transferLearning = null,
+  trainingDataset = TRAINING_DATASET_OPENMARS_MCD,
 }) {
   const normalizedArchitecture = String(modelArchitecture || '').toLowerCase();
   const hyperparameters = {
     epochs: sanitizePositiveInteger(epochs, 10),
     batch_size: sanitizePositiveInteger(batchSize, 32),
     learning_rate: sanitizePositiveNumber(learningRate, 0.001),
+    training_dataset: sanitizeTrainingDataset(trainingDataset),
     window: sanitizePositiveInteger(windowValue, 3),
     horizon: sanitizePositiveInteger(horizon, 3),
     early_stopping_patience: sanitizeNonNegativeInteger(earlyStoppingPatience, 0, 200),
@@ -444,6 +461,27 @@ export function buildTrainingHyperparameters({
     model_architecture: normalizedArchitecture,
     use_sphere: Boolean(useSphere),
   };
+
+  const transferEnabled = Boolean(transferLearning?.enabled);
+  if (transferEnabled) {
+    const sourceType = String(transferLearning?.sourceType || 'task').toLowerCase() === 'upload'
+      ? 'upload'
+      : 'task';
+    hyperparameters.transfer_learning = true;
+    hyperparameters.transfer_source_type = sourceType;
+    hyperparameters.transfer_source_task_id = sanitizeNonNegativeInteger(
+      transferLearning?.sourceTaskId,
+      0,
+      MAX_SEED
+    );
+    hyperparameters.transfer_weight_id = String(transferLearning?.weightId || '').trim();
+    hyperparameters.transfer_load_mode = 'strict';
+    hyperparameters.freeze_mode = sanitizeTransferFreezeMode(transferLearning?.freezeMode);
+    hyperparameters.finetune_learning_rate = sanitizePositiveNumber(
+      transferLearning?.finetuneLearningRate,
+      sanitizePositiveNumber(learningRate, 0.001) * 0.1
+    );
+  }
 
   if (isRecurrentArchitecture(normalizedArchitecture)) {
     const recurrentHiddenDims = Array.isArray(hiddenDims) ? hiddenDims : [64, 64, 64];

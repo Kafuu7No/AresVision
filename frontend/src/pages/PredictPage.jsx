@@ -52,6 +52,11 @@ import {
   buildPredictMetricsKey,
   buildTrainingModelCompareKey,
 } from './PredictPage/predictAnalysisCacheKeys';
+import {
+  PREDICT_MODEL_MODE_COMPARE,
+  PREDICT_MODEL_MODE_TRAINED,
+  normalizePredictModelMode,
+} from './PredictPage/predictModelModes';
 import CompareTrainingModelsPanel from './PredictPage/CompareTrainingModels/CompareTrainingModelsPanel';
 import { getCompareSelectionState } from './PredictPage/CompareTrainingModels/compareTrainingModelsData';
 
@@ -95,7 +100,7 @@ export default function PredictPage() {
   const [lsStart, setLsStart] = useState(_c.params?.lsStart ?? 90);
   const [marsYear, setMarsYear] = useState(_c.params?.marsYear ?? 27);
   const [dataSourceMode, setDataSourceMode] = useState(_c.params?.dataSource ?? 'default');
-  const [modelMode, setModelMode] = useState(_c.params?.modelMode ?? 'system');
+  const [modelMode, setModelMode] = useState(normalizePredictModelMode(_c.params?.modelMode));
   const [trainingTasks, setTrainingTasks] = useState([]);
   const [trainingTasksLoading, setTrainingTasksLoading] = useState(false);
   const [trainingTasksLoaded, setTrainingTasksLoaded] = useState(false);
@@ -206,7 +211,7 @@ export default function PredictPage() {
     if (!handoff) return;
 
     sessionStorage.removeItem(TRAINING_TASK_HANDOFF_KEY);
-    setModelMode('trained');
+    setModelMode(PREDICT_MODEL_MODE_TRAINED);
     setSelectedTrainingTaskId(handoff.taskId);
   }, []);
 
@@ -217,11 +222,8 @@ export default function PredictPage() {
       setTrainingTasks([]);
       setTrainingTasksLoading(false);
       setTrainingTasksLoaded(false);
-      if (modelMode === 'trained' || modelMode === 'trained_compare') {
-        setModelMode('system');
-        setSelectedTrainingTaskId(null);
-        setSelectedCompareTrainingTaskIds([]);
-      }
+      setSelectedTrainingTaskId(null);
+      setSelectedCompareTrainingTaskIds([]);
       return undefined;
     }
 
@@ -250,7 +252,7 @@ export default function PredictPage() {
   }, [isLoading, user?.id]);
 
   useEffect(() => {
-    if (modelMode !== 'trained' || trainingTasksLoading || !trainingTasksLoaded) return;
+    if (modelMode !== PREDICT_MODEL_MODE_TRAINED || trainingTasksLoading || !trainingTasksLoaded) return;
     if (trainingModelOptions.length === 0) {
       setSelectedTrainingTaskId(null);
       return;
@@ -335,7 +337,7 @@ export default function PredictPage() {
 
   const handlePredict = useCallback(async () => {
     if (isSwitchingSource) return;
-    if (modelMode === 'trained_compare') {
+    if (modelMode === PREDICT_MODEL_MODE_COMPARE) {
       const compareTaskIds = compareSelection.ids;
       if (!compareSelection.canCompare) {
         setError(settings?.language !== 'en' ? '至少选择 2 个已完成训练模型。' : 'Select at least 2 completed trained models.');
@@ -377,8 +379,8 @@ export default function PredictPage() {
       return;
     }
 
-    const trainingTaskId = modelMode === 'trained' ? Number(selectedTrainingTaskId) : null;
-    if (modelMode === 'trained' && (!Number.isFinite(trainingTaskId) || trainingTaskId <= 0)) {
+    const trainingTaskId = modelMode === PREDICT_MODEL_MODE_TRAINED ? Number(selectedTrainingTaskId) : null;
+    if (modelMode === PREDICT_MODEL_MODE_TRAINED && (!Number.isFinite(trainingTaskId) || trainingTaskId <= 0)) {
       setError(settings?.language !== 'en' ? '请先选择一个已完成的训练模型。' : 'Select a completed trained model first.');
       return;
     }
@@ -436,7 +438,7 @@ export default function PredictPage() {
           ? Promise.resolve(null)
           : !shouldFetchErrorDist
           ? Promise.resolve(errorDistData)
-          : modelMode === 'trained'
+          : modelMode === PREDICT_MODEL_MODE_TRAINED
           ? fetchErrorDistribution(predResult.selected_variables || [], {
               trainingTaskId,
               horizon: predStep,
@@ -445,7 +447,7 @@ export default function PredictPage() {
             ? Promise.resolve(null)
             : fetchErrorDistribution(selectedVars)
         : Promise.resolve(null);
-      const pfiVariables = modelMode === 'trained'
+      const pfiVariables = modelMode === PREDICT_MODEL_MODE_TRAINED
         ? (predResult.selected_variables || [])
         : selectedVars;
       const pfiPromise = analysisVisibility.permutationImportance
@@ -459,7 +461,7 @@ export default function PredictPage() {
             })
         : Promise.resolve(null);
       const [errorDistResult, pfiResult] = await Promise.all([errorDistPromise, pfiPromise]);
-      const nextPerformanceData = modelMode === 'trained'
+      const nextPerformanceData = modelMode === PREDICT_MODEL_MODE_TRAINED
         ? { results: { current: buildPerformanceMetricsFromEval(metricsResult) } }
         : performanceData;
 
@@ -470,7 +472,7 @@ export default function PredictPage() {
       if (nextMetricsKey) setMetricsKey(nextMetricsKey);
       setErrorDistKey(nextErrorDistKey);
       if (nextPfiKey) setPfiKey(nextPfiKey);
-      if (modelMode === 'trained') {
+      if (modelMode === PREDICT_MODEL_MODE_TRAINED) {
         setPerformanceData(nextPerformanceData);
       }
       setActiveHorizon(0);
@@ -612,7 +614,7 @@ export default function PredictPage() {
   }, [analysisVisibility.performanceComparison]);
 
   useEffect(() => {
-    if (modelMode !== 'trained_compare') return;
+    if (modelMode !== PREDICT_MODEL_MODE_COMPARE) return;
     setResults(null);
     setMetrics(null);
     setPerformanceData(null);
@@ -690,7 +692,7 @@ export default function PredictPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 24 }}>
         <PredictSidebar
           isLight={isLight}
-          loading={modelMode === 'trained_compare' ? compareTrainingLoading : loading}
+          loading={modelMode === PREDICT_MODEL_MODE_COMPARE ? compareTrainingLoading : loading}
           isSwitchingSource={isSwitchingSource}
           error={error}
           modelMode={modelMode}

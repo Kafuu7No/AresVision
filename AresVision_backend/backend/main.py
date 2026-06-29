@@ -22,7 +22,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse, FileResponse
 
-from config import API_PREFIX, OVERVIEW_MCD_VARIABLES, USER_UPLOADS_DIR, PENDING_REVIEW_DIR, USER_MODELS_DIR
+from config import (
+    API_PREFIX,
+    OVERVIEW_MCD_VARIABLES,
+    PENDING_REVIEW_DIR,
+    TRAINING_WEIGHTS_DIR,
+    USER_MODELS_DIR,
+    USER_UPLOADS_DIR,
+)
 from database.init_db import init_database
 from database.engine import async_session_maker
 from services.data_service import DataService
@@ -35,6 +42,7 @@ from services.ai_service import AIService
 from services.copilot_service import CopilotService
 from services.upload_service import UploadService
 from services.user_model_service import UserModelService
+from services.training_weight_service import TrainingWeightService
 from services.user_data_service import UserDataService
 from services.personal_data_source_service import PersonalDataSourceService
 from services.data_governance_service import DataGovernanceService
@@ -118,6 +126,7 @@ async def lifespan(app: FastAPI):
     USER_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
     PENDING_REVIEW_DIR.mkdir(parents=True, exist_ok=True)
     USER_MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    TRAINING_WEIGHTS_DIR.mkdir(parents=True, exist_ok=True)
 
     # 1. 基础服务：数据加载
     logger.info("[1/5] 初始化基础数据加载服务...")
@@ -131,6 +140,7 @@ async def lifespan(app: FastAPI):
     upload_service = UploadService(data_service)
     app.state.upload_service = upload_service
     app.state.user_model_service = UserModelService(storage_root=USER_MODELS_DIR)
+    app.state.training_weight_service = TrainingWeightService(storage_root=TRAINING_WEIGHTS_DIR)
 
     # 用户数据服务（按需读取用户上传的 .nc 文件）
     user_data_service = UserDataService()
