@@ -27,6 +27,7 @@ from config import (
 from services.data_service import DataService
 
 logger = logging.getLogger("aresvision.mcd_overview")
+MAX_COVERAGE_GAP_LS = 30.0
 
 OVERVIEW_ENV_FIELDS = [
     "Temperature",
@@ -312,6 +313,96 @@ class McdOverviewDataService:
             "points": points,
         }
 
+    @staticmethod
+    def _round_ls(value: float) -> float:
+        rounded = round(float(value), 3)
+        return 0.0 if rounded == -0.0 else rounded
+
+    @classmethod
+    def _coverage_intervals_from_source(cls, source_data: dict, require_count: bool = False) -> list[dict]:
+        ls_values = np.asarray(source_data.get("ls", []), dtype=np.float64)
+        ozone = np.asarray(source_data.get("o3col", []), dtype=np.float32)
+        if ls_values.size == 0 or ozone.ndim == 0:
+            return []
+
+        time_count = min(int(ls_values.shape[0]), int(ozone.shape[0]))
+        if time_count == 0:
+            return []
+
+        ozone = ozone[:time_count]
+        valid_cells = np.isfinite(ozone)
+        if require_count:
+            count = np.asarray(source_data.get("count", []), dtype=np.int32)
+            if count.shape[:1] != ozone.shape[:1]:
+                return []
+            valid_cells = valid_cells & (count[:time_count] > 0)
+
+        valid_by_time = valid_cells.reshape(time_count, -1).any(axis=1)
+        ls_values = ls_values[:time_count]
+
+        intervals = []
+        run_start = None
+        for idx, is_valid in enumerate(valid_by_time):
+            if bool(is_valid) and np.isfinite(ls_values[idx]):
+                if (
+                    run_start is not None
+                    and idx > run_start
+                    and float(ls_values[idx]) - float(ls_values[idx - 1]) > MAX_COVERAGE_GAP_LS
+                ):
+                    run_ls = ls_values[run_start:idx]
+                    intervals.append({
+                        "start": cls._round_ls(np.nanmin(run_ls)),
+                        "end": cls._round_ls(np.nanmax(run_ls)),
+                    })
+                    run_start = idx
+                if run_start is None:
+                    run_start = idx
+                continue
+            if run_start is not None:
+                run_ls = ls_values[run_start:idx]
+                intervals.append({
+                    "start": cls._round_ls(np.nanmin(run_ls)),
+                    "end": cls._round_ls(np.nanmax(run_ls)),
+                })
+                run_start = None
+
+        if run_start is not None:
+            run_ls = ls_values[run_start:time_count]
+            intervals.append({
+                "start": cls._round_ls(np.nanmin(run_ls)),
+                "end": cls._round_ls(np.nanmax(run_ls)),
+            })
+
+        return intervals
+
+    def get_ozone_coverage(self) -> dict:
+        coverage = {
+            "mcd": {},
+            "openmars": {},
+            "nomad": {},
+        }
+
+        for mars_year, year_data in sorted(self.overview.items()):
+            mcd_intervals = self._coverage_intervals_from_source(year_data)
+            if mcd_intervals:
+                coverage["mcd"][mars_year] = mcd_intervals
+
+            try:
+                openmars = self.base.get_openmars_data(mars_year)
+            except ValueError:
+                openmars = None
+            if openmars is not None:
+                openmars_intervals = self._coverage_intervals_from_source(openmars)
+                if openmars_intervals:
+                    coverage["openmars"][mars_year] = openmars_intervals
+
+        for mars_year, nomad_data in sorted(self.nomad.items()):
+            nomad_intervals = self._coverage_intervals_from_source(nomad_data, require_count=True)
+            if nomad_intervals:
+                coverage["nomad"][mars_year] = nomad_intervals
+
+        return coverage
+
     def get_ozone_capabilities(self) -> dict:
         diff_pairs = ["MCD-OpenMARS"]
         if bool(self.nomad):
@@ -320,6 +411,7 @@ class McdOverviewDataService:
             "openmars": True,
             "nomad": bool(self.nomad),
             "diff_pairs": diff_pairs,
+            "coverage": self.get_ozone_coverage(),
         }
 
     def get_ozone_overlay_payload(self, mars_year: int, ls: float) -> dict:

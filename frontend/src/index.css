@@ -248,3 +248,49 @@ textarea {
 .page-enter {
   animation: fadeInUp 0.6s cubic-bezier(0.22,1,0.36,1) forwards;
 }
+
+.coverage-range-input {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.coverage-range-input:focus-visible {
+  outline: 2px solid rgba(121,187,255,0.58);
+  outline-offset: 4px;
+  border-radius: 999px;
+}
+
+.coverage-range-input::-webkit-slider-runnable-track {
+  height: 30px;
+  background: transparent;
+  border: 0;
+}
+
+.coverage-range-input::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 6px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.92);
+  background: linear-gradient(135deg, #ff8f68, #ffb08e);
+  box-shadow: 0 0 0 4px rgba(255,143,104,0.16), 0 8px 18px rgba(0,0,0,0.28);
+  cursor: pointer;
+}
+
+.coverage-range-input::-moz-range-track {
+  height: 30px;
+  background: transparent;
+  border: 0;
+}
+
+.coverage-range-input::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.92);
+  background: linear-gradient(135deg, #ff8f68, #ffb08e);
+  box-shadow: 0 0 0 4px rgba(255,143,104,0.16), 0 8px 18px rgba(0,0,0,0.28);
+  cursor: pointer;
+}
