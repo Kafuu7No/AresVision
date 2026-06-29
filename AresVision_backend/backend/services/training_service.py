@@ -26,6 +26,7 @@ from database.models import ModelTrainingTask
 from services.data_service import DataService
 from services.personal_data_source_service import PersonalDataSourceService
 from services.training_channels import (
+    ARCHITECTURE_PARAM_KEYS,
     UNIFIED_TRAINING_SCRIPT,
     build_hyperparameter_args,
     normalize_training_hyperparameters,
@@ -60,6 +61,8 @@ class TrainingService:
         model_source: str = "official",
         uploaded_model_id: str | None = None,
         user_model_service: Any | None = None,
+        training_weight_service: Any | None = None,
+        is_admin: bool = False,
     ) -> ModelTrainingTask:
         model_source = (model_source or "official").strip().lower()
         if model_source not in ("official", "uploaded"):
@@ -115,6 +118,12 @@ class TrainingService:
         payload_hypers = normalize_training_hyperparameters(raw_hypers)
         payload_hypers.update(preserved_hypers)
         payload_hypers["_data_source"] = source
+        transfer_env_overrides = await self._resolve_transfer_source(
+            user_id=user_id,
+            is_admin=is_admin,
+            hyperparameters=payload_hypers,
+            training_weight_service=training_weight_service,
+        )
 
         async with async_session_maker() as session:
             task = ModelTrainingTask(
@@ -141,16 +150,17 @@ class TrainingService:
             task.log_file_path = str(log_file)
             task.output_model_path = str(output_path)
 
-            env_overrides: dict[str, str] = {}
+            env_overrides: dict[str, str] = dict(transfer_env_overrides)
             temp_data_root: Path | None = None
 
             if source == "personal":
-                env_overrides, temp_data_root, effective_source, source_note = await self._prepare_personal_training_env(
+                personal_env, temp_data_root, effective_source, source_note = await self._prepare_personal_training_env(
                     user_id=user_id,
                     task_id=task_id,
                     data_service=data_service,
                     personal_source_service=personal_source_service,
                 )
+                env_overrides.update(personal_env)
                 payload_hypers["_effective_data_source"] = effective_source
                 if source_note:
                     payload_hypers["_data_source_note"] = source_note
@@ -235,6 +245,93 @@ class TrainingService:
         payload["_uploaded_model_param_schema"] = param_schema
         payload.setdefault("custom_model_params", {})
         return "__user_model_runner__", payload
+
+    async def _resolve_transfer_source(
+        self,
+        user_id: int | None,
+        hyperparameters: dict,
+        training_weight_service: Any | None,
+        is_admin: bool = False,
+    ) -> dict[str, str]:
+        if not hyperparameters.get("transfer_learning"):
+            return {}
+
+        source_type = str(hyperparameters.get("transfer_source_type") or "task").strip().lower()
+        if source_type == "upload":
+            if training_weight_service is None:
+                raise ValueError("training_weight_service is required for uploaded transfer weights")
+            weight_id = str(hyperparameters.get("transfer_weight_id") or "").strip()
+            if not weight_id:
+                raise ValueError("transfer_weight_id is required for uploaded transfer weights")
+            if user_id is None:
+                raise ValueError("user_id is required for uploaded transfer weights")
+            record = await training_weight_service.get_weight_for_user(weight_id, user_id)
+            if getattr(record, "status", None) != "ready":
+                raise ValueError("Uploaded transfer weight must be ready before training")
+            weight_path = Path(getattr(record, "storage_path", "") or "")
+            if not weight_path.exists():
+                raise FileNotFoundError("Uploaded transfer weight file is missing")
+            return {"ARESVISION_TRANSFER_WEIGHT_PATH": str(weight_path)}
+
+        source_task_id = int(hyperparameters.get("transfer_source_task_id") or 0)
+        if source_task_id <= 0:
+            raise ValueError("transfer_source_task_id is required for task transfer learning")
+
+        async with async_session_maker() as session:
+            source_task = await session.get(ModelTrainingTask, source_task_id)
+
+        if source_task is None:
+            raise ValueError("Transfer source task not found")
+        if not is_admin and user_id is not None and getattr(source_task, "user_id", None) not in (None, user_id):
+            raise PermissionError("No permission to access this transfer source task")
+        if getattr(source_task, "status", None) != "completed":
+            raise ValueError("Transfer source task must be completed")
+
+        weight_path = Path(getattr(source_task, "output_model_path", "") or "")
+        if not weight_path.exists():
+            raise FileNotFoundError("Transfer source task weight file is missing")
+
+        source_hypers = self._parse_task_hyperparameters(source_task)
+        self._validate_transfer_task_compatibility(source_task, source_hypers, hyperparameters)
+        return {"ARESVISION_TRANSFER_WEIGHT_PATH": str(weight_path)}
+
+    @staticmethod
+    def _parse_task_hyperparameters(task: Any) -> dict:
+        try:
+            parsed = json.loads(getattr(task, "hyperparameters", "") or "{}")
+        except Exception:
+            parsed = {}
+        return parsed if isinstance(parsed, dict) else {}
+
+    def _validate_transfer_task_compatibility(
+        self,
+        source_task: Any,
+        source_hypers: dict,
+        target_hypers: dict,
+    ) -> None:
+        source_model = str(getattr(source_task, "model_source", None) or source_hypers.get("model_source") or "official")
+        target_model = str(target_hypers.get("model_source") or "official")
+        if source_model != target_model:
+            raise ValueError("Transfer source task model source does not match current training")
+
+        keys = [
+            "selected_channels",
+            "window",
+            "horizon",
+            "use_sphere",
+        ]
+        if target_model == "official":
+            keys.append("model_architecture")
+            keys.extend(key for key in target_hypers if key in ARCHITECTURE_PARAM_KEYS)
+        else:
+            if getattr(source_task, "uploaded_model_id", None) != target_hypers.get("_uploaded_model_id"):
+                raise ValueError("Transfer source uploaded model does not match current uploaded model")
+            if getattr(source_task, "uploaded_model_version", None) != target_hypers.get("_uploaded_model_version"):
+                raise ValueError("Transfer source uploaded model version does not match current uploaded model")
+
+        for key in keys:
+            if source_hypers.get(key) != target_hypers.get(key):
+                raise ValueError(f"Transfer source task configuration does not match: {key}")
 
     async def _prepare_personal_training_env(
         self,

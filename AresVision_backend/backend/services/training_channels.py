@@ -6,6 +6,12 @@ from training_backbones.model_zoo import normalize_model_architecture, normalize
 
 UNIFIED_TRAINING_SCRIPT = "demo3.py"
 CHANNEL_ORDER = ["U", "V", "D", "S", "T"]
+TRAINING_DATASET_OPENMARS_MCD = "openmars_mcd"
+TRAINING_DATASET_MCD_OVERVIEW = "mcd_overview"
+TRAINING_DATASET_IDS = {
+    TRAINING_DATASET_OPENMARS_MCD,
+    TRAINING_DATASET_MCD_OVERVIEW,
+}
 MIN_POSITIVE_FLOAT = 0.000001
 ARCHITECTURE_INTEGER_PARAMS = {
     "spatial_hidden_dim": 64,
@@ -62,6 +68,7 @@ ARCHITECTURE_PARAM_KEYS = (
     + tuple(ARCHITECTURE_INTEGER_LIST_PARAMS)
 )
 RECURRENT_MODEL_ARCHITECTURES = {"predrnnv2", "predrnnpp", "convlstm"}
+TRANSFER_FREEZE_MODES = {"none", "backbone", "head"}
 
 
 def _is_blank(value: Any) -> bool:
@@ -94,6 +101,34 @@ def _non_negative_int(value: Any, fallback: int, maximum: Optional[int] = None) 
     if maximum is not None and parsed > maximum:
         return maximum
     return parsed
+
+
+def _bool_value(value: Any, fallback: bool = False) -> bool:
+    if _is_blank(value):
+        return fallback
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return fallback
+
+
+def _safe_string(value: Any, fallback: str = "") -> str:
+    if _is_blank(value):
+        return fallback
+    return str(value).strip()
+
+
+def _freeze_mode(value: Any) -> str:
+    mode = _safe_string(value, "none").lower()
+    return mode if mode in TRANSFER_FREEZE_MODES else "none"
+
+
+def _training_dataset(value: Any) -> str:
+    dataset = _safe_string(value, TRAINING_DATASET_OPENMARS_MCD).lower()
+    return dataset if dataset in TRAINING_DATASET_IDS else TRAINING_DATASET_OPENMARS_MCD
 
 
 def _positive_float(
@@ -182,6 +217,7 @@ def normalize_training_hyperparameters(hyperparameters: Optional[dict[str, Any]]
     normalized["learning_rate"] = _positive_float(normalized.get("learning_rate"), 0.001)
     normalized["window"] = _positive_int(normalized.get("window"), 3)
     normalized["horizon"] = _positive_int(normalized.get("horizon"), 3)
+    normalized["training_dataset"] = _training_dataset(normalized.get("training_dataset"))
     normalized["early_stopping_patience"] = _non_negative_int(
         normalized.get("early_stopping_patience"), 0, maximum=200
     )
@@ -220,6 +256,33 @@ def normalize_training_hyperparameters(hyperparameters: Optional[dict[str, Any]]
 
     normalized["selected_channels"] = get_channels_from_hyperparameters(normalized)
     normalized["use_sphere"] = use_sphere
+    transfer_enabled = _bool_value(normalized.get("transfer_learning"), False)
+    if transfer_enabled:
+        normalized["transfer_learning"] = True
+        source_type = _safe_string(normalized.get("transfer_source_type"), "task").lower()
+        normalized["transfer_source_type"] = source_type if source_type in {"task", "upload"} else "task"
+        normalized["transfer_source_task_id"] = _non_negative_int(
+            normalized.get("transfer_source_task_id"),
+            0,
+        )
+        normalized["transfer_weight_id"] = _safe_string(normalized.get("transfer_weight_id"), "")
+        normalized["transfer_load_mode"] = "strict"
+        normalized["freeze_mode"] = _freeze_mode(normalized.get("freeze_mode"))
+        normalized["finetune_learning_rate"] = _positive_float(
+            normalized.get("finetune_learning_rate"),
+            normalized["learning_rate"],
+        )
+    else:
+        for key in (
+            "transfer_learning",
+            "transfer_source_type",
+            "transfer_source_task_id",
+            "transfer_weight_id",
+            "transfer_load_mode",
+            "freeze_mode",
+            "finetune_learning_rate",
+        ):
+            normalized.pop(key, None)
     return normalized
 
 

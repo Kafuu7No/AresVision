@@ -1,22 +1,58 @@
 from pathlib import Path
-from typing import List
+import json
+from typing import Any, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 
 from auth.dependencies import get_current_user
 from database.models import ModelTrainingTask, User
-from schemas.training import LogResponse, TrainingStartRequest, TrainingTaskResponse
+from schemas.training import (
+    LogResponse,
+    TrainingStartRequest,
+    TrainingTaskResponse,
+    TrainingWeightFileListResponse,
+    TrainingWeightFileResponse,
+)
 from services.inference_service import InferenceService
 from services.training_service import TrainingService
+from services.training_weight_service import TrainingWeightService
 
 router = APIRouter(tags=["Training"])
 
 training_service = TrainingService()
 inference_service = InferenceService()
+training_weight_service = TrainingWeightService()
 
 
 def _is_admin(user: User) -> bool:
-    return (user.role or "").lower() == "admin"
+    return (getattr(user, "role", "") or "").lower() == "admin"
+
+
+def _service_weight(request: Request) -> TrainingWeightService:
+    return getattr(request.app.state, "training_weight_service", None) or training_weight_service
+
+
+def _parse_report(value: Optional[str]) -> dict[str, Any]:
+    if not value:
+        return {}
+    try:
+        parsed = json.loads(value)
+    except Exception:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _serialize_weight(record) -> TrainingWeightFileResponse:
+    return TrainingWeightFileResponse(
+        id=record.id,
+        user_id=record.user_id,
+        original_filename=record.original_filename,
+        content_hash=record.content_hash,
+        file_size=record.file_size,
+        status=record.status,
+        validation_report=_parse_report(record.validation_report),
+        created_at=record.created_at,
+    )
 
 
 async def _get_task_with_access_check(task_id: int, current_user: User) -> ModelTrainingTask:
@@ -49,6 +85,48 @@ async def get_scripts():
     return training_service.get_available_scripts()
 
 
+@router.post("/training/weights", response_model=TrainingWeightFileResponse)
+async def upload_training_weight(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        source = await file.read()
+        record = await _service_weight(request).create_from_upload(
+            user_id=current_user.id,
+            original_filename=file.filename or "",
+            content=source,
+        )
+        return _serialize_weight(record)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/training/weights", response_model=TrainingWeightFileListResponse)
+async def list_training_weights(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    records = await _service_weight(request).list_user_weights(current_user.id)
+    return TrainingWeightFileListResponse(items=[_serialize_weight(record) for record in records])
+
+
+@router.delete("/training/weights/{weight_id}")
+async def delete_training_weight(
+    weight_id: str,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        await _service_weight(request).soft_delete_weight(weight_id, current_user.id)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    return {"status": "success", "message": "Training weight deleted"}
+
+
 @router.post("/training/start", response_model=TrainingTaskResponse)
 async def start_training(
     req: TrainingStartRequest,
@@ -67,6 +145,8 @@ async def start_training(
             model_source=req.model_source,
             uploaded_model_id=req.uploaded_model_id,
             user_model_service=getattr(request.app.state, "user_model_service", None),
+            training_weight_service=_service_weight(request),
+            is_admin=_is_admin(current_user),
         )
         return task
     except FileNotFoundError as e:

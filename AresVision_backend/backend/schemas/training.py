@@ -36,3 +36,21 @@ class TrainingTaskResponse(BaseModel):
 
 class LogResponse(BaseModel):
     lines: list[str]
+
+
+class TrainingWeightFileResponse(BaseModel):
+    id: str
+    user_id: int
+    original_filename: str
+    content_hash: str
+    file_size: int
+    status: str
+    validation_report: Dict[str, Any] = Field(default_factory=dict)
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class TrainingWeightFileListResponse(BaseModel):
+    items: list[TrainingWeightFileResponse]

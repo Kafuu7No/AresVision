@@ -44,6 +44,7 @@ test('sanitizes negative core training parameters before they are submitted', ()
     epochs: 1,
     batch_size: 1,
     learning_rate: 0.000001,
+    training_dataset: 'openmars_mcd',
     window: 1,
     horizon: 1,
     early_stopping_patience: 0,
@@ -57,6 +58,60 @@ test('sanitizes negative core training parameters before they are submitted', ()
     dropout: 0.9,
   });
   assert.equal('stlstm_hidden_dims' in hyperparameters, false);
+});
+
+test('sanitizes training dataset selection before submitting', () => {
+  const defaulted = buildTrainingHyperparameters({
+    epochs: 10,
+    batchSize: 32,
+    learningRate: 0.001,
+    hiddenDims: [64, 64, 64],
+    windowValue: 3,
+    horizon: 3,
+    earlyStoppingPatience: 0,
+    seed: 11,
+    selectedChannels: [],
+    channelOrder: ['U', 'V', 'D', 'S', 'T'],
+    modelArchitecture: 'predrnnv2',
+    useSphere: false,
+    architectureParamsByModel: {},
+  });
+  const selected = buildTrainingHyperparameters({
+    epochs: 10,
+    batchSize: 32,
+    learningRate: 0.001,
+    hiddenDims: [64, 64, 64],
+    windowValue: 3,
+    horizon: 3,
+    earlyStoppingPatience: 0,
+    seed: 11,
+    selectedChannels: [],
+    channelOrder: ['U', 'V', 'D', 'S', 'T'],
+    modelArchitecture: 'predrnnv2',
+    useSphere: false,
+    architectureParamsByModel: {},
+    trainingDataset: 'mcd_overview',
+  });
+  const invalid = buildTrainingHyperparameters({
+    epochs: 10,
+    batchSize: 32,
+    learningRate: 0.001,
+    hiddenDims: [64, 64, 64],
+    windowValue: 3,
+    horizon: 3,
+    earlyStoppingPatience: 0,
+    seed: 11,
+    selectedChannels: [],
+    channelOrder: ['U', 'V', 'D', 'S', 'T'],
+    modelArchitecture: 'predrnnv2',
+    useSphere: false,
+    architectureParamsByModel: {},
+    trainingDataset: 'bad_dataset',
+  });
+
+  assert.equal(defaulted.training_dataset, 'openmars_mcd');
+  assert.equal(selected.training_dataset, 'mcd_overview');
+  assert.equal(invalid.training_dataset, 'openmars_mcd');
 });
 
 test('submits recurrent hidden dims only for recurrent architectures', () => {
@@ -113,6 +168,7 @@ test('submits only structure parameters used by the selected architecture', () =
     epochs: 10,
     batch_size: 32,
     learning_rate: 0.001,
+    training_dataset: 'openmars_mcd',
     window: 4,
     horizon: 2,
     early_stopping_patience: 0,
@@ -161,6 +217,7 @@ test('submits migrated ablation structure parameters with numeric list sanitizin
     epochs: 10,
     batch_size: 32,
     learning_rate: 0.001,
+    training_dataset: 'openmars_mcd',
     window: 4,
     horizon: 2,
     early_stopping_patience: 0,
@@ -176,6 +233,68 @@ test('submits migrated ablation structure parameters with numeric list sanitizin
     mlp_ratio: 2,
     dropout: 0,
   });
+});
+
+test('adds transfer learning parameters when a task source is enabled', () => {
+  const hyperparameters = buildTrainingHyperparameters({
+    epochs: 10,
+    batchSize: 32,
+    learningRate: 0.001,
+    hiddenDims: [64, 64, 64],
+    windowValue: 3,
+    horizon: 3,
+    earlyStoppingPatience: 0,
+    seed: 11,
+    selectedChannels: ['U'],
+    channelOrder: ['U', 'V', 'D', 'S', 'T'],
+    modelArchitecture: 'predrnnv2',
+    useSphere: false,
+    architectureParamsByModel: {},
+    transferLearning: {
+      enabled: true,
+      sourceType: 'task',
+      sourceTaskId: '12',
+      weightId: '',
+      freezeMode: 'backbone',
+      finetuneLearningRate: '0.0001',
+    },
+  });
+
+  assert.equal(hyperparameters.transfer_learning, true);
+  assert.equal(hyperparameters.transfer_source_type, 'task');
+  assert.equal(hyperparameters.transfer_source_task_id, 12);
+  assert.equal(hyperparameters.transfer_weight_id, '');
+  assert.equal(hyperparameters.transfer_load_mode, 'strict');
+  assert.equal(hyperparameters.freeze_mode, 'backbone');
+  assert.equal(hyperparameters.finetune_learning_rate, 0.0001);
+});
+
+test('omits transfer learning parameters when disabled', () => {
+  const hyperparameters = buildTrainingHyperparameters({
+    epochs: 10,
+    batchSize: 32,
+    learningRate: 0.001,
+    hiddenDims: [64, 64, 64],
+    windowValue: 3,
+    horizon: 3,
+    earlyStoppingPatience: 0,
+    seed: 11,
+    selectedChannels: [],
+    channelOrder: ['U', 'V', 'D', 'S', 'T'],
+    modelArchitecture: 'predrnnv2',
+    useSphere: false,
+    architectureParamsByModel: {},
+    transferLearning: {
+      enabled: false,
+      sourceType: 'upload',
+      sourceTaskId: '99',
+      weightId: 'weight-id',
+      finetuneLearningRate: '0.0001',
+    },
+  });
+
+  assert.equal('transfer_learning' in hyperparameters, false);
+  assert.equal('transfer_source_type' in hyperparameters, false);
 });
 
 test('keeps gated MST initial probabilities inside the backend-supported open interval', () => {

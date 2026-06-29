@@ -8,7 +8,7 @@ import os
 import sys
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import netCDF4
 import numpy as np
@@ -23,7 +23,12 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
+from services.transfer_learning_strategy import apply_freeze_strategy
+
 CHANNEL_ORDER = ["U", "V", "D", "S", "T"]
+TRAINING_DATASET_OPENMARS_MCD = "openmars_mcd"
+TRAINING_DATASET_MCD_OVERVIEW = "mcd_overview"
+TRAINING_DATASET_IDS = {TRAINING_DATASET_OPENMARS_MCD, TRAINING_DATASET_MCD_OVERVIEW}
 MCD_VARS_MAP = {
     "U": ("U_Wind", "u"),
     "V": ("V_Wind", "v"),
@@ -50,6 +55,15 @@ def parse_json_arg(value: Any) -> dict[str, Any]:
     except Exception:
         return {}
     return parsed if isinstance(parsed, dict) else {}
+
+
+def parse_bool(value: Any) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def normalize_training_dataset(value: Any) -> str:
+    dataset = str(value or TRAINING_DATASET_OPENMARS_MCD).strip().lower()
+    return dataset if dataset in TRAINING_DATASET_IDS else TRAINING_DATASET_OPENMARS_MCD
 
 
 def parse_selected_channels(value: Any) -> list[str]:
@@ -135,6 +149,29 @@ def assert_prediction_shape(prediction: Any, target: Any, context: str) -> None:
             f"{context} prediction shape mismatch: "
             f"expected shape {expected_shape}, actual shape {actual_shape}"
         )
+
+
+def apply_transfer_learning(model: nn.Module, args: Any, device: torch.device) -> Optional[str]:
+    if not parse_bool(getattr(args, "transfer_learning", False)):
+        return None
+
+    if str(getattr(args, "transfer_load_mode", "strict")).strip().lower() != "strict":
+        raise ValueError("Only strict transfer loading is supported")
+
+    weight_path = os.environ.get("ARESVISION_TRANSFER_WEIGHT_PATH", "").strip()
+    if not weight_path:
+        raise ValueError("Transfer learning is enabled but ARESVISION_TRANSFER_WEIGHT_PATH is missing")
+    state_dict = torch.load(weight_path, map_location=device, weights_only=True)
+    model.load_state_dict(state_dict, strict=True)
+    freeze_report = apply_freeze_strategy(model, getattr(args, "freeze_mode", "none"))
+    print(
+        f"[Transfer] Loaded strict weights from {Path(weight_path).name}; "
+        f"freeze_mode={freeze_report['mode']}; "
+        f"trainable_params={freeze_report['trainable_parameter_count']}/"
+        f"{freeze_report['total_parameter_count']}",
+        flush=True,
+    )
+    return weight_path
 
 
 def natural_sort_key(value: Any) -> list[Any]:
@@ -296,21 +333,74 @@ def _load_mcd_features(
     return vars_dict
 
 
+def _load_mcd_overview(
+    mcd_overview_dir: Path,
+    selected_channels: list[str],
+) -> tuple[np.ndarray, np.ndarray, dict[str, np.ndarray]]:
+    y_parts: list[np.ndarray] = []
+    ls_parts: list[np.ndarray] = []
+    feature_parts = {MCD_VARS_MAP[channel][1]: [] for channel in selected_channels}
+
+    for file_path in sorted(Path(mcd_overview_dir).glob("*.nc"), key=natural_sort_key):
+        with netCDF4.Dataset(str(file_path)) as dataset:
+            if "o3col" not in dataset.variables:
+                raise ValueError(f"MCD overview file {file_path} is missing o3col")
+            y = _clean_array(dataset.variables["o3col"][:])
+            if y.ndim != 3:
+                raise ValueError(f"Invalid MCD overview o3col shape in {file_path}: {y.shape}")
+            y_parts.append(y)
+            ls_parts.append(_read_ls_variable(dataset, file_path))
+
+            for channel in selected_channels:
+                var_name, short_name = MCD_VARS_MAP[channel]
+                if var_name not in dataset.variables:
+                    raise ValueError(f"MCD overview file {file_path} is missing variable: {var_name}")
+                data = _clean_array(dataset.variables[var_name][:])
+                if data.ndim != 3:
+                    raise ValueError(f"Invalid MCD overview {var_name} shape in {file_path}: {data.shape}")
+                feature_parts[short_name].append(data)
+
+    if not y_parts:
+        raise FileNotFoundError(f"No MCD overview .nc files found in {mcd_overview_dir}")
+
+    y_raw = _clean_array(np.concatenate(y_parts, axis=0))
+    ls_raw = _clean_array(np.concatenate(ls_parts, axis=0)).reshape(-1)
+    vars_dict = {
+        short_name: _clean_array(np.concatenate(parts, axis=0))
+        for short_name, parts in feature_parts.items()
+    }
+    time_count = min([int(y_raw.shape[0]), int(ls_raw.shape[0])] + [int(v.shape[0]) for v in vars_dict.values()])
+    if time_count <= 0:
+        raise ValueError("MCD overview timeline is empty")
+    return (
+        y_raw[:time_count],
+        ls_raw[:time_count],
+        {name: value[:time_count] for name, value in vars_dict.items()},
+    )
+
+
 def prepare_tensors(
     openmars_dir: Any,
     mcd_dir: Any,
     selected_channels: Any,
     window: int,
     horizon: int,
+    training_dataset: Any = TRAINING_DATASET_OPENMARS_MCD,
+    mcd_overview_dir: Any | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor, float, float, int, int]:
     selected = parse_selected_channels(selected_channels)
+    dataset = normalize_training_dataset(training_dataset)
     window = int(window)
     horizon = int(horizon)
     if window <= 0 or horizon <= 0:
         raise ValueError("window and horizon must be positive")
 
-    y_raw, om_ls_raw = _load_openmars(Path(openmars_dir))
-    vars_dict = _load_mcd_features(Path(mcd_dir), selected, om_ls_raw)
+    if dataset == TRAINING_DATASET_MCD_OVERVIEW:
+        overview_dir = Path(mcd_overview_dir or (BACKEND_DIR / "data" / "mcd_overview"))
+        y_raw, _ls_raw, vars_dict = _load_mcd_overview(overview_dir, selected)
+    else:
+        y_raw, om_ls_raw = _load_openmars(Path(openmars_dir))
+        vars_dict = _load_mcd_features(Path(mcd_dir), selected, om_ls_raw)
     feature_names = [MCD_VARS_MAP[channel][1] for channel in selected]
     features = [y_raw] + [vars_dict[name] for name in feature_names]
 
@@ -409,11 +499,17 @@ def main() -> None:
     parser.add_argument("--horizon", type=int, default=3)
     parser.add_argument("--early_stopping_patience", type=int, default=0)
     parser.add_argument("--selected_channels", type=str, default="")
+    parser.add_argument("--training_dataset", type=str, default=TRAINING_DATASET_OPENMARS_MCD)
     parser.add_argument("--seed", type=int, default=11)
     parser.add_argument("--output_path", type=str, required=True)
     parser.add_argument("--uploaded_model_path", type=str, required=True)
     parser.add_argument("--uploaded_model_param_schema", type=str, default="{}")
     parser.add_argument("--custom_model_params", type=str, default="{}")
+    parser.add_argument("--transfer_learning", type=str, default="false")
+    parser.add_argument("--transfer_source_type", type=str, default="")
+    parser.add_argument("--transfer_load_mode", type=str, default="strict")
+    parser.add_argument("--freeze_mode", type=str, default="none")
+    parser.add_argument("--finetune_learning_rate", type=float, default=None)
     args, _unknown = parser.parse_known_args()
 
     epochs = max(1, int(args.epochs))
@@ -424,14 +520,18 @@ def main() -> None:
     np.random.seed(seed)
 
     selected_channels = parse_selected_channels(args.selected_channels)
+    training_dataset = normalize_training_dataset(args.training_dataset)
     openmars_dir = Path(os.environ.get("ARESVISION_OPENMARS_DIR", str(BACKEND_DIR / "data" / "openmars")))
     mcd_dir = Path(os.environ.get("ARESVISION_MCD_DIR", str(BACKEND_DIR / "data" / "MCD")))
+    mcd_overview_dir = Path(os.environ.get("ARESVISION_MCD_OVERVIEW_DIR", str(BACKEND_DIR / "data" / "mcd_overview")))
     x_torch, y_torch, y_mean, y_std, height, width = prepare_tensors(
         openmars_dir,
         mcd_dir,
         selected_channels,
         args.window,
         args.horizon,
+        training_dataset=training_dataset,
+        mcd_overview_dir=mcd_overview_dir,
     )
 
     train_dataset, test_dataset = _split_train_test(x_torch, y_torch)
@@ -453,12 +553,17 @@ def main() -> None:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = load_uploaded_model(Path(args.uploaded_model_path), config).to(device)
+    apply_transfer_learning(model, args, device)
     criterion = nn.SmoothL1Loss()
     trainable_params = [param for param in model.parameters() if param.requires_grad]
-    optimizer = torch.optim.Adam(trainable_params, lr=float(args.learning_rate)) if trainable_params else None
+    optimizer_lr = args.finetune_learning_rate if args.finetune_learning_rate and args.finetune_learning_rate > 0 else args.learning_rate
+    optimizer = torch.optim.Adam(trainable_params, lr=float(optimizer_lr)) if trainable_params else None
 
     print(f"Training Device: {device}", flush=True)
-    print(f"UploadedModel={args.uploaded_model_path}, Config={config}", flush=True)
+    print(
+        f"UploadedModel={args.uploaded_model_path}, TrainingDataset={training_dataset}, Config={config}",
+        flush=True,
+    )
     print("\n[Step 3] Start Training...", flush=True)
 
     best_val_loss = float("inf")

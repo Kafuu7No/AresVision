@@ -11,7 +11,6 @@ import HomePage from './pages/HomePage';
 import DataOverviewPage from './pages/DataOverviewPage';
 import ExplorePage from './pages/ExplorePage';
 import PredictPage from './pages/PredictPage';
-import DeepSpacePage from './pages/DeepSpacePage';
 import AIPage from './pages/AIPage';
 import AboutPage from './pages/AboutPage';
 import ModelTrainingPage from './pages/ModelTrainingPage';
@@ -19,7 +18,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { TrainingProvider } from './contexts/TrainingContext';
 import { getCurrentPageFromHash } from './router/hashRoute';
 
-const VALID_PAGES = ['home', 'overview', 'explore', 'predict', 'training', 'deep-space', 'ai', 'about'];
+const VALID_PAGES = ['home', 'overview', 'explore', 'predict', 'training', 'ai', 'about'];
 
 function getPageFromHash() {
   return getCurrentPageFromHash(VALID_PAGES);
@@ -108,7 +107,6 @@ export default function App() {
           {page === 'overview' && <DataOverviewPage />}
           {page === 'explore' && <ExplorePage onOpenAdmin={() => setAdminPanelOpen(true)} reviewSignal={reviewSignal} />}
           {page === 'predict' && <PredictPage />}
-          {page === 'deep-space' && <DeepSpacePage />}
           {page === 'training' && <ModelTrainingPage />}
           {page === 'ai' && <AIPage />}
           {page === 'about' && <AboutPage />}

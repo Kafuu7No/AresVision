@@ -16,6 +16,7 @@ from database.models import (
     Notification,
     Feedback,
     UserModelPackage,
+    TrainingWeightFile,
     ModelTrainingTask,
     DatasetLineageEvent,
     DatasetQualitySnapshot,
